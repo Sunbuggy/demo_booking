@@ -1,4 +1,3 @@
-import Pricing from '@/components/ui/Pricing/Pricing';
 import { createClient } from '@/utils/supabase/server';
 import {
   getProducts,
@@ -6,8 +5,9 @@ import {
   getUser
 } from '@/utils/supabase/queries';
 import { BookingTabs } from './(booking)/book/booking-tabs';
+import { CalendarForm } from './(booking)/book/booking-calendar';
 
-export default async function PricingPage() {
+export default async function MainPage() {
   const supabase = createClient();
   const [user, products, subscription] = await Promise.all([
     getUser(supabase),
@@ -16,7 +16,8 @@ export default async function PricingPage() {
   ]);
 
   return (
-    <div className="text-4xl font-extrabold text-white sm:text-center sm:text-6xl flex justify-center items-center h-screen">
+    <div className="text-4xl font-extrabold text-white sm:text-center sm:text-6xl flex flex-col justify-center items-center h-screen">
+      <CalendarForm />
       <BookingTabs />
     </div>
   );

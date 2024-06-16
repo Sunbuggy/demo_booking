@@ -21,11 +21,13 @@ export function BookingTabs() {
       <TabsContent value="mb30">
         <Card>
           <CardHeader>
-            <CardTitle>MB30</CardTitle>
-            <CardDescription>30 mins</CardDescription>
+            <CardTitle>MiniBaja 30 minutes</CardTitle>
+            <CardDescription>Chase in the dunes for 30 minutes</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">MB30 content</CardContent>
-          <CardFooter className=" w-full flex justify-end">
+          <CardContent className="space-y-2">
+            <p>MiniBaja 30 minutes content</p>
+          </CardContent>
+          <CardFooter className="w-full flex justify-end">
             <Button>Book</Button>
           </CardFooter>
         </Card>
@@ -37,7 +39,7 @@ export function BookingTabs() {
             <CardDescription>60 mins</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">MB60 content</CardContent>
-          <CardFooter className=" w-full flex justify-end">
+          <CardFooter className="w-full flex justify-end">
             <Button>Book</Button>
           </CardFooter>
         </Card>
@@ -49,7 +51,7 @@ export function BookingTabs() {
             <CardDescription>120 mins</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">MB120 content</CardContent>
-          <CardFooter className=" w-full flex justify-end">
+          <CardFooter className="w-full flex justify-end">
             <Button>Book</Button>
           </CardFooter>
         </Card>
