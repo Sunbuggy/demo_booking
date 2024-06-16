@@ -15,10 +15,8 @@ export default async function PricingPage() {
   ]);
 
   return (
-    <Pricing
-      user={user}
-      products={products ?? []}
-      subscription={subscription}
-    />
+    <div className="text-4xl font-extrabold text-white sm:text-center sm:text-6xl">
+      Coming Soon
+    </div>
   );
 }

@@ -37,3 +37,13 @@ export const getUserDetails = cache(async (supabase: SupabaseClient) => {
     .single();
   return userDetails;
 });
+
+export const updateUserName = cache(
+  async (supabase: SupabaseClient, name: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ full_name: name })
+      .eq('id', await getUser(supabase).then((user) => user?.id));
+    return { data, error };
+  }
+);

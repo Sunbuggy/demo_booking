@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getURL, getErrorRedirect, getStatusRedirect } from 'utils/helpers';
 import { getAuthTypes } from 'utils/auth-helpers/settings';
+import { updateUserName } from '../supabase/queries';
 
 function isValidEmail(email: string) {
   var regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
@@ -310,27 +311,18 @@ export async function updateName(formData: FormData) {
   const fullName = String(formData.get('fullName')).trim();
 
   const supabase = createClient();
-  const { error, data } = await supabase.auth.updateUser({
-    data: { full_name: fullName }
-  });
-
+  const { error } = await updateUserName(supabase, fullName);
   if (error) {
     return getErrorRedirect(
       '/account',
       'Your name could not be updated.',
       error.message
     );
-  } else if (data.user) {
+  } else {
     return getStatusRedirect(
       '/account',
       'Success!',
       'Your name has been updated.'
-    );
-  } else {
-    return getErrorRedirect(
-      '/account',
-      'Hmm... Something went wrong.',
-      'Your name could not be updated.'
     );
   }
 }

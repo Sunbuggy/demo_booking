@@ -1,26 +1,20 @@
-import CustomerPortalForm from '@/components/ui/AccountForms/CustomerPortalForm';
+// import CustomerPortalForm from '@/components/ui/AccountForms/CustomerPortalForm';
 import EmailForm from '@/components/ui/AccountForms/EmailForm';
 import NameForm from '@/components/ui/AccountForms/NameForm';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import {
-  getUserDetails,
-  getSubscription,
-  getUser
-} from '@/utils/supabase/queries';
+import { getUserDetails, getUser } from '@/utils/supabase/queries';
 
 export default async function Account() {
   const supabase = createClient();
-  const [user, userDetails, subscription] = await Promise.all([
+  const [user, userDetails] = await Promise.all([
     getUser(supabase),
-    getUserDetails(supabase),
-    getSubscription(supabase)
+    getUserDetails(supabase)
   ]);
 
   if (!user) {
     return redirect('/signin');
   }
-
   return (
     <section className="mb-32 bg-black">
       <div className="max-w-6xl px-4 py-8 mx-auto sm:px-6 sm:pt-24 lg:px-8">
@@ -29,12 +23,11 @@ export default async function Account() {
             Account
           </h1>
           <p className="max-w-2xl m-auto mt-5 text-xl text-zinc-200 sm:text-center sm:text-2xl">
-            We partnered with Stripe for a simplified billing.
+            We partnered with Authorize.net for a simplified billing.
           </p>
         </div>
       </div>
       <div className="p-4">
-        <CustomerPortalForm subscription={subscription} />
         <NameForm userName={userDetails?.full_name ?? ''} />
         <EmailForm userEmail={user.email} />
       </div>

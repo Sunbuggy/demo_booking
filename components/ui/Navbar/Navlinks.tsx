@@ -11,9 +11,9 @@ import s from './Navbar.module.css';
 interface NavlinksProps {
   user?: any;
 }
-
 export default function Navlinks({ user }: NavlinksProps) {
   const router = getRedirectMethod() === 'client' ? useRouter() : null;
+  const path = usePathname();
 
   return (
     <div className="relative flex flex-row justify-between py-4 align-center md:py-6">
@@ -22,10 +22,7 @@ export default function Navlinks({ user }: NavlinksProps) {
           <Logo />
         </Link>
         <nav className="ml-6 space-x-2 lg:block">
-          <Link href="/" className={s.link}>
-            Pricing
-          </Link>
-          {user && (
+          {user && path !== '/account' && (
             <Link href="/account" className={s.link}>
               Account
             </Link>
