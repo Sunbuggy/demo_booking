@@ -5,9 +5,10 @@ import { Toaster } from '@/components/ui/Toasts/toaster';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import 'styles/main.css';
+import { ThemeProvider } from '@/components/theme-provider';
 
-const title = 'Next.js Subscription Starter';
-const description = 'Brought to you by Vercel, Stripe, and Supabase.';
+const title = 'Generic Title';
+const description = 'Generic Description';
 
 export const metadata: Metadata = {
   metadataBase: new URL(getURL()),
@@ -21,16 +22,23 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: PropsWithChildren) {
   return (
-    <html lang="en">
-      <body className="bg-black">
-        <Navbar />
-        <main
-          id="skip"
-          className="min-h-[calc(100dvh-4rem)] md:min-h[calc(100dvh-5rem)]"
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
         >
-          {children}
-        </main>
-        <Footer />
+          <Navbar />
+          <main
+            id="skip"
+            className="min-h-[calc(100dvh-4rem)] md:min-h[calc(100dvh-5rem)]"
+          >
+            {children}
+          </main>
+          <Footer />
+        </ThemeProvider>
         <Suspense>
           <Toaster />
         </Suspense>

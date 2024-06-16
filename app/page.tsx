@@ -5,6 +5,7 @@ import {
   getSubscription,
   getUser
 } from '@/utils/supabase/queries';
+import { BookingTabs } from './(booking)/book/booking-tabs';
 
 export default async function PricingPage() {
   const supabase = createClient();
@@ -15,8 +16,8 @@ export default async function PricingPage() {
   ]);
 
   return (
-    <div className="text-4xl font-extrabold text-white sm:text-center sm:text-6xl">
-      Coming Soon
+    <div className="text-4xl font-extrabold text-white sm:text-center sm:text-6xl flex justify-center items-center h-screen">
+      <BookingTabs />
     </div>
   );
 }

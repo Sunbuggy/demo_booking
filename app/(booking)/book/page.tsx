@@ -1,7 +1,7 @@
-import React from 'react';
+// redirect back to /
 
-const page = () => {
-  return <div className="flex justify-center">booking form</div>;
-};
+import { redirect } from 'next/navigation';
 
-export default page;
+export default function Page() {
+  return redirect('/');
+}
