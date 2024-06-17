@@ -1,21 +1,24 @@
 import Link from 'next/link';
-
-import Logo from '@/components/icons/Logo';
-import GitHub from '@/components/icons/GitHub';
+import Image from 'next/image';
 
 export default function Footer() {
   return (
-    <footer className="mx-auto max-w-[1920px] px-6 bg-zinc-900">
-      <div className="grid grid-cols-1 gap-8 py-12 text-white transition-colors duration-150 border-b lg:grid-cols-12 border-zinc-600 bg-zinc-900">
+    <footer className="mx-auto px-6 bg-zinc-900 w-screen">
+      <div className="grid grid-cols-1 gap-2 py-12 text-white transition-colors duration-150 border-b lg:grid-cols-12 border-zinc-600 bg-zinc-900">
         <div className="col-span-1 lg:col-span-2">
           <Link
             href="/"
             className="flex items-center flex-initial font-bold md:mr-24"
           >
-            <span className="mr-2 border rounded-full border-zinc-700">
-              <Logo />
-            </span>
-            <span>ACME</span>
+            <Image
+              src={'/sb-logo-circle-yellow.svg'}
+              alt="sunbuggy logo"
+              width="0"
+              height="0"
+              sizes="100vw"
+              className="w-[100px] h-[30px] md:w-[120px] md:h-[36px]"
+            />{' '}
+            <span>Sunbuggy</span>
           </Link>
         </div>
         <div className="col-span-1 lg:col-span-2">
@@ -79,30 +82,24 @@ export default function Footer() {
             </li>
           </ul>
         </div>
-        <div className="flex items-start col-span-1 text-white lg:col-span-6 lg:justify-end">
-          <div className="flex items-center h-10 space-x-6">
-            <a
-              aria-label="Github Repository"
-              href="https://github.com/vercel/nextjs-subscription-payments"
-            >
-              <GitHub />
-            </a>
-          </div>
-        </div>
       </div>
       <div className="flex flex-col items-center justify-between py-12 space-y-4 md:flex-row bg-zinc-900">
         <div>
           <span>
-            &copy; {new Date().getFullYear()} ACME, Inc. All rights reserved.
+            &copy; {new Date().getFullYear()} Sunbuggy, Inc. All rights
+            reserved.
           </span>
         </div>
         <div className="flex items-center">
-          <span className="text-white">Crafted by</span>
-          <a href="https://vercel.com" aria-label="Vercel.com Link">
-            <img
-              src="/vercel.svg"
-              alt="Vercel.com Logo"
-              className="inline-block h-6 ml-4 text-white"
+          <span className="text-white mr-3">Crafted by</span>
+          <a href="https://sunbuggy.com" aria-label="sunbuggy.com Link">
+            <Image
+              src={'/sb-logo-yellow-with-text.svg'}
+              alt="sunbuggy logo"
+              width="0"
+              height="0"
+              sizes="100vw"
+              className="w-[100px] h-[30px] md:w-[120px] md:h-[36px]"
             />
           </a>
         </div>
