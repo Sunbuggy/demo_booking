@@ -1,23 +1,20 @@
 import { createClient } from '@/utils/supabase/server';
-import {
-  getProducts,
-  getSubscription,
-  getUser
-} from '@/utils/supabase/queries';
+import { fetchHotels, getUser } from '@/utils/supabase/queries';
 
 import BookPage from './(booking)/book/page';
 
 export default async function MainPage() {
   const supabase = createClient();
-  const [user, products, subscription] = await Promise.all([
+  const [user, hotels] = await Promise.all([
     getUser(supabase),
-    getProducts(supabase),
-    getSubscription(supabase)
+    fetchHotels(supabase)
   ]);
+  // console.log(hotels);
+  console.log(user);
 
   return (
     <div>
-      <BookPage />
+      <BookPage hotels={hotels} />
     </div>
   );
 }
