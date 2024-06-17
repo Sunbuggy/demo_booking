@@ -4,8 +4,8 @@ import {
   getSubscription,
   getUser
 } from '@/utils/supabase/queries';
-import { BookingTabs } from './(booking)/book/booking-tabs';
-import { CalendarForm } from './(booking)/book/booking-calendar';
+
+import BookPage from './(booking)/book/page';
 
 export default async function MainPage() {
   const supabase = createClient();
@@ -16,9 +16,8 @@ export default async function MainPage() {
   ]);
 
   return (
-    <div className="text-4xl font-extrabold text-white sm:text-center sm:text-6xl flex flex-col justify-center items-center h-screen">
-      <CalendarForm />
-      <BookingTabs />
+    <div>
+      <BookPage />
     </div>
   );
 }
