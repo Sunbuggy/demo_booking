@@ -157,3 +157,17 @@ export const timeArray = [
   '10:00 pm',
   '11:00 pm'
 ];
+
+export const minibajachase = {
+  description: `By far our most popular Off-Road Adventure Tour in the Las Vegas area is the Vegas Mini Baja Chase. The Mini Baja Chase is fast-paced and not tailored for the weak at heart. This is the Las Vegas Driving Experience you've likely seen on TV as the Vegas Mini Baja Chase has been featured by several different TV networks from around the world. The heart-pounding chase was billed as "Sin City's Best Near Death Experience!" by Rolling Stone Magazine. THIS IS NOT A SLOW PACED OFF ROAD SIGHTSEEING TOUR (if you'd like slow and pretty we can take you to the Valley Of Fire instead) Your job will be to chase one of our expert Dunies. The only thing that will slow our Dunie down is if he's waiting for you to catch up. `,
+  title: 'Mini Baja Chase',
+  videoId: '0FfWkSqIXFU',
+  playlistId: 'PLrCmFi7dP5HxPsdsQxLj2bprh5jz7zASD'
+};
+
+export const familyFunRomp = {
+  description: `A special package for those wishing to take the kids Off-Road on a buggy ride but not get thrown in the mix of wild and crazy patrons who may be here for a bachelor party, corporate outing, or other Off-Road groups.... It's family fun adventure time in Las Vegas, you brought the kids to the few family friendly Las Vegas attractions on the strip, and they've already run you through every rollercoaster in Las Vegas.  When you are Adventure Dome'd and Stratosphere'd out, or you'd just rather not do yet another passive amusement park ride, it's time for Off-Road fun at Sun Buggy.`,
+  title: 'Family Fun Romp',
+  videoId: 'YhTLMoIVG8U',
+  playlistId: 'PLrCmFi7dP5HyBnGFueAZOlPDQEF569Xf3'
+};

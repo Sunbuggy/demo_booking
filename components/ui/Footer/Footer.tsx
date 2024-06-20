@@ -26,7 +26,7 @@ export default function Footer() {
             <li className="py-3 md:py-0 md:pb-4">
               <Link
                 href="/"
-                className="text-white transition duration-150 ease-in-out hover:text-zinc-200"
+                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
               >
                 Home
               </Link>
@@ -34,7 +34,7 @@ export default function Footer() {
             <li className="py-3 md:py-0 md:pb-4">
               <Link
                 href="/"
-                className="text-white transition duration-150 ease-in-out hover:text-zinc-200"
+                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
               >
                 About
               </Link>
@@ -42,7 +42,7 @@ export default function Footer() {
             <li className="py-3 md:py-0 md:pb-4">
               <Link
                 href="/"
-                className="text-white transition duration-150 ease-in-out hover:text-zinc-200"
+                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
               >
                 Careers
               </Link>
@@ -50,7 +50,7 @@ export default function Footer() {
             <li className="py-3 md:py-0 md:pb-4">
               <Link
                 href="/"
-                className="text-white transition duration-150 ease-in-out hover:text-zinc-200"
+                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
               >
                 Blog
               </Link>
@@ -60,14 +60,14 @@ export default function Footer() {
         <div className="col-span-1 lg:col-span-2">
           <ul className="flex flex-col flex-initial md:flex-1">
             <li className="py-3 md:py-0 md:pb-4">
-              <p className="font-bold text-white transition duration-150 ease-in-out hover:text-zinc-200">
+              <p className="font-bold dark:text-white transition duration-150 ease-in-out hover:text-zinc-200">
                 LEGAL
               </p>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
               <Link
                 href="/"
-                className="text-white transition duration-150 ease-in-out hover:text-zinc-200"
+                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
               >
                 Privacy Policy
               </Link>
@@ -75,7 +75,7 @@ export default function Footer() {
             <li className="py-3 md:py-0 md:pb-4">
               <Link
                 href="/"
-                className="text-white transition duration-150 ease-in-out hover:text-zinc-200"
+                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
               >
                 Terms of Use
               </Link>
@@ -91,7 +91,7 @@ export default function Footer() {
           </span>
         </div>
         <div className="flex items-center">
-          <span className="text-white mr-3">Crafted by</span>
+          <span className="dark:text-white mr-3">Crafted by</span>
           <a href="https://sunbuggy.com" aria-label="sunbuggy.com Link">
             <Image
               src={'/sb-logo-yellow-with-text.svg'}

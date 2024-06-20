@@ -1,64 +1,68 @@
-import { Button } from '@/components/ui/button';
+import React from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
-  CardTitle
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter
 } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+interface TabData {
+  value: string;
+  title: string;
+  description: string;
+  content: React.ReactNode;
+}
 
 export function BookingTabs({ unblur }: { unblur: boolean }) {
+  const tabsData = [
+    {
+      value: 'mb30',
+      title: 'MiniBaja 30 minutes',
+      description: 'Chase in the dunes for 30 minutes',
+      content: 'MiniBaja 30 minutes content'
+    },
+    {
+      value: 'mb60',
+      title: 'MB60',
+      description: '60 mins',
+      content: 'MB60 content'
+    },
+    {
+      value: 'mb120',
+      title: 'MB120',
+      description: '120 mins',
+      content: 'MB120 content'
+    }
+  ];
+
   return (
     <div className={unblur ? 'blur-none' : 'blur-sm'}>
       <Tabs defaultValue="mb30" className="w-[400px]">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="mb30">MB30</TabsTrigger>
-          <TabsTrigger value="mb60">MB60</TabsTrigger>
-          <TabsTrigger value="mb120">MB120</TabsTrigger>
+          {tabsData.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>
+              {tab.title}
+            </TabsTrigger>
+          ))}
         </TabsList>
-        <TabsContent value="mb30">
-          <Card>
-            <CardHeader>
-              <CardTitle>MiniBaja 30 minutes</CardTitle>
-              <CardDescription>
-                Chase in the dunes for 30 minutes
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p>MiniBaja 30 minutes content</p>
-            </CardContent>
-            <CardFooter className="w-full flex justify-end">
-              <Button>Book</Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-        <TabsContent value="mb60">
-          <Card>
-            <CardHeader>
-              <CardTitle>MB60</CardTitle>
-              <CardDescription>60 mins</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">MB60 content</CardContent>
-            <CardFooter className="w-full flex justify-end">
-              <Button>Book</Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-        <TabsContent value="mb120">
-          <Card>
-            <CardHeader>
-              <CardTitle>MB120</CardTitle>
-              <CardDescription>120 mins</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">MB120 content</CardContent>
-            <CardFooter className="w-full flex justify-end">
-              <Button>Book</Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
+        {tabsData.map((tab) => (
+          <TabsContent key={tab.value} value={tab.value}>
+            <Card>
+              <CardHeader>
+                <CardTitle>{tab.title}</CardTitle>
+                <CardDescription>{tab.description}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">{tab.content}</CardContent>
+              <CardFooter className="w-full flex justify-end">
+                <Button>Book</Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );

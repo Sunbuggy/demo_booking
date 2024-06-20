@@ -1,7 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { fetchHotels, getUser } from '@/utils/supabase/queries';
-
-import BookPage from './(booking)/book/page';
+import ChooseAdventure from './(booking)/choose-adventure/page';
 
 export default async function MainPage() {
   const supabase = createClient();
@@ -14,7 +13,8 @@ export default async function MainPage() {
 
   return (
     <div>
-      <BookPage hotels={hotels} />
+      <ChooseAdventure />
+      {/* <BookPage hotels={hotels} /> */}
     </div>
   );
 }

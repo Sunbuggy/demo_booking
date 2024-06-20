@@ -12,10 +12,10 @@ export interface HotelType {
   Contact_Person: string;
 }
 
-export default function BookPage({ hotels }: { hotels: HotelType[] }) {
+export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
   const [unblur, setUnblur] = useState(false);
   return (
-    <div className=" font-extrabold text-white sm:text-center  flex flex-col justify-center items-center h-screen">
+    <div className=" font-extrabold dark:text-white sm:text-center  flex flex-col justify-center items-center h-screen">
       <CalendarForm setUnblur={setUnblur} hotels={hotels} />
       <BookingTabs unblur={unblur} />
     </div>
