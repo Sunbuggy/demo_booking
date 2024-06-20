@@ -2,7 +2,12 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
-import { CalendarIcon, CheckIcon, ChevronsUpDown } from 'lucide-react';
+import {
+  CalendarIcon,
+  CheckCheckIcon,
+  CheckIcon,
+  ChevronsUpDown
+} from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { cn } from '@/utils/cn';
@@ -13,7 +18,8 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandItem
+  CommandItem,
+  CommandList
 } from '@/components/ui/command';
 import {
   Form,
@@ -38,7 +44,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { timeArray } from '@/utils/helpers';
-import { Dispatch, SetStateAction, useState } from 'react';
+import { Dispatch, SetStateAction, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { HotelType } from './page';
 
@@ -68,7 +74,8 @@ export function CalendarForm({
   const [hideForm, setHideForm] = useState(false);
   const disabledTime = [0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23];
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(0);
+  const [value, setValue] = useState('');
+  const hotelsMemo = useMemo(() => hotels, [hotels]);
   const [bookInfo, setBookInfo] = useState({
     bookingDate: new Date(),
     howManyPeople: 0,
@@ -195,54 +202,57 @@ export function CalendarForm({
               </FormItem>
             )}
           />
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={open}
-                className="w-[200px] justify-between"
-              >
-                {value
-                  ? hotels?.find((hotel) => hotel?.Hotel_ID === value)
-                      ?.Hotel_Name
-                  : 'Select hotel...'}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0">
-              <Command>
-                <CommandInput placeholder="Search hotels..." />
-                <CommandEmpty>No hotel found.</CommandEmpty>
-                <CommandGroup>
-                  {(hotels || []).map((hotel) => (
-                    <CommandItem
-                      key={hotel?.Hotel_ID}
-                      value={hotel?.Hotel_ID.toString()}
-                      onSelect={(currentValue) => {
-                        setValue(
-                          Number(currentValue) === Number(value)
-                            ? 0
-                            : Number(currentValue)
-                        );
-                        setOpen(false);
-                      }}
-                    >
-                      <CheckIcon
-                        className={cn(
-                          'mr-2 h-4 w-4',
-                          value.toString() === hotel?.Hotel_ID.toString()
-                            ? 'opacity-100'
-                            : 'opacity-0'
-                        )}
-                      />
-                      {hotel?.Hotel_Name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </Command>
-            </PopoverContent>
-          </Popover>
+          {hotelsMemo && (
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={open}
+                  className="w-[200px] justify-between"
+                >
+                  {value
+                    ? hotelsMemo?.find(
+                        (hotel) => String(hotel?.Hotel_Name) === value
+                      )?.Hotel_Name
+                    : 'Select hotel...'}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0">
+                <Command>
+                  <CommandInput placeholder="Search hotel..." />
+                  <CommandList>
+                    <CommandEmpty>No Hotel found.</CommandEmpty>
+                    <CommandGroup>
+                      {hotelsMemo.map((hotel) => (
+                        <CommandItem
+                          key={hotel.Hotel_ID}
+                          value={String(hotel.Hotel_Name)}
+                          onSelect={(currentValue) => {
+                            setValue(
+                              currentValue === value ? '' : currentValue
+                            );
+                            setOpen(false);
+                          }}
+                        >
+                          <CheckCheckIcon
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              value === String(hotel.Hotel_Name)
+                                ? 'opacity-100'
+                                : 'opacity-0'
+                            )}
+                          />
+                          {hotel.Hotel_Name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          )}
           <Button variant="default" className="w-full" type="submit">
             Submit
           </Button>
