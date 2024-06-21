@@ -27,9 +27,9 @@ const NumberInput = ({ form }: { form: any }) => {
                 )}
                 type="number"
                 {...field}
-                value={field.value || 0}
+                value={field.value || 1}
                 placeholder="#Group Size"
-                min={0}
+                min={1}
                 max={2000}
               />
             </FormControl>
