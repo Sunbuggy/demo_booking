@@ -152,16 +152,76 @@ export const timeArray = [
 export const mb30_open_times = ['9 am', '11 am', '1 pm'];
 export const mb60_open_times = ['8 am', '10 am', '12 pm', '2 pm'];
 export const mb120_open_times = ['8 am', '10 am'];
-const pricing = {
-  '8 am': {
-    mb30: 129,
-    mb60: 199,
-    mb120: 299
+export const valley_of_fire_open_times = ['8 am'];
+
+const thirty_mins_mbj_pricing = {
+  desert_racer: {
+    one_seat: 199,
+    two_seats: 299,
+    four_seats: 399,
+    six_seats: 599,
+    ride_with_guide: 149
+  }
+};
+
+const sixty_mins_mbj_pricing = {
+  desert_racer: {
+    one_seat: 299,
+    two_seats: 399,
+    four_seats: 499,
+    six_seats: 699,
+    ride_with_guide: 249
+  }
+};
+const one_twenty_mins_mbj_pricing = {
+  desert_racer: {
+    one_seat: 699,
+    two_seats: 899,
+    four_seats: 999,
+    ride_with_guide: 449
+  }
+};
+
+const family_fun_romp_pricing = {
+  desert_racer: {
+    two_seats: 399,
+    four_seats: 499,
+    six_seats: 699
+  }
+};
+const valley_of_fire_pricing = {
+  desert_racer: {
+    two_seats: 799,
+    four_seats: 999,
+    six_seats: 1299,
+    ride_with_guide: 349
   },
-  '9 am': {
-    mb30: 149,
-    mb60: 229,
-    mb120: 349
+  atv: {
+    one_seat_full_atv: 399
+  },
+  utv: {
+    two_seats: 799
+  }
+};
+
+const vehicles = {
+  desert_racer: {
+    id: 1,
+    description:
+      'The Desert Racer is a high performance off-road vehicle that is designed to take on the toughest terrain. It is equipped with a powerful engine and a rugged suspension system that can handle the most challenging conditions. The Desert Racer is perfect for those who want to experience the thrill of off-road racing in a safe and controlled environment.',
+    type: 'Dune Buggy'
+  },
+  full_atv: {
+    id: 2,
+    description:
+      'The ATV is a versatile off-road vehicle that is perfect for exploring the desert. It is equipped with a powerful engine and rugged tires that can handle the toughest terrain. The ATV is perfect for those who want to experience the thrill of off-road riding in a safe and controlled environment.',
+    type: 'ATV'
+  },
+  mini_atv: {
+    id: 3,
+    description:
+      'The Mini ATV is a smaller version of the ATV that is perfect for kids and beginners. It is equipped with a smaller engine and is easier to handle than the full-size ATV. The Mini ATV is perfect for those who want to experience the thrill of off-road riding in a safe and controlled environment.',
+    type: 'ATV'
   }
 };
 
