@@ -1,5 +1,3 @@
-'use client';
-
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -9,7 +7,7 @@ import { Dispatch, SetStateAction, useMemo, useState } from 'react';
 import { HotelType } from './serve-bookings';
 import DatePicker from './date-picker';
 import NumberInput from './number-input';
-import ComboBox from './combo-box';
+import ComboBox from '../../../components/combo-box';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const FormSchema = z.object({
@@ -22,11 +20,35 @@ const FormSchema = z.object({
 });
 
 export function CalendarForm({
+  hideForm,
+  isCalendarOpen,
+  freeShuttle,
+  hotelsMemo,
+  open,
+  selectedHotel,
+  bookInfo,
   setUnblur,
-  hotels
+  setBookInfo,
+  setHideForm,
+  setIsCalendarOpen,
+  setOpen,
+  setSelectedHotel,
+  setFreeShuttle
 }: {
+  hideForm: boolean;
+  isCalendarOpen: boolean;
+  freeShuttle: boolean;
+  hotelsMemo: HotelType[];
+  open: boolean;
+  selectedHotel: string;
+  bookInfo: any;
   setUnblur: Dispatch<SetStateAction<boolean>>;
-  hotels: HotelType[];
+  setBookInfo: Dispatch<SetStateAction<any>>;
+  setHideForm: Dispatch<SetStateAction<boolean>>;
+  setIsCalendarOpen: Dispatch<SetStateAction<boolean>>;
+  setOpen: Dispatch<SetStateAction<boolean>>;
+  setSelectedHotel: Dispatch<SetStateAction<string>>;
+  setFreeShuttle: Dispatch<SetStateAction<boolean>>;
 }) {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -35,16 +57,7 @@ export function CalendarForm({
       howManyPeople: 1
     }
   });
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [hideForm, setHideForm] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [selectedHotel, setSelectedHotel] = useState('');
-  const [freeShuttle, setFreeShuttle] = useState<boolean>(true);
-  const hotelsMemo = useMemo(() => hotels, [hotels]);
-  const [bookInfo, setBookInfo] = useState({
-    bookingDate: new Date(),
-    howManyPeople: 1
-  });
+
   function onSubmit(data: z.infer<typeof FormSchema>) {
     setBookInfo(data);
     setUnblur(true);
