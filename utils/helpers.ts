@@ -149,6 +149,22 @@ export const timeArray = [
   '9:00 pm'
 ];
 
+export const mb30_open_times = ['9 am', '11 am', '1 pm'];
+export const mb60_open_times = ['8 am', '10 am', '12 pm', '2 pm'];
+export const mb120_open_times = ['8 am', '10 am'];
+const pricing = {
+  '8 am': {
+    mb30: 129,
+    mb60: 199,
+    mb120: 299
+  },
+  '9 am': {
+    mb30: 149,
+    mb60: 229,
+    mb120: 349
+  }
+};
+
 export const minibajachase = {
   description: `By far our most popular Off-Road Adventure Tour in the Las Vegas area is the Vegas Mini Baja Chase. The Mini Baja Chase is fast-paced and not tailored for the weak at heart. This is the Las Vegas Driving Experience you've likely seen on TV as the Vegas Mini Baja Chase has been featured by several different TV networks from around the world. The heart-pounding chase was billed as "Sin City's Best Near Death Experience!" by Rolling Stone Magazine. THIS IS NOT A SLOW PACED OFF ROAD SIGHTSEEING TOUR (if you'd like slow and pretty we can take you to the Valley Of Fire instead) Your job will be to chase one of our expert Dunies. The only thing that will slow our Dunie down is if he's waiting for you to catch up. `,
   title: 'Mini Baja Chase',
