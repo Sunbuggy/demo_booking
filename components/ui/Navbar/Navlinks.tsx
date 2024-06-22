@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { SignOut } from '@/utils/auth-helpers/server';
 import { handleRequest } from '@/utils/auth-helpers/client';
-import Logo from '@/components/icons/Logo';
 import { usePathname, useRouter } from 'next/navigation';
 import { getRedirectMethod } from '@/utils/auth-helpers/settings';
 import s from './Navbar.module.css';
 import ThemeButton from '../mode-toggle';
+import Image from 'next/image';
 
 interface NavlinksProps {
   user?: any;
@@ -20,7 +20,22 @@ export default function Navlinks({ user }: NavlinksProps) {
     <div className="relative flex flex-row justify-between py-4 align-center md:py-6">
       <div className="flex items-center flex-1">
         <Link href="/" className={s.logo} aria-label="Logo">
-          <Logo />
+          <div className="hidden dark:block">
+            <Image
+              src={`/sb-logo-circle-yellow.svg`}
+              width={64}
+              height={64}
+              alt={`sunbuggy's logo`}
+            />
+          </div>
+          <div className="dark:hidden">
+            <Image
+              src={`/sb-logo-circle-black.svg`}
+              width={64}
+              height={64}
+              alt={`sunbuggy's logo`}
+            />
+          </div>
         </Link>
         <nav className="ml-6 space-x-2 lg:block">
           {user && path !== '/account' && (
