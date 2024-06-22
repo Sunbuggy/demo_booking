@@ -4,17 +4,12 @@ import ChooseAdventure from './(booking)/choose-adventure/page';
 
 export default async function MainPage() {
   const supabase = createClient();
-  const [user, hotels] = await Promise.all([
-    getUser(supabase),
-    fetchHotels(supabase)
-  ]);
-  // console.log(hotels);
+  const [user] = await Promise.all([getUser(supabase), fetchHotels(supabase)]);
   console.log(user);
 
   return (
     <div>
       <ChooseAdventure />
-      {/* <BookPage hotels={hotels} /> */}
     </div>
   );
 }

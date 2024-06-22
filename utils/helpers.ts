@@ -131,99 +131,179 @@ export const getErrorRedirect = (
     disableButton,
     arbitraryParams
   );
-export const timeArray = [
-  '7:00 am',
-  '8:00 am',
-  '9:00 am',
-  '10:00 am',
-  '11:00 am',
-  '12:00 pm',
-  '1:00 pm',
-  '2:00 pm',
-  '3:00 pm',
-  '4:00 pm',
-  '5:00 pm',
-  '6:00 pm',
-  '7:00 pm',
-  '8:00 pm',
-  '9:00 pm'
-];
 
 export const mb30_open_times = ['9 am', '11 am', '1 pm'];
 export const mb60_open_times = ['8 am', '10 am', '12 pm', '2 pm'];
 export const mb120_open_times = ['8 am', '10 am'];
 export const valley_of_fire_open_times = ['8 am'];
-
-const thirty_mins_mbj_pricing = {
-  desert_racer: {
-    one_seat: 199,
-    two_seats: 299,
-    four_seats: 399,
-    six_seats: 599,
-    ride_with_guide: 149
-  }
-};
-
-const sixty_mins_mbj_pricing = {
-  desert_racer: {
-    one_seat: 299,
-    two_seats: 399,
-    four_seats: 499,
-    six_seats: 699,
-    ride_with_guide: 249
-  }
-};
-const one_twenty_mins_mbj_pricing = {
-  desert_racer: {
-    one_seat: 699,
-    two_seats: 899,
-    four_seats: 999,
-    ride_with_guide: 449
-  }
-};
-
-const family_fun_romp_pricing = {
-  desert_racer: {
-    two_seats: 399,
-    four_seats: 499,
-    six_seats: 699
-  }
-};
-const valley_of_fire_pricing = {
-  desert_racer: {
-    two_seats: 799,
-    four_seats: 999,
-    six_seats: 1299,
-    ride_with_guide: 349
-  },
-  atv: {
-    one_seat_full_atv: 399
-  },
-  utv: {
-    two_seats: 799
-  }
-};
-
-const vehicles = {
-  desert_racer: {
+export const mbj_vehicles_list = [
+  {
     id: 1,
+    name: '1 seat desert racer',
+    vehicle_id: 1,
+    seats: 1,
+    pricing: {
+      mb30: 199,
+      mb60: 299,
+      mb120: 699
+    }
+  },
+  {
+    id: 2,
+    name: '2 seat desert racer',
+    vehicle_id: 1,
+    seats: 2,
+    pricing: {
+      mb30: 299,
+      mb60: 399,
+      mb120: 899
+    }
+  },
+  {
+    id: 3,
+    name: '4 seat desert racer',
+    vehicle_id: 1,
+    seats: 4,
+    pricing: {
+      mb30: 399,
+      mb60: 499,
+      mb120: 999
+    }
+  },
+  {
+    id: 4,
+    name: '6 seat desert racer',
+    vehicle_id: 1,
+    seats: 6,
+    pricing: {
+      mb30: 599,
+      mb60: 699
+    }
+  },
+  {
+    id: 5,
+    name: 'Ride with Guide',
+    vehicle_id: 1,
+    seats: 1,
+    pricing: {
+      mb30: 149,
+      mb60: 249,
+      mb120: 449
+    }
+  }
+];
+
+export const ffr_vehicles_list = [
+  {
+    id: 1,
+    name: '2 seat desert racer',
+    vehicle_id: 1,
+    seats: 2,
+    pricing: {
+      desert_racer: 399
+    }
+  },
+  {
+    id: 2,
+    name: '4 seat desert racer',
+    vehicle_id: 1,
+    seats: 4,
+    pricing: {
+      desert_racer: 499
+    }
+  },
+  {
+    id: 3,
+    name: '6 seat desert racer',
+    vehicle_id: 1,
+    seats: 6,
+    pricing: {
+      desert_racer: 699
+    }
+  }
+];
+
+export const vof_vehicles_list = [
+  {
+    id: 1,
+    vehicle_id: 1,
+    name: '2 seat desert racer',
+    seats: 2,
+    pricing: {
+      desert_racer: 799
+    }
+  },
+  {
+    id: 2,
+    vehicle_id: 1,
+    name: '4 seat desert racer',
+    seats: 4,
+    pricing: {
+      four_seat: 999
+    }
+  },
+  {
+    id: 3,
+    vehicle_id: 1,
+    name: '6 seat desert racer',
+    seats: 6,
+    pricing: {
+      six_seat: 1299
+    }
+  },
+  {
+    id: 4,
+    vehicle_id: 1,
+    name: 'Ride with Guide',
+    seats: 1,
+    pricing: {
+      ride_with_guide: 349
+    }
+  },
+  {
+    id: 5,
+    vehicle_id: 2,
+    name: '1 Seat full ATV',
+    seats: 1,
+    pricing: {
+      one_seat_full_atv: 399
+    }
+  },
+  {
+    id: 6,
+    vehicle_id: 4,
+    name: '2 seat desert racer',
+    seats: 2,
+    pricing: {
+      two_seat_utv: 799
+    }
+  }
+];
+
+const vehicles = [
+  {
+    id: 1,
+    name: 'Desert Racer',
     description:
       'The Desert Racer is a high performance off-road vehicle that is designed to take on the toughest terrain. It is equipped with a powerful engine and a rugged suspension system that can handle the most challenging conditions. The Desert Racer is perfect for those who want to experience the thrill of off-road racing in a safe and controlled environment.',
     type: 'Dune Buggy'
   },
-  full_atv: {
+  {
     id: 2,
+    name: 'Full ATV',
     description:
       'The ATV is a versatile off-road vehicle that is perfect for exploring the desert. It is equipped with a powerful engine and rugged tires that can handle the toughest terrain. The ATV is perfect for those who want to experience the thrill of off-road riding in a safe and controlled environment.',
     type: 'ATV'
   },
-  mini_atv: {
-    id: 3,
+
+  {
+    id: 4,
+    name: 'UTV',
     description:
-      'The Mini ATV is a smaller version of the ATV that is perfect for kids and beginners. It is equipped with a smaller engine and is easier to handle than the full-size ATV. The Mini ATV is perfect for those who want to experience the thrill of off-road riding in a safe and controlled environment.',
-    type: 'ATV'
+      'The UTV is a versatile off-road vehicle that is perfect for exploring the desert. It is equipped with a powerful engine and rugged tires that can handle the toughest terrain. The UTV is perfect for those who want to experience the thrill of off-road riding in a safe and controlled environment.',
+    type: 'UTV'
   }
-};
+];
 
 export const minibajachase = {
   description: `By far our most popular Off-Road Adventure Tour in the Las Vegas area is the Vegas Mini Baja Chase. The Mini Baja Chase is fast-paced and not tailored for the weak at heart. This is the Las Vegas Driving Experience you've likely seen on TV as the Vegas Mini Baja Chase has been featured by several different TV networks from around the world. The heart-pounding chase was billed as "Sin City's Best Near Death Experience!" by Rolling Stone Magazine. THIS IS NOT A SLOW PACED OFF ROAD SIGHTSEEING TOUR (if you'd like slow and pretty we can take you to the Valley Of Fire instead) Your job will be to chase one of our expert Dunies. The only thing that will slow our Dunie down is if he's waiting for you to catch up. `,
@@ -237,4 +317,16 @@ export const familyFunRomp = {
   title: 'Family Fun Romp',
   videoId: 'YhTLMoIVG8U',
   playlistId: 'PLrCmFi7dP5HyBnGFueAZOlPDQEF569Xf3'
+};
+
+export const valleyOfFire = {
+  description: `We at SunBuggy take great pride in being the only approved operation in Valley of Fire permitted to run Dune Buggy, UTV, and ATV / Quad Bike tours with Tread Lightly certified Expert Guides. This is truly a Executive level Off Road experience.  `,
+  title: 'Valley of Fire',
+  videoId: 'nwzufdhTZWw',
+  playlistId: 'PLrCmFi7dP5HwAWXYtkEUD09d6744ugRh0'
+};
+
+export const lasvegas_atv_tours = {
+  description: ` This is a Guided ATV tour into Nevada's oldest state park, the Valley Of Fire. That's right, SunBuggy is permitted by both the State Parks Department as well as the federal government to run tours in this Pristine area (not near the Valley of Fire, or in view of The Valley Of Fire, but actually right into and through this tread lightly area!)  This isn't a timed adventure, and there's no hurry. It's done at your leisure.`,
+  title: 'Las Vegas Premium ATV Tours'
 };

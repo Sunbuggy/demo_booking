@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { CalendarForm } from './booking-calendar';
 import { BookingTabs } from './booking-tabs';
+import Button from '@/components/ui/Button';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -10,6 +11,11 @@ export interface HotelType {
   Hotel_Address: string;
   Pickup_Location: string;
   Contact_Person: string;
+}
+
+export interface BookInfoType {
+  bookingDate: Date;
+  howManyPeople: number;
 }
 
 export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
@@ -21,6 +27,7 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
   const [open, setOpen] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState('');
   const [freeShuttle, setFreeShuttle] = useState<boolean>(true);
+  const [showPricing, setShowPricing] = useState(false);
   const hotelsMemo = useMemo(() => hotels, [hotels]);
   const [bookInfo, setBookInfo] = useState({
     bookingDate: new Date(),
@@ -48,9 +55,35 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
         unblur={unblur}
         selectedTabValue={selectedTabValue}
         selectedTimeValue={selectedTimeValue}
+        bookInfo={bookInfo}
         setSelectedTimeValue={setSelectedTimeValue}
         setSelectedTabValue={setSelectedTabValue}
+        setShowPricing={setShowPricing}
       />
+      {/* {showPricing && (
+        <div className="flex flex-col items-center gap-5">
+          <h1 className="text-xl font-bold">Summary</h1>
+          <p>Hotel: {selectedHotel}</p>
+          <p>
+            Booking Date:{' '}
+            {new Date(bookInfo.bookingDate).toLocaleDateString('en-US', {
+              weekday: 'short',
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            })}
+          </p>{' '}
+          <p>How many people: {bookInfo.howManyPeople}</p>
+          <p>Time: {selectedTimeValue}</p>
+          <Button
+            onClick={() => {
+              setShowPricing(false);
+            }}
+          >
+            Dismiss
+          </Button>
+        </div>
+      )} */}
     </div>
   );
 }

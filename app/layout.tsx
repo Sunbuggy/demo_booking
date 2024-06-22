@@ -7,8 +7,9 @@ import { getURL } from '@/utils/helpers';
 import 'styles/main.css';
 import { ThemeProvider } from '@/components/theme-provider';
 
-const title = 'Generic Title';
-const description = 'Generic Description';
+const title = 'Sunbuggy Fun Rentals';
+const description =
+  'Sunbuggy Fun Rentals is the ultimate off-road adventure experience.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(getURL()),
@@ -31,10 +32,8 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           disableTransitionOnChange
         >
           <Navbar />
-          <main
-            id="skip"
-            className="min-h-[calc(100dvh-4rem)] md:min-h[calc(100dvh-5rem)]"
-          >
+          <main id="skip" className="pt-[50px] pb-[50px]  md:pb-28">
+            {' '}
             {children}
           </main>
           <Footer />

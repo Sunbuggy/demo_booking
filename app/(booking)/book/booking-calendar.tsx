@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { Dispatch, SetStateAction } from 'react';
-import { HotelType } from './serve-bookings';
+import { BookInfoType, HotelType } from './serve-bookings';
 import DatePicker from './date-picker';
 import NumberInput from './number-input';
 import ComboBox from '../../../components/combo-box';
@@ -41,9 +41,9 @@ export function CalendarForm({
   hotelsMemo: HotelType[];
   open: boolean;
   selectedHotel: string;
-  bookInfo: any;
+  bookInfo: BookInfoType;
   setUnblur: Dispatch<SetStateAction<boolean>>;
-  setBookInfo: Dispatch<SetStateAction<any>>;
+  setBookInfo: Dispatch<SetStateAction<BookInfoType>>;
   setHideForm: Dispatch<SetStateAction<boolean>>;
   setIsCalendarOpen: Dispatch<SetStateAction<boolean>>;
   setOpen: Dispatch<SetStateAction<boolean>>;
@@ -110,7 +110,7 @@ export function CalendarForm({
             />
           )}
           <Button variant="default" className="w-full" type="submit">
-            Submit
+            Next
           </Button>
         </form>
       </Form>

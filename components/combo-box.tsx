@@ -43,7 +43,7 @@ const ComboBox = ({
             ? hotelsMemo?.find(
                 (hotel) => String(hotel?.Hotel_Name) === selectedHotel
               )?.Hotel_Name
-            : 'Select hotel...'}
+            : 'Select hotel ...'}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
