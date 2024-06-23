@@ -8,7 +8,6 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import React from 'react';
-import { Label } from './ui/label';
 
 const TimePicker = ({
   selectValue,

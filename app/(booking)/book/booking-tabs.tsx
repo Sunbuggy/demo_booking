@@ -15,9 +15,10 @@ import {
   mb30_open_times,
   mb60_open_times
 } from '@/utils/helpers';
-import { BookInfoType } from './serve-bookings';
+import { AddedBookingsType, BookInfoType } from './serve-bookings';
 import { mbj_vehicles_list } from '@/utils/helpers';
 import { AddVehicleDemo } from './popover';
+import { PriceBreakdownDropdown } from './breakdown-dropdown';
 
 interface TabData {
   value: string;
@@ -33,15 +34,23 @@ export function BookingTabs({
   selectedTabValue,
   setSelectedTabValue,
   setShowPricing,
-  bookInfo
+  bookInfo,
+  showPricing,
+  addedBookings,
+  setAddedBookings
 }: {
   unblur: boolean;
   selectedTimeValue: string;
   setSelectedTimeValue: React.Dispatch<React.SetStateAction<string>>;
-  selectedTabValue: string;
-  setSelectedTabValue: React.Dispatch<React.SetStateAction<string>>;
+  selectedTabValue: 'mb30' | 'mb60' | 'mb120';
+  setSelectedTabValue: React.Dispatch<
+    React.SetStateAction<'mb30' | 'mb60' | 'mb120'>
+  >;
   setShowPricing: React.Dispatch<React.SetStateAction<boolean>>;
   bookInfo: BookInfoType;
+  showPricing: boolean;
+  addedBookings: AddedBookingsType;
+  setAddedBookings: React.Dispatch<React.SetStateAction<AddedBookingsType>>;
 }) {
   const tabsData = [
     {
@@ -67,13 +76,53 @@ export function BookingTabs({
     }
   ];
 
-  console.log(mbj_vehicles_list);
+  function calculateTotalSeats(bookings: AddedBookingsType): number {
+    let totalSeats = 0;
+
+    // Iterate over each booking type
+    Object.values(bookings).forEach((bookingArray) => {
+      // Check if the booking type exists
+      if (bookingArray) {
+        // Add the seats from each booking in the array
+        bookingArray.forEach((booking: any) => {
+          totalSeats += booking.seats;
+        });
+      }
+    });
+
+    return totalSeats;
+  }
+
+  function calculateTotalPrice(bookings: AddedBookingsType): number {
+    let totalPrice = 0;
+
+    // Iterate over each booking type
+    Object.values(bookings).forEach((bookingArray) => {
+      // Check if the booking type exists
+      if (bookingArray) {
+        // Calculate the price for each booking in the array
+        bookingArray.forEach((booking: any) => {
+          totalPrice += booking.quantity * booking.price;
+        });
+      }
+    });
+
+    return totalPrice;
+  }
+
+  // Wrapper function to ensure type safety
+  const handleTabChange = (value: string) => {
+    if (value === 'mb30' || value === 'mb60' || value === 'mb120') {
+      setSelectedTabValue(value);
+    }
+  };
   return (
     <div className={unblur ? 'blur-none' : 'blur-sm pointer-events-none'}>
       <Tabs
         defaultValue={selectedTabValue}
         className="w-[350px]"
-        onValueChange={setSelectedTabValue}
+        onValueChange={handleTabChange}
+        value={selectedTabValue}
       >
         <TabsList className="grid w-full grid-cols-3">
           {tabsData.map((tab) => (
@@ -105,40 +154,87 @@ export function BookingTabs({
                   }
                 />
                 <p>Group Size: {bookInfo.howManyPeople}</p>
-                <div className="flex flex-col items-center gap-2">
-                  {mbj_vehicles_list.map((itm) => {
-                    // Determine the pricing based on the tab value
-                    const pricing =
-                      tab.value === 'mb30'
-                        ? itm.pricing.mb30
-                        : tab.value === 'mb60'
-                          ? itm.pricing.mb60
-                          : itm.pricing.mb120;
-
-                    // Only render the item if pricing exists
-                    if (pricing) {
-                      return (
-                        <div
-                          key={itm.id}
-                          className="flex gap-2 justify-between w-full"
-                        >
-                          <p># {itm.name}s</p>
-                          <p>: ${pricing}</p>
-                          <AddVehicleDemo
-                            name={itm.name}
-                            setAmount={bookInfo.howManyPeople}
-                          />
-                        </div>
-                      );
+                <p className="text-green-500">
+                  Reserved Seats:{' '}
+                  <span
+                    className={
+                      bookInfo.howManyPeople <=
+                      calculateTotalSeats(addedBookings)
+                        ? 'text-green-500'
+                        : 'text-red-500'
                     }
+                  >
+                    {calculateTotalSeats(addedBookings)}
+                  </span>
+                </p>
+                {/* <p className="text-green-600">
+                  <span
+                    className={
+                      Number(addedInBooked) == bookInfo.howManyPeople
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }
+                  >
+                    Booked: {Number(addedInBooked)}
+                  </span>
+                </p> */}
+                {showPricing ? (
+                  <div className="flex flex-col items-center gap-2">
+                    {mbj_vehicles_list.map((itm) => {
+                      // Determine the pricing based on the tab value
+                      const pricing =
+                        tab.value === 'mb30'
+                          ? itm.pricing.mb30
+                          : tab.value === 'mb60'
+                            ? itm.pricing.mb60
+                            : itm.pricing.mb120;
 
-                    // Return null if pricing does not exist, so nothing is rendered
-                    return null;
-                  })}
-                </div>
+                      const seats = itm.seats;
+
+                      // Only render the item if pricing exists
+                      if (pricing) {
+                        return (
+                          <div
+                            key={itm.id}
+                            className="flex gap-2 justify-between w-full"
+                          >
+                            <p># {itm.name}s</p>
+                            <p>: ${pricing}</p>
+                            <AddVehicleDemo
+                              name={itm.name}
+                              totlalPeople={bookInfo.howManyPeople}
+                              setAddedBookings={setAddedBookings}
+                              selectedTabValue={selectedTabValue}
+                              addedBookings={addedBookings}
+                              pricing={pricing}
+                              seats={seats}
+                            />
+                          </div>
+                        );
+                      }
+
+                      // Return null if pricing does not exist, so nothing is rendered
+                      return null;
+                    })}
+                    <div className="flex flex-col gap-2">
+                      {addedBookings && (
+                        <PriceBreakdownDropdown addedBookings={addedBookings} />
+                      )}
+                      Total Price: ${calculateTotalPrice(addedBookings)}
+                    </div>
+                  </div>
+                ) : (
+                  <></>
+                )}
               </CardContent>
               <CardFooter className="w-full flex justify-end">
-                <Button>Book</Button>
+                <Button
+                  disabled={
+                    bookInfo.howManyPeople > calculateTotalSeats(addedBookings)
+                  }
+                >
+                  Book
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>

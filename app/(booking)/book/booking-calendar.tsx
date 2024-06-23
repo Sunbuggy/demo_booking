@@ -33,7 +33,9 @@ export function CalendarForm({
   setIsCalendarOpen,
   setOpen,
   setSelectedHotel,
-  setFreeShuttle
+  setFreeShuttle,
+  setShowPricing,
+  setSelectedTimeValue
 }: {
   hideForm: boolean;
   isCalendarOpen: boolean;
@@ -49,6 +51,8 @@ export function CalendarForm({
   setOpen: Dispatch<SetStateAction<boolean>>;
   setSelectedHotel: Dispatch<SetStateAction<string>>;
   setFreeShuttle: Dispatch<SetStateAction<boolean>>;
+  setShowPricing: React.Dispatch<React.SetStateAction<boolean>>;
+  setSelectedTimeValue: Dispatch<SetStateAction<string>>;
 }) {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -128,6 +132,8 @@ export function CalendarForm({
             onClick={() => {
               setUnblur(false);
               setHideForm(false);
+              setShowPricing(false);
+              setSelectedTimeValue('');
             }}
           >
             <span>Change</span>
