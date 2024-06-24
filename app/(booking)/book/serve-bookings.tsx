@@ -1,8 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarForm } from './booking-calendar';
-import { BookingTabs } from './booking-tabs';
-import Button from '@/components/ui/Button';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -13,33 +11,40 @@ export interface HotelType {
   Contact_Person: string;
 }
 
-export interface AddedBookingsType {
-  mb30?: {
-    vehicle: string;
-    quantity: number;
-    price: number;
-    seats: number;
-  }[];
-  mb60?: {
-    vehicle: string;
-    quantity: number;
-    price: number;
-    seats: number;
-  }[];
-  mb120?: {
-    vehicle: string;
-    quantity: number;
-    price: number;
-    seats: number;
-  }[];
-}
 export interface BookInfoType {
   bookingDate: Date;
   howManyPeople: number;
 }
 
+type BaseVehiclePricingType = {
+  mb30: number;
+  mb60: number;
+  mb120: number;
+};
+
+// Making all properties of BaseVehiclePricingType optional
+export type VehiclePricingType = Partial<BaseVehiclePricingType>;
+export interface VehicleCount {
+  isChecked: boolean;
+  count: number;
+  name: string;
+  seats: number;
+  pricing: VehiclePricingType;
+}
+
+export interface ContactFom {
+  name: string;
+  email: string;
+  phone: string;
+  groupName?: string;
+}
+
+// Define the state object type, mapping vehicle IDs (assuming they are numbers) to their count objects
+export interface VehicleCounts {
+  [vehicleId: number]: VehicleCount;
+}
+
 export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
-  const [unblur, setUnblur] = useState(false);
   const [selectedTabValue, setSelectedTabValue] = useState<
     'mb30' | 'mb60' | 'mb120'
   >('mb60');
@@ -49,8 +54,17 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
   const [open, setOpen] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState('');
   const [freeShuttle, setFreeShuttle] = useState<boolean>(true);
+  const [vehicleCounts, setVehicleCounts] = useState<VehicleCounts>({});
+  const [totalSeats, setTotalSeats] = useState(0);
   const [showPricing, setShowPricing] = useState(false);
-  const [addedBookings, setAddedBookings] = useState<AddedBookingsType>({});
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [totalPrice, setTotalPrice] = useState(0);
+  const [contactForm, setContactForm] = useState<ContactFom>({
+    name: '',
+    email: '',
+    phone: '',
+    groupName: ''
+  });
   const [bookInfo, setBookInfo] = useState({
     bookingDate: new Date(),
     howManyPeople: 1
@@ -58,13 +72,58 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
   const hotelsMemo = useMemo(() => hotels, [hotels]);
 
   useEffect(() => {
-    console.log(addedBookings);
-  }, [addedBookings]);
+    const total = Object.values(vehicleCounts).reduce(
+      (acc, { count, seats }) => acc + count * seats,
+      0
+    );
+    setTotalSeats(total);
+  }, [vehicleCounts]);
+
+  useEffect(() => {
+    if (selectedTimeValue !== null) {
+      // Check if selectedTimeValue is not null or add your own condition
+      console.log(selectedTimeValue);
+      handlePricing(selectedTimeValue);
+    }
+  }, [selectedTimeValue]);
+
+  const handlePricing = (selectedTimeValue: string) => {
+    // Ensure selectedTimeValue is valid
+    // Initialize total price
+    let totalPrice = 0;
+
+    // Iterate over each vehicle in vehicleCounts
+    Object.values(vehicleCounts).forEach((vehicle) => {
+      if (vehicle.isChecked) {
+        // Fetch the price for the selected time value
+        const priceForTime = vehicle.pricing[selectedTabValue];
+        // Calculate total price for this vehicle
+        const totalVehiclePrice = priceForTime * vehicle.count * vehicle.seats;
+        // Add to the total price
+        totalPrice += totalVehiclePrice;
+      }
+    });
+    const hour = Number(selectedTimeValue.split(' ')[0]);
+    const amPm = selectedTimeValue.split(' ')[1];
+    // Create a 10% fuel fee
+    const fuelFee = totalPrice * 0.1;
+    // create a 6% fuel fee
+    const serviceFee = totalPrice * 0.06;
+    if (
+      hour < 10 &&
+      amPm === 'am' &&
+      (selectedTabValue === 'mb60' || selectedTabValue === 'mb30')
+    ) {
+      // apply discount of 20%
+      setTotalPrice(totalPrice * 0.8 + fuelFee + serviceFee);
+    } else {
+      setTotalPrice(totalPrice + serviceFee + fuelFee);
+    }
+  };
 
   return (
     <div className=" font-extrabold dark:text-white sm:text-center  flex flex-col justify-center items-center h-screen">
       <CalendarForm
-        setUnblur={setUnblur}
         bookInfo={bookInfo}
         freeShuttle={freeShuttle}
         hideForm={hideForm}
@@ -78,45 +137,22 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
         setIsCalendarOpen={setIsCalendarOpen}
         setOpen={setOpen}
         setSelectedHotel={setSelectedHotel}
-        setShowPricing={setShowPricing}
         setSelectedTimeValue={setSelectedTimeValue}
-      />
-      <BookingTabs
-        unblur={unblur}
+        setVehicleCounts={setVehicleCounts}
+        vehicleCounts={vehicleCounts}
+        totalSeats={totalSeats}
+        showPricing={showPricing}
+        setShowPricing={setShowPricing}
+        setSelectedTabValue={setSelectedTabValue}
         selectedTabValue={selectedTabValue}
         selectedTimeValue={selectedTimeValue}
-        bookInfo={bookInfo}
-        setSelectedTimeValue={setSelectedTimeValue}
-        setSelectedTabValue={setSelectedTabValue}
-        setShowPricing={setShowPricing}
-        showPricing={showPricing}
-        addedBookings={addedBookings}
-        setAddedBookings={setAddedBookings}
+        totalPrice={totalPrice}
+        setTotalPrice={setTotalPrice}
+        contactForm={contactForm}
+        setContactForm={setContactForm}
+        showContactForm={showContactForm}
+        setShowContactForm={setShowContactForm}
       />
-      {/* {showPricing && (
-        <div className="flex flex-col items-center gap-5">
-          <h1 className="text-xl font-bold">Summary</h1>
-          <p>Hotel: {selectedHotel}</p>
-          <p>
-            Booking Date:{' '}
-            {new Date(bookInfo.bookingDate).toLocaleDateString('en-US', {
-              weekday: 'short',
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric'
-            })}
-          </p>{' '}
-          <p>How many people: {bookInfo.howManyPeople}</p>
-          <p>Time: {selectedTimeValue}</p>
-          <Button
-            onClick={() => {
-              setShowPricing(false);
-            }}
-          >
-            Dismiss
-          </Button>
-        </div>
-      )} */}
     </div>
   );
 }

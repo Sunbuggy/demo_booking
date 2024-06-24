@@ -1,5 +1,3 @@
-'use client';
-
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -10,53 +8,75 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { AddedBookingsType } from './serve-bookings';
-interface BreakdownProps {
-  addedBookings: AddedBookingsType; // Assuming AddedBookingsType is already defined
+
+export interface VehicleCount {
+  isChecked: boolean;
+  count: number;
+  name: string;
+  seats: number;
+  pricing: { [key: string]: number };
 }
 
-export const PriceBreakdownDropdown: React.FC<BreakdownProps> = ({
-  addedBookings
+export interface VehicleCounts {
+  vehicleCounts: { [vehicleId: number]: VehicleCount };
+  selectedTabValue: 'mb120' | 'mb30' | 'mb60';
+}
+
+export const PriceBreakdownDropdown: React.FC<VehicleCounts> = ({
+  vehicleCounts,
+  selectedTabValue
 }) => {
-  // Initialize totalAmount to 0
-  let totalAmount = 0;
+  let total = 0;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline">Show Breakdown</Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56">
+      <DropdownMenuContent className=" w-[348px]">
         <DropdownMenuLabel>Break Down</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <div>
-          {Object.values(addedBookings).map(
-            (bookingArray, index) =>
-              bookingArray &&
-              bookingArray.map((booking: any, bookingIndex: number) => {
-                // Calculate the amount for this booking and add it to totalAmount
-                const amount = booking.quantity * booking.price;
-                totalAmount += amount;
-
+        <table className="min-w-full">
+          <thead>
+            <tr>
+              <th className="pr-2">Name</th>
+              <th className="pr-2">Seats</th>
+              <th className="pr-2">Base Price</th>
+              <th className="pr-2">Service Fee</th>
+              <th className="pr-2">Fuel Fee</th>
+              <th className="pr-2">Total Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.values(vehicleCounts).map((vehicle, index) => {
+              if (vehicle.isChecked) {
+                const priceForTime = vehicle.pricing[selectedTabValue];
+                const vehiclePrice =
+                  priceForTime * vehicle.count * vehicle.seats;
+                const serviceFee = vehiclePrice * 0.06;
+                const fuelFee = vehiclePrice * 0.1;
+                const totalVehiclePrice = vehiclePrice + serviceFee + fuelFee;
+                total += totalVehiclePrice;
                 return (
-                  <div
-                    key={`${index}-${bookingIndex}`}
-                    className="flex justify-between"
-                  >
-                    <p>
-                      {booking.vehicle} x {booking.quantity}
-                    </p>
-                    <p>${amount}</p>
-                  </div>
+                  <tr key={index}>
+                    {/* slice the name after the second space */}
+                    <td className="pr-2">{vehicle.name.split(' ', 2)}</td>
+                    <td className="pr-2">{vehicle.seats * vehicle.count}</td>
+                    <td className="pr-2">${vehiclePrice.toFixed(2)}</td>
+                    <td className="pr-2">${serviceFee.toFixed(2)}</td>
+                    <td className="pr-2">${fuelFee.toFixed(2)}</td>
+                    <td className="pr-2">${totalVehiclePrice.toFixed(2)}</td>
+                  </tr>
                 );
-              })
-          )}
-        </div>
-        {/* Display the total amount */}
+              }
+              return null;
+            })}
+          </tbody>
+        </table>
         <div className="flex justify-between font-bold mt-2">
           <hr className="h-px my-8 dark:bg-gray-200 border-0 bg-gray-700" />
-          <p>Total</p>
-          <p>${totalAmount}</p>
+          <p>Full Price</p>
+          <p>${total.toFixed(2)}</p>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

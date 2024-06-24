@@ -132,10 +132,27 @@ export const getErrorRedirect = (
     arbitraryParams
   );
 
-export const mb30_open_times = ['9 am', '11 am', '1 pm'];
-export const mb60_open_times = ['8 am', '10 am', '12 pm', '2 pm'];
-export const mb120_open_times = ['8 am', '10 am'];
+export const mb30_open_times = ['9 am (20% discount)', '11 am', '1 pm'];
+export const mb60_open_times = [
+  '8 am (20% discount)',
+  '10 am',
+  '12 pm',
+  '2 pm'
+];
+export const mb120_open_times = ['8 am ', '10 am'];
 export const valley_of_fire_open_times = ['8 am'];
+export type MbjVehicle = {
+  id: number;
+  name: string;
+  vehicle_id: number;
+  seats: number;
+  pricing: {
+    mb30?: number;
+    mb60?: number;
+    mb120?: number;
+  };
+};
+
 export const mbj_vehicles_list = [
   {
     id: 1,
