@@ -31,9 +31,9 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           enableSystem
           disableTransitionOnChange
         >
-          <div className="grid gap-5">
+          <div className="grid gap-5 w-full">
             <Navbar />
-            <main> {children}</main>
+            <main className="max-w-6xl mx-auto"> {children}</main>
             <Footer />
           </div>
         </ThemeProvider>

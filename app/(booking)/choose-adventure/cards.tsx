@@ -12,6 +12,7 @@ import {
 import LazyYoutube from '@/components/lazy-youtube';
 import Link from 'next/link';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
+import Image from 'next/image';
 
 const AdventureCard = ({
   description,
@@ -19,7 +20,8 @@ const AdventureCard = ({
   videoId,
   playlistId,
   autoplay = 0,
-  linkHref
+  linkHref,
+  src
 }: {
   description: string;
   title: string;
@@ -27,6 +29,7 @@ const AdventureCard = ({
   playlistId: string;
   autoplay?: number;
   linkHref: string;
+  src?: string;
 }) => {
   const [showmore, setShowmore] = React.useState(false);
   const firstSentence = description.split('. ')[0] + '.';
@@ -34,10 +37,10 @@ const AdventureCard = ({
 
   return (
     <>
-      <Card className="sm:col-span-2">
+      <Card className="sm:w-full">
         <CardHeader className="pb-3">
           <CardTitle>{title}</CardTitle>
-          <CardDescription className="max-w-lg text-balance leading-relaxed">
+          <CardDescription>
             {/* shorten discription to the first sentence and show more when button clicked */}
             {showmore ? description : firstSentence}
             <Button
@@ -52,11 +55,23 @@ const AdventureCard = ({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <LazyYoutube
-            videoId={videoId}
-            playlistId={playlistId}
-            autoplay={autoplay}
-          />
+          {videoId && playlistId ? (
+            <LazyYoutube
+              videoId={videoId}
+              playlistId={playlistId}
+              autoplay={autoplay}
+            />
+          ) : (
+            <div>
+              <Image
+                src={src || ''}
+                alt={title}
+                width={1150}
+                height={300}
+                className=" object-contain"
+              />
+            </div>
+          )}
         </CardContent>
         <CardFooter>
           <Button asChild onClick={() => setLoading(true)}>

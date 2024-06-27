@@ -17,7 +17,7 @@ export default function Navlinks({ user }: NavlinksProps) {
   const path = usePathname();
 
   return (
-    <div className="relative flex flex-row justify-between py-4 align-center md:py-6">
+    <div className="relative flex flex-row justify-between py-4 align-center md:py-6 items-end">
       <div className="flex items-center flex-1">
         <Link href="/" className={s.logo} aria-label="Logo">
           <div className="hidden dark:block">

@@ -1,12 +1,19 @@
 import React from 'react';
 import AdventureCard from './cards';
-import { familyFunRomp, minibajachase, valleyOfFire } from '@/utils/helpers';
+import {
+  familyFunRomp,
+  lasvegas_atv_tours,
+  minibajachase,
+  valleyOfFire
+} from '@/utils/helpers';
 
 const ChooseAdventure = () => {
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {' '}
-      <h1 className="text-xl font-bold">Choose an Adventure</h1>
+      <h1 className="text-2xl font-bold text-center m-4 w-full">
+        Choose an Adventure
+      </h1>
       <AdventureCard
         description={minibajachase.description}
         title={minibajachase.title}
@@ -28,6 +35,14 @@ const ChooseAdventure = () => {
         videoId={valleyOfFire.videoId}
         playlistId={valleyOfFire.playlistId}
         linkHref="/book/valleyoffire"
+      />
+      <AdventureCard
+        description={lasvegas_atv_tours.description}
+        title={lasvegas_atv_tours.title}
+        playlistId=""
+        videoId=""
+        src={lasvegas_atv_tours.src}
+        linkHref="/book/lasvegasatvtours"
       />
     </div>
   );

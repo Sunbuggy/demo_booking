@@ -345,5 +345,6 @@ export const valleyOfFire = {
 
 export const lasvegas_atv_tours = {
   description: ` This is a Guided ATV tour into Nevada's oldest state park, the Valley Of Fire. That's right, SunBuggy is permitted by both the State Parks Department as well as the federal government to run tours in this Pristine area (not near the Valley of Fire, or in view of The Valley Of Fire, but actually right into and through this tread lightly area!)  This isn't a timed adventure, and there's no hurry. It's done at your leisure.`,
-  title: 'Las Vegas Premium ATV Tours'
+  title: 'Las Vegas Premium ATV Tours',
+  src: '/atv-image.jpg'
 };
