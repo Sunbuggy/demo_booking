@@ -146,7 +146,7 @@ export function CalendarForm({
       ...prevCounts,
       [vehicleId]: {
         ...prevCounts[vehicleId],
-        count: prevCounts[vehicleId]?.count || 0 + 1,
+        count: prevCounts[vehicleId]?.count + 1,
         isChecked,
         name,
         seats,
