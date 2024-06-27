@@ -122,7 +122,7 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
   };
 
   return (
-    <div className=" font-extrabold dark:text-white sm:text-center  flex flex-col justify-center items-center h-screen">
+    <div className=" font-extrabold dark:text-white sm:text-center grid justify-center items-start h-fit ">
       <CalendarForm
         bookInfo={bookInfo}
         freeShuttle={freeShuttle}

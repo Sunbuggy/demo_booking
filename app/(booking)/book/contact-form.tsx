@@ -42,10 +42,14 @@ export function ContactForm({
           control={form.control}
           name="name"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className=" flex gap-2 w-full  items-end justify-between">
               <FormLabel>Full Name</FormLabel>
               <FormControl>
-                <Input placeholder="eg: Luke Skywalker" {...field} />
+                <Input
+                  className="w-[75%]"
+                  placeholder="eg: Luke Skywalker"
+                  {...field}
+                />
               </FormControl>
 
               <FormMessage />
@@ -56,10 +60,14 @@ export function ContactForm({
           control={form.control}
           name="email"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className=" flex gap-2 w-full  items-end justify-between">
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="eg: luke@theforce.com" {...field} />
+                <Input
+                  className="w-[75%]"
+                  placeholder="eg: luke@theforce.com"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -70,10 +78,14 @@ export function ContactForm({
           control={form.control}
           name="phone"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className=" flex gap-2 w-full  items-end justify-between">
               <FormLabel>Phone</FormLabel>
               <FormControl>
-                <Input placeholder="eg: 555-555-5555" {...field} />
+                <Input
+                  className="w-[75%]"
+                  placeholder="eg: 555-555-5555"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -84,17 +96,21 @@ export function ContactForm({
           control={form.control}
           name="groupName"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className=" flex gap-2 w-full  items-end justify-between">
               <FormLabel>Group Name(optional)</FormLabel>
               <FormControl>
-                <Input placeholder="eg: Team Jedi" {...field} />
+                <Input
+                  className="w-[55%]"
+                  placeholder="eg: Team Jedi"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <Button type="submit">Submit</Button>
+        <Button type="submit">Next</Button>
       </form>
     </Form>
   );

@@ -4,7 +4,7 @@ import { familyFunRomp, minibajachase, valleyOfFire } from '@/utils/helpers';
 
 const ChooseAdventure = () => {
   return (
-    <div className="flex flex-col items-center gap-5">
+    <div>
       {' '}
       <h1 className="text-xl font-bold">Choose an Adventure</h1>
       <AdventureCard

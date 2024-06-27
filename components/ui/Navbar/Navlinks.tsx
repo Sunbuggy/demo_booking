@@ -39,7 +39,10 @@ export default function Navlinks({ user }: NavlinksProps) {
         </Link>
         <nav className="ml-6 space-x-2 lg:block">
           {user && path !== '/account' && (
-            <Link href="/account" className={s.link}>
+            <Link
+              href="/account"
+              className={`inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md p-1 h-[36px]`}
+            >
               Account
             </Link>
           )}
@@ -49,12 +52,18 @@ export default function Navlinks({ user }: NavlinksProps) {
         {user ? (
           <form onSubmit={(e) => handleRequest(e, SignOut, router)}>
             <input type="hidden" name="pathName" value={usePathname()} />
-            <button type="submit" className={s.link}>
+            <button
+              type="submit"
+              className={`inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md p-1 h-[36px]`}
+            >
               Sign out
             </button>
           </form>
         ) : (
-          <Link href="/signin" className={s.link}>
+          <Link
+            href="/signin"
+            className={`inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md h-[36px] `}
+          >
             Sign In
           </Link>
         )}

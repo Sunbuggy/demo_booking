@@ -31,12 +31,11 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           enableSystem
           disableTransitionOnChange
         >
-          <Navbar />
-          <main id="skip" className="pt-[50px] pb-[50px]  md:pb-28">
-            {' '}
-            {children}
-          </main>
-          <Footer />
+          <div className="grid gap-5">
+            <Navbar />
+            <main> {children}</main>
+            <Footer />
+          </div>
         </ThemeProvider>
         <Suspense>
           <Toaster />

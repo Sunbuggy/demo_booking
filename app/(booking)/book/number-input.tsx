@@ -17,12 +17,12 @@ const NumberInput = ({ form }: { form: any }) => {
         control={form.control}
         name="howManyPeople"
         render={({ field }) => (
-          <FormItem className="flex gap-2 items-baseline">
+          <FormItem className="flex gap-2 items-baseline w-full">
             <FormLabel>Group Size</FormLabel>
             <FormControl>
               <Input
                 className={cn(
-                  'w-[60px] pl-3 text-left font-normal',
+                  'w-[80px] pl-3 text-left font-normal',
                   !field.value && 'text-muted-foreground'
                 )}
                 type="number"

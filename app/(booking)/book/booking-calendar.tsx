@@ -185,10 +185,10 @@ export function CalendarForm({
   }
 
   return (
-    <div>
+    <div className="w-[350px]">
       <Form {...form}>
         <form
-          className={` gap-2 mb-7  items-baseline ${hideForm ? 'hidden' : 'flex flex-col'}`}
+          className={` gap-2 mb-7 w-full  items-baseline ${hideForm ? 'hidden' : 'flex flex-col'}`}
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <DatePicker
@@ -227,7 +227,7 @@ export function CalendarForm({
         </form>
       </Form>
       {hideForm && (
-        <div className="flex flex-col justify-center gap-2 mb-7">
+        <div className="flex flex-col w-full mb-5 items-start gap-2">
           <p>
             Booking date: {bookInfo.bookingDate.toISOString().split('T')[0]}
           </p>
@@ -237,19 +237,21 @@ export function CalendarForm({
           </p>
           <Button
             variant="secondary"
+            className="w-full"
             onClick={() => {
               setHideForm(false);
               setSelectedTimeValue('');
               setVehicleCounts({});
               setShowPricing(false);
+              setShowContactForm(false);
             }}
           >
-            <span>Change</span>
+            <span>Change Booking Details</span>
           </Button>
         </div>
       )}
       {hideForm && (
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col w-full mb-5 items-start gap-2">
           <p>
             Assigned Seats:{' '}
             <span
@@ -263,35 +265,63 @@ export function CalendarForm({
             </span>
             / <span className="text-green-500">{bookInfo.howManyPeople}</span>
           </p>
-          <div>
+          <div className="flex flex-col w-full mb-5 items-start gap-2">
             <h1>Booking details</h1>
             {Object.values(vehicleCounts).map((vehicle) => {
               if (vehicle.isChecked) {
                 return (
                   <div key={`${vehicle.id}-${vehicle.name}`}>
-                    <h2>{vehicle.name}✅</h2>
+                    <h2 className=" underline font-bold text-green-500">
+                      {vehicle.name}
+                    </h2>
                   </div>
                 );
               } else {
                 return null;
               }
             })}
+            {showContactForm ||
+              (showPricing && (
+                <Button
+                  variant="secondary"
+                  className="my-5 w-full"
+                  onClick={() => {
+                    setShowPricing(false);
+                    setSelectedTimeValue('');
+                    setShowContactForm(false);
+                  }}
+                >
+                  Change Chosen Fleet
+                </Button>
+              ))}
             {showPricing && (
-              <div className="flex flex-col">
-                <p>Name: {contactForm.name}</p>
-                <p>Email: {contactForm.email}</p>
-                <p>Phone: {contactForm.phone}</p>
+              <div className="flex flex-col w-full mb-5 items-start gap-2">
+                <p>
+                  Name:{' '}
+                  <span className="text-green-500">{contactForm.name}</span>
+                </p>
+                <p>
+                  Email:{' '}
+                  <span className="text-green-500">{contactForm.email}</span>
+                </p>
+                <p>
+                  Phone:{' '}
+                  <span className="text-green-500">{contactForm.phone}</span>
+                </p>
                 {contactForm.groupName &&
                   `Group Name: ${contactForm.groupName}`}
               </div>
             )}
           </div>
 
-          {!showContactForm && (
-            <div className="flex flex-col">
+          {!showContactForm && !showPricing && (
+            <div className="flex flex-col w-full">
               <p>Choose Fleet</p>
               {mbj_vehicles_list.map((vehicle) => (
-                <div key={vehicle.id} className="flex gap-2 items-center">
+                <div
+                  key={vehicle.id}
+                  className="flex gap-2 items-center w-full"
+                >
                   <input
                     type="checkbox"
                     id={String(vehicle.id)}
@@ -338,29 +368,20 @@ export function CalendarForm({
             </div>
           )}
           {showContactForm && (
-            <ContactForm
-              FormSchema={ContactFormSchema}
-              form={contact_form}
-              contactForm={contactForm}
-              setContactForm={setContactForm}
-              setShowPricing={setShowPricing}
-              setShowContactForm={setShowContactForm}
-            />
+            <div className="flex flex-col items-center gap-5">
+              <h1>Quick Contact Form</h1>
+              <ContactForm
+                FormSchema={ContactFormSchema}
+                form={contact_form}
+                contactForm={contactForm}
+                setContactForm={setContactForm}
+                setShowPricing={setShowPricing}
+                setShowContactForm={setShowContactForm}
+              />
+            </div>
           )}
           {showPricing && (
             <div className="flex flex-col items-center gap-5">
-              <Button
-                className="mt-5"
-                onClick={() => {
-                  setShowPricing(false);
-                  setSelectedTimeValue('');
-                  setShowContactForm(false);
-                }}
-              >
-                Change Chosen Fleet
-              </Button>
-              <h1>Quick Contact Form</h1>
-
               <BookingTabs
                 selectedTabValue={selectedTabValue}
                 setSelectedTabValue={setSelectedTabValue}

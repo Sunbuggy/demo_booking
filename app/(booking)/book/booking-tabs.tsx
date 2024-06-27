@@ -137,7 +137,7 @@ export function BookingTabs({
                   <p className="text-green-500">
                     Final Price: ${totalPrice.toFixed(2)}
                   </p>
-                  <Button>Book</Button>
+                  <Button>Finalize Booking</Button>
                 </CardFooter>
               )}
             </Card>
