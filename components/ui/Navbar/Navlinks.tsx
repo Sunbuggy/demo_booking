@@ -5,7 +5,6 @@ import { SignOut } from '@/utils/auth-helpers/server';
 import { handleRequest } from '@/utils/auth-helpers/client';
 import { usePathname, useRouter } from 'next/navigation';
 import { getRedirectMethod } from '@/utils/auth-helpers/settings';
-import s from './Navbar.module.css';
 import ThemeButton from '../mode-toggle';
 import Image from 'next/image';
 
@@ -17,36 +16,26 @@ export default function Navlinks({ user }: NavlinksProps) {
   const path = usePathname();
 
   return (
-    <div className="relative flex flex-row justify-between py-4 align-center md:py-6 items-end">
-      <div className="flex items-center flex-1">
-        <Link href="/" className={s.logo} aria-label="Logo">
+    <div className=" flex  justify-between">
+      <div className=" ml-5">
+        <Link href="/" aria-label="Logo">
           <div className="hidden dark:block">
             <Image
               src={`/sb-logo-circle-yellow.svg`}
-              width={64}
-              height={64}
+              width={40}
+              height={40}
               alt={`sunbuggy's logo`}
             />
           </div>
           <div className="dark:hidden">
             <Image
               src={`/sb-logo-circle-black.svg`}
-              width={64}
-              height={64}
+              width={40}
+              height={40}
               alt={`sunbuggy's logo`}
             />
           </div>
         </Link>
-        <nav className="ml-6 space-x-2 lg:block">
-          {user && path !== '/account' && (
-            <Link
-              href="/account"
-              className={`inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md p-1 h-[36px]`}
-            >
-              Account
-            </Link>
-          )}
-        </nav>
       </div>
       <div className="flex justify-end space-x-8">
         {user ? (

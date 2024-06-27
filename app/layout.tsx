@@ -31,7 +31,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           enableSystem
           disableTransitionOnChange
         >
-          <div className="grid gap-5 w-full">
+          <div className="flex flex-col gap-5 max-w-full">
             <Navbar />
             <main className="max-w-6xl mx-auto"> {children}</main>
             <Footer />

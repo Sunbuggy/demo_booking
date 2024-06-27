@@ -108,49 +108,68 @@ export function CalendarForm({
   showContactForm: boolean;
   setShowContactForm: Dispatch<SetStateAction<boolean>>;
 }) {
-  const handleCheckboxChange = (
+  // const handleCheckboxChange = (
+  //   vehicleId: number,
+  //   isChecked: boolean,
+  //   name: string,
+  //   seats: number,
+  //   pricing: VehiclePricingType
+  // ) => {
+  //   setVehicleCounts((prevCounts) => {
+  //     // If the checkbox is checked, update or add the vehicle to the state
+  //     if (isChecked) {
+  //       return {
+  //         ...prevCounts,
+  //         [vehicleId]: {
+  //           isChecked,
+  //           count: 1, // Assuming you want to reset count to 1 when checked
+  //           name,
+  //           seats,
+  //           pricing
+  //         }
+  //       };
+  //     } else {
+  //       // If the checkbox is unchecked, create a new object without the vehicle
+  //       const { [vehicleId]: value, ...newCounts } = prevCounts;
+  //       return newCounts;
+  //     }
+  //   });
+  // };
+  const incrementCount = (
     vehicleId: number,
     isChecked: boolean,
     name: string,
     seats: number,
     pricing: VehiclePricingType
   ) => {
-    setVehicleCounts((prevCounts) => {
-      // If the checkbox is checked, update or add the vehicle to the state
-      if (isChecked) {
-        return {
-          ...prevCounts,
-          [vehicleId]: {
-            isChecked,
-            count: 1, // Assuming you want to reset count to 1 when checked
-            name,
-            seats,
-            pricing
-          }
-        };
-      } else {
-        // If the checkbox is unchecked, create a new object without the vehicle
-        const { [vehicleId]: value, ...newCounts } = prevCounts;
-        return newCounts;
-      }
-    });
-  };
-  const incrementCount = (vehicleId: number) => {
     setVehicleCounts((prevCounts) => ({
       ...prevCounts,
       [vehicleId]: {
         ...prevCounts[vehicleId],
-        count: prevCounts[vehicleId].count + 1
+        count: prevCounts[vehicleId]?.count || 0 + 1,
+        isChecked,
+        name,
+        seats,
+        pricing
       }
     }));
   };
 
-  const decrementCount = (vehicleId: number) => {
+  const decrementCount = (
+    vehicleId: number,
+    name: string,
+    seats: number,
+    pricing: VehiclePricingType
+  ) => {
     setVehicleCounts((prevCounts) => ({
       ...prevCounts,
       [vehicleId]: {
         ...prevCounts[vehicleId],
-        count: Math.max(1, prevCounts[vehicleId].count - 1) // Ensure count doesn't go below 1
+        count: Math.max(0, prevCounts[vehicleId].count - 1), // Ensure count doesn't go below 1
+        isChecked: prevCounts[vehicleId]?.count > 1 ? true : false,
+        name,
+        seats,
+        pricing
       }
     }));
   };
@@ -265,91 +284,100 @@ export function CalendarForm({
             </span>
             / <span className="text-green-500">{bookInfo.howManyPeople}</span>
           </p>
-          <div className="flex flex-col w-full mb-5 items-start gap-2">
-            <h1>Booking details</h1>
-            {Object.values(vehicleCounts).map((vehicle) => {
-              if (vehicle.isChecked) {
-                return (
-                  <div key={`${vehicle.id}-${vehicle.name}`}>
-                    <h2 className=" underline font-bold text-green-500">
-                      {vehicle.name}
-                    </h2>
-                  </div>
-                );
-              } else {
-                return null;
-              }
-            })}
-            {showContactForm ||
-              (showPricing && (
-                <Button
-                  variant="secondary"
-                  className="my-5 w-full"
-                  onClick={() => {
-                    setShowPricing(false);
-                    setSelectedTimeValue('');
-                    setShowContactForm(false);
-                  }}
-                >
-                  Change Chosen Fleet
-                </Button>
-              ))}
-            {showPricing && (
-              <div className="flex flex-col w-full mb-5 items-start gap-2">
-                <p>
-                  Name:{' '}
-                  <span className="text-green-500">{contactForm.name}</span>
-                </p>
-                <p>
-                  Email:{' '}
-                  <span className="text-green-500">{contactForm.email}</span>
-                </p>
-                <p>
-                  Phone:{' '}
-                  <span className="text-green-500">{contactForm.phone}</span>
-                </p>
-                {contactForm.groupName &&
-                  `Group Name: ${contactForm.groupName}`}
-              </div>
-            )}
-          </div>
+          {showContactForm && (
+            <>
+              <h1>Booking details</h1>
+              {Object.values(vehicleCounts).map((vehicle) => {
+                if (vehicle.isChecked) {
+                  return (
+                    <div key={`${vehicle.id}-${vehicle.name}`}>
+                      <h2 className=" underline font-bold text-green-500">
+                        {vehicle.name}
+                      </h2>
+                    </div>
+                  );
+                } else {
+                  return null;
+                }
+              })}
+            </>
+          )}
+          {(showContactForm || showPricing) && (
+            <Button
+              variant="secondary"
+              className="my-5 w-full"
+              onClick={() => {
+                setShowPricing(false);
+                setSelectedTimeValue('');
+                setShowContactForm(false);
+              }}
+            >
+              Change Chosen Fleet
+            </Button>
+          )}
+          {showPricing && (
+            <div className="flex flex-col w-full mb-5 items-start gap-2">
+              <p>
+                Name: <span className="text-green-500">{contactForm.name}</span>
+              </p>
+              <p>
+                Email:{' '}
+                <span className="text-green-500">{contactForm.email}</span>
+              </p>
+              <p>
+                Phone:{' '}
+                <span className="text-green-500">{contactForm.phone}</span>
+              </p>
+              {contactForm.groupName && `Group Name: ${contactForm.groupName}`}
+            </div>
+          )}
 
           {!showContactForm && !showPricing && (
             <div className="flex flex-col w-full">
-              <p>Choose Fleet</p>
+              <p className="text-start text-lg mb-2 ">Choose Fleet</p>
               {mbj_vehicles_list.map((vehicle) => (
                 <div
                   key={vehicle.id}
-                  className="flex gap-2 items-center w-full"
+                  className="flex gap-2 justify-between w-[60%] mb-2 border-b pb-2"
                 >
-                  <input
-                    type="checkbox"
-                    id={String(vehicle.id)}
-                    name="vehicle"
-                    value={vehicle.name}
-                    checked={!!vehicleCounts[vehicle.id]?.isChecked}
-                    onChange={(e) =>
-                      handleCheckboxChange(
-                        vehicle.id,
-                        e.target.checked,
-                        vehicle.name,
-                        vehicle.seats,
-                        vehicle.pricing
-                      )
+                  <label
+                    className={
+                      vehicleCounts[vehicle.id]?.isChecked
+                        ? 'text-green-500'
+                        : ''
                     }
-                  />
-                  <label htmlFor={String(vehicle.id)}>{vehicle.name}</label>
-                  {vehicleCounts[vehicle.id]?.isChecked && (
-                    <div className="flex gap-2">
-                      <button onClick={() => decrementCount(vehicle.id)}>
-                        -
-                      </button>
-                      <span>{vehicleCounts[vehicle.id].count}</span>
-                      <button onClick={() => incrementCount(vehicle.id)}>
-                        +
-                      </button>
-                    </div>
-                  )}
+                    htmlFor={String(vehicle.id)}
+                  >
+                    {vehicle.name}
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() =>
+                        decrementCount(
+                          vehicle.id,
+                          vehicle.name,
+                          vehicle.seats,
+                          vehicle.pricing
+                        )
+                      }
+                    >
+                      -
+                    </button>
+                    <span>{vehicleCounts[vehicle.id]?.count || 0}</span>
+                    <button
+                      onClick={() =>
+                        incrementCount(
+                          vehicle.id,
+                          true,
+                          vehicle.name,
+                          vehicle.seats,
+                          vehicle.pricing
+                        )
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               ))}
               {!showPricing && (
