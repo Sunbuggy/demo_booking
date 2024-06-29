@@ -139,6 +139,7 @@ export const mb60_open_times = [
   '12 pm',
   '2 pm'
 ];
+export const ffr_open_times = ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
 export const mb120_open_times = ['8 am ', '10 am'];
 export const valley_of_fire_open_times = ['8 am'];
 export type MbjVehicle = {

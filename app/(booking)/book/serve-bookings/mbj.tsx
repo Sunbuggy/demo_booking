@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarForm } from './booking-calendar';
+import { CalendarForm } from '../booking-calendar/mbj';
+import { createId } from '@paralleldrive/cuid2';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -45,6 +46,7 @@ export interface VehicleCounts {
 }
 
 export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
+  const decodedId = createId();
   const [selectedTabValue, setSelectedTabValue] = useState<
     'mb30' | 'mb60' | 'mb120'
   >('mb60');
@@ -59,6 +61,8 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
   const [showPricing, setShowPricing] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
   const [totalPrice, setTotalPrice] = useState(0);
+  const [formToken, setFormToken] = useState('');
+  const [formTokenError, setFormTokenError] = useState('');
   const [contactForm, setContactForm] = useState<ContactFom>({
     name: '',
     email: '',
@@ -86,6 +90,38 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
       handlePricing(selectedTimeValue);
     }
   }, [selectedTimeValue]);
+
+  useEffect(() => {
+    async function fetchData() {
+      // e.preventDefault();
+      const decodedIdreduced = decodedId.slice(0, 16);
+      const fname = contactForm.name.split(' ')[0];
+      const lname = contactForm.name.split(' ')[1] || 'no last name';
+      const phone = contactForm.phone;
+      try {
+        if (totalPrice && decodedId) {
+          const last_page = 'book/minibajachase';
+          const response = await fetch(
+            `/api/authorize-net/acceptHosted/?amt=${String(totalPrice.toFixed(2))}&invoiceNumber=${decodedIdreduced}&fname=${fname}&lname=${lname}&phone=${phone}&lastpage=${last_page}`
+          );
+
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          const data = await response.json();
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          if (data.formToken) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+            setFormToken(data.formToken);
+          } else {
+            setFormTokenError(`Error fetching form token`);
+          }
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    }
+
+    void fetchData();
+  }, [totalPrice]);
 
   const handlePricing = (selectedTimeValue: string) => {
     // Ensure selectedTimeValue is valid
@@ -152,7 +188,13 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
         setContactForm={setContactForm}
         showContactForm={showContactForm}
         setShowContactForm={setShowContactForm}
+        formToken={formToken}
       />
+      {formTokenError && (
+        <div>
+          <p>{formTokenError}</p>
+        </div>
+      )}
     </div>
   );
 }

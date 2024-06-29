@@ -2,15 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage
-} from '@/components/ui/form';
+import { Form } from '@/components/ui/form';
 import { Dispatch, SetStateAction } from 'react';
 import {
   BookInfoType,
@@ -18,14 +10,14 @@ import {
   HotelType,
   VehicleCounts,
   VehiclePricingType
-} from './serve-bookings';
-import DatePicker from './date-picker';
-import NumberInput from './number-input';
-import ComboBox from '../../../components/combo-box';
+} from '../serve-bookings/mbj';
+import DatePicker from '../date-picker';
+import NumberInput from '../number-input';
+import ComboBox from '../../../../components/combo-box';
 import { Checkbox } from '@/components/ui/checkbox';
 import { mbj_vehicles_list } from '@/utils/helpers';
-import { BookingTabs } from './booking-tabs';
-import { ContactForm } from './contact-form';
+import { ContactForm } from '../contact-form';
+import { BookingTabs } from '../tabs/mbj';
 
 const FormSchema = z.object({
   bookingDate: z.date({
@@ -77,7 +69,8 @@ export function CalendarForm({
   contactForm,
   setContactForm,
   showContactForm,
-  setShowContactForm
+  setShowContactForm,
+  formToken
 }: {
   hideForm: boolean;
   isCalendarOpen: boolean;
@@ -107,34 +100,8 @@ export function CalendarForm({
   setContactForm: Dispatch<SetStateAction<ContactFom>>;
   showContactForm: boolean;
   setShowContactForm: Dispatch<SetStateAction<boolean>>;
+  formToken: string;
 }) {
-  // const handleCheckboxChange = (
-  //   vehicleId: number,
-  //   isChecked: boolean,
-  //   name: string,
-  //   seats: number,
-  //   pricing: VehiclePricingType
-  // ) => {
-  //   setVehicleCounts((prevCounts) => {
-  //     // If the checkbox is checked, update or add the vehicle to the state
-  //     if (isChecked) {
-  //       return {
-  //         ...prevCounts,
-  //         [vehicleId]: {
-  //           isChecked,
-  //           count: 1, // Assuming you want to reset count to 1 when checked
-  //           name,
-  //           seats,
-  //           pricing
-  //         }
-  //       };
-  //     } else {
-  //       // If the checkbox is unchecked, create a new object without the vehicle
-  //       const { [vehicleId]: value, ...newCounts } = prevCounts;
-  //       return newCounts;
-  //     }
-  //   });
-  // };
   const incrementCount = (
     vehicleId: number,
     isChecked: boolean,
@@ -418,6 +385,7 @@ export function CalendarForm({
                 vehicleCounts={vehicleCounts}
                 totalPrice={totalPrice}
                 setTotalPrice={setTotalPrice}
+                formToken={formToken}
               />
             </div>
           )}

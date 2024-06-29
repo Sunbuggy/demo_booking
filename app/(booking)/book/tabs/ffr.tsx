@@ -9,14 +9,10 @@ import {
   CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import TimePicker from '../../../components/time-picker';
-import {
-  mb120_open_times,
-  mb30_open_times,
-  mb60_open_times
-} from '@/utils/helpers';
-import { VehicleCounts } from './serve-bookings';
-import { PriceBreakdownDropdown } from './breakdown-dropdown';
+import TimePicker from '@/components/time-picker';
+import { ffr_open_times } from '@/utils/helpers';
+import { VehicleCounts } from '../serve-bookings/ffr';
+import { PriceBreakdownDropdown } from '../breakdown-drop-down/ffr';
 
 interface TabData {
   value: string;
@@ -36,41 +32,26 @@ export function BookingTabs({
 }: {
   selectedTimeValue: string;
   setSelectedTimeValue: React.Dispatch<React.SetStateAction<string>>;
-  selectedTabValue: 'mb30' | 'mb60' | 'mb120';
-  setSelectedTabValue: React.Dispatch<
-    React.SetStateAction<'mb30' | 'mb60' | 'mb120'>
-  >;
+  selectedTabValue: 'Family Fun Romp';
+  setSelectedTabValue: React.Dispatch<React.SetStateAction<'Family Fun Romp'>>;
   vehicleCounts: VehicleCounts;
   totalPrice: number;
   setTotalPrice: React.Dispatch<React.SetStateAction<number>>;
 }) {
   const tabsData = [
     {
-      value: 'mb30',
-      title: '30 minutes',
-      name: 'MiniBaja 1/4 Chase',
-      description: 'Chase in the dunes for 30 minutes',
-      content: '30 minutes content'
-    },
-    {
-      value: 'mb60',
-      title: '60 minutes',
-      name: 'MiniBaja 1/2 Chase',
-      description: 'Chase in the dunes for 1 hour',
-      content: 'MB60 content'
-    },
-    {
-      value: 'mb120',
-      title: '120 minutes',
-      name: 'MiniBaja Full Chase',
-      description: 'Chase in the dunes for 2 hours',
+      value: 'Family Fun Romp',
+      title: 'Family Fun Romp',
+      name: 'Family Fun Romp',
+      description:
+        'A special package for those wishing to take the kids Off-Road on a buggy ride but not get thrown in the mix of wild and crazy patrons ',
       content: 'MB120 content'
     }
   ];
 
   // Wrapper function to ensure type safety
   const handleTabChange = (value: string) => {
-    if (value === 'mb30' || value === 'mb60' || value === 'mb120') {
+    if (value === 'Family Fun Romp') {
       setSelectedTabValue(value);
       setTotalPrice(0);
       setSelectedTimeValue('');
@@ -105,26 +86,11 @@ export function BookingTabs({
                   setSelectValue={(value) => {
                     setSelectedTimeValue(value);
                   }}
-                  timeArray={
-                    tab.value === 'mb30'
-                      ? mb30_open_times
-                      : tab.value === 'mb60'
-                        ? mb60_open_times
-                        : mb120_open_times
-                  }
+                  timeArray={ffr_open_times}
                 />
 
                 {!selectedTimeValue && <p>Pick a time to calculate price</p>}
-                {selectedTimeValue && (
-                  <div>
-                    {Number(selectedTimeValue.split(' ')[0]) < 10 &&
-                    selectedTimeValue.split(' ')[1] === 'am' &&
-                    (selectedTabValue === 'mb60' ||
-                      selectedTabValue === 'mb30') ? (
-                      <p className="text-green-500">20% discount applied</p>
-                    ) : null}
-                  </div>
-                )}
+
                 {selectedTimeValue && (
                   <PriceBreakdownDropdown
                     selectedTabValue={selectedTabValue}

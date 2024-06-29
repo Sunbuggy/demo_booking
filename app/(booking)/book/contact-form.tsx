@@ -12,13 +12,12 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Dispatch, SetStateAction } from 'react';
-import { ContactFom } from './serve-bookings';
+import { ContactFom } from './serve-bookings/mbj';
 
 export function ContactForm({
   form,
   FormSchema,
   setContactForm,
-  contactForm,
   setShowPricing,
   setShowContactForm
 }: {

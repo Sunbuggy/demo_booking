@@ -1,7 +1,8 @@
 import React from 'react';
 import { createClient } from '@/utils/supabase/server';
 import { fetchHotels, getUser } from '@/utils/supabase/queries';
-import { MiniBajaPage } from '../serve-bookings';
+import { MiniBajaPage } from '../serve-bookings/mbj';
+import { FamilyFunRompPage } from '../serve-bookings/ffr';
 export default async function Bookings({
   params,
   searchParams
@@ -16,4 +17,6 @@ export default async function Bookings({
   ]);
   const viewProp = params.id;
   if (viewProp === 'minibajachase') return <MiniBajaPage hotels={hotels} />;
+  if (viewProp === 'familyfunromp')
+    return <FamilyFunRompPage hotels={hotels} />;
 }
