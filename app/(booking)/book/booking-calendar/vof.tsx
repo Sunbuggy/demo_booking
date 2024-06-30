@@ -10,14 +10,14 @@ import {
   HotelType,
   VehicleCounts,
   VehiclePricingType
-} from '../serve-bookings/mbj';
+} from '../serve-bookings/vof';
 import DatePicker from '../date-picker';
 import NumberInput from '../number-input';
 import ComboBox from '../../../../components/combo-box';
 import { Checkbox } from '@/components/ui/checkbox';
-import { mbj_vehicles_list } from '@/utils/helpers';
+import { vof_vehicles_list } from '@/utils/helpers';
 import { ContactForm } from '../contact-form';
-import { BookingTabs } from '../tabs/mbj';
+import { BookingTabs } from '../tabs/vof';
 
 const FormSchema = z.object({
   bookingDate: z.date({
@@ -91,8 +91,8 @@ export function CalendarForm({
   totalSeats: number;
   showPricing: boolean;
   setShowPricing: Dispatch<SetStateAction<boolean>>;
-  selectedTabValue: 'mb120' | 'mb30' | 'mb60';
-  setSelectedTabValue: Dispatch<SetStateAction<'mb30' | 'mb60' | 'mb120'>>;
+  selectedTabValue: 'Valley of Fire';
+  setSelectedTabValue: Dispatch<SetStateAction<'Valley of Fire'>>;
   selectedTimeValue: string;
   totalPrice: number;
   setTotalPrice: Dispatch<SetStateAction<number>>;
@@ -107,7 +107,11 @@ export function CalendarForm({
     isChecked: boolean,
     name: string,
     seats: number,
-    pricing: VehiclePricingType
+    pricing: {
+      price: number;
+      name: string;
+    },
+    vehicle: string
   ) => {
     setVehicleCounts((prevCounts) => ({
       ...prevCounts,
@@ -117,7 +121,8 @@ export function CalendarForm({
         isChecked,
         name,
         seats,
-        pricing
+        pricing,
+        vehicle
       }
     }));
   };
@@ -126,7 +131,11 @@ export function CalendarForm({
     vehicleId: number,
     name: string,
     seats: number,
-    pricing: VehiclePricingType
+    pricing: {
+      price: number;
+      name: string;
+    },
+    vehicle: string
   ) => {
     setVehicleCounts((prevCounts) => ({
       ...prevCounts,
@@ -136,7 +145,8 @@ export function CalendarForm({
         isChecked: prevCounts[vehicleId]?.count > 1 ? true : false,
         name,
         seats,
-        pricing
+        pricing,
+        vehicle
       }
     }));
   };
@@ -294,7 +304,7 @@ export function CalendarForm({
           {!showContactForm && !showPricing && (
             <div className="flex flex-col w-full">
               <p className="text-start text-lg mb-2 ">Choose Fleet</p>
-              {mbj_vehicles_list.map((vehicle) => (
+              {vof_vehicles_list.map((vehicle) => (
                 <div
                   key={vehicle.id}
                   className="flex gap-2 justify-between w-[60%] mb-2 border-b pb-2"
@@ -316,7 +326,11 @@ export function CalendarForm({
                           vehicle.id,
                           vehicle.name,
                           vehicle.seats,
-                          vehicle.pricing
+                          {
+                            price: vehicle.pricing.price,
+                            name: vehicle.pricing.name
+                          },
+                          vehicle.pricing.name
                         )
                       }
                     >
@@ -330,7 +344,11 @@ export function CalendarForm({
                           true,
                           vehicle.name,
                           vehicle.seats,
-                          vehicle.pricing
+                          {
+                            price: vehicle.pricing.price,
+                            name: vehicle.pricing.name
+                          },
+                          vehicle.pricing.name
                         )
                       }
                     >

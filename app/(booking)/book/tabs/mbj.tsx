@@ -136,7 +136,7 @@ export function BookingTabs({
                 )}
               </CardContent>
               {selectedTimeValue && (
-                <CardFooter className="w-full flex justify-between ">
+                <CardFooter className="w-full flex justify-between">
                   <p className="text-green-500">
                     Final Price: ${totalPrice.toFixed(2)}
                   </p>

@@ -69,7 +69,8 @@ export function CalendarForm({
   contactForm,
   setContactForm,
   showContactForm,
-  setShowContactForm
+  setShowContactForm,
+  formToken
 }: {
   hideForm: boolean;
   isCalendarOpen: boolean;
@@ -99,6 +100,7 @@ export function CalendarForm({
   setContactForm: Dispatch<SetStateAction<ContactFom>>;
   showContactForm: boolean;
   setShowContactForm: Dispatch<SetStateAction<boolean>>;
+  formToken: string;
 }) {
   const incrementCount = (
     vehicleId: number,
@@ -375,6 +377,7 @@ export function CalendarForm({
                 vehicleCounts={vehicleCounts}
                 totalPrice={totalPrice}
                 setTotalPrice={setTotalPrice}
+                formToken={formToken}
               />
             </div>
           )}

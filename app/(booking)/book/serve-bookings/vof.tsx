@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarForm } from '../booking-calendar/ffr';
+import { CalendarForm } from '../booking-calendar/vof';
 import { createId } from '@paralleldrive/cuid2';
 
 export interface HotelType {
@@ -18,7 +18,8 @@ export interface BookInfoType {
 }
 
 type BaseVehiclePricingType = {
-  desert_racer: number;
+  name?: string;
+  price: number;
 };
 
 // Making all properties of BaseVehiclePricingType optional
@@ -29,6 +30,7 @@ export interface VehicleCount {
   name: string;
   seats: number;
   pricing: VehiclePricingType;
+  vehicle: string;
 }
 
 export interface ContactFom {
@@ -43,11 +45,11 @@ export interface VehicleCounts {
   [vehicleId: number]: VehicleCount;
 }
 
-export function FamilyFunRompPage({ hotels }: { hotels: HotelType[] }) {
+export function ValleyOfFirePage({ hotels }: { hotels: HotelType[] }) {
   const decodedId = createId();
 
   const [selectedTabValue, setSelectedTabValue] =
-    useState<'Family Fun Romp'>('Family Fun Romp');
+    useState<'Valley of Fire'>('Valley of Fire');
   const [selectedTimeValue, setSelectedTimeValue] = useState('');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [hideForm, setHideForm] = useState(false);
@@ -98,7 +100,7 @@ export function FamilyFunRompPage({ hotels }: { hotels: HotelType[] }) {
       const phone = contactForm.phone;
       try {
         if (totalPrice && decodedId) {
-          const last_page = 'book/familyfunromp';
+          const last_page = 'book/valleyoffire';
           const response = await fetch(
             `/api/authorize-net/acceptHosted/?amt=${String(totalPrice.toFixed(2))}&invoiceNumber=${decodedIdreduced}&fname=${fname}&lname=${lname}&phone=${phone}&lastpage=${last_page}`
           );
@@ -129,7 +131,7 @@ export function FamilyFunRompPage({ hotels }: { hotels: HotelType[] }) {
     Object.values(vehicleCounts).forEach((vehicle) => {
       if (vehicle.isChecked) {
         // Fetch the price for the selected time value
-        const priceForTime = vehicle.pricing['desert_racer'];
+        const priceForTime = vehicle.pricing.price;
         console.log(vehicle);
         // Calculate total price for this vehicle
         const totalVehiclePrice = priceForTime * vehicle.count * vehicle.seats;
@@ -143,13 +145,13 @@ export function FamilyFunRompPage({ hotels }: { hotels: HotelType[] }) {
     const fuelFee = totalPrice * 0.1;
     // create a 6% fuel fee
     const serviceFee = totalPrice * 0.06;
-    if (hour < 10 && amPm === 'am' && selectedTabValue === 'Family Fun Romp') {
-      // apply discount of 20%
-      setTotalPrice(totalPrice * 0.8 + fuelFee + serviceFee);
-      // setTotalPrice(totalPrice + fuelFee + serviceFee);
-    } else {
-      setTotalPrice(totalPrice + serviceFee + fuelFee);
-    }
+    // if (hour < 10 && amPm === 'am' && selectedTabValue === 'Valley of Fire') {
+    //   // apply discount of 20%
+    //   setTotalPrice(totalPrice * 0.8 + fuelFee + serviceFee);
+    //   // setTotalPrice(totalPrice + fuelFee + serviceFee);
+    // } else {
+    setTotalPrice(totalPrice + serviceFee + fuelFee);
+    // }
   };
 
   return (

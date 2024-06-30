@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server';
 import { fetchHotels, getUser } from '@/utils/supabase/queries';
 import { MiniBajaPage } from '../serve-bookings/mbj';
 import { FamilyFunRompPage } from '../serve-bookings/ffr';
+import { ValleyOfFirePage } from '../serve-bookings/vof';
 export default async function Bookings({
   params,
   searchParams
@@ -19,4 +20,5 @@ export default async function Bookings({
   if (viewProp === 'minibajachase') return <MiniBajaPage hotels={hotels} />;
   if (viewProp === 'familyfunromp')
     return <FamilyFunRompPage hotels={hotels} />;
+  if (viewProp === 'valleyoffire') return <ValleyOfFirePage hotels={hotels} />;
 }

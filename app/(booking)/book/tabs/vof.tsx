@@ -10,9 +10,9 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import TimePicker from '@/components/time-picker';
-import { ffr_open_times } from '@/utils/helpers';
-import { VehicleCounts } from '../serve-bookings/ffr';
-import { PriceBreakdownDropdown } from '../breakdown-drop-down/ffr';
+import { vof_open_times } from '@/utils/helpers';
+import { type VehicleCounts } from '../serve-bookings/vof';
+import { PriceBreakdownDropdown } from '../breakdown-drop-down/vof';
 import AcceptHostedPage from '../../payment/acceptHosted';
 
 interface TabData {
@@ -34,8 +34,8 @@ export function BookingTabs({
 }: {
   selectedTimeValue: string;
   setSelectedTimeValue: React.Dispatch<React.SetStateAction<string>>;
-  selectedTabValue: 'Family Fun Romp';
-  setSelectedTabValue: React.Dispatch<React.SetStateAction<'Family Fun Romp'>>;
+  selectedTabValue: 'Valley of Fire';
+  setSelectedTabValue: React.Dispatch<React.SetStateAction<'Valley of Fire'>>;
   vehicleCounts: VehicleCounts;
   totalPrice: number;
   setTotalPrice: React.Dispatch<React.SetStateAction<number>>;
@@ -43,9 +43,9 @@ export function BookingTabs({
 }) {
   const tabsData = [
     {
-      value: 'Family Fun Romp',
-      title: 'Family Fun Romp',
-      name: 'Family Fun Romp',
+      value: 'Valley of Fire',
+      title: 'Valley of Fire',
+      name: 'Valley of Fire',
       description:
         'A special package for those wishing to take the kids Off-Road on a buggy ride but not get thrown in the mix of wild and crazy patrons ',
       content: 'MB120 content'
@@ -54,7 +54,7 @@ export function BookingTabs({
 
   // Wrapper function to ensure type safety
   const handleTabChange = (value: string) => {
-    if (value === 'Family Fun Romp') {
+    if (value === 'Valley of Fire') {
       setSelectedTabValue(value);
       setTotalPrice(0);
       setSelectedTimeValue('');
@@ -89,16 +89,13 @@ export function BookingTabs({
                   setSelectValue={(value) => {
                     setSelectedTimeValue(value);
                   }}
-                  timeArray={ffr_open_times}
+                  timeArray={vof_open_times}
                 />
 
                 {!selectedTimeValue && <p>Pick a time to calculate price</p>}
 
                 {selectedTimeValue && (
-                  <PriceBreakdownDropdown
-                    selectedTabValue={selectedTabValue}
-                    vehicleCounts={vehicleCounts}
-                  />
+                  <PriceBreakdownDropdown vehicleCounts={vehicleCounts} />
                 )}
               </CardContent>
               {selectedTimeValue && (

@@ -141,7 +141,7 @@ export const mb60_open_times = [
 ];
 export const ffr_open_times = ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
 export const mb120_open_times = ['8 am ', '10 am'];
-export const valley_of_fire_open_times = ['8 am'];
+export const vof_open_times = ['8 am'];
 export type MbjVehicle = {
   id: number;
   name: string;
@@ -248,7 +248,8 @@ export const vof_vehicles_list = [
     name: '2 seat desert racer',
     seats: 2,
     pricing: {
-      desert_racer: 799
+      price: 799,
+      name: 'desert_racer'
     }
   },
   {
@@ -257,7 +258,8 @@ export const vof_vehicles_list = [
     name: '4 seat desert racer',
     seats: 4,
     pricing: {
-      four_seat: 999
+      price: 999,
+      name: 'desert_racer'
     }
   },
   {
@@ -266,7 +268,8 @@ export const vof_vehicles_list = [
     name: '6 seat desert racer',
     seats: 6,
     pricing: {
-      six_seat: 1299
+      price: 1299,
+      name: 'desert_racer'
     }
   },
   {
@@ -275,7 +278,8 @@ export const vof_vehicles_list = [
     name: 'Ride with Guide',
     seats: 1,
     pricing: {
-      ride_with_guide: 349
+      price: 349,
+      name: 'ride_with_guide'
     }
   },
   {
@@ -284,16 +288,18 @@ export const vof_vehicles_list = [
     name: '1 Seat full ATV',
     seats: 1,
     pricing: {
-      one_seat_full_atv: 399
+      price: 399,
+      name: 'full_atv'
     }
   },
   {
     id: 6,
     vehicle_id: 4,
-    name: '2 seat desert racer',
+    name: '2 seat UTV $WD',
     seats: 2,
     pricing: {
-      two_seat_utv: 799
+      price: 799,
+      name: 'utv'
     }
   }
 ];

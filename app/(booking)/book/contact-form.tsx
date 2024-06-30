@@ -42,7 +42,7 @@ export function ContactForm({
           name="name"
           render={({ field }) => (
             <FormItem className=" flex gap-2 w-full  items-end justify-between">
-              <FormLabel>Full Name</FormLabel>
+              <FormLabel>First and Last Name</FormLabel>
               <FormControl>
                 <Input
                   className="w-[75%]"
