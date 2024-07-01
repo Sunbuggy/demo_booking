@@ -253,7 +253,7 @@ export function CalendarForm({
             </span>
             / <span className="text-green-500">{bookInfo.howManyPeople}</span>
           </p>
-          {showContactForm && (
+          {(showContactForm || showPricing) && (
             <>
               <h1>Booking details</h1>
               {Object.values(vehicleCounts).map((vehicle) => {

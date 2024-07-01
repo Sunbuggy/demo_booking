@@ -21,7 +21,8 @@ const AdventureCard = ({
   playlistId,
   autoplay = 0,
   linkHref,
-  src
+  src,
+  showBookButton = true
 }: {
   description: string;
   title: string;
@@ -30,6 +31,7 @@ const AdventureCard = ({
   autoplay?: number;
   linkHref: string;
   src?: string;
+  showBookButton?: boolean;
 }) => {
   const [showmore, setShowmore] = React.useState(false);
   const firstSentence = description.split('. ')[0] + '.';
@@ -74,9 +76,11 @@ const AdventureCard = ({
           )}
         </CardContent>
         <CardFooter>
-          <Button asChild onClick={() => setLoading(true)}>
-            <Link href={linkHref}>Book</Link>
-          </Button>
+          {showBookButton && (
+            <Button asChild onClick={() => setLoading(true)}>
+              <Link href={linkHref}>Book</Link>
+            </Button>
+          )}
         </CardFooter>
       </Card>
       {loading && (

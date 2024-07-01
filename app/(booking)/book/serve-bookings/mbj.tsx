@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarForm } from '../booking-calendar/mbj';
 import { createId } from '@paralleldrive/cuid2';
+import { minibajachase } from '@/utils/helpers';
+import AdventureCard from '../../choose-adventure/cards';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -158,7 +160,7 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
   };
 
   return (
-    <div className=" font-extrabold dark:text-white sm:text-center grid justify-center items-start h-fit ">
+    <div className=" font-extrabold dark:text-white sm:text-center flex flex-col justify-center items-center h-fit ">
       <CalendarForm
         bookInfo={bookInfo}
         freeShuttle={freeShuttle}
@@ -195,6 +197,15 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
           <p>{formTokenError}</p>
         </div>
       )}
+      <AdventureCard
+        description={minibajachase.description}
+        title={minibajachase.title}
+        videoId={minibajachase.videoId}
+        playlistId={minibajachase.playlistId}
+        // autoplay={1}
+        linkHref="/book/minibaja-chase"
+        showBookButton={false}
+      />
     </div>
   );
 }
