@@ -4,6 +4,7 @@ import { CalendarForm } from '../booking-calendar/mbj';
 import { createId } from '@paralleldrive/cuid2';
 import { minibajachase } from '@/utils/helpers';
 import AdventureCard from '../../choose-adventure/cards';
+import AcceptHostedPage from '../../payment/acceptHosted';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -65,6 +66,8 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
   const [totalPrice, setTotalPrice] = useState(0);
   const [formToken, setFormToken] = useState('');
   const [formTokenError, setFormTokenError] = useState('');
+  const [response, setResponse] = useState('');
+
   const [contactForm, setContactForm] = useState<ContactFom>({
     name: '',
     email: '',
@@ -102,7 +105,7 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
       const phone = contactForm.phone;
       try {
         if (totalPrice && decodedId) {
-          const last_page = 'book/minibajachase';
+          const last_page = 'book/mini-baja-chase';
           const response = await fetch(
             `/api/authorize-net/acceptHosted/?amt=${String(totalPrice.toFixed(2))}&invoiceNumber=${decodedIdreduced}&fname=${fname}&lname=${lname}&phone=${phone}&lastpage=${last_page}`
           );
@@ -111,6 +114,7 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
           const data = await response.json();
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           if (data.formToken) {
+            setFormTokenError('');
             // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
             setFormToken(data.formToken);
           } else {
@@ -124,6 +128,10 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
 
     void fetchData();
   }, [totalPrice]);
+
+  useEffect(() => {
+    if (response) console.log(response);
+  }, [response]);
 
   const handlePricing = (selectedTimeValue: string) => {
     // Ensure selectedTimeValue is valid
@@ -192,9 +200,19 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
         setShowContactForm={setShowContactForm}
         formToken={formToken}
       />
-      {formTokenError && (
+      {totalPrice && selectedTimeValue ? (
+        <AcceptHostedPage formToken={formToken} setResponse={setResponse} />
+      ) : (
+        ''
+      )}
+
+      {formTokenError && selectedTimeValue && (
         <div>
-          <p>{formTokenError}</p>
+          <p>
+            {formTokenError
+              ? 'Some Problem Occured Please Pick a Different Time or Refresh This Page'
+              : ''}
+          </p>
         </div>
       )}
       <AdventureCard

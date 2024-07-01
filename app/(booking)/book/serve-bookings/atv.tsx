@@ -2,6 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarForm } from '../booking-calendar/atv';
 import { createId } from '@paralleldrive/cuid2';
+import { lasvegas_atv_tours } from '@/utils/helpers';
+import AdventureCard from '../../choose-adventure/cards';
+import AcceptHostedPage from '../../payment/acceptHosted';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -61,6 +64,7 @@ export function ATVPage({ hotels }: { hotels: HotelType[] }) {
   const [totalPrice, setTotalPrice] = useState(0);
   const [formToken, setFormToken] = useState('');
   const [formTokenError, setFormTokenError] = useState('');
+  const [response, setResponse] = useState('');
   const [contactForm, setContactForm] = useState<ContactFom>({
     name: '',
     email: '',
@@ -98,7 +102,7 @@ export function ATVPage({ hotels }: { hotels: HotelType[] }) {
       const phone = contactForm.phone;
       try {
         if (totalPrice && decodedId) {
-          const last_page = 'book/familyfunromp';
+          const last_page = 'book/atv-tours';
           const response = await fetch(
             `/api/authorize-net/acceptHosted/?amt=${String(totalPrice.toFixed(2))}&invoiceNumber=${decodedIdreduced}&fname=${fname}&lname=${lname}&phone=${phone}&lastpage=${last_page}`
           );
@@ -189,11 +193,29 @@ export function ATVPage({ hotels }: { hotels: HotelType[] }) {
         setShowContactForm={setShowContactForm}
         formToken={formToken}
       />
-      {formTokenError && (
+      {totalPrice && selectedTimeValue ? (
+        <AcceptHostedPage formToken={formToken} setResponse={setResponse} />
+      ) : (
+        ''
+      )}
+
+      {formTokenError && selectedTimeValue && (
         <div>
-          <p>{formTokenError}</p>
+          <p>
+            {formTokenError
+              ? 'Some Problem Occured Please Pick a Different Time or Refresh This Page'
+              : ''}
+          </p>
         </div>
       )}
+      <AdventureCard
+        description={lasvegas_atv_tours.description}
+        title={lasvegas_atv_tours.title}
+        playlistId=""
+        videoId=""
+        src={lasvegas_atv_tours.src}
+        linkHref="/book/atv-tours"
+      />
     </div>
   );
 }

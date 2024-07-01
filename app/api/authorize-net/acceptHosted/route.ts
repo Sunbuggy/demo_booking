@@ -41,13 +41,35 @@ async function fetchFormToken(
   setting2.setSettingName('hostedPaymentOrderOptions');
   setting2.setSettingValue('{"show": false}');
 
+  const setting3 = new APIContracts.SettingType();
+  setting3.setSettingName('hostedPaymentIFrameCommunicatorUrl');
+  setting3.setSettingValue(`{"url": "${process.env.IFRAME_COMMUNICATOR_URL}"}`);
+
   const setting4 = new APIContracts.SettingType();
   setting4.setSettingName('hostedPaymentReturnOptions');
   setting4.setSettingValue(
-    `{"showReceipt": true, "url": "${url}", "urlText": "Continue", "cancelUrl": "${url}/${lastpage}", "cancelUrlText": "Cancel"}`
+    // `{"showReceipt": true, "url": "${url}", "urlText": "Continue", "cancelUrl": "${url}/${lastpage}", "cancelUrlText": "Cancel"}`
+    `{"showReceipt": false, "cancelUrl": "${url}/${lastpage}", "cancelUrlText": "Cancel"}`
   );
 
-  const settingList = [setting1, setting2, setting4];
+  const setting5 = new APIContracts.SettingType();
+  setting5.setSettingName('hostedPaymentStyleOptions');
+  setting5.setSettingValue(`{"bgColor": "#090E19" }`);
+
+  const setting6 = new APIContracts.SettingType();
+  setting6.setSettingName('hostedPaymentPaymentOptions');
+  setting6.setSettingValue(
+    `{"cardCodeRequired": true, "showCreditCard": false, "showBankAccount": false}`
+  );
+
+  const settingList = [
+    setting1,
+    setting2,
+    setting3,
+    setting4,
+    setting5,
+    setting6
+  ];
 
   const arrList = new APIContracts.ArrayOfSetting();
   arrList.setSetting(settingList);

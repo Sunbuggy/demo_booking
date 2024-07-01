@@ -2,6 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarForm } from '../booking-calendar/vof';
 import { createId } from '@paralleldrive/cuid2';
+import AcceptHostedPage from '../../payment/acceptHosted';
+import AdventureCard from '../../choose-adventure/cards';
+import { valleyOfFire } from '@/utils/helpers';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -63,6 +66,8 @@ export function ValleyOfFirePage({ hotels }: { hotels: HotelType[] }) {
   const [totalPrice, setTotalPrice] = useState(0);
   const [formToken, setFormToken] = useState('');
   const [formTokenError, setFormTokenError] = useState('');
+  const [response, setResponse] = useState('');
+
   const [contactForm, setContactForm] = useState<ContactFom>({
     name: '',
     email: '',
@@ -100,7 +105,7 @@ export function ValleyOfFirePage({ hotels }: { hotels: HotelType[] }) {
       const phone = contactForm.phone;
       try {
         if (totalPrice && decodedId) {
-          const last_page = 'book/valleyoffire';
+          const last_page = 'book/valley-of-fire';
           const response = await fetch(
             `/api/authorize-net/acceptHosted/?amt=${String(totalPrice.toFixed(2))}&invoiceNumber=${decodedIdreduced}&fname=${fname}&lname=${lname}&phone=${phone}&lastpage=${last_page}`
           );
@@ -187,11 +192,28 @@ export function ValleyOfFirePage({ hotels }: { hotels: HotelType[] }) {
         setShowContactForm={setShowContactForm}
         formToken={formToken}
       />
-      {formTokenError && (
+      {totalPrice && selectedTimeValue ? (
+        <AcceptHostedPage formToken={formToken} setResponse={setResponse} />
+      ) : (
+        ''
+      )}
+
+      {formTokenError && selectedTimeValue && (
         <div>
-          <p>{formTokenError}</p>
+          <p>
+            {formTokenError
+              ? 'Some Problem Occured Please Pick a Different Time or Refresh This Page'
+              : ''}
+          </p>
         </div>
       )}
+      <AdventureCard
+        description={valleyOfFire.description}
+        title={valleyOfFire.title}
+        videoId={valleyOfFire.videoId}
+        playlistId={valleyOfFire.playlistId}
+        linkHref="/book/valley-of-fire"
+      />
     </div>
   );
 }
