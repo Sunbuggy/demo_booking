@@ -142,6 +142,7 @@ export const mb60_open_times = [
 export const ffr_open_times = ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
 export const mb120_open_times = ['8 am ', '10 am'];
 export const vof_open_times = ['8 am'];
+export const atv_open_times = ['8 am'];
 export type MbjVehicle = {
   id: number;
   name: string;
@@ -300,6 +301,45 @@ export const vof_vehicles_list = [
     pricing: {
       price: 799,
       name: 'utv'
+    }
+  }
+];
+
+export const atv_vehicles_list = [
+  {
+    id: 1,
+    name: 'Valley of fire 180 mins',
+    vehicle_id: 1,
+    seats: 1,
+    pricing: {
+      full_atv: 399
+    }
+  },
+  {
+    id: 2,
+    name: 'Amargosa 240 mins',
+    vehicle_id: 2,
+    seats: 1,
+    pricing: {
+      full_atv: 499
+    }
+  },
+  {
+    id: 3,
+    name: 'Vegas dunes 60 mins',
+    vehicle_id: 2,
+    seats: 1,
+    pricing: {
+      full_atv: 159
+    }
+  },
+  {
+    id: 4,
+    name: 'Vegas dunes 30 mins',
+    vehicle_id: 2,
+    seats: 1,
+    pricing: {
+      full_atv: 99
     }
   }
 ];

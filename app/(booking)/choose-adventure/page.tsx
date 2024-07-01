@@ -20,21 +20,21 @@ const ChooseAdventure = () => {
         videoId={minibajachase.videoId}
         playlistId={minibajachase.playlistId}
         // autoplay={1}
-        linkHref="/book/minibajachase"
+        linkHref="/book/minibaja-chase"
       />
       <AdventureCard
         description={familyFunRomp.description}
         title={familyFunRomp.title}
         videoId={familyFunRomp.videoId}
         playlistId={familyFunRomp.playlistId}
-        linkHref="/book/familyfunromp"
+        linkHref="/book/family-fun-romp"
       />
       <AdventureCard
         description={valleyOfFire.description}
         title={valleyOfFire.title}
         videoId={valleyOfFire.videoId}
         playlistId={valleyOfFire.playlistId}
-        linkHref="/book/valleyoffire"
+        linkHref="/book/valley-of-fire"
       />
       <AdventureCard
         description={lasvegas_atv_tours.description}
@@ -42,7 +42,7 @@ const ChooseAdventure = () => {
         playlistId=""
         videoId=""
         src={lasvegas_atv_tours.src}
-        linkHref="/book/lasvegasatvtours"
+        linkHref="/book/atv-tours"
       />
     </div>
   );
