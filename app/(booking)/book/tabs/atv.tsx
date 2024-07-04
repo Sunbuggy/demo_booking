@@ -108,9 +108,6 @@ export function BookingTabs({
                   <p className="text-green-500">
                     Final Price: ${totalPrice.toFixed(2)}
                   </p>
-                  <Button>
-                    <AcceptHostedPage formToken={formToken} />
-                  </Button>
                 </CardFooter>
               )}
             </Card>
