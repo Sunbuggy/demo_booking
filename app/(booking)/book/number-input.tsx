@@ -18,7 +18,7 @@ const NumberInput = ({ form }: { form: any }) => {
         name="howManyPeople"
         render={({ field }) => (
           <FormItem className="flex gap-2 items-baseline w-full">
-            <FormLabel>Group Size</FormLabel>
+            <FormLabel className="ml-2">Group Size</FormLabel>
             <FormControl>
               <Input
                 className={cn(

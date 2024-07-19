@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { getRedirectMethod } from '@/utils/auth-helpers/settings';
 import ThemeButton from '../mode-toggle';
 import Image from 'next/image';
+import { ImNewTab } from 'react-icons/im';
 
 interface NavlinksProps {
   user?: any;
@@ -14,10 +15,10 @@ interface NavlinksProps {
 export default function Navlinks({ user }: NavlinksProps) {
   const router = getRedirectMethod() === 'client' ? useRouter() : null;
   const path = usePathname();
-
+  const is_account_page = path === '/account';
   return (
     <div className=" flex  justify-between">
-      <div className=" ml-5">
+      <div className=" ml-5 flex gap-4">
         <Link href="/" aria-label="Logo">
           <div className="hidden dark:block">
             <Image
@@ -36,8 +37,19 @@ export default function Navlinks({ user }: NavlinksProps) {
             />
           </div>
         </Link>
+        {user && !is_account_page && (
+          <div className="flex flex-col justify-center">
+            <Link
+              href="/account"
+              target="_blank"
+              className="cursor-pointer dark:text-yellow-500 text-black flex items-center"
+            >
+              Profile <ImNewTab />
+            </Link>
+          </div>
+        )}
       </div>
-      <div className="flex justify-end space-x-8">
+      <div className="flex justify-end ">
         {user ? (
           <form onSubmit={(e) => handleRequest(e, SignOut, router)}>
             <input type="hidden" name="pathName" value={usePathname()} />

@@ -26,6 +26,16 @@ export const updateUserName = cache(
   }
 );
 
+export const updateUserLevel = cache(
+  async (supabase: SupabaseClient, user_level: number) => {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ user_level })
+      .eq('id', await getUser(supabase).then((user) => user?.id));
+    return { data, error };
+  }
+);
+
 export const fetchHotels = cache(async (supabase: SupabaseClient) => {
   const { data, error } = await supabase.from('hotels').select();
   if (error) {

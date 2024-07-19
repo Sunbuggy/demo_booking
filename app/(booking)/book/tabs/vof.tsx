@@ -65,7 +65,7 @@ export function BookingTabs({
     <div>
       <Tabs
         defaultValue={selectedTabValue}
-        className="w-[350px]"
+        className="w-screen md:w-[350px]"
         onValueChange={handleTabChange}
         value={selectedTabValue}
       >

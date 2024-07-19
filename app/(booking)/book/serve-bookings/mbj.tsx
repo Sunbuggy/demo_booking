@@ -91,7 +91,6 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
   useEffect(() => {
     if (selectedTimeValue !== null) {
       // Check if selectedTimeValue is not null or add your own condition
-      console.log(selectedTimeValue);
       handlePricing(selectedTimeValue);
     }
   }, [selectedTimeValue]);
@@ -122,7 +121,7 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
           }
         }
       } catch (error) {
-        console.log(error);
+        console.error(error);
       }
     }
 

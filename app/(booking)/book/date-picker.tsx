@@ -44,7 +44,7 @@ const DatePicker = ({
                   <Button
                     variant={'outline'}
                     className={cn(
-                      'w-[350px] pl-3 text-left font-normal',
+                      'w-screen md:w-[350px] pl-3 text-left font-normal',
                       !field.value && 'text-muted-foreground'
                     )}
                   >

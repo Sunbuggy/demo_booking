@@ -36,80 +36,88 @@ export function ContactForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-6">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem className=" flex gap-2 w-full  items-end justify-between">
-              <FormLabel>First and Last Name</FormLabel>
-              <FormControl>
-                <Input
-                  className="w-[75%]"
-                  placeholder="eg: Luke Skywalker"
-                  {...field}
-                />
-              </FormControl>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="w-full p-2">
+        <div className="space-y-2">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem className="grid grid-cols-3 items-center gap-4">
+                <FormLabel className="text-right">
+                  First and Last Name
+                </FormLabel>
+                <FormControl className="col-span-2">
+                  <Input
+                    className="w-full"
+                    placeholder="eg: Luke Skywalker"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem className="grid grid-cols-3 items-center gap-4">
+                <FormLabel className="text-right">Email</FormLabel>
+                <FormControl className="col-span-2">
+                  <Input
+                    className="w-full"
+                    placeholder="eg: luke@theforce.com"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem className=" flex gap-2 w-full  items-end justify-between">
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input
-                  className="w-[75%]"
-                  placeholder="eg: luke@theforce.com"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem className="grid grid-cols-3 items-center gap-4">
+                <FormLabel className="text-right">Phone</FormLabel>
+                <FormControl className="col-span-2">
+                  <Input
+                    className="w-full"
+                    placeholder="eg: 555-555-5555"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem className=" flex gap-2 w-full  items-end justify-between">
-              <FormLabel>Phone</FormLabel>
-              <FormControl>
-                <Input
-                  className="w-[75%]"
-                  placeholder="eg: 555-555-5555"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="groupName"
-          render={({ field }) => (
-            <FormItem className=" flex gap-2 w-full  items-end justify-between">
-              <FormLabel>Group Name(optional)</FormLabel>
-              <FormControl>
-                <Input
-                  className="w-[55%]"
-                  placeholder="eg: Team Jedi"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button type="submit">Next</Button>
+          <FormField
+            control={form.control}
+            name="groupName"
+            render={({ field }) => (
+              <FormItem className="grid grid-cols-3 items-center gap-4">
+                <FormLabel className="text-right">
+                  Group Name (optional)
+                </FormLabel>
+                <FormControl className="col-span-2">
+                  <Input
+                    className="w-full"
+                    placeholder="eg: Team Jedi"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="flex justify-end">
+          <Button type="submit" className="mt-4">
+            Next
+          </Button>
+        </div>
       </form>
     </Form>
   );

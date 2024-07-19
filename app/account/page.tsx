@@ -4,6 +4,7 @@ import NameForm from '@/components/ui/AccountForms/NameForm';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { getUserDetails, getUser } from '@/utils/supabase/queries';
+import RoleForm from '@/components/ui/AccountForms/RoleForm';
 
 export default async function Account() {
   const supabase = createClient();
@@ -12,6 +13,8 @@ export default async function Account() {
     getUserDetails(supabase)
   ]);
 
+  console.log(userDetails);
+  const role = userDetails?.user_level;
   if (!user) {
     return redirect('/signin');
   }
@@ -29,7 +32,8 @@ export default async function Account() {
       </div>
       <div className="p-4">
         <NameForm userName={userDetails?.full_name ?? ''} />
-        <EmailForm userEmail={user.email} />
+        {/* <EmailForm userEmail={user.email} /> */}
+        {role > 950 ? <RoleForm role={String(role) ?? ''} /> : ''}
       </div>
     </section>
   );

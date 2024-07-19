@@ -91,7 +91,6 @@ export function ValleyOfFirePage({ hotels }: { hotels: HotelType[] }) {
   useEffect(() => {
     if (selectedTimeValue !== null) {
       // Check if selectedTimeValue is not null or add your own condition
-      console.log(selectedTimeValue);
       handlePricing(selectedTimeValue);
     }
   }, [selectedTimeValue]);
@@ -121,7 +120,7 @@ export function ValleyOfFirePage({ hotels }: { hotels: HotelType[] }) {
           }
         }
       } catch (error) {
-        console.log(error);
+        console.error(error);
       }
     }
 
@@ -137,7 +136,6 @@ export function ValleyOfFirePage({ hotels }: { hotels: HotelType[] }) {
       if (vehicle.isChecked) {
         // Fetch the price for the selected time value
         const priceForTime = vehicle.pricing.price;
-        console.log(vehicle);
         // Calculate total price for this vehicle
         const totalVehiclePrice = priceForTime * vehicle.count * vehicle.seats;
         // Add to the total price
@@ -160,7 +158,7 @@ export function ValleyOfFirePage({ hotels }: { hotels: HotelType[] }) {
   };
 
   return (
-    <div className=" font-extrabold dark:text-white sm:text-center grid justify-center items-start h-fit ">
+    <div className=" font-extrabold dark:text-white sm:text-center flex flex-col justify-center items-center h-fit ">
       <CalendarForm
         bookInfo={bookInfo}
         freeShuttle={freeShuttle}

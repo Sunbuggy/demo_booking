@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { getURL, getErrorRedirect, getStatusRedirect } from 'utils/helpers';
 import { getAuthTypes } from 'utils/auth-helpers/settings';
 import { updateUserName } from '../supabase/queries';
+import { updateUserLevel } from '../supabase/queries';
 
 function isValidEmail(email: string) {
   var regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
@@ -323,6 +324,27 @@ export async function updateName(formData: FormData) {
       '/account',
       'Success!',
       'Your name has been updated.'
+    );
+  }
+}
+
+export async function updateRole(formData: FormData) {
+  // Get form data
+  const role = Number(formData.get('current_role'));
+
+  const supabase = createClient();
+  const { error } = await updateUserLevel(supabase, role);
+  if (error) {
+    return getErrorRedirect(
+      '/account',
+      'Your role could not be updated.',
+      error.message
+    );
+  } else {
+    return getStatusRedirect(
+      '/account',
+      'Success!',
+      'Your role has been updated.'
     );
   }
 }

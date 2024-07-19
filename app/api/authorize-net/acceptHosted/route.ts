@@ -101,7 +101,7 @@ async function fetchFormToken(
       return apiResponse.getToken();
     } else {
       const errorMessage = apiResponse.getMessages();
-      console.log('Failed to get transaction details:', errorMessage);
+      console.error('Failed to get transaction details:', errorMessage);
       return null;
     }
   } catch (error) {
@@ -134,7 +134,7 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json({ formToken }, { status: 200 });
   } catch (e) {
-    console.log(e);
+    console.error(e);
     return NextResponse.json({ error: e }, { status: 500 });
   }
 }

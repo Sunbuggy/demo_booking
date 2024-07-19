@@ -13,7 +13,7 @@ import {
 } from '../serve-bookings/vof';
 import DatePicker from '../date-picker';
 import NumberInput from '../number-input';
-import ComboBox from '../../../../components/combo-box';
+import ComboBox from '../../../../components/hotel-combo-box';
 import { Checkbox } from '@/components/ui/checkbox';
 import { vof_vehicles_list } from '@/utils/helpers';
 import { ContactForm } from '../contact-form';
@@ -173,7 +173,7 @@ export function CalendarForm({
   }
 
   return (
-    <div className="w-[350px]">
+    <div className="w-screen md:w-[350px]">
       <Form {...form}>
         <form
           className={` gap-2 mb-7 w-full  items-baseline ${hideForm ? 'hidden' : 'flex flex-col'}`}
@@ -215,7 +215,7 @@ export function CalendarForm({
         </form>
       </Form>
       {hideForm && (
-        <div className="flex flex-col w-full mb-5 items-start gap-2">
+        <div className="flex flex-col w-full mb-5 items-center gap-2">
           <p>
             Booking date: {bookInfo.bookingDate.toISOString().split('T')[0]}
           </p>
@@ -239,7 +239,7 @@ export function CalendarForm({
         </div>
       )}
       {hideForm && (
-        <div className="flex flex-col w-full mb-5 items-start gap-2">
+        <div className="flex flex-col w-full mb-5 items-center gap-2">
           <p>
             Assigned Seats:{' '}
             <span
@@ -285,25 +285,31 @@ export function CalendarForm({
             </Button>
           )}
           {showPricing && (
-            <div className="flex flex-col w-full mb-5 items-start gap-2">
-              <p>
-                Name: <span className="text-green-500">{contactForm.name}</span>
-              </p>
-              <p>
-                Email:{' '}
-                <span className="text-green-500">{contactForm.email}</span>
-              </p>
-              <p>
-                Phone:{' '}
-                <span className="text-green-500">{contactForm.phone}</span>
-              </p>
-              {contactForm.groupName && `Group Name: ${contactForm.groupName}`}
+            <div className="flex flex-col w-full mb-5 items-center gap-2">
+              <div className="flex flex-col items-start">
+                <p>
+                  Name:{' '}
+                  <span className="text-green-500">{contactForm.name}</span>
+                </p>
+                <p>
+                  Email:{' '}
+                  <span className="text-green-500">{contactForm.email}</span>
+                </p>
+                <p>
+                  Phone:{' '}
+                  <span className="text-green-500">{contactForm.phone}</span>
+                </p>
+                <p>
+                  {contactForm.groupName &&
+                    `Group Name: ${contactForm.groupName}`}
+                </p>
+              </div>
             </div>
           )}
 
           {!showContactForm && !showPricing && (
-            <div className="flex flex-col w-full">
-              <p className="text-start text-lg mb-2 ">Choose Fleet</p>
+            <div className="flex flex-col w-full items-center">
+              <p className="text-center text-lg mb-2 ">Choose Fleet</p>
               {vof_vehicles_list.map((vehicle) => (
                 <div
                   key={vehicle.id}
@@ -362,7 +368,6 @@ export function CalendarForm({
                   <Button
                     disabled={totalSeats < bookInfo.howManyPeople}
                     onClick={() => {
-                      console.log(vehicleCounts);
                       setShowContactForm(true);
                     }}
                   >
