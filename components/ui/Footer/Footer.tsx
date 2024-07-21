@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 export default function Footer() {
+  const date = new Date().toISOString().split('T')[0];
   return (
     <footer className="mx-auto px-6 bg-zinc-900 w-screen">
       <div className="grid grid-cols-1 gap-2 py-12 text-white transition-colors duration-150 border-b lg:grid-cols-12 border-zinc-600 bg-zinc-900">
@@ -78,6 +79,14 @@ export default function Footer() {
                 className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
               >
                 Terms of Use
+              </Link>
+            </li>
+            <li className="py-3 md:py-0 md:pb-4">
+              <Link
+                href={`/biz/${date}`}
+                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
+              >
+                Internal{' '}
               </Link>
             </li>
           </ul>
