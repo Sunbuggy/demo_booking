@@ -19,7 +19,6 @@ export async function fetch_from_old_db(query: string) {
 export async function getTimeSortedData(data: Reservation[]) {
   if (data.length > 0) {
     const data_with_location = changeLocation(data);
-    const data_with_vehicles = changeVehicleName(data_with_location);
 
     const transform_sch_time = (sch_time: string) => {
       // Format of sch_time is 'hh:mm'
@@ -36,7 +35,7 @@ export async function getTimeSortedData(data: Reservation[]) {
       }
     };
     //   sch_time transformed data
-    const sch_time_transformed_data = data_with_vehicles?.map((reservation) => {
+    const sch_time_transformed_data = data_with_location?.map((reservation) => {
       return {
         ...reservation,
         sch_time: transform_sch_time(String(reservation?.sch_time))
@@ -210,29 +209,3 @@ function changeLocation(data: Reservation[]) {
   });
   return with_location;
 }
-
-const changeVehicleName = (data: Reservation[]) => {
-  const result: Reservation[] = data.map((itm) => {
-    return {
-      ...itm,
-      QA: Number(itm.ATV_2wd),
-      QB: Number(itm.ATVs),
-      QU: Number(itm.med_ATV_2wd),
-      QL: Number(itm.LuxuryATV),
-      SB1: Number(itm.OneSeaters),
-      SB2: Number(itm.TwoSeaters),
-      SB4: Number(itm.FourSeaters),
-      SB5: Number(itm.FiveSeaters),
-      SB6: Number(itm.Sixseaters),
-      twoSeat4wd: Number(itm.TwoSeat_4wd),
-      UZ2: Number(itm.TwoSeatrzr),
-      UZ4: Number(itm.FourSeatrzr),
-      RWG: Number(itm.RideGuide),
-      GoKartAdd: Number(itm.GoKart),
-      GoKart: Number(itm.GoKart)
-    };
-  });
-  return result;
-};
-
-const getPeopleAndCars = (data: Reservation[]) => {};

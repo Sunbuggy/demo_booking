@@ -1,7 +1,6 @@
-'use client';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import React from 'react';
 import { Reservation } from '../types';
+import HourCard from './hour-card';
 
 /**
  * Renders a landing component that displays reservation data.
@@ -14,39 +13,16 @@ const Landing = ({
   data
 }: {
   data: Record<string, Record<string, Reservation[]>>;
-}) => {
-  return (
-    <>
-      {Object.keys(data).map((key) => {
-        return (
-          <Card key={key}>
-            <CardTitle>{key}</CardTitle>
-            <CardContent>
-              {Object.keys(data[key]).map((innerKey) => {
-                return (
-                  <Card key={innerKey}>
-                    <CardTitle>{innerKey}</CardTitle>{' '}
-                    <CardContent>
-                      {data[key][innerKey].map((reservation) => {
-                        return (
-                          <Card key={reservation.res_id}>
-                            <CardTitle>{reservation.full_name}</CardTitle>
-                            <CardContent>
-                              <div>{reservation.occasion?.toLowerCase()}</div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </CardContent>
-          </Card>
-        );
-      })}
-    </>
-  );
+}): JSX.Element => {
+  if (data)
+    return (
+      <div className="flex flex-col gap-5">
+        {Object.keys(data).map((key) => {
+          return <HourCard data={data} key={key} hr={key} />;
+        })}
+      </div>
+    );
+  return <div>No data</div>;
 };
 
 export default Landing;

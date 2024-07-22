@@ -4,8 +4,8 @@ import Image from 'next/image';
 export default function Footer() {
   const date = new Date().toISOString().split('T')[0];
   return (
-    <footer className="mx-auto px-6 bg-zinc-900 w-screen">
-      <div className="grid grid-cols-1 gap-2 py-12 text-white transition-colors duration-150 border-b lg:grid-cols-12 border-zinc-600 bg-zinc-900">
+    <footer className="mx-auto px-6  w-screen">
+      <div className="grid grid-cols-1 gap-2 py-12 transition-colors duration-150 border-b lg:grid-cols-12 border-zinc-600 ">
         <div className="col-span-1 lg:col-span-2">
           <Link
             href="/"
@@ -17,7 +17,15 @@ export default function Footer() {
               width="0"
               height="0"
               sizes="100vw"
-              className="w-[100px] h-[30px] md:w-[120px] md:h-[36px]"
+              className="w-[100px] h-[30px] md:w-[120px] md:h-[36px] hidden dark:block"
+            />{' '}
+            <Image
+              src={'/sb-logo-circle-black.svg'}
+              alt="sunbuggy logo"
+              width="0"
+              height="0"
+              sizes="100vw"
+              className="w-[100px] h-[30px] md:w-[120px] md:h-[36px] dark:hidden"
             />{' '}
             <span>Sunbuggy</span>
           </Link>
@@ -25,34 +33,22 @@ export default function Footer() {
         <div className="col-span-1 lg:col-span-2">
           <ul className="flex flex-col flex-initial md:flex-1">
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                href="/"
-                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 Home
               </Link>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                href="/"
-                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 About
               </Link>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                href="/"
-                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 Careers
               </Link>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                href="/"
-                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 Blog
               </Link>
             </li>
@@ -61,30 +57,24 @@ export default function Footer() {
         <div className="col-span-1 lg:col-span-2">
           <ul className="flex flex-col flex-initial md:flex-1">
             <li className="py-3 md:py-0 md:pb-4">
-              <p className="font-bold dark:text-white transition duration-150 ease-in-out hover:text-zinc-200">
+              <p className="font-bold  transition duration-150 ease-in-out ">
                 LEGAL
               </p>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                href="/"
-                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 Privacy Policy
               </Link>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                href="/"
-                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 Terms of Use
               </Link>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
               <Link
                 href={`/biz/${date}`}
-                className="dark:text-white transition duration-150 ease-in-out hover:text-zinc-200"
+                className=" transition duration-150 ease-in-out "
               >
                 Internal{' '}
               </Link>
@@ -92,7 +82,7 @@ export default function Footer() {
           </ul>
         </div>
       </div>
-      <div className="flex flex-col items-center justify-between py-12 space-y-4 md:flex-row bg-zinc-900">
+      <div className="flex flex-col items-center justify-between py-12 space-y-4 md:flex-row ">
         <div>
           <span>
             &copy; {new Date().getFullYear()} Sunbuggy, Inc. All rights
@@ -100,16 +90,28 @@ export default function Footer() {
           </span>
         </div>
         <div className="flex items-center">
-          <span className="dark:text-white mr-3">Crafted by</span>
+          <span className=" mr-3">Crafted by</span>
           <a href="https://sunbuggy.com" aria-label="sunbuggy.com Link">
-            <Image
-              src={'/sb-logo-yellow-with-text.svg'}
-              alt="sunbuggy logo"
-              width="0"
-              height="0"
-              sizes="100vw"
-              className="w-[100px] h-[30px] md:w-[120px] md:h-[36px]"
-            />
+            <div className=" hidden dark:block">
+              <Image
+                src={'/sb-logo-yellow-with-text.svg'}
+                alt="sunbuggy logo"
+                width="0"
+                height="0"
+                sizes="100vw"
+                className="w-[100px] h-[30px] md:w-[120px] md:h-[36px]"
+              />
+            </div>
+            <div className="dark:hidden">
+              <Image
+                src={'/sb-logo-black-with-text.svg'}
+                alt="sunbuggy logo"
+                width="0"
+                height="0"
+                sizes="100vw"
+                className="w-[100px] h-[30px] md:w-[120px] md:h-[36px]"
+              />
+            </div>
           </a>
         </div>
       </div>
