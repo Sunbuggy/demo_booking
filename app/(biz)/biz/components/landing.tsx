@@ -17,6 +17,25 @@ const Landing = ({
   if (data)
     return (
       <div className="flex flex-col gap-5">
+        {/* $
+        {
+          // Sum of all reservation.total_cost for the given data
+          Object.keys(data)
+            .reduce((acc, hr) => {
+              return (
+                acc +
+                Object.keys(data[hr]).reduce((acc, locationKey) => {
+                  return (
+                    acc +
+                    data[hr][locationKey].reduce((acc, reservation) => {
+                      return acc + Number(reservation.total_cost);
+                    }, 0)
+                  );
+                }, 0)
+              );
+            }, 0)
+            .toFixed(2)
+        } */}
         {Object.keys(data).map((key) => {
           return <HourCard data={data} key={key} hr={key} />;
         })}

@@ -94,6 +94,17 @@ const LocationCard = ({
             )
           </span>
         </span>
+        <div>
+          $
+          {
+            //  Sum of all reservation.total_cost for the given location
+            data[id][locationKey]
+              .reduce((acc, reservation) => {
+                return acc + Number(reservation.total_cost);
+              }, 0)
+              .toFixed(2)
+          }
+        </div>
       </CardTitle>{' '}
       <CardContent className=" flex flex-col gap-3 p-2">
         {data[id][locationKey].map((reservation, key) => {

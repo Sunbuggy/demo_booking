@@ -101,6 +101,22 @@ const HourCard = ({
             )
           </span>
         </span>
+        <div>
+          $
+          {
+            //  Sum of all reservation.total_cost for the given data
+            Object.keys(data[hr])
+              .reduce((acc, locationKey) => {
+                return (
+                  acc +
+                  data[hr][locationKey].reduce((acc, reservation) => {
+                    return acc + Number(reservation.total_cost);
+                  }, 0)
+                );
+              }, 0)
+              .toFixed(2)
+          }
+        </div>
       </CardTitle>
       <CardContent className="flex flex-col gap-5 p-3">
         {Object.keys(data[hr]).map((locationKey) => {

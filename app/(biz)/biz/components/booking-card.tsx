@@ -24,6 +24,7 @@ const BookingCard = ({
           <p>#PPL: {reservation.ppl_count}/</p>
         </div>
         <div className="flex gap-2">
+          {/* Vehicles */}
           {vehiclesList
             .filter(
               (key) => Number(reservation[key as keyof typeof reservation]) > 0
@@ -39,6 +40,8 @@ const BookingCard = ({
                 </p>
               );
             })}
+          {/* Total Cost */}
+          <p>${reservation.total_cost}/</p>
         </div>
 
         <div className="flex gap-2"></div>
