@@ -2,39 +2,21 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import React from 'react';
 import LocationCard from './location-card';
 import { Reservation } from '../types';
-export const vehiclesList = [
-  'QA',
-  'QB',
-  'QU',
-  'QL',
-  'SB1',
-  'SB2',
-  'SB4',
-  'SB5',
-  'SB6',
-  'twoSeat4wd',
-  'UZ2',
-  'UZ4',
-  'RWG',
-  'GoKartplus',
-  'GoKart'
-];
+import {
+  countPeople,
+  getVehicleCount,
+  vehiclesList
+} from '@/utils/old_db/helpers';
 
 const HourCard = ({
   hr,
-  data
+  data,
+  display_cost
 }: {
   hr: string;
   data: Record<string, Record<string, Reservation[]>>;
+    display_cost: boolean;
 }) => {
-  const getVehicleCount = (reservation: Reservation): number => {
-    return vehiclesList.reduce((acc, key) => {
-      return acc + Number(reservation[key as keyof typeof reservation]);
-    }, 0);
-  };
-  const countPeople = (reservation: Reservation): number => {
-    return reservation.ppl_count;
-  };
   return (
     <Card key={hr} className="p-0 w-96 md:min-w-96">
       <CardTitle className="my-3 ml-4">
@@ -101,7 +83,7 @@ const HourCard = ({
             )
           </span>
         </span>
-        <div>
+        {display_cost && <div className="font-light text-sm text-green-600">
           $
           {
             //  Sum of all reservation.total_cost for the given data
@@ -116,7 +98,7 @@ const HourCard = ({
               }, 0)
               .toFixed(2)
           }
-        </div>
+        </div>}
       </CardTitle>
       <CardContent className="flex flex-col gap-5 p-3">
         {Object.keys(data[hr]).map((locationKey) => {
@@ -126,6 +108,7 @@ const HourCard = ({
               id={hr}
               data={data}
               locationKey={locationKey}
+              display_cost={display_cost}
             />
           );
         })}

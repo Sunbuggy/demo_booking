@@ -2,31 +2,18 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import React from 'react';
 import { Reservation } from '../types';
 import BookingCard from './booking-card';
-export const vehiclesList = [
-  'QA',
-  'QB',
-  'QU',
-  'QL',
-  'SB1',
-  'SB2',
-  'SB4',
-  'SB5',
-  'SB6',
-  'twoSeat4wd',
-  'UZ2',
-  'UZ4',
-  'RWG',
-  'GoKartplus',
-  'GoKart'
-];
+import { vehiclesList } from '@/utils/old_db/helpers';
+
 const LocationCard = ({
   id,
   data,
-  locationKey
+  locationKey,
+  display_cost
 }: {
   id: string;
   data: Record<string, Record<string, Reservation[]>>;
   locationKey: string;
+  display_cost: boolean;
 }) => {
   // Calculate adding up the non zero values of the vehiclesList and return the sum
   const getVehicleCount = (reservation: Reservation): number => {
@@ -94,17 +81,19 @@ const LocationCard = ({
             )
           </span>
         </span>
-        <div>
-          $
-          {
-            //  Sum of all reservation.total_cost for the given location
-            data[id][locationKey]
-              .reduce((acc, reservation) => {
-                return acc + Number(reservation.total_cost);
-              }, 0)
-              .toFixed(2)
-          }
-        </div>
+        {display_cost && (
+          <div className="text-green-600">
+            $
+            {
+              //  Sum of all reservation.total_cost for the given location
+              data[id][locationKey]
+                .reduce((acc, reservation) => {
+                  return acc + Number(reservation.total_cost);
+                }, 0)
+                .toFixed(2)
+            }
+          </div>
+        )}
       </CardTitle>{' '}
       <CardContent className=" flex flex-col gap-3 p-2">
         {data[id][locationKey].map((reservation, key) => {
@@ -113,6 +102,7 @@ const LocationCard = ({
               reservation={reservation}
               key={key}
               vehiclesList={vehiclesList}
+              display_cost={display_cost}
             />
           );
         })}

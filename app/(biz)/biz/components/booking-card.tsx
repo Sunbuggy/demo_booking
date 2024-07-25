@@ -4,18 +4,26 @@ import { Reservation } from '../types';
 
 const BookingCard = ({
   reservation,
-  vehiclesList
+  vehiclesList,
+  display_cost
 }: {
   reservation: Reservation;
   vehiclesList: string[];
+  display_cost: boolean;
 }) => {
   return (
     <Card
       key={reservation.res_id}
       className={` rounded-md border-l-0 border-t-0 pl-3 py-2 shadow-none ${reservation.is_special_event ? 'text-green-600 dark:text-green-500' : ''}`}
     >
-      <CardTitle className=" text-base">
-        {reservation.full_name} [{reservation.res_id}]
+      <CardTitle className="text-base flex gap-2">
+        <i>
+          <u className=" font-extralight text-sm">{reservation.res_id}</u>
+        </i>{' '}
+        <strong>{reservation.full_name}</strong> {/* Total Cost */}
+        {display_cost && (
+          <i className="text-green"> ${reservation.total_cost}</i>
+        )}
       </CardTitle>
       <CardContent className="p-0">
         <div className="flex gap-2">
@@ -40,8 +48,6 @@ const BookingCard = ({
                 </p>
               );
             })}
-          {/* Total Cost */}
-          <p>${reservation.total_cost}/</p>
         </div>
 
         <div className="flex gap-2"></div>

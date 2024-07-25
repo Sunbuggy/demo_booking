@@ -209,3 +209,28 @@ function changeLocation(data: Reservation[]) {
   });
   return with_location;
 }
+export const vehiclesList = [
+  'QA',
+  'QB',
+  'QU',
+  'QL',
+  'SB1',
+  'SB2',
+  'SB4',
+  'SB5',
+  'SB6',
+  'twoSeat4wd',
+  'UZ2',
+  'UZ4',
+  'RWG',
+  'GoKartplus',
+  'GoKart'
+];
+export const getVehicleCount = (reservation: Reservation): number => {
+  return vehiclesList.reduce((acc, key) => {
+    return acc + Number(reservation[key as keyof typeof reservation]);
+  }, 0);
+};
+export const countPeople = (reservation: Reservation): number => {
+  return reservation.ppl_count;
+};
