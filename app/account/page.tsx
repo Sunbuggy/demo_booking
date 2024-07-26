@@ -25,7 +25,7 @@ export default async function Account() {
       </div>
       <div className="p-4">
         <NameForm userName={user?.full_name ?? ''} />
-        {Number(role) > 950 ? <RoleForm role={String(role) ?? ''} /> : ''}
+        {Number(role) > 900 ? <RoleForm role={String(role) ?? ''} /> : ''}
       </div>
     </section>
   );

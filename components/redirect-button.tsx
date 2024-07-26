@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button } from './ui/button';
-import { redirect, usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 const RedirectButton = ({
   name,
@@ -12,11 +12,17 @@ const RedirectButton = ({
   redirect_path: string;
 }) => {
   const path = usePathname();
+  const router = useRouter();
   function clickAction() {
-    console.log('Redirecting to:', `${path}/${redirect_path}`);
-    return redirect(`${path}/${redirect_path}`);
+    return router.push(
+      `${process.env.NEXT_PUBLIC_SITE_URL}/${path}/${redirect_path}`
+    );
   }
-  return <Button onClick={() => clickAction()}>{name}</Button>;
+  return (
+    <Button variant="ghost" size="sm" onClick={() => clickAction()}>
+      {name}
+    </Button>
+  );
 };
 
 export default RedirectButton;

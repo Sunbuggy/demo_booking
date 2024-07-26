@@ -4,17 +4,20 @@ import { Reservation } from '../types';
 import { getUserDetails } from '@/utils/supabase/queries';
 import AdminPanel from '../components/admin-panel';
 import Link from 'next/link';
+import TorchPanel from '../components/torch-panel';
+import PanelSelector from '../components/panel-selector';
 const BizPage = async ({
   params,
   searchParams
 }: {
   params: { date: string };
-  searchParams: { dcos: boolean };
+  searchParams: { dcos: boolean; torchc: boolean; admc: boolean };
 }) => {
   const date = params.date;
   const dcos = searchParams.dcos;
   const user = await getUserDetails();
   const role = user?.user_level;
+  const full_name = user?.full_name;
   // Regular expression to match the date format yyyy-dd-mm
   const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -30,7 +33,16 @@ const BizPage = async ({
     const loadedData = data && (await getTimeSortedData(data));
     return (
       <div className="min-h-screen flex flex-col gap-5">
-        {role && role > 899 && <AdminPanel display_cost={dcos} />}
+        {role && role > 650 && (
+          <PanelSelector
+            role={role}
+            admin={
+              <AdminPanel display_cost={dcos} full_name={full_name || ''} />
+            }
+            torch={<TorchPanel full_name={full_name || ''} />}
+          />
+        )}
+
         {loadedData && role && role > 350 ? (
           <Landing data={loadedData} display_cost={dcos} role={role} />
         ) : role && role < 350 ? (

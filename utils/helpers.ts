@@ -1,3 +1,4 @@
+// import 'server-only';
 import type { Tables } from '@/types_db';
 
 type Price = Tables<'prices'>;

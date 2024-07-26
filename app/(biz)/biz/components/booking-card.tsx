@@ -22,16 +22,26 @@ const BookingCard = ({
         </i>{' '}
         <strong>{reservation.full_name}</strong> {/* Total Cost */}
         {display_cost && (
-          <i className="text-green"> ${reservation.total_cost}</i>
+          <i className="text-green-600"> ${reservation.total_cost}</i>
         )}
       </CardTitle>
       <CardContent className="p-0">
         <div className="flex gap-2">
-          <p>{reservation.occasion?.toLowerCase().slice(0, 12)}/</p>
-          <p>{reservation.hotel?.toLowerCase().slice(0, 12)}/</p>
-          <p>#PPL: {reservation.ppl_count}/</p>
+          <p>
+            {reservation.occasion?.toLowerCase().slice(0, 12) || 'occasion'}
+          </p>
+          <p>
+            {reservation.hotel?.toLocaleLowerCase() === 'drive here' ? (
+              <span className="text-gray-600 dark:text-red-300">
+                {reservation.hotel?.toLowerCase()}
+              </span>
+            ) : (
+              reservation.hotel?.toLowerCase().slice(0, 12)
+            )}
+          </p>
+          <p className=" text-sm text-lime-200">P-{reservation.ppl_count}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 text-sm ">
           {/* Vehicles */}
           {vehiclesList
             .filter(
@@ -42,15 +52,16 @@ const BookingCard = ({
                 reservation[key as keyof typeof reservation]
               );
               return (
-                <p key={key}>
-                  {count}-{key}
-                  {count > 1 ? 's' : ''}/
-                </p>
+                <>
+                  <p className="italic font-thin text-orange-200" key={key}>
+                    {count}-{key}
+                    {count > 1 ? 's' : ''}
+                  </p>
+                  <div className="flex gap-2 ">GR?</div>
+                </>
               );
             })}
         </div>
-
-        <div className="flex gap-2"></div>
       </CardContent>
     </Card>
   );
