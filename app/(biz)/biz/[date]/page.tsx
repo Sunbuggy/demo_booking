@@ -1,11 +1,12 @@
 import Landing from '../components/landing';
-import { fetch_from_old_db, getTimeSortedData } from '@/utils/old_db/helpers';
+import { getTimeSortedData } from '@/utils/old_db/helpers';
 import { Reservation } from '../types';
 import { getUserDetails } from '@/utils/supabase/queries';
 import AdminPanel from '../components/admin-panel';
 import Link from 'next/link';
 import TorchPanel from '../components/torch-panel';
 import PanelSelector from '../components/panel-selector';
+import { fetch_from_old_db } from '@/utils/old_db/actions';
 const BizPage = async ({
   params,
   searchParams
