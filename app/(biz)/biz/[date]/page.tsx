@@ -7,6 +7,10 @@ import Link from 'next/link';
 import TorchPanel from '../components/torch-panel';
 import PanelSelector from '../components/panel-selector';
 import { fetch_from_old_db } from '@/utils/old_db/actions';
+import { Button } from '@/components/ui/button';
+import { RiArrowLeftWideFill, RiArrowRightWideFill } from 'react-icons/ri';
+import dayjs from 'dayjs';
+
 const BizPage = async ({
   params,
   searchParams
@@ -19,6 +23,8 @@ const BizPage = async ({
   const user = await getUserDetails();
   const role = user?.user_level;
   const full_name = user?.full_name;
+  const yesterday = dayjs(date).subtract(1, 'day').format('YYYY-MM-DD');
+  const tomorrow = dayjs(date).add(1, 'day').format('YYYY-MM-DD');
   // Regular expression to match the date format yyyy-dd-mm
   const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -34,6 +40,19 @@ const BizPage = async ({
     const loadedData = data && (await getTimeSortedData(data));
     return (
       <div className="min-h-screen flex flex-col gap-5">
+        {role && role > 299 && (
+          <div className="flex gap-2 justify-center items-center">
+            <Link href={`/biz/${yesterday}`} passHref>
+              <RiArrowLeftWideFill />
+            </Link>
+            <Link href="/biz/calendar" passHref>
+              <Button>{date}</Button>
+            </Link>
+            <Link href={`/biz/${tomorrow}`} passHref>
+              <RiArrowRightWideFill />
+            </Link>
+          </div>
+        )}
         {role && role > 650 && (
           <PanelSelector
             role={role}
