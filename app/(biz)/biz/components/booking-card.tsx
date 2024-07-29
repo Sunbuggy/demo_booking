@@ -57,7 +57,9 @@ const BookingCard = ({
                     {count}-{key}
                     {count > 1 ? 's' : ''}
                   </p>
-                  <div className="flex gap-2 ">GR?</div>
+                  <div key={`GR-${key}`} className="flex gap-2 ">
+                    GR?
+                  </div>
                 </>
               );
             })}

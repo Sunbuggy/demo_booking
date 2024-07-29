@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { getUserDetails } from '@/utils/supabase/queries';
 
-export default function Footer() {
+export default async function Footer() {
   const date = new Date().toISOString().split('T')[0];
+  const user = await getUserDetails();
+  const role = user?.user_level;
   return (
     <footer className="mx-auto px-6  w-screen">
       <div className="grid grid-cols-1 gap-2 py-12 transition-colors duration-150 border-b lg:grid-cols-12 border-zinc-600 ">
@@ -71,14 +74,16 @@ export default function Footer() {
                 Terms of Use
               </Link>
             </li>
-            <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                href={`/biz/${date}`}
-                className=" transition duration-150 ease-in-out "
-              >
-                Internal{' '}
-              </Link>
-            </li>
+            {role && role > 299 && (
+              <li className="py-3 md:py-0 md:pb-4">
+                <Link
+                  href={`/biz/${date}`}
+                  className=" transition duration-150 ease-in-out "
+                >
+                  Internal{' '}
+                </Link>
+              </li>
+            )}
           </ul>
         </div>
       </div>

@@ -15,7 +15,7 @@ const RedirectButton = ({
   const router = useRouter();
   function clickAction() {
     return router.push(
-      `${process.env.NEXT_PUBLIC_SITE_URL}/${path}/${redirect_path}`
+      `${process.env.NODE_ENV === 'production' ? `/${redirect_path}` : `${process.env.NEXT_PUBLIC_SITE_URL}/${path}/${redirect_path}`}`
     );
   }
   return (
