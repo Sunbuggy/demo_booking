@@ -302,13 +302,13 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
                 }}
               />
             </ConfigProvider>
-            <div className="flex items-center space-x-2 m-5">
+            {role > 899 && <div className="flex items-center space-x-2 m-5">
               <Switch
                 onCheckedChange={(checked) => setShowRevenue(checked)}
                 id="show-revenue"
               />
               <Label htmlFor="show-revenue">Show Revenue</Label>
-            </div>
+            </div>}
             {!switch_to_year ? (
               <>
                 {monthTotal > 0 && role && role > 899 && (
