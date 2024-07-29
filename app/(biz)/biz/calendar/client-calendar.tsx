@@ -15,6 +15,7 @@ import { Card, CardTitle } from '@/components/ui/card';
 import { vehiclesList } from '@/utils/old_db/helpers';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import MonthCell from './month-cell';
 
 type ClientCalendarProps = {
   role: number;
@@ -24,7 +25,7 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
   const [year, setYear] = React.useState<string>(dayjs().format('YYYY'));
   const [month, setMonth] = React.useState<string>(dayjs().format('MM'));
   const [date, setDate] = React.useState<string>(dayjs().format('DD'));
-  const [loading, setLoading] = React.useState<boolean>(false);
+  const [loading, setLoading] = React.useState<boolean>(true);
   const [switch_to_year, setSwitchToYear] = React.useState<boolean>(false);
   const [yearData, setYearData] = React.useState<Reservation[]>([]);
   const [monthData, setMonthData] = React.useState<Reservation[]>([]);
@@ -32,12 +33,25 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
   const [monthTotal, setMonthTotal] = React.useState<number>(0);
   const [year_ppl_total, setYearPplTotal] = React.useState<number>(0);
   const [monthly_ppl_total, setMonthlyPplTotal] = React.useState<number>(0);
+  const [currentMode, setCurrentMode] = React.useState<'year' | 'month'>(
+    'month'
+  );
+  const [yearly_vehicles, setYearlyVehicles] = React.useState<{}>({});
+  const [total_yearly_vehicle_count, setTotalYearlyVehicleCount] =
+    React.useState<number>(0);
   const [showRevenue, setShowRevenue] = React.useState<boolean>(false);
-  const [monthyl_vehicles, setMonthlyVehicles] = React.useState<{}>({});
+  const [monthly_vehicles, setMonthlyVehicles] = React.useState<{}>({});
+  const [month_total_location_cost, setMonthTotalLocationCost] =
+    React.useState<{ [x: string]: number }>({});
+  const [year_total_location_cost, setYearTotalLocationCost] = React.useState<{
+    [x: string]: number;
+  }>({});
   const [total_monthly_vehicle_count, setTotalMonthlyVehicleCount] =
     React.useState<number>(0);
-  const [key, setKey] = React.useState<string>(`${year}-${month}`);
-  const [locations, setLocations] = React.useState<{
+  const [month_locations, setMonthLocations] = React.useState<{
+    [x: string]: number;
+  }>({});
+  const [year_locations, setYearLocations] = React.useState<{
     [x: string]: number;
   }>({});
   const { systemTheme, theme } = useTheme();
@@ -60,22 +74,46 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
         setLoading(false);
       }
     }
-    fetch_old_db(month_query);
+    if (switch_to_year) {
+      fetch_old_db(year_query);
+    } else {
+      fetch_old_db(month_query);
+    }
   }, [year, month, switch_to_year]);
   React.useEffect(() => {
     // Collect daily revenue adding up the total_cost of each reservation in monthData
     const month_revenue = monthData.reduce((acc, reservation) => {
       return acc + Number(reservation.total_cost);
     }, 0);
+    const year_revenue = yearData.reduce((acc, reservation) => {
+      return acc + Number(reservation.total_cost);
+    }, 0);
 
     setMonthTotal(month_revenue);
+    setYearTotal(year_revenue);
     const monthly_ppl_total = monthData.reduce((acc, reservation) => {
       return acc + Number(reservation.ppl_count);
     }, 0);
+    const yearly_ppl_total = yearData.reduce((acc, reservation) => {
+      return acc + Number(reservation.ppl_count);
+    }, 0);
     setMonthlyPplTotal(monthly_ppl_total);
+    setYearPplTotal(yearly_ppl_total);
 
     // vehicleslist is the properties of the monthData. First identify which vehicle has a value greater than zero then extract them in an object with the name as their key and their quantity as their value.
-    const vehicle_init = monthData.map((reservation) => {
+    const vehicle_init_month = monthData.map((reservation) => {
+      return vehiclesList.reduce((acc, key) => {
+        const count = Number(reservation[key as keyof typeof reservation]);
+        if (count > 0) {
+          return {
+            ...acc,
+            [key]: count
+          };
+        }
+        return acc;
+      }, {});
+    });
+    const vehicle_init_year = yearData.map((reservation) => {
       return vehiclesList.reduce((acc, key) => {
         const count = Number(reservation[key as keyof typeof reservation]);
         if (count > 0) {
@@ -88,7 +126,18 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
       }, {});
     });
     // Flatten the array of objects and sum up the values of the same key to get the total count of each vehicle.
-    const vehicle_count = vehicle_init.reduce(
+    const vehicle_count_month = vehicle_init_month.reduce(
+      (acc: { [key: string]: number }, obj) => {
+        return Object.entries(obj).reduce((acc, [key, value]) => {
+          return {
+            ...acc,
+            [key]: (acc[key] || 0) + Number(value)
+          };
+        }, acc);
+      },
+      {}
+    );
+    const vehicle_count_year = vehicle_init_year.reduce(
       (acc: { [key: string]: number }, obj) => {
         return Object.entries(obj).reduce((acc, [key, value]) => {
           return {
@@ -100,14 +149,22 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
       {}
     );
     // Get the total count of all vehicles by summing up the values of the total_vehicle_count object.
-    const total_vehicle_count = Object.values(vehicle_count).reduce(
+    const total_vehicle_count_month = Object.values(vehicle_count_month).reduce(
       (acc, value) => Number(acc) + Number(value),
       0
     );
-    setMonthlyVehicles(vehicle_count);
-    setTotalMonthlyVehicleCount(Number(total_vehicle_count));
+    const total_vehicle_count_year = Object.values(vehicle_count_year).reduce(
+      (acc, value) => Number(acc) + Number(value),
+      0
+    );
+
+    setMonthlyVehicles(vehicle_count_month);
+    setTotalMonthlyVehicleCount(Number(total_vehicle_count_month));
+    setYearlyVehicles(vehicle_count_year);
+    setTotalYearlyVehicleCount(Number(total_vehicle_count_year));
+
     // from the monthData collect location and sum them up to get the total count of each location.
-    const total_locations = monthData.reduce(
+    const total_locations_month = monthData.reduce(
       (acc: { [key: string]: number }, reservation) => {
         const location = reservation.location;
         return {
@@ -117,28 +174,68 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
       },
       {}
     );
-    setLocations(total_locations);
+    const total_locations_year = yearData.reduce(
+      (acc: { [key: string]: number }, reservation) => {
+        const location = reservation.location;
+        return {
+          ...acc,
+          [location]: (acc[location] || 0) + 1
+        };
+      },
+      {}
+    );
+    // For every location calculate the total cost of all reservations in that location
+    const total_cost_per_location_month = monthData.reduce(
+      (acc: { [key: string]: number }, reservation) => {
+        const location = reservation.location;
+        return {
+          ...acc,
+          [location]: (acc[location] || 0) + Number(reservation.total_cost)
+        };
+      },
+      {}
+    );
+    setMonthTotalLocationCost(total_cost_per_location_month);
+
+    const total_cost_per_location_year = yearData.reduce(
+      (acc: { [key: string]: number }, reservation) => {
+        const location = reservation.location;
+        return {
+          ...acc,
+          [location]: (acc[location] || 0) + Number(reservation.total_cost)
+        };
+      },
+      {}
+    );
+    setYearTotalLocationCost(total_cost_per_location_year);
+
+    setMonthLocations(total_locations_month);
+    setYearLocations(total_locations_year);
   }, [monthData, yearData]);
 
   React.useEffect(() => {
-    setKey(`${year}-${month}`);
-  }, [year, month]);
+    setSwitchToYear(currentMode === 'year');
+  }, [currentMode]);
   // React.useEffect(() => {
-  // }, [monthyl_vehicles]);
-  const getMonthData = (value: Dayjs) => {
-    if (value.month() === 8) {
-      return 1394;
-    }
-  };
+  //   console.log('month total location cost', month_total_location_cost);
+  // }, [month_total_location_cost]);
+
   const monthCellRender = (value: Dayjs) => {
-    setSwitchToYear(true);
-    const num = getMonthData(value);
-    return num ? (
-      <div className="notes-month">
-        <section>{num}</section>
-        <span>Backlog number</span>
-      </div>
-    ) : null;
+    const month_data = yearData.filter(
+      (reservation) =>
+        dayjs(reservation.sch_date).format('YYYY-MM') ===
+        value.format('YYYY-MM')
+    );
+    if (switch_to_year)
+      return (
+        <>
+          <MonthCell
+            month_data={month_data}
+            role={role}
+            showRevenue={showRevenue}
+          />
+        </>
+      );
   };
 
   const handleDateClick = (value: Dayjs, selectInfo: SelectInfo) => {
@@ -150,10 +247,12 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
     if (selectInfo.source === 'date') {
       router.push(`/biz/${value.format('YYYY-MM-DD')}`);
     }
+    if (selectInfo.source === 'month') {
+      setCurrentMode('month');
+    }
   };
 
   const dateCellRender = (value: Dayjs) => {
-    setSwitchToYear(false);
     const date_data = monthData.filter(
       (reservation) =>
         dayjs(reservation.sch_date).format('YYYY-MM-DD') ===
@@ -166,14 +265,16 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
 
   const cellRender: CalendarProps<Dayjs>['cellRender'] = (current, info) => {
     if (info.type === 'date') return dateCellRender(current);
-    if (info.type === 'month') return monthCellRender(current);
+    if (info.type === 'month') {
+      return monthCellRender(current);
+    }
     return info.originNode;
   };
 
   const currentTheme = theme === 'system' ? systemTheme : theme;
 
-  return (
-    <>
+  if (monthData.length || yearData.length)
+    return (
       <div className="overflow-auto min-h-screen">
         {loading ? (
           <LoadingModal />
@@ -192,11 +293,13 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
               }}
             >
               <Calendar
-                key={key} // Use key prop to force re-render
+                mode={currentMode}
                 cellRender={cellRender}
-                className="min-w-[900px]"
                 onSelect={handleDateClick}
                 value={dayjs(`${year}-${month}-${date}`)}
+                onPanelChange={(value, mode) => {
+                  setCurrentMode(mode);
+                }}
               />
             </ConfigProvider>
             <div className="flex items-center space-x-2 m-5">
@@ -206,70 +309,163 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
               />
               <Label htmlFor="show-revenue">Show Revenue</Label>
             </div>
-            {monthTotal > 0 && role && role > 899 && (
-              <div className="m-5">
-                <Card className=" p-2">
-                  <CardTitle className="flex justify-between">
-                    <span className="text-lime-600">
-                      Customers Total :{' '}
-                      {monthly_ppl_total
-                        .toFixed(0)
-                        .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                    </span>
-                    {showRevenue ? (
-                      <span className="text-green-600 ">
-                        Total : $
-                        {monthTotal
-                          .toFixed(2)
-                          .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                      </span>
-                    ) : (
-                      ''
-                    )}
-                  </CardTitle>
-                </Card>
-                <Card>
-                  <div>
-                    <CardTitle className="text-orange-600 text-center">
-                      Vehicles
-                    </CardTitle>
-                    <div className="flex  gap-5 text-white justify-center">
-                      {Object.entries(monthyl_vehicles).map(([key, value]) => {
-                        return (
-                          <div>
-                            {key}: {Number(value)}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="text-center text-orange-500">
-                      Total Vehicles: {total_monthly_vehicle_count}
-                    </div>
+            {!switch_to_year ? (
+              <>
+                {monthTotal > 0 && role && role > 899 && (
+                  <div className="m-5">
+                    <Card className="p-2">
+                      <CardTitle className="flex justify-between">
+                        <span className="text-lime-600">
+                          Customers Total :{' '}
+                          {monthly_ppl_total
+                            .toFixed(0)
+                            .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                        </span>
+                        {showRevenue ? (
+                          <span className="text-green-600 ">
+                            Total : $
+                            {monthTotal
+                              .toFixed(2)
+                              .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          </span>
+                        ) : (
+                          ''
+                        )}
+                      </CardTitle>
+                    </Card>
+                    <Card>
+                      <div>
+                        <CardTitle className="text-orange-600 text-center">
+                          Vehicles
+                        </CardTitle>
+                        <div className="flex  gap-5 dark:text-white justify-center">
+                          {Object.entries(monthly_vehicles).map(
+                            ([key, value]) => {
+                              return (
+                                <div key={key}>
+                                  {key}: {Number(value)}
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                        <div className="text-center text-orange-500">
+                          Total Vehicles: {total_monthly_vehicle_count}
+                        </div>
+                      </div>
+                    </Card>
+                    <Card>
+                      <div>
+                        <CardTitle className="text-lime-600 text-center">
+                          Locations
+                        </CardTitle>
+                        <div className="grid gap-5 md:grid-cols-3 grid-cols-1  dark:text-white justify-center items-center align-middle">
+                          {Object.entries(month_locations).map(
+                            ([key, value]) => {
+                              return (
+                                <div key={key} className="ml-5 p-3">
+                                  {key}: {Number(value)}
+                                  {/* For each key as the location get the month_total_location_cost as the value */}
+                                  {showRevenue && (
+                                    <span className="ml-3 text-green-600">
+                                      ($
+                                      {month_total_location_cost[key]
+                                        .toFixed(2)
+                                        .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                      )
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                      </div>
+                    </Card>
                   </div>
-                </Card>
-                <Card>
-                  <div>
-                    <CardTitle className="text-lime-600 text-center">
-                      Locations
-                    </CardTitle>
-                    <div className="grid gap-5 md:grid-cols-3 grid-cols-1  text-white justify-center">
-                      {Object.entries(locations).map(([key, value]) => {
-                        return (
-                          <div>
-                            {key}: {Number(value)}
-                          </div>
-                        );
-                      })}
-                    </div>
+                )}
+              </>
+            ) : (
+              <>
+                {yearTotal > 0 && role && role > 899 && (
+                  <div className="m-5">
+                    <Card className="p-2">
+                      <CardTitle className="flex justify-between">
+                        <span className="text-lime-600">
+                          Customers Total :{' '}
+                          {year_ppl_total
+                            .toFixed(0)
+                            .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                        </span>
+                        {showRevenue ? (
+                          <span className="text-green-600 ">
+                            Total : $
+                            {yearTotal
+                              .toFixed(2)
+                              .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          </span>
+                        ) : (
+                          ''
+                        )}
+                      </CardTitle>
+                    </Card>
+                    <Card>
+                      <div>
+                        <CardTitle className="text-orange-600 text-center">
+                          Vehicles
+                        </CardTitle>
+                        <div className="flex  gap-5 dark:text-white justify-center">
+                          {Object.entries(yearly_vehicles).map(
+                            ([key, value]) => {
+                              return (
+                                <div key={key}>
+                                  {key}: {Number(value)}
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                        <div className="text-center text-orange-500">
+                          Total Vehicles: {total_yearly_vehicle_count}
+                        </div>
+                      </div>
+                    </Card>
+                    <Card>
+                      <div>
+                        <CardTitle className="text-lime-600 text-center">
+                          Locations
+                        </CardTitle>
+                        <div className="grid gap-5 md:grid-cols-3 grid-cols-1  dark:text-white justify-center">
+                          {Object.entries(year_locations).map(
+                            ([key, value]) => {
+                              return (
+                                <div key={key} className="ml-5">
+                                  {key}: {Number(value)}
+                                  {/* For each key which is the location get the value from month_total_location_cost and display the cost  */}
+                                  {showRevenue && (
+                                    <span className="ml-3 text-green-600">
+                                      ($
+                                      {year_total_location_cost[key]
+                                        .toFixed(2)
+                                        .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                      )
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                      </div>
+                    </Card>
                   </div>
-                </Card>
-              </div>
+                )}
+              </>
             )}
           </>
         )}
       </div>
-    </>
-  );
+    );
 };
 
 export default ClientCalendar;
