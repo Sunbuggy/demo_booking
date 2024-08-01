@@ -1,7 +1,7 @@
 export interface Reservation {
   res_id: number;
   full_name?: string;
-  sch_date?: Date;
+  sch_date: Date;
   sch_time?: string;
   agent?: string;
   created_date?: Date;

@@ -67,3 +67,31 @@ export const fetchHotels = cache(async (supabase: SupabaseClient) => {
   }
   return data;
 });
+export const fetchGroups = cache(
+  async (supabase: SupabaseClient, date: Date) => {
+    const isoDate = date.toISOString().split('T')[0]; // Convert to ISO string and extract the date part
+    const { data, error } = await supabase
+      .from('groups')
+      .select()
+      .filter('group_date', 'eq', isoDate);
+    if (error) {
+      console.error(error, `fetchGroups Error! date: ${isoDate}`);
+      return [];
+    }
+    return data;
+  }
+);
+
+// export const createGroup = async (supabase: SupabaseClient, group: Json) => {
+//   const { data, error } = await supabase.from('groups').insert([group]);
+//   return { data, error };
+// };
+// export const createGroupVehicle = async (
+//   supabase: SupabaseClient,
+//   group_vehicle: Json
+// ) => {
+//   const { data, error } = await supabase
+//     .from('group_vehicles')
+//     .insert([group_vehicle]);
+//   return { data, error };
+// };

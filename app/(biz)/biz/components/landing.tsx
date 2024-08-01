@@ -1,6 +1,6 @@
 import React from 'react';
 import { Reservation } from '../types';
-import HourCard from './hour-card';
+import HourCard from './cards/hour-card';
 import { countPeople, vehiclesList } from '@/utils/old_db/helpers';
 
 /**

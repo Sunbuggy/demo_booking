@@ -1,7 +1,7 @@
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import React from 'react';
 import LocationCard from './location-card';
-import { Reservation } from '../types';
+import { Reservation } from '../../types';
 import {
   countPeople,
   getVehicleCount,

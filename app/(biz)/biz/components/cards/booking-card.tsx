@@ -1,8 +1,17 @@
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import React from 'react';
-import { Reservation } from '../types';
+import { Reservation } from '../../types';
+import GroupSheet from '../groups/group-sheet';
+import { fetchGroups } from '@/utils/supabase/queries';
+import { createClient } from '@/utils/supabase/server';
 
-const BookingCard = ({
+export type Groups = {
+  created_by: string;
+  group_date: string;
+  group_name: string;
+};
+
+const BookingCard = async ({
   reservation,
   vehiclesList,
   display_cost
@@ -11,6 +20,11 @@ const BookingCard = ({
   vehiclesList: string[];
   display_cost: boolean;
 }) => {
+  const supabase = createClient();
+  const groups = (await fetchGroups(
+    supabase,
+    reservation.sch_date
+  )) as Groups[];
   return (
     <Card
       key={reservation.res_id}
@@ -39,7 +53,9 @@ const BookingCard = ({
               reservation.hotel?.toLowerCase().slice(0, 12)
             )}
           </p>
-          <p className=" text-sm text-lime-200">P-{reservation.ppl_count}</p>
+          <p className=" text-sm text-lime-200 flex items-end">
+            P-{reservation.ppl_count}
+          </p>
         </div>
         <div className="flex gap-2 text-sm ">
           {/* Vehicles */}
@@ -51,6 +67,8 @@ const BookingCard = ({
               const count = Number(
                 reservation[key as keyof typeof reservation]
               );
+              // make a key value object of count and key
+              const fleet = { [key]: count };
               return (
                 <>
                   <p className="italic font-thin text-orange-200" key={key}>
@@ -58,7 +76,13 @@ const BookingCard = ({
                     {count > 1 ? 's' : ''}
                   </p>
                   <div key={`GR-${key}`} className="flex gap-2 ">
-                    GR?
+                    <GroupSheet
+                      res_id={reservation.res_id}
+                      name={String(reservation.full_name)}
+                      hour={String(reservation.sch_time?.split(':')[0])}
+                      fleet={fleet}
+                      groups={groups}
+                    />
                   </div>
                 </>
               );
