@@ -16,6 +16,7 @@ interface SheetComponentProps {
   title: string;
   description: string;
   button_class?: string;
+  assignedGroupsExist?: boolean;
 }
 
 export const SheetComponent: React.FC<SheetComponentProps> = ({
@@ -23,7 +24,8 @@ export const SheetComponent: React.FC<SheetComponentProps> = ({
   triggerName,
   description,
   title,
-  button_class = 'p-0 items-start h-[1rem] underline text-red-500'
+  assignedGroupsExist,
+  button_class = `p-0 items-start h-[1rem] underline ${assignedGroupsExist ? 'text-green-500' : 'text-red-500'}`
 }) => {
   return (
     <Sheet>

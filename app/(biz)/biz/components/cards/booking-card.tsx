@@ -2,14 +2,23 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import React from 'react';
 import { Reservation } from '../../types';
 import GroupSheet from '../groups/group-sheet';
-import { fetchGroups } from '@/utils/supabase/queries';
+import {
+  fetchGroupNames,
+  fetchGroups,
+  fetchGroupVehicles
+} from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/server';
+import ExistingGroupsWizard from '../groups/existing-groups-wizard';
+import CreateGroupWizard from '../groups/create-group-wizard';
 
 export type Groups = {
   created_by: string;
   group_date: string;
   group_name: string;
 };
+export type GroupNamesType = {
+  groups: any;
+}[];
 
 const BookingCard = async ({
   reservation,
@@ -25,6 +34,18 @@ const BookingCard = async ({
     supabase,
     reservation.sch_date
   )) as Groups[];
+  const groupVehicles = await fetchGroupVehicles(
+    supabase,
+    reservation.sch_date
+  );
+
+  const groupNamesObj = (await fetchGroupNames(
+    supabase,
+    reservation.res_id
+  )) as GroupNamesType;
+  console.log('groupNames', groupNamesObj); //groupNames [ { groups: { group_name: '9A' } } ]
+  const groupNames = groupNamesObj.map((gn) => gn.groups.group_name);
+  console.log('groupNames', groupNames);
   return (
     <Card
       key={reservation.res_id}
@@ -77,11 +98,26 @@ const BookingCard = async ({
                   </p>
                   <div key={`GR-${key}`} className="flex gap-2 ">
                     <GroupSheet
+                      assignedGroups={groupNames}
                       res_id={reservation.res_id}
                       name={String(reservation.full_name)}
-                      hour={String(reservation.sch_time?.split(':')[0])}
-                      fleet={fleet}
-                      groups={groups}
+                      ExistingGroupsWizard={
+                        <ExistingGroupsWizard
+                          groups={groups}
+                          fleet={fleet}
+                          groupVehicles={groupVehicles}
+                          hour={Number(reservation.sch_time?.split(':')[0])}
+                          res_id={reservation.res_id}
+                        />
+                      }
+                      CreateGroupWizard={
+                        <CreateGroupWizard
+                          groups={groups}
+                          groupVehicles={groupVehicles}
+                          fleet={fleet}
+                          hour={Number(reservation.sch_time?.split(':')[0])}
+                        />
+                      }
                     />
                   </div>
                 </>

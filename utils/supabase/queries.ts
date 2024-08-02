@@ -81,6 +81,43 @@ export const fetchGroups = cache(
     return data;
   }
 );
+export const fetchGroupVehicles = cache(
+  async (supabase: SupabaseClient, date: Date) => {
+    // Join with groups table with group_id then pull results that match the date
+    const isoDate = date.toISOString().split('T')[0]; // Convert to ISO string and extract the date part
+    const { data, error } = await supabase
+      .from('group_vehicles')
+      .select(
+        `
+       id, quantity, old_vehicle_name, old_booking_id, groups(group_name, group_date) `
+      )
+      .filter('groups.group_date', 'eq', isoDate);
+
+    if (error) {
+      console.error(error, `fetchGroupVehicles Error! group_date: ${isoDate}`);
+      return [];
+    }
+    return data;
+  }
+);
+
+// Grab all the group_name(s) fro the selected old_booking_id
+export const fetchGroupNames = cache(
+  async (supabase: SupabaseClient, old_booking_id: number) => {
+    const { data, error } = await supabase
+      .from('group_vehicles')
+      .select('groups(group_name)')
+      .eq('old_booking_id', old_booking_id);
+    if (error) {
+      console.error(
+        error,
+        `fetchGroupNames Error! old_booking_id: ${old_booking_id}`
+      );
+      return [];
+    }
+    return data;
+  }
+);
 
 // export const createGroup = async (supabase: SupabaseClient, group: Json) => {
 //   const { data, error } = await supabase.from('groups').insert([group]);

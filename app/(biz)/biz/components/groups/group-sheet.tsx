@@ -1,37 +1,32 @@
 'use client';
 import { SheetComponent } from '@/components/use_sheets';
 import React from 'react';
-import CreateGroupWizard from './create-group-wizard';
 import { Button } from '@/components/ui/button';
-import ExistingGroupsWizard from './existing-groups-wizard';
-import { Groups } from '../cards/booking-card';
 
 interface GroupSheetProps {
   res_id: number;
   name: string;
-  hour: string;
-  fleet: {
-    [x: string]: number;
-  };
-  groups: Groups[];
+  ExistingGroupsWizard: React.ReactNode;
+  CreateGroupWizard: React.ReactNode;
+  assignedGroups: string[];
 }
 
 const GroupSheet: React.FC<GroupSheetProps> = ({
   res_id,
   name,
-  hour,
-  fleet,
-  groups
+  ExistingGroupsWizard,
+  CreateGroupWizard,
+  assignedGroups
 }) => {
   const [showCreateGroup, setShowCreateGroup] = React.useState(false);
   const [showExistingGroups, setShowExistingGroups] = React.useState(false);
-  console.log(groups);
-
+  const assignedGroupsExist = assignedGroups.length > 0;
   return (
     <SheetComponent
-      triggerName="GR?"
+      triggerName={`${assignedGroups.length > 0 ? assignedGroups.map((itm) => `${itm},`) : 'GR?'}`}
       title="Groups"
       description={`Group Sheet for Res #${res_id} (${name})`}
+      assignedGroupsExist={assignedGroupsExist}
     >
       <div>
         {!showCreateGroup && !showExistingGroups && (
@@ -50,7 +45,7 @@ const GroupSheet: React.FC<GroupSheetProps> = ({
         )}
         {showCreateGroup && (
           <>
-            <CreateGroupWizard hour={Number(hour)} fleet={fleet} />
+            {CreateGroupWizard}
             <Button
               className="mt-2"
               onClick={() => {
@@ -76,7 +71,7 @@ const GroupSheet: React.FC<GroupSheetProps> = ({
         )}
         {showExistingGroups && (
           <>
-            <ExistingGroupsWizard groups={groups} />
+            {ExistingGroupsWizard}
             <Button
               onClick={() => {
                 setShowExistingGroups(false);
