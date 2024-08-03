@@ -2,10 +2,12 @@ import { Metadata } from 'next';
 import Footer from '@/components/ui/Footer';
 import Navbar from '@/components/ui/Navbar';
 import { Toaster } from '@/components/ui/Toasts/toaster';
+
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import 'styles/main.css';
 import { ThemeProvider } from '@/components/theme-provider';
+import { Toster } from '@/components/ui/toaster';
 
 const title = 'Sunbuggy Fun Rentals';
 const description =
@@ -40,6 +42,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         </ThemeProvider>
         <Suspense>
           <Toaster />
+          <Toster />
         </Suspense>
       </body>
     </html>

@@ -16,11 +16,9 @@ export const getUser = cache(async (supabase: SupabaseClient) => {
 });
 type UserDetails = {
   avatar_url: string | null;
-  billing_address: Json | null;
   full_name: string | null;
   id: string;
-  payment_method: Json | null;
-  user_level?: number; // Add user_level to the type definition
+  user_level?: number | null; // Add user_level to the type definition
 };
 
 export const getUserDetails = cache(

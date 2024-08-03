@@ -8,7 +8,7 @@ import {
   fetchGroupVehicles
 } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/server';
-import ExistingGroupsWizard from '../groups/existing-groups-wizard';
+// import ExistingGroupsWizard from '../groups/existing-groups-wizard';
 import CreateGroupWizard from '../groups/create-group-wizard';
 
 export type Groups = {
@@ -29,6 +29,15 @@ const BookingCard = async ({
   vehiclesList: string[];
   display_cost: boolean;
 }) => {
+  let fleet = {};
+  vehiclesList
+    .filter((key) => Number(reservation[key as keyof typeof reservation]) > 0)
+    .map((key) => {
+      const count = Number(reservation[key as keyof typeof reservation]);
+      // make a key value object of count and key
+      fleet = { [key]: count };
+    });
+
   const supabase = createClient();
   const groups = (await fetchGroups(
     supabase,
@@ -39,13 +48,13 @@ const BookingCard = async ({
     reservation.sch_date
   );
 
-  const groupNamesObj = (await fetchGroupNames(
-    supabase,
-    reservation.res_id
-  )) as GroupNamesType;
-  console.log('groupNames', groupNamesObj); //groupNames [ { groups: { group_name: '9A' } } ]
-  const groupNames = groupNamesObj.map((gn) => gn.groups.group_name);
-  console.log('groupNames', groupNames);
+  // const groupNamesObj = (await fetchGroupNames(
+  //   supabase,
+  //   reservation.res_id
+  // )) as GroupNamesType;
+  // // console.log('groupNames', groupNamesObj); //groupNames [ { groups: { group_name: '9A' } } ]
+  // const groupNames = groupNamesObj.map((gn) => gn.groups.group_name);
+  // // console.log('groupNames', groupNames);
   return (
     <Card
       key={reservation.res_id}
@@ -88,41 +97,16 @@ const BookingCard = async ({
               const count = Number(
                 reservation[key as keyof typeof reservation]
               );
-              // make a key value object of count and key
-              const fleet = { [key]: count };
               return (
                 <>
                   <p className="italic font-thin text-orange-200" key={key}>
                     {count}-{key}
                     {count > 1 ? 's' : ''}
                   </p>
-                  <div key={`GR-${key}`} className="flex gap-2 ">
-                    <GroupSheet
-                      assignedGroups={groupNames}
-                      res_id={reservation.res_id}
-                      name={String(reservation.full_name)}
-                      ExistingGroupsWizard={
-                        <ExistingGroupsWizard
-                          groups={groups}
-                          fleet={fleet}
-                          groupVehicles={groupVehicles}
-                          hour={Number(reservation.sch_time?.split(':')[0])}
-                          res_id={reservation.res_id}
-                        />
-                      }
-                      CreateGroupWizard={
-                        <CreateGroupWizard
-                          groups={groups}
-                          groupVehicles={groupVehicles}
-                          fleet={fleet}
-                          hour={Number(reservation.sch_time?.split(':')[0])}
-                        />
-                      }
-                    />
-                  </div>
                 </>
               );
             })}
+          <div className="flex gap-2 "></div>
         </div>
       </CardContent>
     </Card>

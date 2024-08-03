@@ -4,32 +4,37 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 
 interface GroupSheetProps {
-  res_id: number;
-  name: string;
-  ExistingGroupsWizard: React.ReactNode;
+  hr: string;
+  trigger: string;
+  // name: string;
+  // ExistingGroupsWizard: React.ReactNode;
   CreateGroupWizard: React.ReactNode;
-  assignedGroups: string[];
+  // assignedGroups: string[];
 }
 
 const GroupSheet: React.FC<GroupSheetProps> = ({
-  res_id,
-  name,
-  ExistingGroupsWizard,
-  CreateGroupWizard,
-  assignedGroups
+  hr,
+  trigger,
+  // name,
+  // ExistingGroupsWizard,
+  CreateGroupWizard
+  // assignedGroups
 }) => {
   const [showCreateGroup, setShowCreateGroup] = React.useState(false);
   const [showExistingGroups, setShowExistingGroups] = React.useState(false);
-  const assignedGroupsExist = assignedGroups.length > 0;
+  // const assignedGroupsExist = assignedGroups.length > 0;
   return (
     <SheetComponent
-      triggerName={`${assignedGroups.length > 0 ? assignedGroups.map((itm) => `${itm},`) : 'GR?'}`}
+      // triggerName={`${assignedGroups.length > 0 ? assignedGroups.map((itm) => `${itm},`) : 'GR?'}`}
+      triggerName={trigger}
       title="Groups"
-      description={`Group Sheet for Res #${res_id} (${name})`}
-      assignedGroupsExist={assignedGroupsExist}
+      description={`Group Sheet for Res #${hr}`}
+      // assignedGroupsExist={assignedGroupsExist}
     >
       <div>
-        {!showCreateGroup && !showExistingGroups && (
+        {CreateGroupWizard}
+
+        {/* {!showCreateGroup && !showExistingGroups && (
           <>
             <Button
               onClick={() => {
@@ -38,12 +43,10 @@ const GroupSheet: React.FC<GroupSheetProps> = ({
             >
               &rarr; Create a New Group
             </Button>
-            <br />
-            or
-            <br />
+          
           </>
-        )}
-        {showCreateGroup && (
+        )} */}
+        {/* {showCreateGroup && (
           <>
             {CreateGroupWizard}
             <Button
@@ -55,9 +58,9 @@ const GroupSheet: React.FC<GroupSheetProps> = ({
               &larr; Close Wizard
             </Button>
           </>
-        )}
+        )} */}
 
-        {!showExistingGroups && !showCreateGroup && (
+        {/* {!showExistingGroups && !showCreateGroup && (
           <>
             <Button
               onClick={() => {
@@ -68,8 +71,8 @@ const GroupSheet: React.FC<GroupSheetProps> = ({
             </Button>
             <br />
           </>
-        )}
-        {showExistingGroups && (
+        )} */}
+        {/* {showExistingGroups && (
           <>
             {ExistingGroupsWizard}
             <Button
@@ -80,7 +83,7 @@ const GroupSheet: React.FC<GroupSheetProps> = ({
               &larr; Close Wizard
             </Button>
           </>
-        )}
+        )} */}
       </div>
     </SheetComponent>
   );

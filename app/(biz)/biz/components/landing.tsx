@@ -13,11 +13,15 @@ import { countPeople, vehiclesList } from '@/utils/old_db/helpers';
 const Landing = ({
   data,
   display_cost,
-  role
+  role,
+  date,
+  full_name
 }: {
   data: Record<string, Record<string, Reservation[]>>;
   display_cost: boolean;
   role: number | undefined;
+  date: string;
+  full_name: string;
 }): JSX.Element => {
   if (data)
     return (
@@ -29,6 +33,8 @@ const Landing = ({
               key={key}
               hr={key}
               display_cost={display_cost}
+              date={date}
+              full_name={full_name}
             />
           );
         })}

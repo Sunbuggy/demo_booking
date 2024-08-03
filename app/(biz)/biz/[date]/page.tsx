@@ -64,7 +64,13 @@ const BizPage = async ({
         )}
 
         {loadedData && role && role > 350 ? (
-          <Landing data={loadedData} display_cost={dcos} role={role} />
+          <Landing
+            data={loadedData}
+            display_cost={dcos}
+            role={role}
+            date={date}
+            full_name={full_name || ''}
+          />
         ) : role && role < 350 ? (
           <div className="h-screen flex justify-center items-center">
             unauthorized
