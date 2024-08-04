@@ -10,17 +10,34 @@ import {
 import { Button } from '@/components/ui/button';
 import GroupSheet from '../groups/group-sheet';
 import CreateGroupWizard from '../groups/create-group-wizard';
-import { fetchGroups } from '@/utils/supabase/queries';
+import { fetchGroups, fetchGroupVehicles } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/server';
 import { PopoverGroups } from '../groups/popover_group';
 import AssignGroups from '../groups/assign-groups';
-interface GroupsType {
+import { PopoverClose } from '@/components/ui/popover';
+import { deleteFromGroupVehicles } from '@/utils/old_db/actions';
+import DeleteAssigned from '../groups/delete-assigned';
+import EditGroups from '../groups/edit-groups';
+export interface GroupsType {
   id: string;
   group_name: string;
   created_at: string;
   created_by: string;
   group_date: string;
 }
+interface GroupType {
+  group_name: string;
+  group_date: string;
+}
+
+export interface GroupVehiclesType {
+  id: string;
+  quantity: string;
+  old_vehicle_name: string;
+  old_booking_id: string;
+  groups: GroupType | GroupType[]; // groups can be a single object or an array of objects
+}
+
 const HourCard = async ({
   hr,
   data,
@@ -37,9 +54,27 @@ const HourCard = async ({
   const dt = new Date(date);
   const supabase = createClient();
   const groups = (await fetchGroups(supabase, dt)) as GroupsType[];
+  const groupVehicles = (await fetchGroupVehicles(
+    supabase,
+    dt
+  )) as GroupVehiclesType[];
   const groupHr = hr.split(':')[0];
   function filterGroupsByHour(groups: GroupsType[], hr: string) {
     return groups.filter((group) => group.group_name.includes(hr));
+  }
+  function filterGroupVehicleByGroupName(groupName: string) {
+    return groupVehicles.filter((group) => {
+      if (group.groups === null) {
+        return false;
+      }
+      if (Array.isArray(group.groups)) {
+        return group.groups
+          .map((group) => group.group_name)
+          .includes(groupName);
+      } else {
+        return group.groups.group_name === groupName;
+      }
+    });
   }
 
   const reservationsDataInLocation = Object.keys(data[hr]).map(
@@ -47,6 +82,21 @@ const HourCard = async ({
       return data[hr][locationKey];
     }
   );
+  const isVehicleInGroup = (
+    groupName: string,
+    resNo: string,
+    vehicleName: string
+  ): boolean => {
+    const result = filterGroupVehicleByGroupName(groupName).some((group) => {
+      if (Number(group.old_booking_id) === Number(resNo)) {
+        if (vehicleName === group.old_vehicle_name) {
+          return true;
+        }
+      }
+    });
+
+    return result;
+  };
 
   return (
     <Card key={hr} className="p-0 w-96 md:min-w-96">
@@ -144,15 +194,51 @@ const HourCard = async ({
         <span className="flex items-center">Groups:</span>{' '}
         <span className="grid grid-cols-3 justify-center gap-1">
           {filterGroupsByHour(groups, groupHr).map((group) => (
-            <span className="text-sm flex">
+            <span className="text-sm flex" key={group.id}>
               {' '}
               {group.group_name}{' '}
               <div className="flex flex-col justify-start items-start">
                 <PopoverGroups openText="edit">
                   <div>
                     <h1>Edit Group {group.group_name}</h1>
+                    Already In Group:{' '}
+                    <span className="text-xl text-orange-500">
+                      {/* Sum of all vehicle's quantities */}
+                      {
+                        // map through the groupVehicles and filter by group.group_name and group.group_date then return the sum of all quantities
+                        filterGroupVehicleByGroupName(group.group_name).reduce(
+                          (acc, group) => {
+                            return acc + Number(group.quantity);
+                          },
+                          0
+                        )
+                      }
+                    </span>
+                    <div className="grid grid-cols-3 text-xs">
+                      {filterGroupVehicleByGroupName(group.group_name).map(
+                        (group) => {
+                          return (
+                            <div key={group.id}>
+                              <span className="text-pink-500">
+                                {group.old_booking_id}
+                              </span>
+                              (
+                              <span className="text-orange-500">
+                                {group.old_vehicle_name}(
+                                <span className="text-xs">
+                                  {group.quantity}
+                                </span>
+                                )
+                              </span>
+                              )
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
                     Reservations:
                     {reservationsDataInLocation.map((reservations) => {
+                      let isHighlighted = false;
                       return reservations.map((reservation) => {
                         const countVehicles = vehiclesList
                           .filter(
@@ -165,26 +251,61 @@ const HourCard = async ({
                             const count = Number(
                               reservation[key as keyof typeof reservation]
                             );
+                            isHighlighted = isVehicleInGroup(
+                              group.group_name,
+                              String(reservation.res_id),
+                              key
+                            );
                             return `${count}-${key}`;
                           })
                           .join(', ');
 
                         return (
-                          <div>
+                          <div
+                            className={isHighlighted ? 'text-orange-500' : ''}
+                            key={reservation.res_id}
+                          >
                             <p>
                               {reservation.full_name}(
                               <span className="text-xs">
-                                {reservation.res_id} ({countVehicles})
+                                <span className="text-pink-500">
+                                  {reservation.res_id}
+                                </span>
+                                ({countVehicles})
                               </span>
                               ){' '}
-                              <PopoverGroups openText="+Add">
-                                {/* Create a form for How many from the quantity of vehicle to add in the group */}
-                                <AssignGroups
-                                  reservation={reservation}
-                                  countVehicles={countVehicles}
-                                  group_id={group.id}
-                                />
-                              </PopoverGroups>
+                              {isHighlighted ? (
+                                <PopoverGroups openText="edit">
+                                  <EditGroups
+                                    countVehicles={countVehicles}
+                                    reservation={reservation}
+                                    groupVehicles={filterGroupVehicleByGroupName(
+                                      group.group_name
+                                    )}
+                                    group={group}
+                                  />
+                                </PopoverGroups>
+                              ) : (
+                                <PopoverGroups openText={'+Add'}>
+                                  <AssignGroups
+                                    reservation={reservation}
+                                    countVehicles={countVehicles}
+                                    group_id={group.id}
+                                  />
+                                </PopoverGroups>
+                              )}
+                              {isHighlighted && (
+                                <PopoverGroups openText="delete">
+                                  <DeleteAssigned
+                                    countVehicles={countVehicles}
+                                    groupVehicles={filterGroupVehicleByGroupName(
+                                      group.group_name
+                                    )}
+                                    group={group}
+                                    reservation={reservation}
+                                  />
+                                </PopoverGroups>
+                              )}
                             </p>
                           </div>
                         );

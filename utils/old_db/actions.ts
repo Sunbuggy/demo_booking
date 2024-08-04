@@ -41,3 +41,43 @@ export async function createGroups(
     .insert([{ group_name, group_date, created_by }]);
   return { data, error };
 }
+
+export async function insertIntoGroupVehicles(
+  group_id: string,
+  old_booking_id: number,
+  old_vehicle_name: string,
+  quantity: number
+) {
+  if (quantity > 10) {
+    return { data: null, error: 'Quantity cannot be more than 10.' };
+  }
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('group_vehicles')
+    .insert([{ group_id, old_booking_id, old_vehicle_name, quantity }]);
+  return { data, error };
+}
+
+export async function deleteFromGroupVehicles(id: string) {
+  const supabase = createClient();
+  if (!id) {
+    return { data: null, error: 'No id provided.' };
+  }
+  const { data, error } = await supabase
+    .from('group_vehicles')
+    .delete()
+    .eq('id', id);
+  return { data, error };
+}
+
+export async function updateGroupVehicleQuantity(id: string, quantity: number) {
+  const supabase = createClient();
+  if (!id) {
+    return { data: null, error: 'No id provided.' };
+  }
+  const { data, error } = await supabase
+    .from('group_vehicles')
+    .update({ quantity })
+    .eq('id', id);
+  return { data, error };
+}

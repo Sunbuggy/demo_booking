@@ -1,16 +1,6 @@
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import React from 'react';
 import { Reservation } from '../../types';
-import GroupSheet from '../groups/group-sheet';
-import {
-  fetchGroupNames,
-  fetchGroups,
-  fetchGroupVehicles
-} from '@/utils/supabase/queries';
-import { createClient } from '@/utils/supabase/server';
-// import ExistingGroupsWizard from '../groups/existing-groups-wizard';
-import CreateGroupWizard from '../groups/create-group-wizard';
-
 export type Groups = {
   created_by: string;
   group_date: string;
@@ -38,23 +28,6 @@ const BookingCard = async ({
       fleet = { [key]: count };
     });
 
-  const supabase = createClient();
-  const groups = (await fetchGroups(
-    supabase,
-    reservation.sch_date
-  )) as Groups[];
-  const groupVehicles = await fetchGroupVehicles(
-    supabase,
-    reservation.sch_date
-  );
-
-  // const groupNamesObj = (await fetchGroupNames(
-  //   supabase,
-  //   reservation.res_id
-  // )) as GroupNamesType;
-  // // console.log('groupNames', groupNamesObj); //groupNames [ { groups: { group_name: '9A' } } ]
-  // const groupNames = groupNamesObj.map((gn) => gn.groups.group_name);
-  // // console.log('groupNames', groupNames);
   return (
     <Card
       key={reservation.res_id}
@@ -62,7 +35,9 @@ const BookingCard = async ({
     >
       <CardTitle className="text-base flex gap-2">
         <i>
-          <u className=" font-extralight text-sm">{reservation.res_id}</u>
+          <u className=" font-extralight text-sm text-pink-500">
+            {reservation.res_id}
+          </u>
         </i>{' '}
         <strong>{reservation.full_name}</strong> {/* Total Cost */}
         {display_cost && (
