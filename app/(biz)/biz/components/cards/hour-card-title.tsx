@@ -48,7 +48,7 @@ const HourCardTitle = ({
             }, 0)
           }
         </span>{' '}
-        <span className="text-base font-light italic">
+        <span className="text-base font-light italic text-orange-500">
           ({' '}
           {
             // Group and count vehicles for the given data. if same vehicle add count and display vehicle with count ignore if count is 0

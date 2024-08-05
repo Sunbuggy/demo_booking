@@ -4,6 +4,8 @@ import LocationCard from './location-card';
 import { Reservation } from '../../types';
 import MainGroups from '../groups/main';
 import HourCardTitle from './hour-card-title';
+import GroupSheet from '../groups/group-sheet';
+import CreateGroupWizard from '../groups/create-group-wizard';
 
 const HourCard = async ({
   hr,
@@ -29,10 +31,22 @@ const HourCard = async ({
       <HourCardTitle hr={hr} data={data} display_cost={display_cost} />
       <MainGroups
         date={date}
-        full_name={full_name}
         groupHr={groupHr}
         reservationsDataInLocation={reservationsDataInLocation}
       />
+      <div className="ml-5">
+        <GroupSheet
+          trigger="+Add"
+          hr={groupHr}
+          CreateGroupWizard={
+            <CreateGroupWizard
+              hour={groupHr}
+              group_date={date}
+              full_name={full_name}
+            />
+          }
+        />
+      </div>
       <CardContent className="flex flex-col gap-5 p-3">
         {Object.keys(data[hr]).map((locationKey) => {
           return (

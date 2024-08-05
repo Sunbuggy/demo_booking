@@ -4,6 +4,8 @@ import { SelectAlphabet, SelectNums } from './select-components';
 import { Button } from '@/components/ui/button';
 import { createGroups } from '@/utils/old_db/actions';
 import { useToast } from '@/components/ui/use-toast';
+import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
 
 interface CreateGroupWizardProps {
   hour: string;
@@ -45,6 +47,28 @@ const CreateGroupWizard: React.FC<CreateGroupWizardProps> = ({
       });
     }
   }, [groupName, createGroup]);
+  const supabase = createClient();
+  const router = useRouter();
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('realtime group vehicles')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'groups'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router]);
 
   return (
     <div className="flex items-center flex-col">

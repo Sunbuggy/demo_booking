@@ -1,25 +1,23 @@
 import React from 'react';
-import { PopoverGroups } from './popover_group';
 import { Button } from '@/components/ui/button';
-import GroupSheet from './group-sheet';
-import CreateGroupWizard from './create-group-wizard';
 import { GroupsType, GroupVehiclesType, Reservation } from '../../types';
 import { vehiclesList } from '@/utils/old_db/helpers';
 import { createClient } from '@/utils/supabase/server';
 import { fetchGroups, fetchGroupVehicles } from '@/utils/supabase/queries';
 import ReservationsList from './reservations-list';
-import DisplayExistingGroups from './display-existing-groups';
+import DisplayExistingGroups, {
+  DisplayGroupsInHourCard
+} from './display-existing-groups';
+import { PopoverGroupEdit } from './popover_group_edit';
 
 const MainGroups = async ({
   groupHr,
   reservationsDataInLocation,
-  date,
-  full_name
+  date
 }: {
   groupHr: string;
   reservationsDataInLocation: Reservation[][];
   date: string;
-  full_name: string;
 }) => {
   const dt = new Date(date);
   const supabase = createClient();
@@ -62,9 +60,9 @@ const MainGroups = async ({
     return result;
   };
   return (
-    <div className="ml-5 flex gap-4">
-      <span className="flex items-center">Groups:</span>{' '}
-      <span className="grid grid-cols-3 justify-center gap-1">
+    <div className="ml-5 flex gap-1">
+      <span className="flex items-start text-cyan-500">Groups:</span>{' '}
+      <span className="flex flex-col gap-1">
         {filterGroupsByHour(groups, groupHr).map((group) => {
           // map through the groupVehicles and filter by group.group_name and group.group_date then return the sum of all quantities
           const groupQty = filterGroupVehicleByGroupName(
@@ -78,11 +76,19 @@ const MainGroups = async ({
           );
           const groupName = group.group_name;
           return (
-            <span className="text-sm flex" key={group.id}>
+            <span className="text-xs mb-2" key={group.id}>
               {' '}
-              {groupName}{' '}
-              <div className="flex flex-col justify-start items-start">
-                <PopoverGroups openText="edit">
+              {/* {groupName}{' '} */}
+              <div className="flex justify-start items-start">
+                <PopoverGroupEdit
+                  openText={
+                    <DisplayGroupsInHourCard
+                      groupName={groupName}
+                      groupQty={groupQty}
+                      nameFilteredGroups={nameFilteredGroups}
+                    />
+                  }
+                >
                   <div>
                     <DisplayExistingGroups
                       groupName={groupName}
@@ -128,7 +134,7 @@ const MainGroups = async ({
                       });
                     })}
                   </div>
-                </PopoverGroups>
+                </PopoverGroupEdit>
                 <Button
                   size={'icon'}
                   variant={'ghost'}
@@ -140,17 +146,6 @@ const MainGroups = async ({
             </span>
           );
         })}
-        <GroupSheet
-          trigger="+Add"
-          hr={groupHr}
-          CreateGroupWizard={
-            <CreateGroupWizard
-              hour={groupHr}
-              group_date={date}
-              full_name={full_name}
-            />
-          }
-        />
       </span>
     </div>
   );
