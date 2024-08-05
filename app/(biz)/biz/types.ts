@@ -52,3 +52,22 @@ export interface OldDbVehicle {
   GoKartplus?: number;
   GoKart?: number;
 }
+export interface GroupsType {
+  id: string;
+  group_name: string;
+  created_at: string;
+  created_by: string;
+  group_date: string;
+}
+interface GroupType {
+  group_name: string;
+  group_date: string;
+}
+
+export interface GroupVehiclesType {
+  id: string;
+  quantity: string;
+  old_vehicle_name: string;
+  old_booking_id: string;
+  groups: GroupType | GroupType[]; // groups can be a single object or an array of objects
+}

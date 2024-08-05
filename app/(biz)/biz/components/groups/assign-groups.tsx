@@ -15,13 +15,11 @@ interface SelectedVehicles {
 const AssignGroups = ({
   reservation,
   countVehicles,
-  group_id,
-  edit
+  group_id
 }: {
   reservation: Reservation;
   countVehicles: string;
   group_id: string;
-  edit?: boolean;
 }) => {
   // State variable to count each vehicle name with its count
   const [vehicleCount, setVehicleCount] = React.useState<{

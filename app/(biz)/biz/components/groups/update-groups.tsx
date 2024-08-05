@@ -1,10 +1,9 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import React from 'react';
-import { Reservation } from '../../types';
+import { GroupsType, GroupVehiclesType, Reservation } from '../../types';
 import { useToast } from '@/components/ui/use-toast';
 import { updateGroupVehicleQuantity } from '@/utils/old_db/actions';
-import { GroupsType, GroupVehiclesType } from '../cards/hour-card';
 
 interface SelectedVehicles {
   vehName: string;
@@ -49,40 +48,37 @@ const EditGroups = ({
           const includesGroupName = groupNames.includes(groupName);
           const matchesResNo = Number(group.old_booking_id) === Number(resNo);
           const matchesVehicleName = group.old_vehicle_name === vehicleName;
-          const matchesQuantity = Number(group.quantity) === quantity;
+          // const matchesQuantity = Number(group.quantity) === quantity;
 
-          console.log({
-            groupNames,
-            includesGroupName,
-            matchesResNo,
-            matchesVehicleName,
-            matchesQuantity
-          });
+          // console.log({
+          //   groupNames,
+          //   includesGroupName,
+          //   matchesResNo,
+          //   matchesVehicleName,
+          //   matchesQuantity
+          // });
 
           return (
-            includesGroupName &&
-            matchesResNo &&
-            matchesVehicleName &&
-            matchesQuantity
+            includesGroupName && matchesResNo && matchesVehicleName
+            // &&
+            // matchesQuantity
           );
         } else {
           const matchesGroupName = group.groups.group_name === groupName;
           const matchesResNo = Number(group.old_booking_id) === Number(resNo);
           const matchesVehicleName = group.old_vehicle_name === vehicleName;
-          const matchesQuantity = Number(group.quantity) === quantity;
+          // const matchesQuantity = Number(group.quantity) === quantity;
 
-          console.log({
-            matchesGroupName,
-            matchesResNo,
-            matchesVehicleName,
-            matchesQuantity
-          });
+          // console.log({
+          //   matchesGroupName,
+          //   matchesResNo,
+          //   matchesVehicleName,
+          //   matchesQuantity
+          // });
 
           return (
-            matchesGroupName &&
-            matchesResNo &&
-            matchesVehicleName &&
-            matchesQuantity
+            matchesGroupName && matchesResNo && matchesVehicleName
+            // && matchesQuantity
           );
         }
       });
@@ -105,8 +101,8 @@ const EditGroups = ({
               variant: 'destructive'
             })
           : toast({
-              title: 'Fleet Inserted!',
-              description: `Added ${veh.count} ${veh.vehName} to group`,
+              title: 'Fleet Updated!',
+              description: `Updated ${veh.count} ${veh.vehName}`,
               duration: 2000,
               variant: 'success'
             });
@@ -160,7 +156,7 @@ const EditGroups = ({
           );
         })}
       </div>
-      <Button onClick={onConfirm}>Edit Group</Button>
+      <Button onClick={onConfirm}>Update Group</Button>
     </div>
   );
 };

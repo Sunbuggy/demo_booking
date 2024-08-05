@@ -70,14 +70,24 @@ export async function deleteFromGroupVehicles(id: string) {
   return { data, error };
 }
 
-export async function updateGroupVehicleQuantity(id: string, quantity: number) {
+export async function updateGroupVehicleQuantity(
+  group_id: string,
+  quantity: number
+) {
   const supabase = createClient();
-  if (!id) {
+  if (!group_id) {
     return { data: null, error: 'No id provided.' };
   }
   const { data, error } = await supabase
     .from('group_vehicles')
     .update({ quantity })
-    .eq('id', id);
+    .eq('id', group_id);
+  if (error) {
+    console.log(group_id);
+    console.error(
+      'An error occurred while updating group vehicle quantity:',
+      error
+    );
+  }
   return { data, error };
 }

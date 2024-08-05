@@ -2,9 +2,6 @@
 import React from 'react';
 import { SelectAlphabet, SelectNums } from './select-components';
 import { Button } from '@/components/ui/button';
-import { Groups } from '../cards/booking-card';
-import { TooltipGroups } from './groups_tooltip';
-import { InfoIcon } from 'lucide-react';
 import { createGroups } from '@/utils/old_db/actions';
 import { useToast } from '@/components/ui/use-toast';
 
