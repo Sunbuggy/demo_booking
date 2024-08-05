@@ -3,6 +3,7 @@ import React from 'react';
 import { GroupVehiclesType } from '../../types';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
 const DisplayExistingGroups = ({
   groupName,
@@ -50,9 +51,16 @@ const DisplayExistingGroups = ({
 
   return (
     <div>
-      <h1>
-        Edit <span className="text-cyan-500"> {groupName}</span>
-      </h1>
+      <span className="flex justify-between">
+        <h1>
+          Update <span className="text-cyan-500"> {groupName}</span>
+        </h1>
+        <span>
+          <Button variant={'destructive'}>
+            Delete <span className="text-cyan-500 ml-3"> {groupName}</span>
+          </Button>
+        </span>
+      </span>
       <p>
         <span className="text-orange-500"> Already In Group:</span>{' '}
         <span className="text-xl text-orange-500">{groupQty}</span>
@@ -124,24 +132,21 @@ export const DisplayGroupsInHourCard = ({
             <span className="text-orange-500">({groupQty})</span>
           </div>
 
-          <div className="flex gap-1 text-xs flex-wrap">
+          <div className="flex gap-1 text-sm flex-wrap">
             {Object.entries(
               nameFilteredGroups.reduce(
                 (acc, group) => {
-                  if (!acc[group.old_booking_id]) {
-                    acc[group.old_booking_id] = [];
+                  if (!acc[group.old_vehicle_name]) {
+                    acc[group.old_vehicle_name] = 0;
                   }
-                  acc[group.old_booking_id].push(
-                    `${group.quantity}-${group.old_vehicle_name}`
-                  );
+                  acc[group.old_vehicle_name] += Number(group.quantity);
                   return acc;
                 },
-                {} as Record<string, string[]>
+                {} as Record<string, number>
               )
-            ).map(([bookingId, details]) => (
-              <div key={bookingId}>
-                <span className="text-pink-500">{bookingId}</span>(
-                <span className="text-orange-500">{details.join(', ')}</span>)
+            ).map(([vehicleName, totalQuantity]) => (
+              <div key={vehicleName}>
+                <span className="text-orange-500">{`${totalQuantity}-${vehicleName}`}</span>
               </div>
             ))}
           </div>
