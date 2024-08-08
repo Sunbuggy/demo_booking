@@ -1,6 +1,8 @@
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { DialogDemo } from '@/components/ui/Dialog';
 import React from 'react';
 import { Reservation } from '../../types';
+
 export type Groups = {
   created_by: string;
   group_date: string;
@@ -24,7 +26,6 @@ const BookingCard = async ({
     .filter((key) => Number(reservation[key as keyof typeof reservation]) > 0)
     .map((key) => {
       const count = Number(reservation[key as keyof typeof reservation]);
-      // make a key value object of count and key
       fleet = { [key]: count };
     });
 
@@ -35,9 +36,7 @@ const BookingCard = async ({
     >
       <CardTitle className="text-base flex gap-2">
         <i>
-          <u className=" font-extralight text-sm text-pink-500">
-            {reservation.res_id}
-          </u>
+          <DialogDemo reservation={reservation} />
         </i>{' '}
         <strong>{reservation.full_name}</strong> {/* Total Cost */}
         {display_cost && (
@@ -89,5 +88,3 @@ const BookingCard = async ({
 };
 
 export default BookingCard;
-
-// TODO: Create Group, Assign Shuttle, Show $, create calendar, people counter for the day, vehicle counter for the day
