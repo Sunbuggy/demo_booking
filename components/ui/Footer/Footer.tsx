@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { getUserDetails } from '@/utils/supabase/queries';
 
 export default async function Footer() {
-  const date = new Date().toISOString().split('T')[0];
+const date = new Date().toLocaleDateString('en-CA'); // 'en-CA' format is 'YYYY-MM-DD'
   const user = await getUserDetails();
   const role = user?.user_level;
   return (

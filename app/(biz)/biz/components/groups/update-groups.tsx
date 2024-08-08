@@ -39,7 +39,7 @@ const EditGroups = ({
     ): string | undefined {
       const group = groupVehicles.find((group) => {
         if (group.groups === null) {
-          console.log('empty group');
+          console.error('empty group');
           return false;
         }
 

@@ -80,9 +80,9 @@ const DateCell = ({
               <span className="text-lime-600">P: {ppl_count as number}</span>
             </div>
             <div className="text-xs flex flex-col justify-end">
-              {Object.entries(vehicle_count).map(([key, value]) => {
+              {Object.entries(vehicle_count).map(([key, value], idx) => {
                 return (
-                  <div className="flex gap-2 dark:text-white" key={key}>
+                  <div className="flex gap-2 dark:text-white" key={idx}>
                     {key.toLowerCase()}- {String(value)}
                   </div>
                 );

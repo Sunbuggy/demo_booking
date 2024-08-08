@@ -83,7 +83,7 @@ export async function updateGroupVehicleQuantity(
     .update({ quantity })
     .eq('id', group_id);
   if (error) {
-    console.log(group_id);
+    console.error(group_id);
     console.error(
       'An error occurred while updating group vehicle quantity:',
       error

@@ -340,9 +340,9 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
                         </CardTitle>
                         <div className="flex  gap-5 dark:text-white justify-center">
                           {Object.entries(monthly_vehicles).map(
-                            ([key, value]) => {
+                            ([key, value], idx) => {
                               return (
-                                <div key={key}>
+                                <div key={idx}>
                                   {key}: {Number(value)}
                                 </div>
                               );
@@ -361,9 +361,9 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
                         </CardTitle>
                         <div className="grid gap-5 md:grid-cols-3 grid-cols-1  dark:text-white justify-center items-center align-middle">
                           {Object.entries(month_locations).map(
-                            ([key, value]) => {
+                            ([key, value], idx) => {
                               return (
-                                <div key={key} className="ml-5 p-3">
+                                <div key={idx} className="ml-5 p-3">
                                   {key}: {Number(value)}
                                   {/* For each key as the location get the month_total_location_cost as the value */}
                                   {showRevenue && (
@@ -416,9 +416,9 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
                         </CardTitle>
                         <div className="flex  gap-5 dark:text-white justify-center">
                           {Object.entries(yearly_vehicles).map(
-                            ([key, value]) => {
+                            ([key, value], idx) => {
                               return (
-                                <div key={key}>
+                                <div key={idx}>
                                   {key}: {Number(value)}
                                 </div>
                               );
@@ -437,9 +437,9 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
                         </CardTitle>
                         <div className="grid gap-5 md:grid-cols-3 grid-cols-1  dark:text-white justify-center">
                           {Object.entries(year_locations).map(
-                            ([key, value]) => {
+                            ([key, value], idx) => {
                               return (
-                                <div key={key} className="ml-5">
+                                <div key={idx} className="ml-5">
                                   {key}: {Number(value)}
                                   {/* For each key which is the location get the value from month_total_location_cost and display the cost  */}
                                   {showRevenue && (
