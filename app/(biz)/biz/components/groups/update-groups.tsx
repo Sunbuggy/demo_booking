@@ -126,7 +126,6 @@ const EditGroups = ({
       [vehName]: { count }
     }));
   }
-
   return (
     <div className="flex flex-col gap-3">
       <h1>
@@ -138,6 +137,7 @@ const EditGroups = ({
         {countVehicles.split(',').map((veh, idx) => {
           const vehName = veh.split('-')[1];
           const vehCount = veh.split('-')[0];
+          const parsedVehCount = Number(vehCount);
           return (
             <div className="flex gap-2" key={idx}>
               <div>
@@ -146,8 +146,9 @@ const EditGroups = ({
               </div>
               <input
                 type="number"
-                max={vehCount}
-                placeholder={`Max allowed ${vehCount}`}
+                max={parsedVehCount}
+                min={0}
+                placeholder={`Max allowed ${parsedVehCount}`}
                 onChange={(e) =>
                   handleInputChange(vehName, Number(e.target.value))
                 }
