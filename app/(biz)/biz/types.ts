@@ -58,6 +58,9 @@ export interface GroupsType {
   created_at: string;
   created_by: string;
   group_date: string;
+  lead?: string;
+  sweep?: string;
+  launched?: boolean;
 }
 interface GroupType {
   group_name: string;

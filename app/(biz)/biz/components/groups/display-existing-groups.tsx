@@ -3,19 +3,32 @@ import React from 'react';
 import { GroupVehiclesType } from '../../types';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import DeleteGroup from './delete-group';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 
 const DisplayExistingGroups = ({
+  groupId,
   groupName,
   groupQty,
-  nameFilteredGroups
+  nameFilteredGroups,
+  lead,
+  sweep
 }: {
+  groupId: string;
   groupName: string;
   groupQty: number;
   nameFilteredGroups: GroupVehiclesType[];
+  lead?: string;
+  sweep?: string;
 }) => {
   const supabase = createClient();
   const router = useRouter();
+  const [newLead, setNewLead] = React.useState(lead);
+  const [newSweep, setNewSweep] = React.useState(sweep);
+  const [initiateUpdate, setInitiateUpdate] = React.useState(false);
+  const { toast } = useToast();
 
   React.useEffect(() => {
     const channel = supabase
@@ -49,16 +62,54 @@ const DisplayExistingGroups = ({
     };
   }, [supabase, router]);
 
+  React.useEffect(() => {
+    if (initiateUpdate) {
+      supabase
+        .from('groups')
+        .update({ lead: newLead, sweep: newSweep })
+        .eq('id', groupId)
+        .then((res) => {
+          res.error
+            ? toast({
+                title: 'Error',
+                description: 'An error occurred while updating the group.',
+                duration: 4000,
+                variant: 'destructive'
+              })
+            : toast({
+                title: 'Group Updated',
+                description: `Group ${groupName} has been updated.`,
+                duration: 2000,
+                variant: 'success'
+              });
+          setInitiateUpdate(false);
+          setNewLead('');
+          setNewSweep('');
+        });
+    }
+  }, [initiateUpdate, newLead, newSweep, groupId, supabase]);
+
   return (
     <div>
       <span className="flex justify-between">
         <h1>
           Update <span className="text-cyan-500"> {groupName}</span>
         </h1>
-        <span>
-          <Button variant={'destructive'}>
-            Delete <span className="text-cyan-500 ml-3"> {groupName}</span>
+        <div className="flex flex-col gap-2 items-center">
+          <Input
+            placeholder={lead || 'Lead'}
+            onChange={(e) => setNewLead(e.target.value)}
+          />
+          <Input
+            placeholder={sweep || 'Sweep'}
+            onChange={(e) => setNewSweep(e.target.value)}
+          />
+          <Button size={'sm'} variant={'secondary'}>
+            Update Lead/Sweep
           </Button>
+        </div>
+        <span className="ml-2">
+          <DeleteGroup groupId={groupId} />
         </span>
       </span>
       <p>

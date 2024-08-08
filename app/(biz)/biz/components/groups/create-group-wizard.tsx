@@ -6,6 +6,8 @@ import { createGroups } from '@/utils/old_db/actions';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/input';
+import { SheetClose, SheetFooter } from '@/components/ui/sheet';
 
 interface CreateGroupWizardProps {
   hour: string;
@@ -22,6 +24,8 @@ const CreateGroupWizard: React.FC<CreateGroupWizardProps> = ({
   const [selectedAlphabet, setSelectedAlphabet] = React.useState('');
   const [selectedNum, setSelectedNum] = React.useState('');
   const [createGroup, setCreateGroup] = React.useState(false);
+  const [lead, setLead] = React.useState('');
+  const [sweep, setSweep] = React.useState('');
   const [hr] = React.useState(hour);
   const { toast } = useToast();
   React.useEffect(() => {
@@ -30,21 +34,29 @@ const CreateGroupWizard: React.FC<CreateGroupWizardProps> = ({
 
   React.useEffect(() => {
     if (createGroup) {
-      createGroups(groupName, group_date, full_name).then((res) => {
-        res.error
-          ? toast({
-              title: 'Error',
-              description: res.error as string,
-              duration: 4000,
-              variant: 'destructive'
-            })
-          : toast({
-              title: 'Group Created',
-              description: `Group ${groupName} has been created.`,
-              duration: 2000,
-              variant: 'success'
-            });
-      });
+      createGroups(groupName, group_date, full_name, lead, sweep).then(
+        (res) => {
+          res.error
+            ? toast({
+                title: 'Error',
+                description: res.error as string,
+                duration: 4000,
+                variant: 'destructive'
+              })
+            : toast({
+                title: 'Group Created',
+                description: `Group ${groupName} has been created.`,
+                duration: 2000,
+                variant: 'success'
+              });
+        }
+      );
+      setSelectedAlphabet('');
+      setSelectedNum('');
+      setCreateGroup(false);
+      setLead('');
+      setSweep('');
+      setGroupName('');
     }
   }, [groupName, createGroup]);
   const supabase = createClient();
@@ -84,8 +96,25 @@ const CreateGroupWizard: React.FC<CreateGroupWizardProps> = ({
             {selectedNum}
           </div>
         )}
-        <Button onClick={() => setCreateGroup(true)}>Confirm</Button>
+        <div className="flex flex-col gap-3 mb-3">
+          <Input
+            type="text"
+            placeholder="lead"
+            onChange={(e) => setLead(e.target.value)}
+          />
+          <Input
+            type="text"
+            placeholder="sweep"
+            onChange={(e) => setSweep(e.target.value)}
+          />
+        </div>
       </div>
+      <Button onClick={() => setCreateGroup(true)}>Confirm</Button>
+      {/* <SheetFooter>
+        <SheetClose asChild>
+          <Button onClick={() => setCreateGroup(true)}>Confirm</Button>
+        </SheetClose>
+      </SheetFooter> */}
     </div>
   );
 };

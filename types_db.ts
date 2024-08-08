@@ -133,6 +133,44 @@ export type Database = {
           },
         ]
       }
+      breaks: {
+        Row: {
+          break_end: string | null
+          break_start: string | null
+          created_at: string
+          date: string | null
+          duration: number | null
+          entry_id: string | null
+          id: number
+        }
+        Insert: {
+          break_end?: string | null
+          break_start?: string | null
+          created_at?: string
+          date?: string | null
+          duration?: number | null
+          entry_id?: string | null
+          id?: number
+        }
+        Update: {
+          break_end?: string | null
+          break_start?: string | null
+          created_at?: string
+          date?: string | null
+          duration?: number | null
+          entry_id?: string | null
+          id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "breaks_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string
@@ -168,6 +206,21 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          id: string
+          name: string
+        }
+        Insert: {
+          id?: string
+          name: string
+        }
+        Update: {
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       group_vehicles: {
         Row: {
           booking_id: string | null
@@ -198,17 +251,17 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "group_vehicles_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "groupvehicles_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "groupvehicles_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "groups"
             referencedColumns: ["id"]
           },
           {
@@ -227,6 +280,9 @@ export type Database = {
           group_date: string
           group_name: string
           id: string
+          launched: string | null
+          lead: string | null
+          sweep: string | null
         }
         Insert: {
           created_at?: string | null
@@ -234,6 +290,9 @@ export type Database = {
           group_date: string
           group_name: string
           id?: string
+          launched?: string | null
+          lead?: string | null
+          sweep?: string | null
         }
         Update: {
           created_at?: string | null
@@ -241,6 +300,9 @@ export type Database = {
           group_date?: string
           group_name?: string
           id?: string
+          launched?: string | null
+          lead?: string | null
+          sweep?: string | null
         }
         Relationships: []
       }
@@ -367,23 +429,100 @@ export type Database = {
         }
         Relationships: []
       }
+      time_entries: {
+        Row: {
+          clock_in: string | null
+          clock_out: string | null
+          date: string | null
+          duration: number | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          clock_in?: string | null
+          clock_out?: string | null
+          date?: string | null
+          duration?: number | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          clock_in?: string | null
+          clock_out?: string | null
+          date?: string | null
+          duration?: number | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_department: {
+        Row: {
+          department_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          department_id?: string
+          id?: string
+          user_id?: string
+        }
+        Update: {
+          department_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_department_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_department_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null
           full_name: string | null
           id: string
+          time_entry_status:
+            | Database["public"]["Enums"]["time_entry_status"]
+            | null
           user_level: number | null
         }
         Insert: {
           avatar_url?: string | null
           full_name?: string | null
           id: string
+          time_entry_status?:
+            | Database["public"]["Enums"]["time_entry_status"]
+            | null
           user_level?: number | null
         }
         Update: {
           avatar_url?: string | null
           full_name?: string | null
           id?: string
+          time_entry_status?:
+            | Database["public"]["Enums"]["time_entry_status"]
+            | null
           user_level?: number | null
         }
         Relationships: [
@@ -439,6 +578,7 @@ export type Database = {
         | "past_due"
         | "unpaid"
         | "paused"
+      time_entry_status: "CLOCKED_IN" | "CLOCKED_OUT" | "ON_BREAK"
     }
     CompositeTypes: {
       [_ in never]: never
