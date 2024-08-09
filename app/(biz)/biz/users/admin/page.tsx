@@ -1,14 +1,12 @@
 import React from 'react';
+import UsersTabsContainer from './tabs-container';
 
 const UserManagementPage = () => {
-  return <div>UserManagementPage</div>;
+  return (
+    <div>
+      <UsersTabsContainer />
+    </div>
+  );
 };
 
 export default UserManagementPage;
-
-// Todo,
-// View Users
-// Add User
-// Edit User's Role and Permissions
-// Delete User
-// View User's Profile

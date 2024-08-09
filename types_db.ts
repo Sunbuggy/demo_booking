@@ -500,6 +500,7 @@ export type Database = {
       users: {
         Row: {
           avatar_url: string | null
+          email: string | null
           full_name: string | null
           id: string
           time_entry_status:
@@ -509,6 +510,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          email?: string | null
           full_name?: string | null
           id: string
           time_entry_status?:
@@ -518,6 +520,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          email?: string | null
           full_name?: string | null
           id?: string
           time_entry_status?:

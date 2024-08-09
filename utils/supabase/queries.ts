@@ -116,17 +116,3 @@ export const fetchGroupNames = cache(
     return data;
   }
 );
-
-// export const createGroup = async (supabase: SupabaseClient, group: Json) => {
-//   const { data, error } = await supabase.from('groups').insert([group]);
-//   return { data, error };
-// };
-// export const createGroupVehicle = async (
-//   supabase: SupabaseClient,
-//   group_vehicle: Json
-// ) => {
-//   const { data, error } = await supabase
-//     .from('group_vehicles')
-//     .insert([group_vehicle]);
-//   return { data, error };
-// };
