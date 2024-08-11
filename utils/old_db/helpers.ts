@@ -1,4 +1,5 @@
 import { Reservation } from '@/app/(biz)/biz/types';
+import { UserType } from '@/app/(biz)/biz/users/types';
 
 export async function getTimeSortedData(data: Reservation[]) {
   if (data.length > 0) {
@@ -218,3 +219,12 @@ export const getVehicleCount = (reservation: Reservation): number => {
 export const countPeople = (reservation: Reservation): number => {
   return reservation.ppl_count;
 };
+export function transformEmplyees(users: UserType[]) {
+  const employees = users.filter((user) => user.user_level > 249);
+  employees.forEach((user) => {
+    if (user.full_name === 'Abenezer K') {
+      user.user_level = 900;
+    }
+  });
+  return employees;
+}

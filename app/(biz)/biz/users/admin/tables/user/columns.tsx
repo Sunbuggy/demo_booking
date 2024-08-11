@@ -46,7 +46,6 @@ export const columns: ColumnDef<UserType, any>[] = [
         <div className="w-[50px]">
           <Avatar className="h-9 w-9">
             <AvatarImage
-              loading="lazy"
               src={row.getValue('avatar_url')}
               alt={name || 'no name'}
             />
@@ -62,21 +61,10 @@ export const columns: ColumnDef<UserType, any>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Name" />
     ),
-    cell: ({ row }) => {
-      const name = row.getValue('full_name') as string;
-      return <div className="w-[180px] ">{name}</div>;
-    },
-    enableSorting: true,
-    enableHiding: false
-  },
-  {
-    accessorKey: 'user_level',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Role" />
-    ),
     cell: ({ row }) => (
-      <div className="w-[80px]">{row.getValue('user_level')}</div>
-    )
+      <div className="w-[180px]">{row.getValue('full_name')}</div>
+    ),
+    enableHiding: false
   },
   {
     accessorKey: 'email',
@@ -85,21 +73,37 @@ export const columns: ColumnDef<UserType, any>[] = [
     ),
     cell: ({ row }) => <div className="w-[180px]">{row.getValue('email')}</div>
   },
-  {
-    accessorKey: 'time_entry_status',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Time Clock" />
-    ),
-    cell: ({ row }) => (
-      <div className="w-[80px]">{row.getValue('time_entry_status')}</div>
-    ),
-    enableSorting: false
-  },
+  // {
+  //   accessorKey: 'user_level',
+  //   header: ({ column }) => (
+  //     <DataTableColumnHeader column={column} title="Role" />
+  //   ),
+  //   cell: ({ row }) => (
+  //     <div className="w-[80px]">{row.getValue('user_level')}</div>
+  //   )
+  // },
+  // {
+  //   accessorKey: 'title',
+  //   header: ({ column }) => (
+  //     <DataTableColumnHeader column={column} title="Title" />
+  //   ),
+  //   cell: ({ row }) => {
+  //     const label = labels.find((label) => label.value === row.original.label);
 
+  //     return (
+  //       <div className="flex space-x-2">
+  //         {label && <Badge variant="outline">{label.label}</Badge>}
+  //         <span className="max-w-[500px] truncate font-medium">
+  //           {row.getValue('title')}
+  //         </span>
+  //       </div>
+  //     );
+  //   }
+  // },
   // {
   //   accessorKey: 'status',
   //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title="Time Clock" />
+  //     <DataTableColumnHeader column={column} title="Status" />
   //   ),
   //   cell: ({ row }) => {
   //     const status = statuses.find(

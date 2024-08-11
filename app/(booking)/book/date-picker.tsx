@@ -71,7 +71,6 @@ const DatePicker = ({
                     today.setHours(0, 0, 0, 0); // Set today's date time to start of the day
                     return date < today || date < new Date('1900-01-01');
                   }}
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>

@@ -7,7 +7,13 @@ import { handleRequest } from '@/utils/auth-helpers/client';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-export default function NameForm({ userName }: { userName: string }) {
+export default function NameForm({
+  userName,
+  user_role
+}: {
+  userName: string;
+  user_role: number;
+}) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -30,14 +36,16 @@ export default function NameForm({ userName }: { userName: string }) {
       footer={
         <div className="flex flex-col items-start justify-between sm:flex-row sm:items-center">
           <p className="pb-4 sm:pb-0">64 characters maximum</p>
-          <Button
-            variant="slim"
-            type="submit"
-            form="nameForm"
-            loading={isSubmitting}
-          >
-            Update Name
-          </Button>
+          {user_role > 99 && (
+            <Button
+              variant="slim"
+              type="submit"
+              form="nameForm"
+              loading={isSubmitting}
+            >
+              Update Name
+            </Button>
+          )}
         </div>
       }
     >

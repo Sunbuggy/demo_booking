@@ -1,8 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { cache } from 'react';
-import { createClient } from './server';
-import { Json } from '@/types_db';
-
 export const getUser = cache(async (supabase: SupabaseClient) => {
   try {
     const {
@@ -14,28 +11,55 @@ export const getUser = cache(async (supabase: SupabaseClient) => {
     console.error(error);
   }
 });
-type UserDetails = {
+export type UserDetails = {
   avatar_url: string | null;
   full_name: string | null;
   id: string;
   user_level?: number | null; // Add user_level to the type definition
+  email?: string | null;
 };
 
 export const getUserDetails = cache(
-  async (): Promise<UserDetails | null | undefined> => {
+  async (supabase: SupabaseClient): Promise<any[] | null | undefined> => {
     try {
-      const supabase = createClient();
-      const { data: userDetails } = await supabase
+      if (!supabase) {
+        return null;
+      }
+      const {
+        data: { user }
+      } = await supabase.auth.getUser();
+
+      const id = user?.id;
+      if (!id) {
+        return null;
+      }
+
+      const { data: userDetails, error: err } = await supabase
         .from('users')
         .select('*')
-        .single();
-      console.log('run getUserDetails');
+        .eq('id', id);
+
+      if (err) {
+        console.error(err);
+        return null;
+      }
+
       return userDetails;
     } catch (error) {
       console.error(error);
     }
   }
 );
+
+export const getAllUsers = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase.from('users').select();
+  if (error) {
+    console.error(error);
+    return [];
+  }
+  // console.log(data.length);
+  return data;
+});
 
 export const updateUserName = cache(
   async (supabase: SupabaseClient, name: string) => {

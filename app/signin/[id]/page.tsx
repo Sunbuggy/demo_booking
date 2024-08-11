@@ -48,11 +48,11 @@ export default async function SignIn({
     data: { user }
   } = await supabase.auth.getUser();
 
-  if (user && viewProp !== 'update_password') {
-    return redirect('/');
-  } else if (!user && viewProp === 'update_password') {
-    return redirect('/signin');
-  }
+  // if (user && viewProp !== 'update_password') {
+  //   return redirect('/');
+  // } else if (!user && viewProp === 'update_password') {
+  //   return redirect('/signin');
+  // }
 
   return (
     <div className="flex justify-center h-screen">

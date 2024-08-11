@@ -1,10 +1,16 @@
 import React from 'react';
 import UsersTabsContainer from './tabs-container';
+import { createClient } from '@/utils/supabase/server';
+import { getAllUsers, getUser } from '@/utils/supabase/queries';
+import { UserType } from '../types';
 
-const UserManagementPage = () => {
+const UserManagementPage = async () => {
+  const supabase = createClient();
+  const users = (await getAllUsers(supabase)) as UserType[];
+  const loggedInUser = await getUser(supabase);
   return (
     <div>
-      <UsersTabsContainer />
+      <UsersTabsContainer users={users} loggedInUser={loggedInUser} />
     </div>
   );
 };
