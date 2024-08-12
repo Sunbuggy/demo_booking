@@ -43,9 +43,9 @@ export const timeClocklabels = [
 // Create enums for users time_entry_status
 
 export const time_entry_status_enums = z.enum([
-  'CLOCKED_IN',
-  'CLOCKED_OUT',
-  'ON_BREAK'
+  'clocked_in',
+  'clocked_out',
+  'on_break'
 ]);
 
 export const userSchema = z.object({

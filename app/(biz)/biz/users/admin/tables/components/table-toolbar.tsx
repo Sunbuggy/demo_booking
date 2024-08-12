@@ -4,13 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { Input } from '@/components/ui/input';
 import { DataTableFacetedFilter } from './faceted-filter';
+import { Coffee, TimerOff, UserCheck } from 'lucide-react';
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
+  tableName: string;
 }
 
+export const statuses = [
+  { value: 'clocked_in', label: 'clocked in', icon: UserCheck },
+  { value: 'on_break', label: 'on break', icon: Coffee },
+  { value: 'clocked_out', label: 'clocked out', icon: TimerOff }
+];
+
 export function DataTableToolbar<TData>({
-  table
+  table,
+  tableName
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
 
@@ -27,20 +36,15 @@ export function DataTableToolbar<TData>({
           }
           className="h-8 w-[150px] lg:w-[250px]"
         />
-        {/* {table.getColumn('status') && (
-          <DataTableFacetedFilter
-            column={table.getColumn('status')}
-            title="Status"
-            options={statuses}
-          />
-        )}
-        {table.getColumn('priority') && (
-          <DataTableFacetedFilter
-            column={table.getColumn('priority')}
-            title="Priority"
-            options={priorities}
-          />
-        )} */}
+        {tableName === 'employees'
+          ? table.getColumn('time_entry_status') && (
+              <DataTableFacetedFilter
+                column={table.getColumn('time_entry_status')}
+                title="time entry status"
+                options={statuses}
+              />
+            )
+          : ''}
         {isFiltered && (
           <Button
             variant="ghost"

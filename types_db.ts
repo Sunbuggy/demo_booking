@@ -581,7 +581,7 @@ export type Database = {
         | "past_due"
         | "unpaid"
         | "paused"
-      time_entry_status: "CLOCKED_IN" | "CLOCKED_OUT" | "ON_BREAK"
+      time_entry_status: "clocked_in" | "clocked_out" | "on_break"
     }
     CompositeTypes: {
       [_ in never]: never
