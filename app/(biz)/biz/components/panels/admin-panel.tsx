@@ -1,5 +1,7 @@
 import RedirectButton from '@/components/redirect-button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
 import React from 'react';
 
 const AdminPanel = ({
@@ -27,6 +29,11 @@ const AdminPanel = ({
             <RedirectButton name="Show Cost" redirect_path={redirect_path} />
           </div>
         )}
+        <div className="flex flex-col gap-2">
+          <Button asChild variant={'ghost'}>
+            <Link href={'/biz/users/admin'}>User Management</Link>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

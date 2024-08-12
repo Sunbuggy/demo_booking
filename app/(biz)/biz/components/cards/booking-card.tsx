@@ -67,17 +67,17 @@ const BookingCard = async ({
             .filter(
               (key) => Number(reservation[key as keyof typeof reservation]) > 0
             )
-            .map((key) => {
+            .map((key, idx) => {
               const count = Number(
                 reservation[key as keyof typeof reservation]
               );
               return (
-                <>
+                <div key={idx}>
                   <p className="italic font-thin text-orange-200" key={key}>
                     {count}-{key}
                     {count > 1 ? 's' : ''}
                   </p>
-                </>
+                </div>
               );
             })}
           <div className="flex gap-2 "></div>

@@ -24,7 +24,9 @@ export async function fetch_from_old_db(query: string) {
 export async function createGroups(
   group_name: string,
   group_date: string,
-  created_by: string
+  created_by: string,
+  lead?: string,
+  sweep?: string
 ) {
   const supabase = createClient();
   // Throw Error if same group_name and group_date already exists
@@ -33,12 +35,16 @@ export async function createGroups(
     .select()
     .eq('group_name', group_name)
     .eq('group_date', group_date);
+
   if (existingGroups?.length) {
     return { data: null, error: 'Group already exists.' };
   }
   const { data, error } = await supabase
     .from('groups')
-    .insert([{ group_name, group_date, created_by }]);
+    .insert([{ group_name, group_date, created_by, lead, sweep }]);
+  if (error) {
+    console.error(error);
+  }
   return { data, error };
 }
 
@@ -83,11 +89,50 @@ export async function updateGroupVehicleQuantity(
     .update({ quantity })
     .eq('id', group_id);
   if (error) {
-    console.log(group_id);
+    console.error(group_id);
     console.error(
       'An error occurred while updating group vehicle quantity:',
       error
     );
+  }
+  return { data, error };
+}
+
+export async function deleteGroup(group_id: string) {
+  const supabase = createClient();
+  if (!group_id) {
+    return { data: null, error: 'No id provided.' };
+  }
+  const { data, error } = await supabase
+    .from('groups')
+    .delete()
+    .eq('id', group_id);
+  console.error(error);
+  return { data, error };
+}
+
+export async function launchGroup(group_id: string) {
+  const supabase = createClient();
+  // Create a timestampz for the launched field
+  const timestampz = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('groups')
+    .update({ launched: timestampz })
+    .eq('id', group_id);
+  if (error) {
+    console.error(error);
+  }
+  return { data, error };
+}
+
+export async function unLaunchGroup(group_id: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('groups')
+    .update({ launched: null })
+    .eq('id', group_id);
+  if (error) {
+    console.error(error);
   }
   return { data, error };
 }

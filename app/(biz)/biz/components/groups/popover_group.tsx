@@ -9,16 +9,16 @@ export function PopoverGroups({
   openText,
   children
 }: {
-  openText: string;
+  openText: string | React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          size={'icon'}
+          // size={openText === 'Delete Group' ? 'sm' : 'icon'}
           variant={'ghost'}
-          className={`${openText === 'edit' ? 'text-lime-500' : openText === '+Add' ? 'text-green-500' : openText === 'delete' ? 'text-red-500' : ''} text-xs p-1 h-[1em]`}
+          className={`${openText === 'edit' ? 'text-lime-500' : openText === '+Add' ? 'text-green-500' : openText === 'Delete Group' ? 'w-full bg-red-600 hover:text-black' : ''} text-xs p-1 h-[1em]`}
         >
           {openText}
         </Button>

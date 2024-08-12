@@ -9,6 +9,8 @@ import DisplayExistingGroups, {
   DisplayGroupsInHourCard
 } from './display-existing-groups';
 import { PopoverGroupEdit } from './popover_group_edit';
+import { launchGroup } from '@/utils/old_db/actions';
+import LaunchGroup from './launch-group';
 
 const MainGroups = async ({
   groupHr,
@@ -63,89 +65,98 @@ const MainGroups = async ({
     <div className="ml-5 flex gap-1">
       <span className="flex items-start text-cyan-500">Groups:</span>{' '}
       <span className="flex flex-col gap-1">
-        {filterGroupsByHour(groups, groupHr).map((group) => {
-          // map through the groupVehicles and filter by group.group_name and group.group_date then return the sum of all quantities
-          const groupQty = filterGroupVehicleByGroupName(
-            group.group_name
-          ).reduce((acc, group) => {
-            return acc + Number(group.quantity);
-          }, 0); // Sum of all vehicle's quantities
+        {filterGroupsByHour(groups, groupHr)
+          .sort((a, b) => {
+            return a.group_name.localeCompare(b.group_name);
+          })
+          .map((group) => {
+            // map through the groupVehicles and filter by group.group_name and group.group_date then return the sum of all quantities
+            const groupQty = filterGroupVehicleByGroupName(
+              group.group_name
+            ).reduce((acc, group) => {
+              return acc + Number(group.quantity);
+            }, 0); // Sum of all vehicle's quantities
 
-          const nameFilteredGroups = filterGroupVehicleByGroupName(
-            group.group_name
-          );
-          const groupName = group.group_name;
-          return (
-            <span className="text-xs mb-2" key={group.id}>
-              {' '}
-              {/* {groupName}{' '} */}
-              <div className="flex justify-start items-start">
-                <PopoverGroupEdit
-                  openText={
-                    <DisplayGroupsInHourCard
-                      groupName={groupName}
-                      groupQty={groupQty}
-                      nameFilteredGroups={nameFilteredGroups}
-                    />
-                  }
-                >
-                  <div>
-                    <DisplayExistingGroups
-                      groupName={groupName}
-                      groupQty={groupQty}
-                      nameFilteredGroups={nameFilteredGroups}
-                    />
-                    <h1 className="text-center text-xl text-pink-500 m-3">
-                      Reservations
-                    </h1>
-                    {reservationsDataInLocation.map((reservations) => {
-                      let isHighlighted = false;
-                      return reservations.map((reservation) => {
-                        const countVehicles = vehiclesList
-                          .filter(
-                            (key) =>
-                              Number(
+            const nameFilteredGroups = filterGroupVehicleByGroupName(
+              group.group_name
+            );
+            const groupName = group.group_name;
+            const groupId = group.id;
+            const lead = group.lead;
+            const sweep = group.sweep;
+            const launched = group.launched;
+            return (
+              <span className="text-xs mb-2" key={group.id}>
+                {' '}
+                {/* {groupName}{' '} */}
+                <div className="flex justify-start items-start">
+                  <PopoverGroupEdit
+                    openText={
+                      <DisplayGroupsInHourCard
+                        groupName={groupName}
+                        groupQty={groupQty}
+                        nameFilteredGroups={nameFilteredGroups}
+                      />
+                    }
+                  >
+                    <div>
+                      <DisplayExistingGroups
+                        groupId={groupId}
+                        groupName={groupName}
+                        groupQty={groupQty}
+                        nameFilteredGroups={nameFilteredGroups}
+                        lead={lead}
+                        sweep={sweep}
+                      />
+                      <h1 className="text-center text-xl text-pink-500 m-3">
+                        Reservations
+                      </h1>
+                      {reservationsDataInLocation.map((reservations) => {
+                        let isHighlighted = false;
+                        return reservations.map((reservation) => {
+                          const countVehicles = vehiclesList
+                            .filter(
+                              (key) =>
+                                Number(
+                                  reservation[key as keyof typeof reservation]
+                                ) > 0
+                            )
+                            .map((key) => {
+                              const count = Number(
                                 reservation[key as keyof typeof reservation]
-                              ) > 0
-                          )
-                          .map((key) => {
-                            const count = Number(
-                              reservation[key as keyof typeof reservation]
-                            );
-                            isHighlighted = isVehicleInGroup(
-                              group.group_name,
-                              String(reservation.res_id),
-                              key
-                            );
-                            return `${count}-${key}`;
-                          })
-                          .join(', ');
+                              );
+                              isHighlighted = isVehicleInGroup(
+                                group.group_name,
+                                String(reservation.res_id),
+                                key
+                              );
+                              return `${count}-${key}`;
+                            })
+                            .join(', ');
 
-                        return (
-                          <ReservationsList
-                            countVehicles={countVehicles}
-                            group={group}
-                            isHighlighted={isHighlighted}
-                            key={reservation.res_id}
-                            nameFilteredGroups={nameFilteredGroups}
-                            reservation={reservation}
-                          />
-                        );
-                      });
-                    })}
-                  </div>
-                </PopoverGroupEdit>
-                <Button
-                  size={'icon'}
-                  variant={'ghost'}
-                  className="text-xs p-1 h-[1em]"
-                >
-                  launch
-                </Button>
-              </div>
-            </span>
-          );
-        })}
+                          return (
+                            <ReservationsList
+                              countVehicles={countVehicles}
+                              group={group}
+                              isHighlighted={isHighlighted}
+                              key={reservation.res_id}
+                              nameFilteredGroups={nameFilteredGroups}
+                              reservation={reservation}
+                            />
+                          );
+                        });
+                      })}
+                    </div>
+                  </PopoverGroupEdit>
+                  <LaunchGroup
+                    groupId={groupId}
+                    launched={Boolean(launched)}
+                    groupName={groupName}
+                  />
+                </div>
+              </span>
+            );
+          })}
       </span>
     </div>
   );

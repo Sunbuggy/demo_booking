@@ -10,6 +10,7 @@ import { fetch_from_old_db } from '@/utils/old_db/actions';
 import { Button } from '@/components/ui/button';
 import { RiArrowLeftWideFill, RiArrowRightWideFill } from 'react-icons/ri';
 import dayjs from 'dayjs';
+import { createClient } from '@/utils/supabase/server';
 
 const BizPage = async ({
   params,
@@ -20,9 +21,11 @@ const BizPage = async ({
 }) => {
   const date = params.date;
   const dcos = searchParams.dcos;
-  const user = await getUserDetails();
-  const role = user?.user_level;
-  const full_name = user?.full_name;
+  const supabase = createClient();
+  const user = await getUserDetails(supabase);
+  if (!user) return null;
+  const role = user[0]?.user_level;
+  const full_name = user[0]?.full_name;
   const yesterday = dayjs(date).subtract(1, 'day').format('YYYY-MM-DD');
   const tomorrow = dayjs(date).add(1, 'day').format('YYYY-MM-DD');
   // Regular expression to match the date format yyyy-dd-mm

@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { getUserDetails } from '@/utils/supabase/queries';
+import { createClient } from '@/utils/supabase/server';
 
 export default async function Footer() {
-  const date = new Date().toISOString().split('T')[0];
-  const user = await getUserDetails();
-  const role = user?.user_level;
+  const date = new Date().toLocaleDateString('en-CA'); // 'en-CA' format is 'YYYY-MM-DD'
+  const supabase = createClient();
+  const user = await getUserDetails(supabase);
+  if (!user) return null;
+  const role = user[0]?.user_level;
   return (
     <footer className="mx-auto px-6  w-screen">
       <div className="grid grid-cols-1 gap-2 py-12 transition-colors duration-150 border-b lg:grid-cols-12 border-zinc-600 ">

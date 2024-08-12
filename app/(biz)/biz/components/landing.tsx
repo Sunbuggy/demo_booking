@@ -26,11 +26,11 @@ const Landing = ({
   if (data)
     return (
       <div className="flex flex-col gap-5">
-        {Object.keys(data).map((key) => {
+        {Object.keys(data).map((key, idx) => {
           return (
             <HourCard
               data={data}
-              key={key}
+              key={idx}
               hr={key}
               display_cost={display_cost}
               date={date}

@@ -24,7 +24,7 @@ export const SelectAlphabet = ({
   return (
     <Select onValueChange={(value) => onSelect(value)}>
       <SelectTrigger className="w-[100px]">
-        <SelectValue placeholder="A to Z"></SelectValue>
+        <SelectValue placeholder="A-Z"></SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
@@ -56,7 +56,7 @@ export const SelectNums = ({
   return (
     <Select onValueChange={(value) => onSelect(value)}>
       <SelectTrigger className="w-[100px]">
-        <SelectValue placeholder="1 to 9"></SelectValue>
+        <SelectValue placeholder="1-9"></SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>

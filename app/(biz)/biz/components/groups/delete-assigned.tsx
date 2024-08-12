@@ -29,7 +29,7 @@ const DeleteAssigned = ({
     ): string | undefined {
       const group = groupVehicles.find((group) => {
         if (group.groups === null) {
-          console.log('empty group');
+          console.error('empty group');
           return false;
         }
 
@@ -40,7 +40,7 @@ const DeleteAssigned = ({
           const matchesVehicleName = group.old_vehicle_name === vehicleName;
           const matchesQuantity = Number(group.quantity) === quantity;
 
-          console.log({
+          console.table({
             groupNames,
             includesGroupName,
             matchesResNo,
@@ -60,7 +60,7 @@ const DeleteAssigned = ({
           const matchesVehicleName = group.old_vehicle_name === vehicleName;
           const matchesQuantity = Number(group.quantity) === quantity;
 
-          console.log({
+          console.table({
             matchesGroupName,
             matchesResNo,
             matchesVehicleName,
@@ -86,7 +86,7 @@ const DeleteAssigned = ({
         Number(countVehicles.split('-')[0])
       );
       deleteFromGroupVehicles(String(groupId)).then((res) => {
-        res.error ? console.log('Error', res.error) : console.log('Success');
+        res.error ? console.error('Error', res.error) : console.log('Success');
         res.error
           ? toast({
               title: 'Error',
