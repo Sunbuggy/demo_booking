@@ -6,7 +6,9 @@ import { columns } from './columns';
 
 const EmployeeTab = ({ users }: { users: UserType[] }) => {
   const employees = transformEmplyees(users);
-  return <DataTable data={employees} columns={columns} />;
+  return (
+    <DataTable data={employees} columns={columns} tableName={'employees'} />
+  );
 };
 
 export default EmployeeTab;

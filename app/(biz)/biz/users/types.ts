@@ -8,7 +8,7 @@ export type UserType = {
 };
 
 export enum time_entry_status {
-  CLOCKED_IN = 'CLOCKED_IN',
-  CLOCKED_OUT = 'CLOCKED_OUT',
-  ON_BREAK = 'ON_BREAK'
+  clocked_in = 'clocked_in',
+  clocked_out = 'clocked_out',
+  on_break = 'on_break'
 }

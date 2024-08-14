@@ -7,7 +7,7 @@ const CustomerTab = ({ users }: { users: UserType[] }) => {
   const customers = users?.filter((user) => user.user_level < 250);
   return (
     <div>
-      <DataTable data={customers} columns={columns} />
+      <DataTable data={customers} columns={columns} tableName={'customers'} />
     </div>
   );
 };

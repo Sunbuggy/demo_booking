@@ -90,9 +90,27 @@ export const columns: ColumnDef<UserType, any>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Time Clock" />
     ),
-    cell: ({ row }) => (
-      <div className="w-[80px]">{row.getValue('time_entry_status')}</div>
-    ),
+    cell: ({ row }) => {
+      const status = row.getValue('time_entry_status') as string; // 'clocked_in' | 'clocked_out' | 'on_break' | ;
+      return (
+        <div className="w-[80px] text-xs">
+          <Badge
+            variant={
+              status === 'clocked_in'
+                ? 'positive'
+                : status === 'on_break'
+                  ? 'cautious'
+                  : 'default'
+            }
+          >
+            {status}
+          </Badge>
+        </div>
+      );
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
     enableSorting: false
   },
 

@@ -5,19 +5,17 @@
 - Display Via Table
 
   - Tab for Employees
-    - Name
-    - Email
+    - Name [done]
+    - Role Number [done]
+    - Email [done]
     - Phone Number
-    - Role Number
     - Permissions
     - Status
-      - Active/Inactive
-      - Clocked In/Out
+      - Clocked In/Out [done]
   - Tab for Customers
-    - Name
-    - Email
+    - Name [done]
+    - Email [done]
     - Phone Number
-    - Role Number
     - Permissions
     - Status
       - Has/Hasn't Ordered
@@ -37,7 +35,7 @@
 
 - Search Users
 
-  - By Name
+  - By Name [done]
   - By Email
   - By Phone Number
 
@@ -63,8 +61,7 @@
 
   - By Name
   - By Email
-  - By Phone Number
-  - By Role Number
+  - By Role Number [done]
 
 - View User's Profile
 - View User's Orders
@@ -78,6 +75,8 @@
 ## Edit User's Role and Permissions
 
 - Edit User's Profile
+- Edit Employees
+  - Edit Role Number
 
 ## Delete User
 
