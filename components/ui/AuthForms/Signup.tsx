@@ -33,6 +33,18 @@ export default function SignUp({ allowEmail, redirectMethod }: SignUpProps) {
       >
         <div className="grid gap-2">
           <div className="grid gap-1">
+            <label htmlFor="name">Name</label>
+            <input
+              id="name"
+              placeholder="Name"
+              type="text"
+              name="name"
+              autoCapitalize="words"
+              autoComplete="name"
+              autoCorrect="off"
+              className="w-full p-3 rounded-md bg-zinc-800"
+              required
+            />
             <label htmlFor="email">Email</label>
             <input
               id="email"

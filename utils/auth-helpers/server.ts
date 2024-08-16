@@ -168,10 +168,18 @@ export async function signInWithPassword(formData: FormData) {
 export async function signUp(formData: FormData) {
   const callbackURL = getURL('/auth/callback');
 
+  const name = String(formData.get('name')).trim();
   const email = String(formData.get('email')).trim();
   const password = String(formData.get('password')).trim();
   let redirectPath: string;
 
+  if (!name || name.length < 2) {
+    redirectPath = getErrorRedirect(
+      '/signin/signup',
+      'No name provided.',
+      'Please try again.'
+    );
+  }
   if (!isValidEmail(email)) {
     redirectPath = getErrorRedirect(
       '/signin/signup',
@@ -184,8 +192,12 @@ export async function signUp(formData: FormData) {
   const { error, data } = await supabase.auth.signUp({
     email,
     password,
+
     options: {
-      emailRedirectTo: callbackURL
+      emailRedirectTo: callbackURL,
+      data: {
+        full_name: name
+      }
     }
   });
 
