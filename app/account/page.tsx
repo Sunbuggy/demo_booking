@@ -1,8 +1,12 @@
 import NameForm from '@/components/ui/AccountForms/NameForm';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import { getUserDetails } from '@/utils/supabase/queries';
-import RoleForm from '@/components/ui/AccountForms/RoleForm';
+import {
+  fetchTodayTimeEntryByUserId,
+  getUserDetails
+} from '@/utils/supabase/queries';
+import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
+// import RoleForm from '@/components/ui/AccountForms/RoleForm';
 
 export default async function Account() {
   const supabase = createClient();
@@ -10,8 +14,13 @@ export default async function Account() {
   if (!user) {
     return redirect('/signin');
   } else {
+    const userId = user[0]?.id;
+    const timeEntry = await fetchTodayTimeEntryByUserId(supabase, userId);
+    console.log(timeEntry);
     const role = user[0]?.user_level;
     const userName = user[0]?.full_name;
+    const phone = user[0]?.phone;
+    const clockinStatus = user[0]?.time_entry_status;
     return (
       <section className="mb-32">
         <div className="max-w-6xl px-4 py-8 mx-auto sm:px-6 sm:pt-24 lg:px-8">
@@ -25,7 +34,14 @@ export default async function Account() {
           </div>
         </div>
         <div className="p-4">
-          <NameForm userName={userName ?? ''} user_role={role || 100} />
+          <NameForm
+            userName={userName ?? ''}
+            user_role={role || 100}
+            phone={phone}
+          />
+          {role > 284 && (
+            <ClockinForm user_role={role || 100} status={clockinStatus} />
+          )}
           {/* {Number(role) > 900 ? <RoleForm role={String(role) ?? ''} /> : ''} */}
         </div>
       </section>

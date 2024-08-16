@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getURL, getErrorRedirect, getStatusRedirect } from 'utils/helpers';
 import { getAuthTypes } from 'utils/auth-helpers/settings';
-import { updateUserName } from '../supabase/queries';
+import { updatePhoneNumber, updateUserName } from '../supabase/queries';
 import { updateUserLevel } from '../supabase/queries';
 
 function isValidEmail(email: string) {
@@ -336,6 +336,26 @@ export async function updateName(formData: FormData) {
       '/account',
       'Success!',
       'Your name has been updated.'
+    );
+  }
+}
+
+export async function updatePhone(formData: FormData) {
+  // Get form data
+  const phone = String(formData.get('phone')).trim();
+  const supabase = createClient();
+  const { error } = await updatePhoneNumber(supabase, phone);
+  if (error) {
+    return getErrorRedirect(
+      '/account',
+      'Your phone number could not be updated.',
+      error.message
+    );
+  } else {
+    return getStatusRedirect(
+      '/account',
+      'Success!',
+      'Your phone number has been updated.'
     );
   }
 }

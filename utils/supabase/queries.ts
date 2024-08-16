@@ -71,6 +71,16 @@ export const updateUserName = cache(
   }
 );
 
+export const updatePhoneNumber = cache(
+  async (supabase: SupabaseClient, phone: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ phone })
+      .eq('id', await getUser(supabase).then((user) => user?.id));
+    return { data, error };
+  }
+);
+
 export const updateUserLevel = cache(
   async (supabase: SupabaseClient, user_level: number) => {
     const { data, error } = await supabase
@@ -135,6 +145,22 @@ export const fetchGroupNames = cache(
         error,
         `fetchGroupNames Error! old_booking_id: ${old_booking_id}`
       );
+      return [];
+    }
+    return data;
+  }
+);
+
+export const fetchTodayTimeEntryByUserId = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    const { data, error } = await supabase
+      .from('time_entries')
+      .select()
+      .eq('user_id', userId)
+      // Get clock_in and clock_out for today and it is timestampz format
+      .gte('clock_in', new Date().toISOString());
+    if (error) {
+      console.error(error);
       return [];
     }
     return data;
