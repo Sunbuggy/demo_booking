@@ -7,7 +7,15 @@ import {
 } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 // import RoleForm from '@/components/ui/AccountForms/RoleForm';
-
+type TimeEntry = {
+  id: any;
+  date: any;
+  clock_in: {
+    clock_in_time: any;
+    lat: any;
+    long: any;
+  };
+};
 export default async function Account() {
   const supabase = createClient();
   const user = await getUserDetails(supabase);
@@ -16,7 +24,9 @@ export default async function Account() {
   } else {
     const userId = user[0]?.id;
     const timeEntry = await fetchTodayTimeEntryByUserId(supabase, userId);
-    console.log(timeEntry);
+    const timeEnt = timeEntry as unknown as TimeEntry[];
+    const clockInTimeStamp = timeEnt[0]?.clock_in?.clock_in_time;
+    console.log('clockInTimeStamp', clockInTimeStamp);
     const role = user[0]?.user_level;
     const userName = user[0]?.full_name;
     const phone = user[0]?.phone;
@@ -40,7 +50,12 @@ export default async function Account() {
             phone={phone}
           />
           {role > 284 && (
-            <ClockinForm user_role={role || 100} status={clockinStatus} />
+            <ClockinForm
+              user_role={role || 100}
+              status={clockinStatus}
+              user_id={userId}
+              clockInTimeStamp={clockInTimeStamp}
+            />
           )}
           {/* {Number(role) > 900 ? <RoleForm role={String(role) ?? ''} /> : ''} */}
         </div>

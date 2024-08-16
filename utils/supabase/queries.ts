@@ -155,14 +155,78 @@ export const fetchTodayTimeEntryByUserId = cache(
   async (supabase: SupabaseClient, userId: string) => {
     const { data, error } = await supabase
       .from('time_entries')
-      .select()
+      .select(
+        `id,
+        date,
+        clock_in (clock_in_time, lat, long)`
+      )
       .eq('user_id', userId)
-      // Get clock_in and clock_out for today and it is timestampz format
-      .gte('clock_in', new Date().toISOString());
+      .eq('date', new Date().toISOString().split('T')[0]);
     if (error) {
-      console.error(error);
+      console.error(
+        error,
+        `fetchTodayTimeEntryByUserId Error! userId: ${userId}`
+      );
       return [];
     }
     return data;
+  }
+);
+export const insertIntoClockIn = cache(
+  async (
+    supabase: SupabaseClient,
+    userId: string,
+    lat: number,
+    long: number
+  ) => {
+    // First insert into clock_in table clock_in_time, lat, long
+    const { data, error } = await supabase.from('clock_in').insert([
+      {
+        clock_in_time: new Date().toISOString(),
+        lat,
+        long
+      }
+    ]);
+    if (error) {
+      console.error(error, `insertIntoClockIn Error! userId: ${userId}`);
+      return [];
+    }
+    console.log('Clock-in data:', data);
+
+    // Then insert into time_entries table user_id, date, and clock_in_id from the clock_in table above
+    const clock_in_id =
+      data && data[0] ? (data[0] as { id: string })?.id : null;
+    console.log('Clock-in ID:', clock_in_id);
+
+    const { data: timeEntryData, error: timeEntryError } = await supabase
+      .from('time_entries')
+      .insert([
+        {
+          user_id: userId,
+          date: new Date().toISOString().split('T')[0],
+          clock_in_id
+        }
+      ]);
+    if (timeEntryError) {
+      console.error(
+        timeEntryError,
+        `insertIntoClockIn Error! userId: ${userId}`
+      );
+      return [];
+    }
+    console.log('Time entry data:', timeEntryData);
+
+    // Go to users table and change the time_entry_status to 'clocked_in'
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .update({ time_entry_status: 'clocked_in' })
+      .eq('id', userId);
+    if (userError) {
+      console.error(userError, `insertIntoClockIn Error! userId: ${userId}`);
+      return [];
+    }
+    console.log('User data:', userData);
+
+    return timeEntryData;
   }
 );
