@@ -2,7 +2,7 @@ import NameForm from '@/components/ui/AccountForms/NameForm';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import {
-  fetchTodayTimeEntryByUserId,
+  fetchTimeEntryByUserId,
   getUserDetails
 } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
@@ -15,15 +15,27 @@ type TimeEntry = {
     lat: any;
     long: any;
   };
+  clock_out: {
+    clock_out_time: any;
+    lat: any;
+    long: any;
+  };
 };
 export default async function Account() {
   const supabase = createClient();
+  const { data, error } = await supabase.rpc('auto_clock_out');
+  if (error) {
+    console.error('Error calling auto_clock_out function:', error);
+  } else {
+    // console.log('auto_clock_out function executed successfully:', data);
+  }
   const user = await getUserDetails(supabase);
   if (!user) {
     return redirect('/signin');
   } else {
     const userId = user[0]?.id;
-    const timeEntry = await fetchTodayTimeEntryByUserId(supabase, userId);
+    const timeEntry = await fetchTimeEntryByUserId(supabase, userId);
+    console.log(timeEntry);
     const timeEnt = timeEntry as unknown as TimeEntry[];
     const clockInTimeStamp = timeEnt[0]?.clock_in?.clock_in_time;
     const role = user[0]?.user_level;

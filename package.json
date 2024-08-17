@@ -16,6 +16,7 @@
     "supabase:reset": "npx supabase db reset",
     "supabase:link": "npx supabase link",
     "supabase:generate-types": "npx supabase gen types typescript --local --schema public > types_db.ts",
+    "supabase:generate-types-new": "npx supabase gen types typescript --project-id 'fztelytnkxwcobusnytg'  --schema public > types_db.ts",
     "supabase:generate-migration": "npx supabase db diff | npx supabase migration new",
     "supabase:generate-seed": "npx supabase db dump --data-only -f supabase/seed.sql",
     "supabase:push": "npx supabase db push",

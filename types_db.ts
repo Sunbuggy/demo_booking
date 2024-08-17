@@ -36,6 +36,7 @@ export type Database = {
           booking_date: string
           booking_id: string | null
           booking_type: string
+          customer_id: string | null
           id: string
         }
         Insert: {
@@ -43,6 +44,7 @@ export type Database = {
           booking_date: string
           booking_id?: string | null
           booking_type: string
+          customer_id?: string | null
           id?: string
         }
         Update: {
@@ -50,9 +52,17 @@ export type Database = {
           booking_date?: string
           booking_id?: string | null
           booking_type?: string
+          customer_id?: string | null
           id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "booking_details_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookingdetails_booking_id_fkey"
             columns: ["booking_id"]
@@ -171,35 +181,86 @@ export type Database = {
           },
         ]
       }
-      customers: {
+      clock_in: {
         Row: {
-          address: string
-          email: string
+          clock_in_time: string | null
+          created_at: string
           id: string
-          name: string
-          phone: string
-          user_id: string
+          image: string | null
+          lat: number | null
+          long: number | null
         }
         Insert: {
-          address: string
-          email: string
+          clock_in_time?: string | null
+          created_at?: string
           id?: string
-          name: string
-          phone: string
-          user_id: string
+          image?: string | null
+          lat?: number | null
+          long?: number | null
         }
         Update: {
-          address?: string
-          email?: string
+          clock_in_time?: string | null
+          created_at?: string
           id?: string
-          name?: string
-          phone?: string
-          user_id?: string
+          image?: string | null
+          lat?: number | null
+          long?: number | null
+        }
+        Relationships: []
+      }
+      clock_out: {
+        Row: {
+          clock_out_time: string | null
+          created_at: string
+          id: string
+          image: string | null
+          lat: number | null
+          long: number | null
+        }
+        Insert: {
+          clock_out_time?: string | null
+          created_at?: string
+          id?: string
+          image?: string | null
+          lat?: number | null
+          long?: number | null
+        }
+        Update: {
+          clock_out_time?: string | null
+          created_at?: string
+          id?: string
+          image?: string | null
+          lat?: number | null
+          long?: number | null
+        }
+        Relationships: []
+      }
+      customers: {
+        Row: {
+          address: string | null
+          email: string | null
+          id: string
+          name: string | null
+          phone: string | null
+        }
+        Insert: {
+          address?: string | null
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+        }
+        Update: {
+          address?: string | null
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "customers_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "customers_id_fkey"
+            columns: ["id"]
             isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -431,30 +492,44 @@ export type Database = {
       }
       time_entries: {
         Row: {
-          clock_in: string | null
-          clock_out: string | null
+          clock_in_id: string | null
+          clock_out_id: string | null
           date: string | null
           duration: number | null
           id: string
           user_id: string | null
         }
         Insert: {
-          clock_in?: string | null
-          clock_out?: string | null
+          clock_in_id?: string | null
+          clock_out_id?: string | null
           date?: string | null
           duration?: number | null
           id?: string
           user_id?: string | null
         }
         Update: {
-          clock_in?: string | null
-          clock_out?: string | null
+          clock_in_id?: string | null
+          clock_out_id?: string | null
           date?: string | null
           duration?: number | null
           id?: string
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "time_entries_clock_in_id_fkey"
+            columns: ["clock_in_id"]
+            isOneToOne: false
+            referencedRelation: "clock_in"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_clock_out_id_fkey"
+            columns: ["clock_out_id"]
+            isOneToOne: false
+            referencedRelation: "clock_out"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "time_entries_user_id_fkey"
             columns: ["user_id"]
@@ -503,6 +578,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          phone: string | null
           time_entry_status:
             | Database["public"]["Enums"]["time_entry_status"]
             | null
@@ -513,6 +589,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          phone?: string | null
           time_entry_status?:
             | Database["public"]["Enums"]["time_entry_status"]
             | null
@@ -523,6 +600,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          phone?: string | null
           time_entry_status?:
             | Database["public"]["Enums"]["time_entry_status"]
             | null
@@ -567,7 +645,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      auto_clock_out: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      is_high_level_user: {
+        Args: {
+          uid: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       pricing_plan_interval: "day" | "week" | "month" | "year"
@@ -582,6 +669,7 @@ export type Database = {
         | "unpaid"
         | "paused"
       time_entry_status: "clocked_in" | "clocked_out" | "on_break"
+      user_type: "employee" | "customer" | "partner"
     }
     CompositeTypes: {
       [_ in never]: never
