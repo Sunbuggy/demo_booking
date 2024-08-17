@@ -26,7 +26,6 @@ export default async function Account() {
     const timeEntry = await fetchTodayTimeEntryByUserId(supabase, userId);
     const timeEnt = timeEntry as unknown as TimeEntry[];
     const clockInTimeStamp = timeEnt[0]?.clock_in?.clock_in_time;
-    console.log('clockInTimeStamp', clockInTimeStamp);
     const role = user[0]?.user_level;
     const userName = user[0]?.full_name;
     const phone = user[0]?.phone;

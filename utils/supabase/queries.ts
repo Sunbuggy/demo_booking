@@ -1,5 +1,17 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { cache } from 'react';
+
+// Utility function to get the current date and time in PST
+export function getPSTDate(): string {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const pstOffset = -8; // PST is UTC-8
+    const pstDate = new Date(utc + (3600000 * pstOffset));
+    return pstDate.toISOString();
+}
+
+// Usage
+const clock_in_time = getPSTDate();
 export const getUser = cache(async (supabase: SupabaseClient) => {
   try {
     const {
@@ -182,22 +194,18 @@ export const insertIntoClockIn = cache(
     // First insert into clock_in table clock_in_time, lat, long
     const { data, error } = await supabase.from('clock_in').insert([
       {
-        clock_in_time: new Date().toISOString(),
+        clock_in_time: getPSTDate(),
         lat,
         long
       }
-    ]);
+    ]).select();
     if (error) {
       console.error(error, `insertIntoClockIn Error! userId: ${userId}`);
       return [];
     }
-    console.log('Clock-in data:', data);
 
     // Then insert into time_entries table user_id, date, and clock_in_id from the clock_in table above
-    const clock_in_id =
-      data && data[0] ? (data[0] as { id: string })?.id : null;
-    console.log('Clock-in ID:', clock_in_id);
-
+    const clock_in_id = data[0]?.id;
     const { data: timeEntryData, error: timeEntryError } = await supabase
       .from('time_entries')
       .insert([
@@ -214,7 +222,6 @@ export const insertIntoClockIn = cache(
       );
       return [];
     }
-    console.log('Time entry data:', timeEntryData);
 
     // Go to users table and change the time_entry_status to 'clocked_in'
     const { data: userData, error: userError } = await supabase
@@ -225,7 +232,6 @@ export const insertIntoClockIn = cache(
       console.error(userError, `insertIntoClockIn Error! userId: ${userId}`);
       return [];
     }
-    console.log('User data:', userData);
 
     return timeEntryData;
   }
