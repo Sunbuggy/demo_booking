@@ -3,16 +3,8 @@ import { equal } from 'assert';
 import { cache } from 'react';
 
 // Utility function to get the current date and time in PST
-export function getPSTDate(): string {
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  const pstOffset = -8; // PST is UTC-8
-  const pstDate = new Date(utc + 3600000 * pstOffset);
-  return pstDate.toISOString();
-}
 
 // Usage
-const clock_in_time = getPSTDate();
 export const getUser = cache(async (supabase: SupabaseClient) => {
   try {
     const {
@@ -197,12 +189,38 @@ export const insertIntoClockIn = cache(
     lat: number,
     long: number
   ) => {
-    // First check if there are any existing time entries for the user today
+    // If this user_id has a time_entry that has a clock_in_id but no clock_out_id, then return and do nothing
+    const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
+    if (looseClockedInData.length > 0) {
+      return [];
+    }
+    // First insert into clock_in table clock_in_time, lat, long
+    const { data, error } = await supabase
+      .from('clock_in')
+      .insert([
+        {
+          clock_in_time: new Date().toISOString(),
+          lat,
+          long
+        }
+      ])
+      .select();
+    if (error) {
+      console.error(error, `insertIntoClockIn Error! userId: ${userId}`);
+      return [];
+    }
+
+    // Then insert into time_entries table user_id, date, and clock_in_id from the clock_in table above
+    const clock_in_id = data[0]?.id;
     const { data: timeEntryData, error: timeEntryError } = await supabase
       .from('time_entries')
-      .select()
-      .eq('user_id', userId)
-      .eq('date', new Date().toISOString().split('T')[0]);
+      .insert([
+        {
+          user_id: userId,
+          date: new Date().toISOString().split('T')[0],
+          clock_in_id
+        }
+      ]);
     if (timeEntryError) {
       console.error(
         timeEntryError,
@@ -210,56 +228,18 @@ export const insertIntoClockIn = cache(
       );
       return [];
     }
-    if (timeEntryData.length > 0) {
-      return timeEntryData;
+
+    // Go to users table and change the time_entry_status to 'clocked_in'
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .update({ time_entry_status: 'clocked_in' })
+      .eq('id', userId);
+    if (userError) {
+      console.error(userError, `insertIntoClockIn Error! userId: ${userId}`);
+      return [];
     }
 
-    //   // First insert into clock_in table clock_in_time, lat, long
-    //   const { data, error } = await supabase
-    //     .from('clock_in')
-    //     .insert([
-    //       {
-    //         clock_in_time: getPSTDate(),
-    //         lat,
-    //         long
-    //       }
-    //     ])
-    //     .select();
-    //   if (error) {
-    //     console.error(error, `insertIntoClockIn Error! userId: ${userId}`);
-    //     return [];
-    //   }
-
-    //   // Then insert into time_entries table user_id, date, and clock_in_id from the clock_in table above
-    //   const clock_in_id = data[0]?.id;
-    //   const { data: timeEntryData, error: timeEntryError } = await supabase
-    //     .from('time_entries')
-    //     .insert([
-    //       {
-    //         user_id: userId,
-    //         date: new Date().toISOString().split('T')[0],
-    //         clock_in_id
-    //       }
-    //     ]);
-    //   if (timeEntryError) {
-    //     console.error(
-    //       timeEntryError,
-    //       `insertIntoClockIn Error! userId: ${userId}`
-    //     );
-    //     return [];
-    //   }
-
-    //   // Go to users table and change the time_entry_status to 'clocked_in'
-    //   const { data: userData, error: userError } = await supabase
-    //     .from('users')
-    //     .update({ time_entry_status: 'clocked_in' })
-    //     .eq('id', userId);
-    //   if (userError) {
-    //     console.error(userError, `insertIntoClockIn Error! userId: ${userId}`);
-    //     return [];
-    //   }
-
-    //   return timeEntryData;
+    return timeEntryData;
   }
 );
 
@@ -277,7 +257,7 @@ export const insertIntoClockOut = cache(
       .from('clock_out')
       .insert([
         {
-          clock_out_time: getPSTDate(),
+          clock_out_time: new Date().toISOString(),
           lat,
           long
         }

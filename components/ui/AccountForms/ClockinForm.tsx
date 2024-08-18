@@ -10,6 +10,20 @@ import {
 } from '@/utils/supabase/queries';
 import { useRouter } from 'next/navigation';
 import { useToast } from '../use-toast';
+import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from '@/components/ui/tooltip';
+import { InfoCircledIcon } from '@radix-ui/react-icons';
+
 const ClockinForm = ({
   user_role,
   user_id,
@@ -28,9 +42,27 @@ const ClockinForm = ({
   );
   const [clockOutTime, setClockOutTime] = useState<Date | undefined>(undefined);
   const [clockOut, setClockOut] = useState(false);
+  const [nowTime, setNowTime] = useState('');
   const supabase = createClient();
   const router = useRouter();
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: true
+      });
+      setNowTime(timeString);
+    }, 1000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  });
 
   React.useEffect(() => {
     const channel = supabase
@@ -108,7 +140,7 @@ const ClockinForm = ({
           setClockOutTime(new Date());
           toast({
             title: 'Success',
-            description: `You have successfully clocked out.`,
+            description: `You have successfully clocked out at ${new Date().toLocaleTimeString()} .`,
             duration: 2000,
             variant: 'success'
           });
@@ -184,6 +216,24 @@ const ClockinForm = ({
             <div className="flex gap-3">
               <p> Clocked In For:</p>
               <span className="text-purple-500">{calculateTimeElapsed()}</span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <InfoCircledIcon />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      Clocked in since
+                      <span className="m-1 text-purple-500">
+                        {clockInTime?.toLocaleTimeString()},
+                      </span>
+                      <span className="m-1 text-purple-500">
+                        {clockInTime?.toLocaleDateString()}
+                      </span>
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )}
           {status === 'clocked_out' && 'Clocked Out'}
@@ -191,16 +241,54 @@ const ClockinForm = ({
         </div>
         <div className="flex justify-end">
           {status === 'clocked_out' && (
-            <Button variant="positive" onClick={clockInFn}>
-              Clock in
-            </Button>
+            <Popover>
+              <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-green-500  text-zinc-50 hover:bg-green-500/90 dark:bg-green-900 dark:text-zinc-50 dark:hover:bg-green-900/90 h-10 px-4 py-2">
+                {' '}
+                Clock In
+              </PopoverTrigger>
+              <PopoverContent>
+                <div>
+                  <h1>
+                    The time is <span className="m-2">{nowTime}</span> Do you
+                    want to clock in?
+                  </h1>
+                </div>
+                <PopoverClose asChild>
+                  <Button variant="positive" onClick={clockInFn}>
+                    Clock in
+                  </Button>
+                </PopoverClose>
+              </PopoverContent>
+            </Popover>
           )}
           {status === 'clocked_in' && (
             <div className="flex gap-5">
               <Button variant="secondary">Take Break</Button>
-              <Button variant="destructive" onClick={clockOutFn}>
-                Clockout
-              </Button>
+              <Popover>
+                <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-red-500  text-zinc-50 hover:bg-red-500/90 dark:bg-red-900 dark:text-zinc-50 dark:hover:bg-red-900/90 h-10 px-4 py-2">
+                  {' '}
+                  Clock Out
+                </PopoverTrigger>
+
+                <PopoverContent>
+                  <div className="mb-5">
+                    <h1>
+                      The time is <span className="m-2">{nowTime}</span> Do you
+                      want to clock Out?
+                    </h1>
+                  </div>
+                  <div className="flex flex-row-reverse justify-between">
+                    <PopoverClose asChild>
+                      <Button variant="destructive" onClick={clockOutFn}>
+                        Clockout
+                      </Button>
+                    </PopoverClose>
+                    <PopoverClose asChild>
+                      <Button variant="secondary">Cancel</Button>
+                    </PopoverClose>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           )}
         </div>

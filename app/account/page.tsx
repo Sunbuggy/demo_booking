@@ -23,11 +23,13 @@ type TimeEntry = {
 };
 export default async function Account() {
   const supabase = createClient();
-  const { data, error } = await supabase.rpc('auto_clock_out');
-  if (error) {
+  try {
+    const { error } = await supabase.rpc('auto_clock_out');
+    if (error) {
+      console.error('Error calling auto_clock_out function:', error);
+    }
+  } catch (error) {
     console.error('Error calling auto_clock_out function:', error);
-  } else {
-    // console.log('auto_clock_out function executed successfully:', data);
   }
   const user = await getUserDetails(supabase);
   if (!user) {
@@ -35,7 +37,6 @@ export default async function Account() {
   } else {
     const userId = user[0]?.id;
     const timeEntry = await fetchTimeEntryByUserId(supabase, userId);
-    console.log(timeEntry);
     const timeEnt = timeEntry as unknown as TimeEntry[];
     const clockInTimeStamp = timeEnt[0]?.clock_in?.clock_in_time;
     const role = user[0]?.user_level;

@@ -649,6 +649,18 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      clock_in_user: {
+        Args: {
+          user_id: string
+        }
+        Returns: undefined
+      }
+      clock_out_user: {
+        Args: {
+          user_id: string
+        }
+        Returns: undefined
+      }
       is_high_level_user: {
         Args: {
           uid: string
