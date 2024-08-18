@@ -148,28 +148,25 @@ export type Database = {
           break_end: string | null
           break_start: string | null
           created_at: string
-          date: string | null
           duration: number | null
           entry_id: string | null
-          id: number
+          id: string
         }
         Insert: {
           break_end?: string | null
           break_start?: string | null
           created_at?: string
-          date?: string | null
           duration?: number | null
           entry_id?: string | null
-          id?: number
+          id?: string
         }
         Update: {
           break_end?: string | null
           break_start?: string | null
           created_at?: string
-          date?: string | null
           duration?: number | null
           entry_id?: string | null
-          id?: number
+          id?: string
         }
         Relationships: [
           {
@@ -539,6 +536,47 @@ export type Database = {
           },
         ]
       }
+      time_sheet_requests: {
+        Row: {
+          created_at: string | null
+          end_time: string
+          id: string
+          reason: string | null
+          start_time: string
+          status: Database["public"]["Enums"]["request_progress"] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_time: string
+          id?: string
+          reason?: string | null
+          start_time: string
+          status?: Database["public"]["Enums"]["request_progress"] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string
+          id?: string
+          reason?: string | null
+          start_time?: string
+          status?: Database["public"]["Enums"]["request_progress"] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_sheet_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_department: {
         Row: {
           department_id: string
@@ -671,6 +709,7 @@ export type Database = {
     Enums: {
       pricing_plan_interval: "day" | "week" | "month" | "year"
       pricing_type: "one_time" | "recurring"
+      request_progress: "rejected" | "pending" | "accepted"
       subscription_status:
         | "trialing"
         | "active"

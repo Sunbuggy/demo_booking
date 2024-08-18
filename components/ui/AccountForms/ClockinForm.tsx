@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button } from '../button';
 import { createClient } from '@/utils/supabase/client';
 import {
+  createTimeSheetRequest,
   insertIntoBreak,
   insertIntoBreakEnd,
   insertIntoClockIn,
@@ -25,6 +26,20 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip';
 import { InfoCircledIcon } from '@radix-ui/react-icons';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
+import { Input } from '../input';
+import { Label } from '../label';
+import { Textarea } from '../textarea';
+import { DateTimePicker } from '../datetime-picker';
 
 const ClockinForm = ({
   user_role,
@@ -47,6 +62,17 @@ const ClockinForm = ({
   const [takeBreak, setTakeBreak] = useState(false);
   const [endBreak, setEndBreak] = useState(false);
   const [nowTime, setNowTime] = useState('');
+  const [submitTimeSheet, setSubmitTimeSheet] = useState(false);
+  const [timeSheetRequest, setTimeSheetRequest] = useState<{
+    clockInTime: Date | null;
+    clockOutTime: Date | null;
+    reason: string;
+  }>({
+    clockInTime: null,
+    clockOutTime: null,
+    reason: ''
+  });
+
   const supabase = createClient();
   const router = useRouter();
   const { toast } = useToast();
@@ -99,9 +125,9 @@ const ClockinForm = ({
     }
   }, []);
 
-  React.useEffect(() => {
-    console.log(clockInTime);
-  }, [takeBreak, endBreak]);
+  // React.useEffect(() => {
+
+  // }, [takeBreak, endBreak]);
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -208,6 +234,38 @@ const ClockinForm = ({
     }
   }, [takeBreak, endBreak]);
 
+  React.useEffect(() => {
+    if (submitTimeSheet) {
+      if (timeSheetRequest.clockInTime && timeSheetRequest.clockOutTime) {
+        createTimeSheetRequest(
+          createClient(),
+          user_id,
+          timeSheetRequest.clockInTime,
+          timeSheetRequest.clockOutTime,
+          timeSheetRequest.reason
+        )
+          .then((data) => {
+            toast({
+              title: 'Success',
+              description: 'Your time adjustment request has been submitted.',
+              duration: 4000,
+              variant: 'success'
+            });
+          })
+          .catch((error) => {
+            toast({
+              title: 'Error',
+              description:
+                'An error occurred while submitting your time adjustment request.',
+              duration: 4000,
+              variant: 'destructive'
+            });
+          });
+      }
+      setSubmitTimeSheet(false);
+    }
+  }, [submitTimeSheet]);
+
   function calculateTimeElapsed() {
     if (clockInTime) {
       const currentTime = new Date();
@@ -312,7 +370,7 @@ const ClockinForm = ({
         <div className="flex justify-end">
           {status === 'clocked_out' && (
             <Popover>
-              <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-green-500  text-zinc-50 hover:bg-green-500/90 dark:bg-green-900 dark:text-zinc-50 dark:hover:bg-green-900/90 h-10 px-4 py-2">
+              <PopoverTrigger className="green_button">
                 {' '}
                 Clock In
               </PopoverTrigger>
@@ -337,7 +395,7 @@ const ClockinForm = ({
                 Take Break
               </Button>
               <Popover>
-                <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-red-500  text-zinc-50 hover:bg-red-500/90 dark:bg-red-900 dark:text-zinc-50 dark:hover:bg-red-900/90 h-10 px-4 py-2">
+                <PopoverTrigger className="red_button">
                   {' '}
                   Clock Out
                 </PopoverTrigger>
@@ -368,6 +426,84 @@ const ClockinForm = ({
               End Break
             </Button>
           )}
+        </div>
+        <div className="mt-4">
+          <h1>Advanced</h1>
+          <Dialog>
+            <DialogTrigger className="green_button">
+              Request Time Adjustment
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Time Adjustment Request </DialogTitle>
+                <DialogDescription>
+                  Please provide a times and reason for your time adjustment
+                  request.
+                </DialogDescription>
+              </DialogHeader>
+              <div>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="clockIn">Clock In Time</Label>
+                    <DateTimePicker
+                      hourCycle={12}
+                      value={timeSheetRequest.clockInTime || undefined}
+                      onChange={(e) =>
+                        setTimeSheetRequest({
+                          ...timeSheetRequest,
+                          clockInTime: e || null
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <label htmlFor="clockOut">Clock Out Time</label>
+                    <DateTimePicker
+                      hourCycle={12}
+                      value={timeSheetRequest.clockOutTime || undefined}
+                      onChange={(e) =>
+                        setTimeSheetRequest({
+                          ...timeSheetRequest,
+                          clockOutTime: e || null
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 py-4">
+                  <div className="flex items-center gap-4">
+                    <Label htmlFor="reason">Reason</Label>
+                    <Textarea
+                      id="reason"
+                      name="reason"
+                      className=""
+                      value={timeSheetRequest.reason}
+                      onChange={(e) =>
+                        setTimeSheetRequest({
+                          ...timeSheetRequest,
+                          reason: e.target.value
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    onClick={() => setSubmitTimeSheet(true)}
+                  >
+                    Submit Request
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </Card>
     );

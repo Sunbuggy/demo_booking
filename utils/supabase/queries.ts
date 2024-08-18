@@ -372,3 +372,30 @@ export const insertIntoBreakEnd = cache(
     return data;
   }
 );
+
+export const createTimeSheetRequest = cache(
+  async (
+    supabase: SupabaseClient,
+    userId: string,
+    start_time: Date,
+    end_time: Date,
+    reason: string
+  ) => {
+    const { data, error } = await supabase
+      .from('time_sheet_requests')
+      .insert([
+        {
+          user_id: userId,
+          start_time: start_time.toISOString(),
+          end_time: end_time.toISOString(),
+          reason
+        }
+      ])
+      .select();
+    if (error) {
+      console.error(error, `createTimeSheetRequest Error! userId: ${userId}`);
+      return [];
+    }
+    return data;
+  }
+);
