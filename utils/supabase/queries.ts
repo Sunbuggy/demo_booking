@@ -296,3 +296,79 @@ export const insertIntoClockOut = cache(
     return timeEntryData;
   }
 );
+
+// create a break time entry
+
+// break table:
+// id uuid
+// break_start timez
+// break_end timez
+// entry_id uuid references time_entries(id)
+
+export const insertIntoBreak = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    // First get the user's time entry that has a clock_in_id but no clock_out_id
+    const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
+    if (looseClockedInData.length === 0) {
+      return [];
+    }
+    const { data, error } = await supabase
+      .from('breaks')
+      .insert([
+        {
+          break_start: new Date().toISOString(),
+          entry_id: looseClockedInData[0]?.id
+        }
+      ])
+      .select();
+
+    // Update the user's time_entry_status to 'on_break'
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .update({ time_entry_status: 'on_break' })
+      .eq('id', userId);
+
+    if (userError) {
+      console.error(userError, `insertIntoBreak Error! userId: ${userId}`);
+      return [];
+    }
+
+    if (error) {
+      console.error(error, `insertIntoBreak Error! userId: ${userId}`);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const insertIntoBreakEnd = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    // First get the user's time entry that has a clock_in_id but no clock_out_id
+    const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
+    if (looseClockedInData.length === 0) {
+      return [];
+    }
+    const { data, error } = await supabase
+      .from('breaks')
+      .update({ break_end: new Date().toISOString() })
+      .eq('entry_id', looseClockedInData[0]?.id)
+      .select();
+
+    // Update the user's time_entry_status to 'clocked_in'
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .update({ time_entry_status: 'clocked_in' })
+      .eq('id', userId);
+
+    if (userError) {
+      console.error(userError, `insertIntoBreakEnd Error! userId: ${userId}`);
+      return [];
+    }
+
+    if (error) {
+      console.error(error, `insertIntoBreakEnd Error! userId: ${userId}`);
+      return [];
+    }
+    return data;
+  }
+);

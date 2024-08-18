@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { Button } from '../button';
 import { createClient } from '@/utils/supabase/client';
 import {
+  insertIntoBreak,
+  insertIntoBreakEnd,
   insertIntoClockIn,
   insertIntoClockOut
 } from '@/utils/supabase/queries';
@@ -42,6 +44,8 @@ const ClockinForm = ({
   );
   const [clockOutTime, setClockOutTime] = useState<Date | undefined>(undefined);
   const [clockOut, setClockOut] = useState(false);
+  const [takeBreak, setTakeBreak] = useState(false);
+  const [endBreak, setEndBreak] = useState(false);
   const [nowTime, setNowTime] = useState('');
   const supabase = createClient();
   const router = useRouter();
@@ -94,6 +98,10 @@ const ClockinForm = ({
       });
     }
   }, []);
+
+  React.useEffect(() => {
+    console.log(clockInTime);
+  }, [takeBreak, endBreak]);
 
   React.useEffect(() => {
     const supabase = createClient();
@@ -156,6 +164,50 @@ const ClockinForm = ({
     }
   }, [clockOut]);
 
+  React.useEffect(() => {
+    if (takeBreak) {
+      insertIntoBreak(createClient(), user_id)
+        .then((data) => {
+          setTakeBreak(false);
+          setClockOutTime(new Date());
+          toast({
+            title: 'Success',
+            description: `You have successfully taken a break at ${new Date().toLocaleTimeString()} .`,
+            duration: 2000,
+            variant: 'success'
+          });
+        })
+        .catch((error) => {
+          toast({
+            title: 'Error',
+            description: 'An error occurred while taking a break.',
+            duration: 4000,
+            variant: 'destructive'
+          });
+        });
+    }
+    if (endBreak) {
+      insertIntoBreakEnd(createClient(), user_id)
+        .then((data) => {
+          setEndBreak(false);
+          toast({
+            title: 'Success',
+            description: `You have successfully ended your break.`,
+            duration: 2000,
+            variant: 'success'
+          });
+        })
+        .catch((error) => {
+          toast({
+            title: 'Error',
+            description: 'An error occurred while ending your break.',
+            duration: 4000,
+            variant: 'destructive'
+          });
+        });
+    }
+  }, [takeBreak, endBreak]);
+
   function calculateTimeElapsed() {
     if (clockInTime) {
       const currentTime = new Date();
@@ -194,6 +246,24 @@ const ClockinForm = ({
     if (!location.latitude || !location.longitude) {
       alert('Please enable location services to clock out');
       setClockOut(false);
+      return;
+    }
+  }
+
+  function takeBreakFn() {
+    setTakeBreak(true);
+    if (!location.latitude || !location.longitude) {
+      alert('Please enable location services to take a break');
+      setTakeBreak(false);
+      return;
+    }
+  }
+
+  function endBreakFn() {
+    setEndBreak(true);
+    if (!location.latitude || !location.longitude) {
+      alert('Please enable location services to end break');
+      setEndBreak(false);
       return;
     }
   }
@@ -263,7 +333,9 @@ const ClockinForm = ({
           )}
           {status === 'clocked_in' && (
             <div className="flex gap-5">
-              <Button variant="secondary">Take Break</Button>
+              <Button variant="secondary" onClick={takeBreakFn}>
+                Take Break
+              </Button>
               <Popover>
                 <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-red-500  text-zinc-50 hover:bg-red-500/90 dark:bg-red-900 dark:text-zinc-50 dark:hover:bg-red-900/90 h-10 px-4 py-2">
                   {' '}
@@ -290,6 +362,11 @@ const ClockinForm = ({
                 </PopoverContent>
               </Popover>
             </div>
+          )}
+          {status === 'on_break' && (
+            <Button variant="secondary" onClick={endBreakFn}>
+              End Break
+            </Button>
           )}
         </div>
       </Card>
