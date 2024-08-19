@@ -13,16 +13,18 @@ import {
   PopoverTrigger
 } from '@/components/ui/popover';
 import { cn } from '@/utils/cn';
-
+interface DatePickerWithRangeProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  setHistoryDateRange: React.Dispatch<
+    React.SetStateAction<DateRange | undefined>
+  >;
+  historyDateRange: DateRange | undefined;
+}
 export function DatePickerWithRange({
-  className
-}: React.HTMLAttributes<HTMLDivElement>) {
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    // Initial date range should be from last week to this week
-    from: addDays(new Date(), -7),
-    to: new Date()
-  });
-
+  className,
+  setHistoryDateRange,
+  historyDateRange
+}: DatePickerWithRangeProps) {
   return (
     <div className={cn('grid gap-2', className)}>
       <Popover>
@@ -32,18 +34,18 @@ export function DatePickerWithRange({
             variant={'outline'}
             className={cn(
               'w-[300px] justify-start text-left font-normal',
-              !date && 'text-muted-foreground'
+              !historyDateRange && 'text-muted-foreground'
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {date?.from ? (
-              date.to ? (
+            {historyDateRange?.from ? (
+              historyDateRange.to ? (
                 <>
-                  {format(date.from, 'LLL dd, y')} -{' '}
-                  {format(date.to, 'LLL dd, y')}
+                  {format(historyDateRange.from, 'LLL dd, y')} -{' '}
+                  {format(historyDateRange.to, 'LLL dd, y')}
                 </>
               ) : (
-                format(date.from, 'LLL dd, y')
+                format(historyDateRange.from, 'LLL dd, y')
               )
             ) : (
               <span>Pick a date</span>
@@ -54,9 +56,9 @@ export function DatePickerWithRange({
           <Calendar
             initialFocus
             mode="range"
-            defaultMonth={date?.from}
-            selected={date}
-            onSelect={setDate}
+            defaultMonth={historyDateRange?.from}
+            selected={historyDateRange}
+            onSelect={setHistoryDateRange}
           />
         </PopoverContent>
       </Popover>

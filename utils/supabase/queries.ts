@@ -399,3 +399,54 @@ export const createTimeSheetRequest = cache(
     return data;
   }
 );
+
+export const fetchTimeSheetRequests = cache(
+  async (
+    supabase: SupabaseClient,
+    user_id: string,
+    dateFrom: string,
+    dateTo: string
+  ) => {
+    const { data, error } = await supabase
+      .from('time_sheet_requests')
+      .select()
+      .eq('user_id', user_id)
+      .filter('start_time', 'gte', dateFrom)
+      .filter('start_time', 'lte', dateTo);
+    if (error) {
+      console.error(error, `fetchTimeSheetRequests Error!`);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const fetchEmployeeTimeClockEntryData = cache(
+  async (
+    supabase: SupabaseClient,
+    userId: string,
+    dateFrom: string,
+    dateTo: string
+  ) => {
+    const { data, error } = await supabase
+      .from('time_entries')
+      .select(
+        `id,
+        date,
+        clock_in (clock_in_time, lat, long),
+        clock_out (clock_out_time, lat, long)
+        `
+      )
+      .eq('user_id', userId)
+      .filter('date', 'gte', dateFrom)
+      .filter('date', 'lte', dateTo);
+    if (error) {
+      console.error(
+        error,
+        `fetchEmployeeTimeClockEntryData Error! userId: ${userId}`
+      );
+      return [];
+    }
+    return data;
+  }
+);

@@ -6,6 +6,8 @@ import { Button } from '../button';
 import { createClient } from '@/utils/supabase/client';
 import {
   createTimeSheetRequest,
+  fetchEmployeeTimeClockEntryData,
+  fetchTimeSheetRequests,
   insertIntoBreak,
   insertIntoBreakEnd,
   insertIntoClockIn,
@@ -28,19 +30,52 @@ import {
 import { InfoCircledIcon } from '@radix-ui/react-icons';
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog';
-import { Input } from '../input';
-import { Label } from '../label';
-import { Textarea } from '../textarea';
-import { DateTimePicker } from '../datetime-picker';
+
+import { DateRange } from 'react-day-picker';
+import { addDays } from 'date-fns';
+import TimeAdjustment from './clockin-dialogs/time-adjustments';
 import { DatePickerWithRange } from '../date-range';
+import HistoryTimeClockEvents from './clockin-dialogs/history-time-clock-events';
+
+export interface TimeSheet {
+  created_at: string;
+  end_time: string;
+  id: string;
+  reason: string;
+  start_time: string;
+  status: string;
+  updated_at: string;
+  user_id: string;
+}
+
+export interface TimeSheetRequestType {
+  clockInTime: Date | null;
+  clockOutTime: Date | null;
+  reason: string;
+}
+
+export interface TimeClockEventsType {
+  id: string;
+  date: Date;
+  user_id: string;
+  clock_in: {
+    clock_in_time: Date;
+    lat: number | null;
+    long: number | null;
+  };
+  clock_out: {
+    clock_out_time: Date;
+    lat: number | null;
+    long: number | null;
+  };
+}
+[];
 
 const ClockinForm = ({
   user_role,
@@ -59,19 +94,35 @@ const ClockinForm = ({
     clockInTimeStamp ? new Date(clockInTimeStamp) : undefined
   );
   const [clockOutTime, setClockOutTime] = useState<Date | undefined>(undefined);
+  const [getTimesheets, setGetTimesheets] = useState(false);
   const [clockOut, setClockOut] = useState(false);
   const [takeBreak, setTakeBreak] = useState(false);
   const [endBreak, setEndBreak] = useState(false);
   const [nowTime, setNowTime] = useState('');
   const [submitTimeSheet, setSubmitTimeSheet] = useState(false);
-  const [timeSheetRequest, setTimeSheetRequest] = useState<{
-    clockInTime: Date | null;
-    clockOutTime: Date | null;
-    reason: string;
-  }>({
-    clockInTime: null,
-    clockOutTime: null,
-    reason: ''
+  const [historyTimeSheets, setHistoryTimeSheets] = useState<TimeSheet[]>([]);
+  const [timeClockEventHistoryDateRange, setTimeClockEventHistoryDateRange] =
+    useState<DateRange | undefined>({
+      // From day of last week to today
+      from: addDays(new Date(), -7),
+      to: new Date()
+    });
+  const [timeClockHistoryData, setTimeClockHistoryData] = useState<
+    TimeClockEventsType[]
+  >([]);
+  const [timeSheetRequest, setTimeSheetRequest] =
+    useState<TimeSheetRequestType>({
+      clockInTime: null,
+      clockOutTime: null,
+      reason: ''
+    });
+
+  const [historyDateRange, setHistoryDateRange] = React.useState<
+    DateRange | undefined
+  >({
+    // Initial date range should be from last week to this week
+    from: addDays(new Date(), -7),
+    to: new Date()
   });
 
   const supabase = createClient();
@@ -267,6 +318,46 @@ const ClockinForm = ({
     }
   }, [submitTimeSheet]);
 
+  React.useEffect(() => {
+    if (getTimesheets) {
+      fetchTimeSheetRequests(
+        createClient(),
+        user_id,
+        historyDateRange?.from?.toISOString() || '',
+        historyDateRange?.to?.toISOString() || ''
+      )
+        .then((data) => {
+          const timeSheets = data as TimeSheet[];
+          console.log(timeSheets);
+          setHistoryTimeSheets(timeSheets);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+      setGetTimesheets(false);
+    }
+  }, [getTimesheets]);
+
+  React.useEffect(() => {
+    if (
+      timeClockEventHistoryDateRange?.from !== undefined &&
+      timeClockEventHistoryDateRange?.to !== undefined
+    ) {
+      fetchEmployeeTimeClockEntryData(
+        supabase,
+        user_id,
+        timeClockEventHistoryDateRange.from.toISOString() || '',
+        timeClockEventHistoryDateRange.to.toISOString() || ''
+      )
+        .then((data) => {
+          setTimeClockHistoryData(data as unknown as TimeClockEventsType[]);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    }
+  }, [timeClockEventHistoryDateRange]);
+
   function calculateTimeElapsed() {
     if (clockInTime) {
       const currentTime = new Date();
@@ -428,112 +519,19 @@ const ClockinForm = ({
             </Button>
           )}
         </div>
-        <div className="m-4">
-          <h1 className="text-2xl font-bold mb-5">Advanced</h1>
-          <Dialog>
-            <DialogTrigger className="green_button">
-              Request Time Adjustment
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Time Adjustment Request </DialogTitle>
-                <DialogDescription>
-                  Please provide a times and reason for your time adjustment
-                  request.
-                </DialogDescription>
-              </DialogHeader>
-              <div>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="clockIn">Clock In Time</Label>
-                    <DateTimePicker
-                      hourCycle={12}
-                      value={timeSheetRequest.clockInTime || undefined}
-                      onChange={(e) =>
-                        setTimeSheetRequest({
-                          ...timeSheetRequest,
-                          clockInTime: e || null
-                        })
-                      }
-                    />
-                  </div>
-                </div>
 
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <label htmlFor="clockOut">Clock Out Time</label>
-                    <DateTimePicker
-                      hourCycle={12}
-                      value={timeSheetRequest.clockOutTime || undefined}
-                      onChange={(e) =>
-                        setTimeSheetRequest({
-                          ...timeSheetRequest,
-                          clockOutTime: e || null
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 py-4">
-                  <div className="flex items-center gap-4">
-                    <Label htmlFor="reason">Reason</Label>
-                    <Textarea
-                      id="reason"
-                      name="reason"
-                      className=""
-                      value={timeSheetRequest.reason}
-                      onChange={(e) =>
-                        setTimeSheetRequest({
-                          ...timeSheetRequest,
-                          reason: e.target.value
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button
-                    type="button"
-                    onClick={() => setSubmitTimeSheet(true)}
-                  >
-                    Submit Request
-                  </Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-        <div className="m-4">
-          <Dialog>
-            <DialogTrigger className="green_button">
-              View Timesheet
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] w-full">
-              <DialogHeader>
-                <DialogTitle>Timesheet History </DialogTitle>
-                <DialogDescription>
-                  Choose a date range to view your timesheet history.
-                </DialogDescription>
-              </DialogHeader>
-
-              <DatePickerWithRange />
-
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button
-                    type="button"
-                    // onClick={() => setSubmitTimeSheet(true)}
-                  >
-                    {/* Submit Request */}
-                  </Button>
-                </DialogClose>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <HistoryTimeClockEvents
+          setTimeClockEventHistoryDateRange={setTimeClockEventHistoryDateRange}
+          timeClockEventHistoryDateRange={timeClockEventHistoryDateRange}
+          timeClockHistoryData={timeClockHistoryData}
+          historyDateRange={historyDateRange}
+          historyTimeSheet={historyTimeSheets}
+          setGetTimesheets={setGetTimesheets}
+          setHistoryDateRange={setHistoryDateRange}
+          timeSheetRequest={timeSheetRequest}
+          setTimeSheetRequest={setTimeSheetRequest}
+          setSubmitTimeSheet={setSubmitTimeSheet}
+        />
       </Card>
     );
 };
