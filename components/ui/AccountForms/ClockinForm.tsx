@@ -40,6 +40,7 @@ import { Input } from '../input';
 import { Label } from '../label';
 import { Textarea } from '../textarea';
 import { DateTimePicker } from '../datetime-picker';
+import { DatePickerWithRange } from '../date-range';
 
 const ClockinForm = ({
   user_role,
@@ -427,8 +428,8 @@ const ClockinForm = ({
             </Button>
           )}
         </div>
-        <div className="mt-4">
-          <h1>Advanced</h1>
+        <div className="m-4">
+          <h1 className="text-2xl font-bold mb-5">Advanced</h1>
           <Dialog>
             <DialogTrigger className="green_button">
               Request Time Adjustment
@@ -499,6 +500,34 @@ const ClockinForm = ({
                     onClick={() => setSubmitTimeSheet(true)}
                   >
                     Submit Request
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <div className="m-4">
+          <Dialog>
+            <DialogTrigger className="green_button">
+              View Timesheet
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] w-full">
+              <DialogHeader>
+                <DialogTitle>Timesheet History </DialogTitle>
+                <DialogDescription>
+                  Choose a date range to view your timesheet history.
+                </DialogDescription>
+              </DialogHeader>
+
+              <DatePickerWithRange />
+
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    // onClick={() => setSubmitTimeSheet(true)}
+                  >
+                    {/* Submit Request */}
                   </Button>
                 </DialogClose>
               </DialogFooter>

@@ -1,21 +1,22 @@
-import { Button, buttonVariants } from '@/components/ui/button';
-import type { CalendarProps } from '@/components/ui/calendar';
-import { Input } from '@/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '@/components/ui/popover';
+'use client';
+import * as React from 'react';
+import { useImperativeHandle, useRef } from 'react';
 import { add, format } from 'date-fns';
-import { type Locale, enUS } from 'date-fns/locale';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { CalendarProps } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
 import { Clock } from 'lucide-react';
-import * as React from 'react';
-import { useImperativeHandle, useRef } from 'react';
+import { enUS, Locale } from 'date-fns/locale';
 
 import {
   Select,
@@ -34,29 +35,24 @@ import { cn } from '@/utils/cn';
 function isValidHour(value: string) {
   return /^(0[0-9]|1[0-9]|2[0-3])$/.test(value);
 }
-
 /**
  * regular expression to check for valid 12 hour format (01-12)
  */
 function isValid12Hour(value: string) {
   return /^(0[1-9]|1[0-2])$/.test(value);
 }
-
 /**
  * regular expression to check for valid minute format (00-59)
  */
 function isValidMinuteOrSecond(value: string) {
   return /^[0-5][0-9]$/.test(value);
 }
-
 type GetValidNumberConfig = { max: number; min?: number; loop?: boolean };
-
 function getValidNumber(
   value: string,
   { max, min = 0, loop = false }: GetValidNumberConfig
 ) {
   let numericValue = parseInt(value, 10);
-
   if (!isNaN(numericValue)) {
     if (!loop) {
       if (numericValue > max) numericValue = max;
@@ -67,31 +63,25 @@ function getValidNumber(
     }
     return numericValue.toString().padStart(2, '0');
   }
-
   return '00';
 }
-
 function getValidHour(value: string) {
   if (isValidHour(value)) return value;
   return getValidNumber(value, { max: 23 });
 }
-
 function getValid12Hour(value: string) {
   if (isValid12Hour(value)) return value;
   return getValidNumber(value, { min: 1, max: 12 });
 }
-
 function getValidMinuteOrSecond(value: string) {
   if (isValidMinuteOrSecond(value)) return value;
   return getValidNumber(value, { max: 59 });
 }
-
 type GetValidArrowNumberConfig = {
   min: number;
   max: number;
   step: number;
 };
-
 function getValidArrowNumber(
   value: string,
   { min, max, step }: GetValidArrowNumberConfig
@@ -103,47 +93,38 @@ function getValidArrowNumber(
   }
   return '00';
 }
-
 function getValidArrowHour(value: string, step: number) {
   return getValidArrowNumber(value, { min: 0, max: 23, step });
 }
-
 function getValidArrow12Hour(value: string, step: number) {
   return getValidArrowNumber(value, { min: 1, max: 12, step });
 }
-
 function getValidArrowMinuteOrSecond(value: string, step: number) {
   return getValidArrowNumber(value, { min: 0, max: 59, step });
 }
-
 function setMinutes(date: Date, value: string) {
   const minutes = getValidMinuteOrSecond(value);
   date.setMinutes(parseInt(minutes, 10));
   return date;
 }
-
 function setSeconds(date: Date, value: string) {
   const seconds = getValidMinuteOrSecond(value);
   date.setSeconds(parseInt(seconds, 10));
   return date;
 }
-
 function setHours(date: Date, value: string) {
   const hours = getValidHour(value);
   date.setHours(parseInt(hours, 10));
   return date;
 }
-
 function set12Hours(date: Date, value: string, period: Period) {
   const hours = parseInt(getValid12Hour(value), 10);
   const convertedHours = convert12HourTo24Hour(hours, period);
   date.setHours(convertedHours);
   return date;
 }
-
 type TimePickerType = 'minutes' | 'seconds' | 'hours' | '12hours';
 type Period = 'AM' | 'PM';
-
 function setDateByType(
   date: Date,
   value: string,
@@ -165,7 +146,6 @@ function setDateByType(
       return date;
   }
 }
-
 function getDateByType(date: Date | null, type: TimePickerType) {
   if (!date) return '00';
   switch (type) {
@@ -182,7 +162,6 @@ function getDateByType(date: Date | null, type: TimePickerType) {
       return '00';
   }
 }
-
 function getArrowByType(value: string, step: number, type: TimePickerType) {
   switch (type) {
     case 'minutes':
@@ -197,7 +176,6 @@ function getArrowByType(value: string, step: number, type: TimePickerType) {
       return '00';
   }
 }
-
 /**
  * handles value change of 12-hour input
  * 12:00 PM is 12:00
@@ -216,7 +194,6 @@ function convert12HourTo24Hour(hour: number, period: Period) {
   }
   return hour;
 }
-
 /**
  * time is stored in the 24-hour form,
  * but needs to be displayed to the user
@@ -229,16 +206,14 @@ function display12HourValue(hours: number) {
   return `0${hours % 12}`;
 }
 
-function genMonths(
-  locale: Pick<Locale, 'options' | 'localize' | 'formatLong'>
-) {
+function genMonths(locale: Locale) {
   return Array.from({ length: 12 }, (_, i) => ({
     value: i,
     label: format(new Date(2021, i), 'MMMM', { locale })
   }));
 }
 
-function genYears(yearRange = 50) {
+function genYears(locale: Locale, yearRange = 50) {
   const today = new Date();
   return Array.from({ length: yearRange * 2 + 1 }, (_, i) => ({
     value: today.getFullYear() - yearRange + i,
@@ -255,20 +230,11 @@ function Calendar({
   yearRange = 50,
   ...props
 }: CalendarProps & { yearRange?: number }) {
-  const MONTHS = React.useMemo(() => {
-    let locale: Pick<Locale, 'options' | 'localize' | 'formatLong'> = enUS;
-    const { options, localize, formatLong } = props.locale || {};
-    if (options && localize && formatLong) {
-      locale = {
-        options,
-        localize,
-        formatLong
-      };
-    }
-    return genMonths(locale);
-  }, []);
-
-  const YEARS = React.useMemo(() => genYears(yearRange), []);
+  const MONTHS = React.useMemo(() => genMonths(props.locale || enUS), []);
+  const YEARS = React.useMemo(
+    () => genYears(props.locale || enUS, yearRange),
+    []
+  );
 
   return (
     <DayPicker
@@ -276,60 +242,54 @@ function Calendar({
       className={cn('p-3', className)}
       classNames={{
         months:
-          'flex flex-col sm:flex-row space-y-4  sm:space-y-0 justify-center',
-        month: 'flex flex-col items-center space-y-4',
-        month_caption: 'flex justify-center pt-1 relative items-center',
+          'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 justify-center',
+        month: 'space-y-4',
+        caption: 'flex justify-center pt-1 relative items-center',
         caption_label: 'text-sm font-medium',
-        nav: 'space-x-1 flex items-center ',
-        button_previous: cn(
+        nav: 'space-x-1 flex items-center',
+        nav_button: cn(
           buttonVariants({ variant: 'outline' }),
-          'h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-5 top-5'
+          'h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100'
         ),
-        button_next: cn(
-          buttonVariants({ variant: 'outline' }),
-          'h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-5 top-5'
-        ),
-        month_grid: 'w-full border-collapse space-y-1',
-        weekdays: cn('flex', props.showWeekNumber && 'justify-end'),
-        weekday:
+        nav_button_previous: 'absolute left-1',
+        nav_button_next: 'absolute right-1',
+        table: 'w-full border-collapse space-y-1',
+        head_row: 'flex',
+        head_cell:
           'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
-        week: 'flex w-full mt-2',
-        day: 'h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20 rounded-1',
-        day_button: cn(
+        row: 'flex w-full mt-2',
+        cell: 'h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
+        day: cn(
           buttonVariants({ variant: 'ghost' }),
-          'h-9 w-9 p-0 font-normal aria-selected:opacity-100 rounded-l-md rounded-r-md'
+          'h-9 w-9 p-0 font-normal aria-selected:opacity-100'
         ),
-        range_end: 'day-range-end',
-        selected:
-          'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-l-md rounded-r-md',
-        today: 'bg-accent text-accent-foreground',
-        outside:
+        day_range_end: 'day-range-end',
+        day_selected:
+          'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
+        day_today: 'bg-accent text-accent-foreground',
+        day_outside:
           'day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30',
-        disabled: 'text-muted-foreground opacity-50',
-        range_middle:
+        day_disabled: 'text-muted-foreground opacity-50',
+        day_range_middle:
           'aria-selected:bg-accent aria-selected:text-accent-foreground',
-        hidden: 'invisible',
+        day_hidden: 'invisible',
         ...classNames
       }}
       components={{
-        Chevron: ({ ...props }) =>
-          props.orientation === 'left' ? (
-            <ChevronLeft className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          ),
-        MonthCaption: ({ calendarMonth }) => {
+        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
+        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
+        CaptionLabel: ({ displayMonth }) => {
           return (
             <div className="inline-flex gap-2">
               <Select
-                defaultValue={calendarMonth.date.getMonth().toString()}
+                defaultValue={displayMonth.getMonth().toString()}
                 onValueChange={(value) => {
-                  const newDate = new Date(calendarMonth.date);
-                  newDate.setMonth(Number.parseInt(value, 10));
+                  const newDate = new Date(displayMonth);
+                  newDate.setMonth(parseInt(value, 10));
                   props.onMonthChange?.(newDate);
                 }}
               >
-                <SelectTrigger className="w-fit gap-1 border-none p-0 focus:bg-accent focus:text-accent-foreground">
+                <SelectTrigger className="w-fit border-none p-0 focus:bg-accent focus:text-accent-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -344,14 +304,14 @@ function Calendar({
                 </SelectContent>
               </Select>
               <Select
-                defaultValue={calendarMonth.date.getFullYear().toString()}
+                defaultValue={displayMonth.getFullYear().toString()}
                 onValueChange={(value) => {
-                  const newDate = new Date(calendarMonth.date);
-                  newDate.setFullYear(Number.parseInt(value, 10));
+                  const newDate = new Date(displayMonth);
+                  newDate.setFullYear(parseInt(value, 10));
                   props.onMonthChange?.(newDate);
                 }}
               >
-                <SelectTrigger className="w-fit gap-1 border-none p-0 focus:bg-accent focus:text-accent-foreground">
+                <SelectTrigger className="w-fit border-none p-0 focus:bg-accent focus:text-accent-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -380,7 +340,6 @@ interface PeriodSelectorProps {
   onRightFocus?: () => void;
   onLeftFocus?: () => void;
 }
-
 const TimePeriodSelect = React.forwardRef<
   HTMLButtonElement,
   PeriodSelectorProps
@@ -393,10 +352,8 @@ const TimePeriodSelect = React.forwardRef<
       if (e.key === 'ArrowRight') onRightFocus?.();
       if (e.key === 'ArrowLeft') onLeftFocus?.();
     };
-
     const handleValueChange = (value: Period) => {
       setPeriod?.(value);
-
       /**
        * trigger an update whenever the user switches between AM and PM;
        * otherwise user must manually change the hour each time
@@ -414,7 +371,6 @@ const TimePeriodSelect = React.forwardRef<
         );
       }
     };
-
     return (
       <div className="flex h-10 items-center">
         <Select
@@ -437,9 +393,7 @@ const TimePeriodSelect = React.forwardRef<
     );
   }
 );
-
 TimePeriodSelect.displayName = 'TimePeriodSelect';
-
 interface TimePickerInputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
   picker: TimePickerType;
@@ -449,7 +403,6 @@ interface TimePickerInputProps
   onRightFocus?: () => void;
   onLeftFocus?: () => void;
 }
-
 const TimePickerInput = React.forwardRef<
   HTMLInputElement,
   TimePickerInputProps
@@ -475,7 +428,6 @@ const TimePickerInput = React.forwardRef<
   ) => {
     const [flag, setFlag] = React.useState<boolean>(false);
     const [prevIntKey, setPrevIntKey] = React.useState<string>('0');
-
     /**
      * allow the user to enter the second digit within 2 seconds
      * otherwise start again with entering first digit
@@ -485,15 +437,12 @@ const TimePickerInput = React.forwardRef<
         const timer = setTimeout(() => {
           setFlag(false);
         }, 2000);
-
         return () => clearTimeout(timer);
       }
     }, [flag]);
-
     const calculatedValue = React.useMemo(() => {
       return getDateByType(date, picker);
     }, [date, picker]);
-
     const calculateNewValue = (key: string) => {
       /*
        * If picker is '12hours' and the first digit is 0, then the second digit is automatically set to 1.
@@ -503,10 +452,8 @@ const TimePickerInput = React.forwardRef<
         if (flag && calculatedValue.slice(1, 2) === '1' && prevIntKey === '0')
           return '0' + key;
       }
-
       return !flag ? '0' + key : calculatedValue.slice(1, 2) + key;
     };
-
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Tab') return;
       e.preventDefault();
@@ -521,7 +468,6 @@ const TimePickerInput = React.forwardRef<
       }
       if (e.key >= '0' && e.key <= '9') {
         if (picker === '12hours') setPrevIntKey(e.key);
-
         const newValue = calculateNewValue(e.key);
         if (flag) onRightFocus?.();
         setFlag((prev) => !prev);
@@ -529,7 +475,6 @@ const TimePickerInput = React.forwardRef<
         onDateChange?.(setDateByType(tempDate, newValue, picker, period));
       }
     };
-
     return (
       <Input
         ref={ref}
@@ -555,9 +500,7 @@ const TimePickerInput = React.forwardRef<
     );
   }
 );
-
 TimePickerInput.displayName = 'TimePickerInput';
-
 interface TimePickerProps {
   date?: Date | null;
   onChange?: (date: Date | undefined) => void;
@@ -568,13 +511,11 @@ interface TimePickerProps {
    * */
   granularity?: Granularity;
 }
-
 interface TimePickerRef {
   minuteRef: HTMLInputElement | null;
   hourRef: HTMLInputElement | null;
   secondRef: HTMLInputElement | null;
 }
-
 const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
   ({ date, onChange, hourCycle = 24, granularity = 'second' }, ref) => {
     const minuteRef = React.useRef<HTMLInputElement>(null);
@@ -584,7 +525,6 @@ const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
     const [period, setPeriod] = React.useState<Period>(
       date && date.getHours() >= 12 ? 'PM' : 'AM'
     );
-
     useImperativeHandle(
       ref,
       () => ({
@@ -595,7 +535,6 @@ const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
       }),
       [minuteRef, hourRef, secondRef]
     );
-
     return (
       <div className="flex items-center justify-center gap-2">
         <label htmlFor="datetime-picker-hour-input" className="cursor-pointer">
@@ -660,9 +599,7 @@ const TimePicker = React.forwardRef<TimePickerRef, TimePickerProps>(
   }
 );
 TimePicker.displayName = 'TimePicker';
-
 type Granularity = 'day' | 'hour' | 'minute' | 'second';
-
 type DateTimePickerProps = {
   value?: Date;
   onChange?: (date: Date | undefined) => void;
@@ -691,11 +628,9 @@ type DateTimePickerProps = {
   CalendarProps,
   'locale' | 'weekStartsOn' | 'showWeekNumber' | 'showOutsideDays'
 >;
-
 type DateTimePickerRef = {
   value?: Date;
 } & Omit<HTMLButtonElement, 'value'>;
-
 const DateTimePicker = React.forwardRef<DateTimePickerRef, DateTimePickerProps>(
   (
     {
@@ -731,7 +666,6 @@ const DateTimePicker = React.forwardRef<DateTimePickerRef, DateTimePickerProps>(
       onChange?.(newDateFull);
       setMonth(newDateFull);
     };
-
     useImperativeHandle(
       ref,
       () => ({
@@ -740,23 +674,10 @@ const DateTimePicker = React.forwardRef<DateTimePickerRef, DateTimePickerProps>(
       }),
       [value]
     );
-
     const initHourFormat = {
       hour24: displayFormat?.hour24 ?? 'PPP HH:mm:ss',
       hour12: displayFormat?.hour12 ?? 'PP hh:mm:ss b'
     };
-
-    let loc = enUS;
-    const { options, localize, formatLong } = locale;
-    if (options && localize && formatLong) {
-      loc = {
-        ...enUS,
-        options,
-        localize,
-        formatLong
-      };
-    }
-
     return (
       <Popover>
         <PopoverTrigger asChild disabled={disabled}>
@@ -776,7 +697,7 @@ const DateTimePicker = React.forwardRef<DateTimePickerRef, DateTimePickerProps>(
                   ? initHourFormat.hour24
                   : initHourFormat.hour12,
                 {
-                  locale: loc
+                  locale
                 }
               )
             ) : (
@@ -791,6 +712,7 @@ const DateTimePicker = React.forwardRef<DateTimePickerRef, DateTimePickerProps>(
             month={month}
             onSelect={(d) => handleSelect(d)}
             onMonthChange={handleSelect}
+            initialFocus
             yearRange={yearRange}
             locale={locale}
             {...props}
@@ -810,8 +732,6 @@ const DateTimePicker = React.forwardRef<DateTimePickerRef, DateTimePickerProps>(
     );
   }
 );
-
 DateTimePicker.displayName = 'DateTimePicker';
-
 export { DateTimePicker, TimePickerInput, TimePicker };
 export type { TimePickerType, DateTimePickerProps, DateTimePickerRef };
