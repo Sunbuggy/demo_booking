@@ -6,8 +6,10 @@ import { Button } from '../button';
 import { createClient } from '@/utils/supabase/client';
 import {
   createTimeSheetRequest,
+  fetchBreaksByUserId,
   fetchEmployeeTimeClockEntryData,
   fetchTimeSheetRequests,
+  getSessionBreakStartTime,
   insertIntoBreak,
   insertIntoBreakEnd,
   insertIntoClockIn,
@@ -96,7 +98,11 @@ const ClockinForm = ({
   const [clockOutTime, setClockOutTime] = useState<Date | undefined>(undefined);
   const [getTimesheets, setGetTimesheets] = useState(false);
   const [clockOut, setClockOut] = useState(false);
-  const [takeBreak, setTakeBreak] = useState(false);
+  const [onBreak, setOnBreak] = useState(status === 'on_break');
+  const [freshBreak, setFreshBreak] = useState(false);
+  const [breakStartTime, setBreakStartTime] = useState<Date | undefined>(
+    undefined
+  );
   const [endBreak, setEndBreak] = useState(false);
   const [nowTime, setNowTime] = useState('');
   const [submitTimeSheet, setSubmitTimeSheet] = useState(false);
@@ -107,6 +113,7 @@ const ClockinForm = ({
       from: addDays(new Date(), -7),
       to: new Date()
     });
+    const [timeSinceBreak, setTimeSinceBreak] = useState<string | null>("");
   const [timeClockHistoryData, setTimeClockHistoryData] = useState<
     TimeClockEventsType[]
   >([]);
@@ -129,6 +136,7 @@ const ClockinForm = ({
   const router = useRouter();
   const { toast } = useToast();
 
+  // Update the real time every second
   React.useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date();
@@ -146,6 +154,7 @@ const ClockinForm = ({
     };
   });
 
+  // Subscribe to changes in the users table
   React.useEffect(() => {
     const channel = supabase
       .channel('clockin tracker')
@@ -167,6 +176,7 @@ const ClockinForm = ({
     };
   }, [supabase, router]);
 
+  // Get location coordinates
   React.useEffect(() => {
     if ('geolocation' in navigator) {
       // Retrieve latitude & longitude coordinates from `navigator.geolocation` Web API
@@ -181,6 +191,7 @@ const ClockinForm = ({
 
   // }, [takeBreak, endBreak]);
 
+  // Clockin effect
   React.useEffect(() => {
     const supabase = createClient();
     if (clock_in) {
@@ -211,6 +222,8 @@ const ClockinForm = ({
     }
   }, [clock_in]);
 
+
+  // Clockout effect
   React.useEffect(() => {
     if (clockOut) {
       const totalClockinHours = calculateTimeSinceTimeElapsedInHours();
@@ -242,32 +255,73 @@ const ClockinForm = ({
     }
   }, [clockOut]);
 
+
+  // Fresh Break effect
   React.useEffect(() => {
-    if (takeBreak) {
+        if(freshBreak) { // if fresh break, insert into break table
       insertIntoBreak(createClient(), user_id)
-        .then((data) => {
-          setTakeBreak(false);
-          setClockOutTime(new Date());
-          toast({
-            title: 'Success',
-            description: `You have successfully taken a break at ${new Date().toLocaleTimeString()} .`,
-            duration: 2000,
-            variant: 'success'
-          });
-        })
-        .catch((error) => {
-          toast({
-            title: 'Error',
-            description: 'An error occurred while taking a break.',
-            duration: 4000,
-            variant: 'destructive'
-          });
+      .then((data) => {
+        toast({
+          title: 'Success',
+          description: `You have successfully taken a break at ${new Date().toLocaleTimeString()} .`,
+          duration: 2000,
+          variant: 'success'
         });
+        setFreshBreak(false);
+        setOnBreak(true)
+        console.log(data)
+      })
+      .catch((error) => {
+        toast({
+          title: 'Error',
+          description: 'An error occurred while taking a break.',
+          duration: 4000,
+          variant: 'destructive'
+        });
+        console.log(error)
+      });
     }
-    if (endBreak) {
+  }, [freshBreak]);
+
+
+  // Count time since break
+  React.useEffect(() => {
+    if (onBreak) {
+        getSessionBreakStartTime(supabase, user_id)
+  .then(data => {
+    if (clockInTime) {
+
+      // show every second
+      const timer = setInterval(() => {
+        const breakStartTime = data[0].break_start;
+        // get difference between clockintime and breakStartTime
+        const difference = new Date().getTime() - new Date(breakStartTime).getTime();
+        // hh:mm:ss format
+        const hours = Math.floor(difference / 3600000);
+        const minutes = Math.floor((difference % 3600000) / 60000);
+        const seconds = Math.floor((difference % 60000) / 1000);
+        setTimeSinceBreak(` ${hours}:${minutes}:${seconds}`);
+      }, 1000);
+
+      return () => {
+        clearInterval(timer);
+      }
+
+
+    }
+  })
+    .catch(error => console.error(error));
+    }
+
+  }, [onBreak]);
+
+  // End Break effect
+  React.useEffect(() => {
+        if (endBreak) {
       insertIntoBreakEnd(createClient(), user_id)
         .then((data) => {
           setEndBreak(false);
+          setTimeSinceBreak("");
           toast({
             title: 'Success',
             description: `You have successfully ended your break.`,
@@ -282,10 +336,24 @@ const ClockinForm = ({
             duration: 4000,
             variant: 'destructive'
           });
+          console.error(error);
         });
     }
-  }, [takeBreak, endBreak]);
+  }, [endBreak]);
 
+  // Time since break should be updated every minute
+  React.useEffect(() => {
+   
+    const interval = setInterval(() => {
+      if (timeSinceBreak) {
+        setTimeSinceBreak(timeSinceBreak);
+      }
+    }, 60000); // 1 minute interval
+
+    return () => clearInterval(interval);
+  });
+
+  // TimeSheet Request effect
   React.useEffect(() => {
     if (submitTimeSheet) {
       if (timeSheetRequest.clockInTime && timeSheetRequest.clockOutTime) {
@@ -318,6 +386,7 @@ const ClockinForm = ({
     }
   }, [submitTimeSheet]);
 
+  // Fetch timesheets
   React.useEffect(() => {
     if (getTimesheets) {
       fetchTimeSheetRequests(
@@ -338,6 +407,7 @@ const ClockinForm = ({
     }
   }, [getTimesheets]);
 
+  // Fetch time clock history data
   React.useEffect(() => {
     if (
       timeClockEventHistoryDateRange?.from !== undefined &&
@@ -358,7 +428,8 @@ const ClockinForm = ({
     }
   }, [timeClockEventHistoryDateRange]);
 
-  function calculateTimeElapsed() {
+
+  function calculateTimeElapsedSinceClockIn() {
     if (clockInTime) {
       const currentTime = new Date();
       const difference = currentTime.getTime() - clockInTime.getTime();
@@ -401,10 +472,11 @@ const ClockinForm = ({
   }
 
   function takeBreakFn() {
-    setTakeBreak(true);
+    setFreshBreak(true);
+    
     if (!location.latitude || !location.longitude) {
       alert('Please enable location services to take a break');
-      setTakeBreak(false);
+      setOnBreak(false);
       return;
     }
   }
@@ -417,6 +489,8 @@ const ClockinForm = ({
       return;
     }
   }
+
+
 
   if (user_role > 284)
     return (
@@ -435,7 +509,7 @@ const ClockinForm = ({
           {status === 'clocked_in' && (
             <div className="flex gap-3">
               <p> Clocked In For:</p>
-              <span className="text-purple-500">{calculateTimeElapsed()}</span>
+              <span className="text-purple-500">{calculateTimeElapsedSinceClockIn()}</span>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
@@ -457,7 +531,7 @@ const ClockinForm = ({
             </div>
           )}
           {status === 'clocked_out' && 'Clocked Out'}
-          {status === 'on_break' && 'On Break'}
+          {status === 'on_break' && `On Break for: ${timeSinceBreak}`}
         </div>
         <div className="flex justify-end">
           {status === 'clocked_out' && (
@@ -532,6 +606,9 @@ const ClockinForm = ({
           setTimeSheetRequest={setTimeSheetRequest}
           setSubmitTimeSheet={setSubmitTimeSheet}
         />
+        <div className='m-4'>
+
+        </div>
       </Card>
     );
 };

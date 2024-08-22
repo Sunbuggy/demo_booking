@@ -65,7 +65,6 @@ const HistoryTimeClockEvents = ({
             />
           </DialogHeader>
           {timeClockHistoryData.length > 0 && (
-            <div>
               <table className="border">
                 <thead>
                   <tr>
@@ -77,43 +76,38 @@ const HistoryTimeClockEvents = ({
                 </thead>
                 <tbody>
                   {timeClockHistoryData
-                    // sort by date
-                    .sort((a, b) => {
-                      return (
-                        new Date(b.date).getTime() - new Date(a.date).getTime()
-                      );
-                    })
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                     .map((timeClockEvent) => (
                       <tr key={timeClockEvent?.id}>
                         <td className="border p-2">
                           {new Date(timeClockEvent.date).toLocaleDateString()}
                         </td>
                         <td className="border p-2">
-                          {new Date(
-                            timeClockEvent.clock_in.clock_in_time
-                          ).toLocaleTimeString()}
+                          {new Date(timeClockEvent.clock_in?.clock_in_time ?? "").toLocaleTimeString()}
                         </td>
                         <td className="border p-2">
-                          {new Date(
-                            timeClockEvent.clock_out.clock_out_time
-                          ).toLocaleTimeString()}
+                          {isNaN(new Date(timeClockEvent.clock_out?.clock_out_time ?? "").getTime())
+                            ? "None"
+                            : new Date(timeClockEvent.clock_out?.clock_out_time ?? "").toLocaleTimeString()}
                         </td>
                         <td className="border p-2">
-                          {(
-                            (new Date(
-                              timeClockEvent.clock_out.clock_out_time
-                            ).getTime() -
-                              new Date(
-                                timeClockEvent.clock_in.clock_in_time
-                              ).getTime()) /
-                            3600000
-                          ).toFixed(2)}
+                          {isNaN(
+                            (new Date(timeClockEvent.clock_out?.clock_out_time ?? "").getTime() -
+                              new Date(timeClockEvent.clock_in?.clock_in_time ?? "").getTime()) /
+                              3600000
+                          )
+                            ? "None"
+                            : (
+                                (new Date(timeClockEvent.clock_out?.clock_out_time ?? "").getTime() -
+                                  new Date(timeClockEvent.clock_in?.clock_in_time ?? "").getTime()) /
+                                3600000
+                              ).toFixed(2)}
                         </td>
                       </tr>
                     ))}
                 </tbody>
+
               </table>
-            </div>
           )}
 
           <TimeAdjustment

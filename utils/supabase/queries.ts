@@ -341,6 +341,26 @@ export const insertIntoBreak = cache(
   }
 );
 
+export const getSessionBreakStartTime = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
+    if (looseClockedInData.length === 0) {
+      return [];
+    }
+    const { data, error } = await supabase
+      .from('breaks')
+      .select('break_start')
+      .eq('entry_id', looseClockedInData[0]?.id)
+      .is('break_end', null);
+
+    if (error) {
+      console.error(error, `getSessionBreakStartTime Error! userId: ${userId}`);
+      return [];
+    }
+    return data;
+  }
+);
+
 export const insertIntoBreakEnd = cache(
   async (supabase: SupabaseClient, userId: string) => {
     // First get the user's time entry that has a clock_in_id but no clock_out_id
@@ -445,6 +465,37 @@ export const fetchEmployeeTimeClockEntryData = cache(
         error,
         `fetchEmployeeTimeClockEntryData Error! userId: ${userId}`
       );
+      return [];
+    }
+    return data;
+  }
+);
+
+export const fetchBreaksByUserId = cache(
+  async (supabase: SupabaseClient, userId: string, dateFrom: string, dateTo: string) => {
+    // First get entry_id from time_entries table by userId
+    const { data: timeEntries, error: timeEntryError } = await supabase
+      .from('time_entries')
+      .select('id')
+      .eq('user_id', userId)
+      .filter('date', 'gte', dateFrom)
+      .filter('date', 'lte', dateTo);
+
+    if (timeEntryError) {
+      console.error(timeEntryError, `fetchBreaksByUserId Error! userId: ${userId}`);
+      return [];
+    }
+
+    const entry_ids = timeEntries.map(entry => entry.id);
+
+    // Then get breaks by entry_ids
+    const { data, error } = await supabase
+      .from('breaks')
+      .select()
+      .in('entry_id', entry_ids);
+
+    if (error) {
+      console.error(error, `fetchBreaksByUserId Error! userId: ${userId}`);
       return [];
     }
     return data;
