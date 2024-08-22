@@ -501,3 +501,30 @@ export const fetchBreaksByUserId = cache(
     return data;
   }
 );
+
+export const calculateTimeSinceClockIn = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
+    if (looseClockedInData.length === 0) {
+      return [];
+    }
+    const clock_in_id = looseClockedInData[0]?.clock_in_id;
+    const { data, error } = await supabase
+      .from('clock_in')
+      .select('clock_in_time')
+      .eq('id', clock_in_id);
+    if (error) {
+      console.error(
+        error,
+        `calculateTimeSinceClockIn Error! userId: ${userId}`
+      );
+      return [];
+    }
+    const clock_in_time = data[0]?.clock_in_time;
+    const timeDiff = new Date().getTime() - new Date(clock_in_time).getTime();
+    const seconds = Math.floor(timeDiff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    return { timeDiff };
+  }
+);

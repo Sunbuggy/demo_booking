@@ -7,32 +7,25 @@ import { DataTableColumnHeader } from '../components/column-header';
 import { DataTableRowActions } from '../components/row-actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserType } from '../../../types';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { statuses } from '../components/table-toolbar';
+import { Button } from '@/components/ui/button';
+import React, { useState } from 'react';
+import {
+  calculateTimeSinceClockIn,
+  insertIntoClockIn,
+  insertIntoClockOut
+} from '@/utils/supabase/queries';
+import { createClient } from '@/utils/supabase/client';
 
 export const columns: ColumnDef<UserType, any>[] = [
-  // {
-  //   id: 'select',
-  //   header: ({ table }) => (
-  //     <Checkbox
-  //       checked={
-  //         table.getIsAllPageRowsSelected() ||
-  //         (table.getIsSomePageRowsSelected() && 'indeterminate')
-  //       }
-  //       onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-  //       aria-label="Select all"
-  //       className="translate-y-[2px]"
-  //     />
-  //   ),
-  //   cell: ({ row }) => (
-  //     <Checkbox
-  //       checked={row.getIsSelected()}
-  //       onCheckedChange={(value) => row.toggleSelected(!!value)}
-  //       aria-label="Select row"
-  //       className="translate-y-[2px]"
-  //     />
-  //   ),
-  //   enableSorting: false,
-  //   enableHiding: false
-  // },
+  // AVATAR COLUMN
   {
     accessorKey: 'avatar_url',
     header: ({ column }) => <DataTableColumnHeader column={column} title="" />,
@@ -57,6 +50,7 @@ export const columns: ColumnDef<UserType, any>[] = [
     },
     enableSorting: false
   },
+  // FULL NAME COLUMN
   {
     accessorKey: 'full_name',
     header: ({ column }) => (
@@ -69,42 +63,113 @@ export const columns: ColumnDef<UserType, any>[] = [
     enableSorting: true,
     enableHiding: false
   },
+  // ROLE COLUMN
   {
     accessorKey: 'user_level',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Role" />
     ),
     cell: ({ row }) => (
-      <div className="w-[80px]">{row.getValue('user_level')}</div>
+      <div className="w-[40px]">{row.getValue('user_level')}</div>
     )
   },
+  // EMAIL COLUMN
   {
     accessorKey: 'email',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Email" />
     ),
-    cell: ({ row }) => <div className="w-[180px]">{row.getValue('email')}</div>
+    cell: ({ row }) => <div className="w-[250px]">{row.getValue('email')}</div>
   },
+  // TIME CLOCK COLUMN
   {
     accessorKey: 'time_entry_status',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Time Clock" />
     ),
     cell: ({ row }) => {
+      const id = row.getValue('id') as string;
       const status = row.getValue('time_entry_status') as string; // 'clocked_in' | 'clocked_out' | 'on_break' | ;
+      const [selectedStatus, setSelectedStatus] = useState(status);
+      const [clockIn, setClockIn] = useState(false);
+      const [clockOut, setClockOut] = useState(false);
+      const [onBreak, setOnBreak] = useState(false);
+      const changeClockinStatus = (
+        e: React.FormEvent<HTMLFormElement>,
+        selectedStatus: string
+      ) => {
+        e.preventDefault();
+        console.log('Selected status:', selectedStatus);
+        if (selectedStatus === 'clocked_in') {
+          setClockIn(true);
+        }
+        if (selectedStatus === 'clocked_out') {
+          setClockOut(true);
+        }
+        if (selectedStatus === 'on_break') {
+          setOnBreak(true);
+        }
+      };
+      React.useEffect(() => {
+        const supabase = createClient();
+        if (clockIn) {
+          insertIntoClockIn(supabase, id, 0, 0);
+        }
+        if (clockOut) {
+          calculateTimeSinceClockIn(supabase, id).then((res) => {
+            console.log('Time since clock in:', res);
+          });
+
+          // insertIntoClockOut(supabase,id,0,0, timeSinceClockIn)
+        }
+        if (onBreak) {
+          console.log('On break');
+        }
+      }, [clockIn, clockOut, onBreak]);
+
       return (
         <div className="w-[80px] text-xs">
-          <Badge
-            variant={
-              status === 'clocked_in'
-                ? 'positive'
-                : status === 'on_break'
-                  ? 'cautious'
-                  : 'default'
-            }
-          >
-            {status}
-          </Badge>
+          <Popover>
+            <PopoverTrigger>
+              {' '}
+              <Badge
+                variant={
+                  status === 'clocked_in'
+                    ? 'positive'
+                    : status === 'on_break'
+                      ? 'cautious'
+                      : 'default'
+                }
+              >
+                {status}
+              </Badge>
+            </PopoverTrigger>
+            <PopoverContent>
+              <div>
+                <form onSubmit={(e) => changeClockinStatus(e, selectedStatus)}>
+                  <RadioGroup
+                    value={selectedStatus}
+                    onValueChange={setSelectedStatus} // Use onValueChange to update the state
+                  >
+                    {statuses.map((status) => (
+                      <div
+                        className="flex items-center space-x-2"
+                        key={status.value}
+                      >
+                        <RadioGroupItem
+                          value={status.value}
+                          id={status.value}
+                        />
+                        <Label htmlFor={status.value}>{status.label}</Label>
+                      </div>
+                    ))}
+
+                    <Button type="submit">Change</Button>
+                  </RadioGroup>
+                </form>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       );
     },
@@ -112,64 +177,5 @@ export const columns: ColumnDef<UserType, any>[] = [
       return value.includes(row.getValue(id));
     },
     enableSorting: false
-  },
-
-  // {
-  //   accessorKey: 'status',
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title="Time Clock" />
-  //   ),
-  //   cell: ({ row }) => {
-  //     const status = statuses.find(
-  //       (status) => status.value === row.getValue('status')
-  //     );
-
-  //     if (!status) {
-  //       return null;
-  //     }
-
-  //     return (
-  //       <div className="flex w-[100px] items-center">
-  //         {status.icon && (
-  //           <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-  //         )}
-  //         <span>{status.label}</span>
-  //       </div>
-  //     );
-  //   },
-  //   filterFn: (row, id, value) => {
-  //     return value.includes(row.getValue(id));
-  //   }
-  // },
-  // {
-  //   accessorKey: 'priority',
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title="Priority" />
-  //   ),
-  //   cell: ({ row }) => {
-  //     const priority = priorities.find(
-  //       (priority) => priority.value === row.getValue('priority')
-  //     );
-
-  //     if (!priority) {
-  //       return null;
-  //     }
-
-  //     return (
-  //       <div className="flex items-center">
-  //         {priority.icon && (
-  //           <priority.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-  //         )}
-  //         <span>{priority.label}</span>
-  //       </div>
-  //     );
-  //   },
-  //   filterFn: (row, id, value) => {
-  //     return value.includes(row.getValue(id));
-  //   }
-  // },
-  {
-    id: 'actions',
-    cell: ({ row }) => <DataTableRowActions row={row} />
   }
 ];
