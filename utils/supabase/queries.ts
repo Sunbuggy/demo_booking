@@ -297,14 +297,6 @@ export const insertIntoClockOut = cache(
   }
 );
 
-// create a break time entry
-
-// break table:
-// id uuid
-// break_start timez
-// break_end timez
-// entry_id uuid references time_entries(id)
-
 export const insertIntoBreak = cache(
   async (supabase: SupabaseClient, userId: string) => {
     // First get the user's time entry that has a clock_in_id but no clock_out_id
@@ -472,7 +464,12 @@ export const fetchEmployeeTimeClockEntryData = cache(
 );
 
 export const fetchBreaksByUserId = cache(
-  async (supabase: SupabaseClient, userId: string, dateFrom: string, dateTo: string) => {
+  async (
+    supabase: SupabaseClient,
+    userId: string,
+    dateFrom: string,
+    dateTo: string
+  ) => {
     // First get entry_id from time_entries table by userId
     const { data: timeEntries, error: timeEntryError } = await supabase
       .from('time_entries')
@@ -482,11 +479,14 @@ export const fetchBreaksByUserId = cache(
       .filter('date', 'lte', dateTo);
 
     if (timeEntryError) {
-      console.error(timeEntryError, `fetchBreaksByUserId Error! userId: ${userId}`);
+      console.error(
+        timeEntryError,
+        `fetchBreaksByUserId Error! userId: ${userId}`
+      );
       return [];
     }
 
-    const entry_ids = timeEntries.map(entry => entry.id);
+    const entry_ids = timeEntries.map((entry) => entry.id);
 
     // Then get breaks by entry_ids
     const { data, error } = await supabase

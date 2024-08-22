@@ -113,7 +113,9 @@ const ClockinForm = ({
       from: addDays(new Date(), -7),
       to: new Date()
     });
-    const [timeSinceBreak, setTimeSinceBreak] = useState<string | null>("");
+  const [timeSinceBreak, setTimeSinceBreak] = useState<string | null>(
+    'loading...'
+  );
   const [timeClockHistoryData, setTimeClockHistoryData] = useState<
     TimeClockEventsType[]
   >([]);
@@ -222,7 +224,6 @@ const ClockinForm = ({
     }
   }, [clock_in]);
 
-
   // Clockout effect
   React.useEffect(() => {
     if (clockOut) {
@@ -255,73 +256,69 @@ const ClockinForm = ({
     }
   }, [clockOut]);
 
-
   // Fresh Break effect
   React.useEffect(() => {
-        if(freshBreak) { // if fresh break, insert into break table
+    if (freshBreak) {
+      // if fresh break, insert into break table
       insertIntoBreak(createClient(), user_id)
-      .then((data) => {
-        toast({
-          title: 'Success',
-          description: `You have successfully taken a break at ${new Date().toLocaleTimeString()} .`,
-          duration: 2000,
-          variant: 'success'
+        .then((data) => {
+          toast({
+            title: 'Success',
+            description: `You have successfully taken a break at ${new Date().toLocaleTimeString()} .`,
+            duration: 2000,
+            variant: 'success'
+          });
+          setFreshBreak(false);
+          setOnBreak(true);
+          console.log(data);
+        })
+        .catch((error) => {
+          toast({
+            title: 'Error',
+            description: 'An error occurred while taking a break.',
+            duration: 4000,
+            variant: 'destructive'
+          });
+          console.log(error);
         });
-        setFreshBreak(false);
-        setOnBreak(true)
-        console.log(data)
-      })
-      .catch((error) => {
-        toast({
-          title: 'Error',
-          description: 'An error occurred while taking a break.',
-          duration: 4000,
-          variant: 'destructive'
-        });
-        console.log(error)
-      });
     }
   }, [freshBreak]);
-
 
   // Count time since break
   React.useEffect(() => {
     if (onBreak) {
-        getSessionBreakStartTime(supabase, user_id)
-  .then(data => {
-    if (clockInTime) {
+      getSessionBreakStartTime(supabase, user_id)
+        .then((data) => {
+          if (clockInTime) {
+            // show every second
+            const timer = setInterval(() => {
+              const breakStartTime = data[0].break_start;
+              // get difference between clockintime and breakStartTime
+              const difference =
+                new Date().getTime() - new Date(breakStartTime).getTime();
+              // hh:mm:ss format
+              const hours = Math.floor(difference / 3600000);
+              const minutes = Math.floor((difference % 3600000) / 60000);
+              const seconds = Math.floor((difference % 60000) / 1000);
+              setTimeSinceBreak(` ${hours}:${minutes}:${seconds}`);
+            }, 1000);
 
-      // show every second
-      const timer = setInterval(() => {
-        const breakStartTime = data[0].break_start;
-        // get difference between clockintime and breakStartTime
-        const difference = new Date().getTime() - new Date(breakStartTime).getTime();
-        // hh:mm:ss format
-        const hours = Math.floor(difference / 3600000);
-        const minutes = Math.floor((difference % 3600000) / 60000);
-        const seconds = Math.floor((difference % 60000) / 1000);
-        setTimeSinceBreak(` ${hours}:${minutes}:${seconds}`);
-      }, 1000);
-
-      return () => {
-        clearInterval(timer);
-      }
-
-
+            return () => {
+              clearInterval(timer);
+            };
+          }
+        })
+        .catch((error) => console.error(error));
     }
-  })
-    .catch(error => console.error(error));
-    }
-
   }, [onBreak]);
 
   // End Break effect
   React.useEffect(() => {
-        if (endBreak) {
+    if (endBreak) {
       insertIntoBreakEnd(createClient(), user_id)
         .then((data) => {
           setEndBreak(false);
-          setTimeSinceBreak("");
+          setTimeSinceBreak('');
           toast({
             title: 'Success',
             description: `You have successfully ended your break.`,
@@ -343,7 +340,6 @@ const ClockinForm = ({
 
   // Time since break should be updated every minute
   React.useEffect(() => {
-   
     const interval = setInterval(() => {
       if (timeSinceBreak) {
         setTimeSinceBreak(timeSinceBreak);
@@ -428,7 +424,6 @@ const ClockinForm = ({
     }
   }, [timeClockEventHistoryDateRange]);
 
-
   function calculateTimeElapsedSinceClockIn() {
     if (clockInTime) {
       const currentTime = new Date();
@@ -473,7 +468,7 @@ const ClockinForm = ({
 
   function takeBreakFn() {
     setFreshBreak(true);
-    
+
     if (!location.latitude || !location.longitude) {
       alert('Please enable location services to take a break');
       setOnBreak(false);
@@ -489,8 +484,6 @@ const ClockinForm = ({
       return;
     }
   }
-
-
 
   if (user_role > 284)
     return (
@@ -509,7 +502,9 @@ const ClockinForm = ({
           {status === 'clocked_in' && (
             <div className="flex gap-3">
               <p> Clocked In For:</p>
-              <span className="text-purple-500">{calculateTimeElapsedSinceClockIn()}</span>
+              <span className="text-purple-500">
+                {calculateTimeElapsedSinceClockIn()}
+              </span>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
@@ -606,9 +601,7 @@ const ClockinForm = ({
           setTimeSheetRequest={setTimeSheetRequest}
           setSubmitTimeSheet={setSubmitTimeSheet}
         />
-        <div className='m-4'>
-
-        </div>
+        <div className="m-4"></div>
       </Card>
     );
 };
