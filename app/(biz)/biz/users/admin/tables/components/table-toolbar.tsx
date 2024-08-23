@@ -13,7 +13,7 @@ interface DataTableToolbarProps<TData> {
 
 export const statuses = [
   { value: 'clocked_in', label: 'clocked in', icon: UserCheck },
-  { value: 'on_break', label: 'on break', icon: Coffee },
+  // { value: 'on_break', label: 'on break', icon: Coffee },
   { value: 'clocked_out', label: 'clocked out', icon: TimerOff }
 ];
 

@@ -249,15 +249,55 @@ export const insertIntoClockOut = cache(
     userId: string,
     lat: number,
     long: number,
-    totalClockinHours: number
+    totalClockinHours: number,
+    clockOutTime?: string
   ) => {
+    // check the users table and get the time_entry_status
+    const { data: urData, error: usError } = await supabase
+      .from('users')
+      .select('time_entry_status')
+      .eq('id', userId);
+    if (usError) {
+      console.error(usError, `insertIntoClockOut Error! userId: ${userId}`);
+      return [];
+    }
+    const time_clock_status = urData[0]?.time_entry_status;
+    if (time_clock_status === 'on_break') {
+      // First get the user's time entry that has a clock_in_id but no clock_out_id
+      const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
+      if (looseClockedInData.length === 0) {
+        return [];
+      }
+      const { data, error } = await supabase
+        .from('breaks')
+        .update({ break_end: new Date().toISOString() })
+        .eq('entry_id', looseClockedInData[0]?.id)
+        .select();
+
+      // Update the user's time_entry_status to 'clocked_in'
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .update({ time_entry_status: 'clocked_in' })
+        .eq('id', userId);
+
+      if (userError) {
+        console.error(userError, `insertIntoBreakEnd Error! userId: ${userId}`);
+        return [];
+      }
+
+      if (error) {
+        console.error(error, `insertIntoBreakEnd Error! userId: ${userId}`);
+        return [];
+      }
+    }
+
     const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
     // First insert into clock_out table clock_out_time, lat, long
     const { data, error } = await supabase
       .from('clock_out')
       .insert([
         {
-          clock_out_time: new Date().toISOString(),
+          clock_out_time: clockOutTime || new Date().toISOString(),
           lat,
           long
         }
@@ -274,7 +314,8 @@ export const insertIntoClockOut = cache(
       .from('time_entries')
       .update({ clock_out_id, duration: totalClockinHours })
       .eq('user_id', userId)
-      .eq('id', looseClockedInData[0]?.id);
+      .eq('id', looseClockedInData[0]?.id)
+      .select();
 
     if (timeEntryError) {
       console.error(
@@ -293,7 +334,7 @@ export const insertIntoClockOut = cache(
       console.error(userError, `insertIntoClockOut Error! userId: ${userId}`);
       return [];
     }
-    return timeEntryData;
+    return { timeEntryData };
   }
 );
 
@@ -509,7 +550,7 @@ export const calculateTimeSinceClockIn = cache(
       return [];
     }
     const clock_in_id = looseClockedInData[0]?.clock_in_id;
-    const { data, error } = await supabase
+    const { data: data_time, error } = await supabase
       .from('clock_in')
       .select('clock_in_time')
       .eq('id', clock_in_id);
@@ -520,11 +561,30 @@ export const calculateTimeSinceClockIn = cache(
       );
       return [];
     }
-    const clock_in_time = data[0]?.clock_in_time;
-    const timeDiff = new Date().getTime() - new Date(clock_in_time).getTime();
-    const seconds = Math.floor(timeDiff / 1000);
+    const clock_in_time = data_time[0]?.clock_in_time;
+    const data = new Date().getTime() - new Date(clock_in_time).getTime();
+    const seconds = Math.floor(data / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    return { timeDiff };
+    return { data };
+  }
+);
+
+export const getClockedInTime = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
+    if (looseClockedInData.length === 0) {
+      return [];
+    }
+    const clock_in_id = looseClockedInData[0]?.clock_in_id;
+    const { data, error } = await supabase
+      .from('clock_in')
+      .select('clock_in_time')
+      .eq('id', clock_in_id);
+    if (error) {
+      console.error(error, `getClockedInTime Error! userId: ${userId}`);
+      return [];
+    }
+    return data;
   }
 );

@@ -222,7 +222,7 @@ export const countPeople = (reservation: Reservation): number => {
 export function transformEmplyees(users: UserType[]) {
   const employees = users.filter((user) => user.user_level > 249);
   employees.forEach((user) => {
-    if (user.full_name === 'Abenezer K') {
+    if (user.id === 'e27026d4-79ef-4efd-a9e9-a9a12c0edbd8') {
       user.user_level = 900;
     }
   });

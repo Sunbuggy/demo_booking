@@ -642,7 +642,7 @@ const DateTimePicker = React.forwardRef<DateTimePickerRef, DateTimePickerProps>(
       disabled = false,
       displayFormat,
       granularity = 'second',
-      placeholder = 'Pick a date',
+      placeholder = 'Pick a date and time',
       ...props
     },
     ref
