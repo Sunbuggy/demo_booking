@@ -4,17 +4,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/components/ui/use-toast';
+import { removeUser } from '@/utils/biz/users/actions';
+import { createClient } from '@/utils/supabase/client';
+import { makeUserEmployee } from '@/utils/supabase/queries';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
+import React from 'react';
 import { z } from 'zod';
 
 interface DataTableRowActionsProps<TData> {
@@ -61,6 +59,35 @@ export function DataTableRowActions<TData>({
   row
 }: DataTableRowActionsProps<TData>) {
   const user = userSchema.parse(row.original);
+  const supabase = createClient();
+  const [makeEmployee, setMakeEmployee] = React.useState<boolean>(false);
+  const [deleteUser, setDeleteUser] = React.useState<boolean>(false);
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (makeEmployee) {
+      makeUserEmployee(supabase, user.id)
+        .then((res) => {
+          toast({
+            title: 'Success',
+            description: 'User has been made an employee',
+            duration: 2000,
+            variant: 'success'
+          });
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    }
+    setMakeEmployee(false);
+  }, [makeEmployee]);
+
+  React.useEffect(() => {
+    if (deleteUser) {
+      removeUser(user.id);
+    }
+    setDeleteUser(false);
+  }, [deleteUser]);
 
   return (
     <DropdownMenu>
@@ -74,11 +101,21 @@ export function DataTableRowActions<TData>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem>
-          Change Role
+        <DropdownMenuItem asChild>
+          <Button variant={'positive'} onClick={() => setMakeEmployee(true)}>
+            {' '}
+            Make Employee
+          </Button>
           {/* <DropdownMenuShortcut>⌘E</DropdownMenuShortcut> */}
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Button variant={'destructive'} onClick={() => setDeleteUser(true)}>
+            {' '}
+            Delete User
+          </Button>
+          {/* <DropdownMenuShortcut>⌘E</DropdownMenuShortcut> */}
+        </DropdownMenuItem>
+        {/* <DropdownMenuSeparator />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>Timeclock</DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
@@ -90,29 +127,7 @@ export function DataTableRowActions<TData>({
               ))}
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
-        </DropdownMenuSub>
-
-        {/* <DropdownMenuItem>Edit</DropdownMenuItem>
-        <DropdownMenuItem>Make a copy</DropdownMenuItem>
-        <DropdownMenuItem>Favorite</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Labels</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup value={task.label}>
-              {labels.map((label) => (
-                <DropdownMenuRadioItem key={label.value} value={label.value}>
-                  {label.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          Delete
-          <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
-        </DropdownMenuItem> */}
+        </DropdownMenuSub> */}
       </DropdownMenuContent>
     </DropdownMenu>
   );

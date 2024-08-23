@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { equal } from 'assert';
 import { cache } from 'react';
 
@@ -583,6 +583,34 @@ export const getClockedInTime = cache(
       .eq('id', clock_in_id);
     if (error) {
       console.error(error, `getClockedInTime Error! userId: ${userId}`);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const makeUserEmployee = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ user_level: 300 })
+      .eq('id', userId);
+    if (error) {
+      console.error(error, `makeUserEmployee Error! userId: ${userId}`);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const makeUserPartner = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ user_level: 250 })
+      .eq('id', userId);
+    if (error) {
+      console.error(error, `makeUserPartner Error! userId: ${userId}`);
       return [];
     }
     return data;
