@@ -593,7 +593,7 @@ export const makeUserEmployee = cache(
   async (supabase: SupabaseClient, userId: string) => {
     const { data, error } = await supabase
       .from('users')
-      .update({ user_level: 300 })
+      .update({ user_level: 300, time_entry_status: 'clocked_out' })
       .eq('id', userId);
     if (error) {
       console.error(error, `makeUserEmployee Error! userId: ${userId}`);
@@ -611,6 +611,20 @@ export const makeUserPartner = cache(
       .eq('id', userId);
     if (error) {
       console.error(error, `makeUserPartner Error! userId: ${userId}`);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const changeUserRole = cache(
+  async (supabase: SupabaseClient, userId: string, user_level: number) => {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ user_level })
+      .eq('id', userId);
+    if (error) {
+      console.error(error, `changeUserRole Error! userId: ${userId}`);
       return [];
     }
     return data;

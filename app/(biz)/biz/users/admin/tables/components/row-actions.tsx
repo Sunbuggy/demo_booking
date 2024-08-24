@@ -12,6 +12,7 @@ import { createClient } from '@/utils/supabase/client';
 import { makeUserEmployee } from '@/utils/supabase/queries';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
+import { useRouter } from 'next/navigation';
 import React from 'react';
 import { z } from 'zod';
 
@@ -63,6 +64,28 @@ export function DataTableRowActions<TData>({
   const [makeEmployee, setMakeEmployee] = React.useState<boolean>(false);
   const [deleteUser, setDeleteUser] = React.useState<boolean>(false);
   const { toast } = useToast();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('user made to employee')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'users'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router]);
 
   React.useEffect(() => {
     if (makeEmployee) {
@@ -76,7 +99,7 @@ export function DataTableRowActions<TData>({
           });
         })
         .catch((err) => {
-          console.log(err);
+          console.error(err);
         });
     }
     setMakeEmployee(false);
@@ -84,7 +107,24 @@ export function DataTableRowActions<TData>({
 
   React.useEffect(() => {
     if (deleteUser) {
-      removeUser(user.id);
+      removeUser(user.id)
+        .then((res) => {
+          toast({
+            title: 'Success',
+            description: 'User has been deleted',
+            duration: 2000,
+            variant: 'success'
+          });
+        })
+        .catch((err) => {
+          toast({
+            title: 'Error',
+            description: 'Error deleting user',
+            duration: 2000,
+            variant: 'destructive'
+          });
+          console.error(err);
+        });
     }
     setDeleteUser(false);
   }, [deleteUser]);

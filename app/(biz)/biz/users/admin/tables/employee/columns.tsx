@@ -5,7 +5,10 @@ import { DataTableColumnHeader } from '../components/column-header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserType } from '../../../types';
 import React, { useState } from 'react';
-import { calculateTimeSinceClockIn } from '@/utils/supabase/queries';
+import {
+  calculateTimeSinceClockIn,
+  changeUserRole
+} from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import ClockOut from './time-clock/clock-out';
@@ -14,12 +17,15 @@ import AdjustTime from './time-clock/adjust-time';
 import TimeSheetAdjustment from './time-clock/time-sheet';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
 import { DialogTrigger } from '@radix-ui/react-dialog';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 
 export interface TimeSinceClockIn {
   data: number;
@@ -69,9 +75,139 @@ export const columns: ColumnDef<UserType, any>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Role" />
     ),
-    cell: ({ row }) => (
-      <div className="w-[40px]">{row.getValue('user_level')}</div>
-    )
+    cell: ({ row }) => {
+      const [makeEmployee, setMakeEmployee] = useState(false);
+      const [makeManager, setMakeManager] = useState(false);
+      const [makeAdmin, setMakeAdmin] = useState(false);
+      const supabase = createClient();
+      const { toast } = useToast();
+      const router = useRouter();
+
+      React.useEffect(() => {
+        // Make Employee
+        if (makeEmployee) {
+          changeUserRole(supabase, row.original.id, 300)
+            .then((res) => {
+              toast({
+                title: 'Success',
+                description: 'User has been made an employee',
+                duration: 2000,
+                variant: 'success'
+              });
+            })
+            .catch((err) => {
+              console.error(err);
+            });
+        }
+        // Make Manager
+        if (makeManager) {
+          changeUserRole(supabase, row.original.id, 651)
+            .then((res) => {
+              toast({
+                title: 'Success',
+                description: 'User has been made a manager',
+                duration: 2000,
+                variant: 'success'
+              });
+            })
+            .catch((err) => {
+              toast({
+                title: 'Error',
+                description: 'Error making user a manager',
+                variant: 'destructive'
+              });
+            });
+        }
+        // Make Admin
+        if (makeAdmin) {
+          changeUserRole(supabase, row.original.id, 900)
+            .then((res) => {
+              toast({
+                title: 'Success',
+                description: 'User has been made an admin',
+                duration: 2000,
+                variant: 'success'
+              });
+            })
+            .catch((err) => {
+              toast({
+                title: 'Error',
+                description: 'Error making user an admin',
+                variant: 'destructive'
+              });
+            });
+        }
+        // Clean up
+        setMakeEmployee(false);
+        setMakeManager(false);
+        setMakeAdmin(false);
+      }, [makeEmployee, makeManager, makeAdmin]);
+
+      return (
+        <div className="w-[40px]">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant={
+                  Number(row.getValue('user_level')) === 900
+                    ? 'positive'
+                    : Number(row.getValue('user_level')) > 650
+                      ? 'secondary'
+                      : 'default'
+                }
+              >
+                {row.getValue('user_level')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Change User Level</DialogTitle>
+                <DialogDescription>
+                  <span className="text-3xl font-extrabold">
+                    Current Level: {row.original.user_level}
+                  </span>
+                  <br />
+                  Employees &gt; 299,
+                  <br /> Managers &gt; 650,
+                  <br /> admins = 900
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex gap-4 items-center">
+                <DialogClose asChild>
+                  <Button
+                    onClick={() => {
+                      setMakeEmployee(true);
+                    }}
+                  >
+                    Employee
+                  </Button>
+                </DialogClose>
+                <DialogClose asChild>
+                  <Button
+                    variant={'secondary'}
+                    onClick={() => {
+                      setMakeManager(true);
+                    }}
+                  >
+                    Manager
+                  </Button>
+                </DialogClose>
+                <DialogClose asChild>
+                  <Button
+                    variant={'positive'}
+                    onClick={() => {
+                      setMakeAdmin(true);
+                    }}
+                  >
+                    Admin
+                  </Button>
+                </DialogClose>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      );
+    }
   },
   // EMAIL COLUMN
   {

@@ -17,7 +17,7 @@ export const removeUser = cache(async (userId: string) => {
 
   const { data, error } = await supabase.auth.admin.deleteUser(userId);
   if (error) {
-    console.error(error, `removeUser Error! userId: ${userId}`);
+    console.error(error.message, `removeUser Error! userId: ${userId}`);
     return [];
   }
   return data;
