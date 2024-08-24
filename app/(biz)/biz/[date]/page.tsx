@@ -12,6 +12,8 @@ import { RiArrowLeftWideFill, RiArrowRightWideFill } from 'react-icons/ri';
 import dayjs from 'dayjs';
 import { createClient } from '@/utils/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 const BizPage = async ({
   params,
   searchParams

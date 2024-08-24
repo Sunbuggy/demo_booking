@@ -1,13 +1,13 @@
 import { Skeleton } from '@/components/ui/skeleton';
-export function SkeletonLoader() {
+
+export default function Loading() {
   return (
-    <div>
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-56 w-full" />
+    <div className="flex flex-col gap-5 w-[400px]">
+      <div className="flex w-full justify-center items-center">
+        <Skeleton className="w-[106px] h-[40px]" />
+      </div>
+      <Skeleton className="w-[400px] h-[66px]" />
+      <Skeleton className="w-[384px] h-[660px]" />
     </div>
   );
-}
-export default function Loading() {
-  return <SkeletonLoader />;
 }
