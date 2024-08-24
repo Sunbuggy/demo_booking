@@ -1,8 +1,8 @@
-
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { getUserDetails } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
+import { SheetClose } from '../sheet';
 
 export default function NavSideBar() {
   const [role, setRole] = useState<number | null>(null);
@@ -20,31 +20,48 @@ export default function NavSideBar() {
   }, []);
 
   return (
-    <div className="">
-      <ul>
-        {role && role > 299 && (
-            <div>
-          <li className="">
+    <div className="flex flex-col gap-3">
+      {role && role > 299 && (
+        <div className="flex flex-col gap-3">
+          <SheetClose asChild>
             <Link
+              className=" border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
               href={`/biz/${date}`}
-              className="transition duration-150 ease-in-out"
             >
               Internal
             </Link>
-          </li>
-                 <li className="nav-item">
-          <Link href="https://www.sunbuggy.biz/login.php" className="nav-link">
-            Old Biz
-          </Link>
-        </li> 
+          </SheetClose>
+
+          <SheetClose asChild>
+            <Link
+              href="https://www.sunbuggy.biz/login.php"
+              className=" border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
+            >
+              Old Biz
+            </Link>
+          </SheetClose>
         </div>
-        )}
-        <li className="nav-item">
-          <Link href="/" className="nav-link">
-            Home
-          </Link>
-        </li>
-</ul>
+      )}
+      {role && role > 899 && (
+        <div className="flex flex-col gap-3">
+          <SheetClose asChild>
+            <Link
+              href={`/biz/users/admin`}
+              className=" border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
+            >
+              Admin
+            </Link>
+          </SheetClose>
+        </div>
+      )}
+      <SheetClose asChild>
+        <Link
+          href="/"
+          className=" border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
+        >
+          Home
+        </Link>
+      </SheetClose>
     </div>
   );
 }

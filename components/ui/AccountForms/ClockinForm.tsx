@@ -6,7 +6,6 @@ import { Button } from '../button';
 import { createClient } from '@/utils/supabase/client';
 import {
   createTimeSheetRequest,
-  fetchBreaksByUserId,
   fetchEmployeeTimeClockEntryData,
   fetchTimeSheetRequests,
   getSessionBreakStartTime,
@@ -30,19 +29,8 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip';
 import { InfoCircledIcon } from '@radix-ui/react-icons';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog';
-
 import { DateRange } from 'react-day-picker';
 import { addDays } from 'date-fns';
-import TimeAdjustment from './clockin-dialogs/time-adjustments';
-import { DatePickerWithRange } from '../date-range';
 import HistoryTimeClockEvents from './clockin-dialogs/history-time-clock-events';
 
 export interface TimeSheet {
@@ -100,9 +88,6 @@ const ClockinForm = ({
   const [clockOut, setClockOut] = useState(false);
   const [onBreak, setOnBreak] = useState(status === 'on_break');
   const [freshBreak, setFreshBreak] = useState(false);
-  const [breakStartTime, setBreakStartTime] = useState<Date | undefined>(
-    undefined
-  );
   const [endBreak, setEndBreak] = useState(false);
   const [nowTime, setNowTime] = useState('');
   const [submitTimeSheet, setSubmitTimeSheet] = useState(false);

@@ -26,6 +26,7 @@ import {
 import { DialogTrigger } from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import HistoryTimeClockEvents from './time-clock/time-history';
 
 export interface TimeSinceClockIn {
   data: number;
@@ -254,6 +255,7 @@ export const columns: ColumnDef<UserType, any>[] = [
         };
       }, [supabase, router]);
 
+      // Calculate time since clock in
       React.useEffect(() => {
         calculateTimeSinceClockIn(supabase, id).then((res) => {
           const diff = res as TimeSinceClockIn;
@@ -316,10 +318,15 @@ export const columns: ColumnDef<UserType, any>[] = [
                 </DialogDescription>
               </DialogHeader>
               <div className="flex flex-col gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold">
+                    {' '}
+                    User: {row.original.full_name}
+                  </h1>
+                </div>
                 {(status === 'clocked_in' || status === 'on_break') && (
                   <div className="flex justify-between">
                     <ClockOut user={row.original} />
-
                     <AdjustTime />
                   </div>
                 )}
@@ -328,7 +335,7 @@ export const columns: ColumnDef<UserType, any>[] = [
                     <ClockIn user={row.original} />
                   </div>
                 )}
-                <TimeSheetAdjustment />
+                <HistoryTimeClockEvents user={row.original} />
               </div>
             </DialogContent>
           </Dialog>
