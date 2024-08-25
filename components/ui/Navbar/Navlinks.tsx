@@ -64,8 +64,8 @@ export default function Navlinks({ user }: NavlinksProps) {
         {user && !is_account_page && (
           <div className="flex flex-col justify-center">
             <Link
-              href="/account"
               target="_blank"
+              href="/account"
               className="cursor-pointer dark:text-yellow-500 text-black flex items-center"
             >
               Profile <ImNewTab />
@@ -103,6 +103,7 @@ export default function Navlinks({ user }: NavlinksProps) {
           </form>
         ) : (
           <Link
+            target="_blank"
             href="/signin"
             className="inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md h-[36px]"
           >

@@ -21,7 +21,7 @@ import { BookingTabs } from '../tabs/mbj';
 
 const FormSchema = z.object({
   bookingDate: z.date({
-    required_error: 'A date of birth is required.'
+    required_error: 'A reservation date is required.'
   }),
   howManyPeople: z.coerce.number({
     required_error: 'Group size is required.'

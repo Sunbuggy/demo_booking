@@ -47,13 +47,13 @@ const BizPage = async ({
       <div className="min-h-screen flex flex-col gap-5">
         {role && role > 299 && (
           <div className="flex gap-2 justify-center items-center">
-            <Link href={`/biz/${yesterday}`} passHref>
+            <Link target="_blank" href={`/biz/${yesterday}`} passHref>
               <RiArrowLeftWideFill />
             </Link>
-            <Link href="/biz/calendar" passHref>
+            <Link target="_blank" href="/biz/calendar" passHref>
               <Button>{date}</Button>
             </Link>
-            <Link href={`/biz/${tomorrow}`} passHref>
+            <Link target="_blank" href={`/biz/${tomorrow}`} passHref>
               <RiArrowRightWideFill />
             </Link>
           </div>
@@ -84,6 +84,7 @@ const BizPage = async ({
           <div className="h-screen flex justify-center items-center gap-2">
             Please{' '}
             <Link
+              target="_blank"
               href="/signin"
               className={`inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md h-[36px] underline`}
             >

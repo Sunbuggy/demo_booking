@@ -31,7 +31,9 @@ const AdminPanel = ({
         )}
         <div className="flex flex-col gap-2">
           <Button asChild variant={'ghost'}>
-            <Link href={'/biz/users/admin'}>User Management</Link>
+            <Link target="_blank" href={'/biz/users/admin'}>
+              User Management
+            </Link>
           </Button>
         </div>
       </CardContent>
