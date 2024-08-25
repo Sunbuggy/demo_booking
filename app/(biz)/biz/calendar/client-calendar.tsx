@@ -16,6 +16,7 @@ import { vehiclesList } from '@/utils/old_db/helpers';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import MonthCell from './month-cell';
+import Loading from './loading';
 
 type ClientCalendarProps = {
   role: number;
@@ -273,7 +274,7 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
 
   const currentTheme = theme === 'system' ? systemTheme : theme;
 
-  if (monthData.length || yearData.length)
+  if (monthData.length || yearData.length) {
     return (
       <div className="overflow-auto min-h-screen">
         {loading ? (
@@ -302,13 +303,15 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
                 }}
               />
             </ConfigProvider>
-            {role > 899 && <div className="flex items-center space-x-2 m-5">
-              <Switch
-                onCheckedChange={(checked) => setShowRevenue(checked)}
-                id="show-revenue"
-              />
-              <Label htmlFor="show-revenue">Show Revenue</Label>
-            </div>}
+            {role > 899 && (
+              <div className="flex items-center space-x-2 m-5">
+                <Switch
+                  onCheckedChange={(checked) => setShowRevenue(checked)}
+                  id="show-revenue"
+                />
+                <Label htmlFor="show-revenue">Show Revenue</Label>
+              </div>
+            )}
             {!switch_to_year ? (
               <>
                 {monthTotal > 0 && role && role > 899 && (
@@ -466,6 +469,9 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
         )}
       </div>
     );
+  } else {
+    return <Loading />;
+  }
 };
 
 export default ClientCalendar;
