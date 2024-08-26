@@ -8,6 +8,8 @@ import { getURL } from '@/utils/helpers';
 import 'styles/main.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toster } from '@/components/ui/toaster';
+import { createClient } from '@/utils/supabase/server';
+import { getUserDetails } from '@/utils/supabase/queries';
 
 const title = 'Sunbuggy Fun Rentals';
 const description =
@@ -24,6 +26,10 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: PropsWithChildren) {
+    // Fetch user details and role server-side
+    const supabase = createClient();
+    const user = await getUserDetails(supabase);
+    const role = user && user[0] ? user[0].user_level : null;
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
@@ -34,7 +40,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           disableTransitionOnChange
         >
           <div className="flex flex-col gap-5 max-w-full">
-            <Navbar />
+          <Navbar role={role} />
             {/* <NewNav /> */}
             <main className="max-w-6xl mx-auto"> {children}</main>
             <Footer />

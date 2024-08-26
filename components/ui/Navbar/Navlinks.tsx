@@ -20,9 +20,10 @@ import {
 
 interface NavlinksProps {
   user?: any;
+  role: number | null; // Role will be passed as a prop
 }
 
-export default function Navlinks({ user }: NavlinksProps) {
+export default function Navlinks({ user, role }: NavlinksProps) {
   const router = getRedirectMethod() === 'client' ? useRouter() : null;
   const path = usePathname();
   const is_account_page = path === '/account';
@@ -57,7 +58,8 @@ export default function Navlinks({ user }: NavlinksProps) {
               <SheetTitle>Menu</SheetTitle>
               <SheetDescription></SheetDescription>
             </SheetHeader>
-            <NavSideBar></NavSideBar>
+            {/* Pass the role to the NavSideBar component */}
+            <NavSideBar role={role} />
           </SheetContent>
         </Sheet>
 
