@@ -46,7 +46,6 @@ const LaunchGroup = ({
 
   React.useEffect(() => {
     if (initLaunch && !launched) {
-      console.log('launching group');
       launchGroup(groupId).then((res) => {
         res.error
           ? toast({
@@ -64,7 +63,6 @@ const LaunchGroup = ({
       });
     }
     if (unlounch && launched) {
-      console.log('unlaunching group');
       unLaunchGroup(groupId).then((res) => {
         res.error
           ? toast({
@@ -104,7 +102,6 @@ const LaunchGroup = ({
               onClick={() => {
                 !launched && setInitLaunch(true);
                 launched && setUnlaunch(true);
-                console.log('launched', initLaunch);
               }}
             >
               Yes

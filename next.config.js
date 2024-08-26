@@ -5,6 +5,11 @@ module.exports = {
         protocol: 'https',
         hostname: '*.googleusercontent.com',
         port: ''
+      },
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+        port: ''
       }
     ]
   }
