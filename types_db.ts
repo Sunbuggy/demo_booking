@@ -30,115 +30,77 @@ export type Database = {
         }
         Relationships: []
       }
-      booking_details: {
+      booking: {
         Row: {
-          booking_amount: number
-          booking_date: string
-          booking_id: string | null
-          booking_type: string
-          customer_id: string | null
+          booked_by: string
+          booking_timestamp: string | null
+          created_at: string
+          date_time: string | null
+          group_name: string | null
           id: string
+          is_paid: boolean | null
+          is_quote: boolean | null
+          location: string | null
+          num_of_ppl: number | null
         }
         Insert: {
-          booking_amount: number
-          booking_date: string
-          booking_id?: string | null
-          booking_type: string
-          customer_id?: string | null
+          booked_by: string
+          booking_timestamp?: string | null
+          created_at?: string
+          date_time?: string | null
+          group_name?: string | null
           id?: string
+          is_paid?: boolean | null
+          is_quote?: boolean | null
+          location?: string | null
+          num_of_ppl?: number | null
         }
         Update: {
-          booking_amount?: number
-          booking_date?: string
-          booking_id?: string | null
-          booking_type?: string
-          customer_id?: string | null
+          booked_by?: string
+          booking_timestamp?: string | null
+          created_at?: string
+          date_time?: string | null
+          group_name?: string | null
           id?: string
+          is_paid?: boolean | null
+          is_quote?: boolean | null
+          location?: string | null
+          num_of_ppl?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "booking_details_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookingdetails_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "bookings"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      booking_vehicles: {
+      booking_customer: {
         Row: {
           booking_id: string | null
+          created_at: string
           id: string
-          quantity: number
-          vehicle_id: string | null
+          user_id: string | null
         }
         Insert: {
           booking_id?: string | null
+          created_at?: string
           id?: string
-          quantity: number
-          vehicle_id?: string | null
+          user_id?: string | null
         }
         Update: {
           booking_id?: string | null
+          created_at?: string
           id?: string
-          quantity?: number
-          vehicle_id?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "bookingvehicles_booking_id_fkey"
+            foreignKeyName: "booking_customer_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
-            referencedRelation: "bookings"
+            referencedRelation: "booking"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "bookingvehicles_vehicle_id_fkey"
-            columns: ["vehicle_id"]
+            foreignKeyName: "booking_customer_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "vehicles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      bookings: {
-        Row: {
-          booking_details: string | null
-          created_by: string
-          created_date: string
-          id: string
-          status: string
-          updated_by: string
-        }
-        Insert: {
-          booking_details?: string | null
-          created_by: string
-          created_date?: string
-          id?: string
-          status: string
-          updated_by: string
-        }
-        Update: {
-          booking_details?: string | null
-          created_by?: string
-          created_date?: string
-          id?: string
-          status?: string
-          updated_by?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bookings_booking_details_fkey"
-            columns: ["booking_details"]
-            isOneToOne: false
-            referencedRelation: "booking_details"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -281,31 +243,25 @@ export type Database = {
       }
       group_vehicles: {
         Row: {
-          booking_id: string | null
           group_id: string
           id: string
           old_booking_id: number | null
           old_vehicle_name: string | null
           quantity: number
-          vehicle_id: string | null
         }
         Insert: {
-          booking_id?: string | null
           group_id: string
           id?: string
           old_booking_id?: number | null
           old_vehicle_name?: string | null
           quantity: number
-          vehicle_id?: string | null
         }
         Update: {
-          booking_id?: string | null
           group_id?: string
           id?: string
           old_booking_id?: number | null
           old_vehicle_name?: string | null
           quantity?: number
-          vehicle_id?: string | null
         }
         Relationships: [
           {
@@ -313,20 +269,6 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "groupvehicles_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "bookings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "groupvehicles_vehicle_id_fkey"
-            columns: ["vehicle_id"]
-            isOneToOne: false
-            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
@@ -486,6 +428,32 @@ export type Database = {
           youtube?: string | null
         }
         Relationships: []
+      }
+      shuttle_assignment: {
+        Row: {
+          created_at: string
+          id: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shuttle_assignment_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       time_entries: {
         Row: {
@@ -654,27 +622,65 @@ export type Database = {
           },
         ]
       }
-      vehicles: {
+      vehicle_pics: {
         Row: {
-          description: string | null
+          created_at: string
           id: string
-          name: string
-          status: string
-          type: string
+          pic_url: string
+          vehicle_id: string
         }
         Insert: {
-          description?: string | null
+          created_at?: string
           id?: string
-          name: string
-          status: string
-          type: string
+          pic_url: string
+          vehicle_id: string
         }
         Update: {
-          description?: string | null
+          created_at?: string
           id?: string
+          pic_url?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_pics_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          id: string
+          make: string
+          model: string
+          name: string
+          profile_pic: string | null
+          seats: number
+          type: Database["public"]["Enums"]["vehicle_type"]
+          year: number
+        }
+        Insert: {
+          id?: string
+          make?: string
+          model?: string
+          name: string
+          profile_pic?: string | null
+          seats?: number
+          type: Database["public"]["Enums"]["vehicle_type"]
+          year?: number
+        }
+        Update: {
+          id?: string
+          make?: string
+          model?: string
           name?: string
-          status?: string
-          type?: string
+          profile_pic?: string | null
+          seats?: number
+          type?: Database["public"]["Enums"]["vehicle_type"]
+          year?: number
         }
         Relationships: []
       }
@@ -721,6 +727,16 @@ export type Database = {
         | "paused"
       time_entry_status: "clocked_in" | "clocked_out" | "on_break"
       user_type: "employee" | "customer" | "partner"
+      vehicle_type:
+        | "shuttle"
+        | "buggy"
+        | "atv"
+        | "utv"
+        | "sedan"
+        | "truck"
+        | "trailer"
+        | "tram"
+        | "forktruck"
     }
     CompositeTypes: {
       [_ in never]: never

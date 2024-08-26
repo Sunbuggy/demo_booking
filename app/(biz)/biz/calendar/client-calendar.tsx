@@ -218,7 +218,6 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
     setSwitchToYear(currentMode === 'year');
   }, [currentMode]);
   // React.useEffect(() => {
-  //   console.log('month total location cost', month_total_location_cost);
   // }, [month_total_location_cost]);
 
   const monthCellRender = (value: Dayjs) => {

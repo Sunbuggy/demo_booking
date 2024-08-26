@@ -255,7 +255,6 @@ const ClockinForm = ({
           });
           setFreshBreak(false);
           setOnBreak(true);
-          console.log(data);
         })
         .catch((error) => {
           toast({
@@ -264,7 +263,7 @@ const ClockinForm = ({
             duration: 4000,
             variant: 'destructive'
           });
-          console.log(error);
+          console.error(error);
         });
     }
   }, [freshBreak]);
@@ -378,7 +377,6 @@ const ClockinForm = ({
       )
         .then((data) => {
           const timeSheets = data as TimeSheet[];
-          console.log(timeSheets);
           setHistoryTimeSheets(timeSheets);
         })
         .catch((error) => {

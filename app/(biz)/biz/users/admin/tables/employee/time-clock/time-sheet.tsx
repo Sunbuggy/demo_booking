@@ -42,7 +42,6 @@ const TimeSheetAdjustment = ({ user }: { user?: UserType }) => {
         )
           .then((data) => {
             const timeSheets = data as TimeSheet[];
-            console.log(timeSheets);
             setHistoryTimeSheets(timeSheets);
           })
           .catch((error) => {

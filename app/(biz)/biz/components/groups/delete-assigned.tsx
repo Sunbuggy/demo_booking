@@ -86,7 +86,6 @@ const DeleteAssigned = ({
         Number(countVehicles.split('-')[0])
       );
       deleteFromGroupVehicles(String(groupId)).then((res) => {
-        res.error ? console.error('Error', res.error) : console.log('Success');
         res.error
           ? toast({
               title: 'Error',

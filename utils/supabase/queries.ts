@@ -62,7 +62,6 @@ export const getAllUsers = cache(async (supabase: SupabaseClient) => {
     console.error(error);
     return [];
   }
-  // console.log(data.length);
   return data;
 });
 
@@ -625,6 +624,64 @@ export const changeUserRole = cache(
       .eq('id', userId);
     if (error) {
       console.error(error, `changeUserRole Error! userId: ${userId}`);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const fetchVehicles = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase.from('vehicles').select();
+  if (error) {
+    console.error(error);
+    return [];
+  }
+  return data;
+});
+
+export const fetchVehiclePics = cache(
+  async (supabase: SupabaseClient, vehicle_id: number) => {
+    const { data, error } = await supabase
+      .from('vehicle_pics')
+      .select('pic_url')
+      .eq('vehicle_id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// Join tables vehicles and vehicle_pics on vehicle_id
+
+export const fetchVehiclesWithPics = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase.from('vehicles').select(`
+      id,
+      make,
+      model,
+      name,
+      type,
+      year,
+      vehicle_pics (pic_url)
+    `);
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return data;
+});
+
+export const removeVehicle = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .delete()
+      .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
       return [];
     }
     return data;
