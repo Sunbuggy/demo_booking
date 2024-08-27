@@ -1,15 +1,20 @@
+'use client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { usePathname, useRouter } from 'next/navigation';
+import { SignOut } from '@/utils/auth-helpers/server';
+import Link from 'next/link';
+import { ImNewTab } from 'react-icons/im';
+import { getRedirectMethod } from '@/utils/auth-helpers/settings';
+import { handleRequest } from '@/utils/auth-helpers/client';
+
 
 export function UserNav({
   email,
@@ -22,6 +27,8 @@ export function UserNav({
   userImage: string;
   userName: string;
 }) {
+  const router = getRedirectMethod() === 'client' ? useRouter() : null;
+  const path = usePathname();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -44,6 +51,26 @@ export function UserNav({
         <DropdownMenuItem>
           {userName} (admin)
         </DropdownMenuItem>
+        <DropdownMenuItem>
+        <Link
+              target="_blank"
+              href="/account"
+              className="cursor-pointer dark:text-yellow-500 text-black flex items-center"
+            >
+              Profile <ImNewTab />
+            </Link>        
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+            <form onSubmit={(e) => handleRequest(e, SignOut, router)}>
+              <input type="hidden" name="pathName" value={path} />
+              <button
+                type="submit"
+                className="inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md p-1 h-[36px]"
+              >
+                Sign out
+              </button>
+            </form>        
+            </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

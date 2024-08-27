@@ -1,13 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { SignOut } from '@/utils/auth-helpers/server';
-import { handleRequest } from '@/utils/auth-helpers/client';
 import { usePathname, useRouter } from 'next/navigation';
 import { getRedirectMethod } from '@/utils/auth-helpers/settings';
 import ThemeButton from '../mode-toggle';
 import Image from 'next/image';
-import { ImNewTab } from 'react-icons/im';
 import NavSideBar from './NavSideBar';
 import {
   Sheet,
@@ -17,16 +14,16 @@ import {
   SheetTitle,
   SheetDescription
 } from '@/components/ui/sheet';
+import { UserNav } from '@/app/(biz)/biz/users/admin/tables/components/user-nav';
+import { UserType } from '@/app/(biz)/biz/users/types';
 
 interface NavlinksProps {
-  user?: any;
-  role: number | null; // Role will be passed as a prop
+  user: UserType | null; 
 }
 
-export default function Navlinks({ user, role }: NavlinksProps) {
+export default function Navlinks({ user }: NavlinksProps) {
   const router = getRedirectMethod() === 'client' ? useRouter() : null;
   const path = usePathname();
-  const is_account_page = path === '/account';
 
   return (
     <div className="flex justify-between">
@@ -58,51 +55,22 @@ export default function Navlinks({ user, role }: NavlinksProps) {
               <SheetTitle>Menu</SheetTitle>
               <SheetDescription></SheetDescription>
             </SheetHeader>
-            {/* Pass the role to the NavSideBar component */}
-            <NavSideBar role={role} />
+            <NavSideBar user={user} />
           </SheetContent>
         </Sheet>
-
-        {user && !is_account_page && (
-          <div className="flex flex-col justify-center">
-            <Link
-              target="_blank"
-              href="/account"
-              className="cursor-pointer dark:text-yellow-500 text-black flex items-center"
-            >
-              Profile <ImNewTab />
-            </Link>
-          </div>
-        )}
       </div>
 
-      <div className="flex justify-end">
-        <a>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="1.8"
-            stroke="orange"
-            className="w-9 h-9"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-            />
-          </svg>
-        </a>
+      <div className="flex justify-end items-center gap-4">
         {user ? (
-          <form onSubmit={(e) => handleRequest(e, SignOut, router)}>
-            <input type="hidden" name="pathName" value={usePathname()} />
-            <button
-              type="submit"
-              className="inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md p-1 h-[36px]"
-            >
-              Sign out
-            </button>
-          </form>
+          <>
+            <UserNav
+              email={user.email}
+              userInitials={user.full_name[0]}
+              userImage={user.avatar_url}
+              userName={user.full_name}
+            />
+
+          </>
         ) : (
           <Link
             target="_blank"

@@ -1,12 +1,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { SheetClose } from '../sheet';
+import { UserType } from '@/app/(biz)/biz/users/types';
 
 interface NavSideBarProps {
-  role: number | null;
+  user: UserType | null; // Updated to receive the user object or null
 }
 
-export default function NavSideBar({ role }: NavSideBarProps) {
+export default function NavSideBar({ user }: NavSideBarProps) {
   const date = new Date().toLocaleDateString('en-CA'); // 'en-CA' format is 'YYYY-MM-DD'
 
   return (
@@ -20,7 +21,7 @@ export default function NavSideBar({ role }: NavSideBarProps) {
           Home
         </Link>
       </SheetClose>
-      {role && role > 299 && (
+      {user && user.user_level > 299 && (
         <div className="flex flex-col gap-3">
           <SheetClose asChild>
             <Link
@@ -43,7 +44,7 @@ export default function NavSideBar({ role }: NavSideBarProps) {
           </SheetClose>
         </div>
       )}
-      {role && role > 899 && (
+      {user && user.user_level > 899 && (
         <div className="flex flex-col gap-3">
           <SheetClose asChild>
             <Link
