@@ -48,6 +48,7 @@
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.45.1",
     "@tanstack/react-table": "^8.20.1",
+    "@zxing/browser": "^0.1.5",
     "antd": "^5.20.0",
     "authorizenet": "^1.0.8",
     "aws-sdk": "^2.1682.0",

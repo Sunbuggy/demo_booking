@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { ImNewTab } from 'react-icons/im';
 import { getRedirectMethod } from '@/utils/auth-helpers/settings';
 import { handleRequest } from '@/utils/auth-helpers/client';
-
+import ThemeButton from '@/components/ui/mode-toggle';
 
 export function UserNav({
   email,
@@ -49,7 +49,7 @@ export function UserNav({
           </div>
         </DropdownMenuLabel>
         <DropdownMenuItem>
-          {userName} (admin)
+          {userName} (admin) <ThemeButton/>
         </DropdownMenuItem>
         <DropdownMenuItem>
         <Link

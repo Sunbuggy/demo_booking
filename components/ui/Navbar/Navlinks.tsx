@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { getRedirectMethod } from '@/utils/auth-helpers/settings';
-import ThemeButton from '../mode-toggle';
 import Image from 'next/image';
 import NavSideBar from './NavSideBar';
 import {
@@ -16,6 +15,7 @@ import {
 } from '@/components/ui/sheet';
 import { UserNav } from '@/app/(biz)/biz/users/admin/tables/components/user-nav';
 import { UserType } from '@/app/(biz)/biz/users/types';
+import QrCodeScanner from '../qrscanner'; // Ensure this is the correct path to your QR scanner component
 
 interface NavlinksProps {
   user: UserType | null; 
@@ -61,6 +61,23 @@ export default function Navlinks({ user }: NavlinksProps) {
       </div>
 
       <div className="flex justify-end items-center gap-4">
+        {/* QR Scanner Trigger */}
+        <Sheet>
+          <SheetTrigger asChild>
+            <a>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="orange" className="w-9 h-9">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </a>
+          </SheetTrigger>
+          <SheetContent side="right">
+            <SheetHeader>
+              <SheetTitle>QR Scanner</SheetTitle>
+              <SheetDescription>Scan a QR Code</SheetDescription>
+            </SheetHeader>
+            <QrCodeScanner />
+          </SheetContent>
+        </Sheet>
         {user ? (
           <>
             <UserNav
@@ -69,7 +86,6 @@ export default function Navlinks({ user }: NavlinksProps) {
               userImage={user.avatar_url}
               userName={user.full_name}
             />
-
           </>
         ) : (
           <Link
@@ -80,7 +96,6 @@ export default function Navlinks({ user }: NavlinksProps) {
             Sign In
           </Link>
         )}
-        <ThemeButton />
       </div>
     </div>
   );
