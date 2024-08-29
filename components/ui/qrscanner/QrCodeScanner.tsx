@@ -15,6 +15,7 @@ const QrCodeScanner = () => {
         .decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
           if (result) {
             const scannedCode = result.getText();
+
             // Add the new result if it hasn't been scanned already
             if (!scanResults.includes(scannedCode)) {
               setScanResults((prevResults) => [...prevResults, scannedCode]);
@@ -52,7 +53,8 @@ const QrCodeScanner = () => {
           <ul>
             {scanResults.map((result, index) => (
               <li key={index}>
-                <a href={result} target="_blank" rel="noopener noreferrer">
+                {/* Render the result as a clickable link */}
+                <a href={result.startsWith('http') ? result : `http://${result}`} target="_blank" rel="noopener noreferrer">
                   {result}
                 </a>
               </li>

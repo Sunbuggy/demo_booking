@@ -1,5 +1,5 @@
-import CaptureImage from "./CaptureImage";
-export { CaptureImage };
+
+export { default } from "./CaptureImage";
 
 // {capturedImage ? (
 //     <div className="text-center">
