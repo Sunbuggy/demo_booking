@@ -57,3 +57,26 @@
   text-align: left;
 
 }
+@font-face {
+  font-family: "banco";
+  src: local("banco"),
+    url("fonts/Banco_Regular.ttf") format("opentype") tech(color-COLRv1),
+    url("fonts/Banco_Regular.ttf") format("opentype"),
+    url("fonts/Banco_Regular.ttf") format("ttf");
+}
+.nav_head {
+  font-family: "banco", Fallback, sans-serif;
+  padding-bottom: 0.5rem;
+  padding-top: 0.5rem;
+  background-color: transparent;
+  font-size: 2.5rem;
+  line-height: 2rem;
+  text-align: center;
+  color: yellow;
+}
+@media (max-width: 640px) {
+  .nav_head {
+    font-size: 1.6rem;
+    /* padding-left: 4rem; */
+  }
+}
