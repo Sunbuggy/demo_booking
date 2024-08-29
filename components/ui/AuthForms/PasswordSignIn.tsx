@@ -68,7 +68,7 @@ export default function PasswordSignIn({
       </form>
       <p>
         <Link
-          target="_blank"
+          
           href="/signin/forgot_password"
           className="font-light text-sm"
         >
@@ -78,7 +78,7 @@ export default function PasswordSignIn({
       {allowEmail && (
         <p>
           <Link
-            target="_blank"
+            
             href="/signin/email_signin"
             className="font-light text-sm"
           >
@@ -88,7 +88,7 @@ export default function PasswordSignIn({
       )}
       <p>
         <Link
-          target="_blank"
+          
           href="/signin/signup"
           className="font-light text-sm"
         >

@@ -149,7 +149,7 @@ export default function Navlinks({ user }: NavlinksProps) {
           </>
         ) : (
           <Link
-            target="_blank"
+            
             href="/signin"
             className="inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md h-[36px]"
           >

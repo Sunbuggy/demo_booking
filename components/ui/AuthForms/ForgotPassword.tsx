@@ -62,7 +62,7 @@ export default function ForgotPassword({
       </form>
       <p>
         <Link
-          target="_blank"
+          
           href="/signin/password_signin"
           className="font-light text-sm"
         >
@@ -72,7 +72,7 @@ export default function ForgotPassword({
       {allowEmail && (
         <p>
           <Link
-            target="_blank"
+            
             href="/signin/email_signin"
             className="font-light text-sm"
           >
@@ -82,7 +82,7 @@ export default function ForgotPassword({
       )}
       <p>
         <Link
-          target="_blank"
+          
           href="/signin/signup"
           className="font-light text-sm"
         >

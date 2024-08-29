@@ -53,7 +53,7 @@ export function UserNav({
         </DropdownMenuItem>
         <DropdownMenuItem>
         <Link
-              target="_blank"
+              
               href="/account"
               className="cursor-pointer dark:text-yellow-500 text-black flex items-center"
             >

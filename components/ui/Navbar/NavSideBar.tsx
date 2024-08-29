@@ -14,7 +14,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     <div className="flex flex-col gap-3">
       <SheetClose asChild>
         <Link
-          target="_blank"
+          
           href="/"
           className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
         >
@@ -25,7 +25,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
         <div className="flex flex-col gap-3">
           <SheetClose asChild>
             <Link
-              target="_blank"
+              
               href={`/biz/${date}`}
               className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
             >
@@ -35,7 +35,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
 
           <SheetClose asChild>
             <Link
-              target="_blank"
+              
               href="https://www.sunbuggy.biz/login.php"
               className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
             >
@@ -48,7 +48,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
         <div className="flex flex-col gap-3">
           <SheetClose asChild>
             <Link
-              target="_blank"
+              
               href={`/biz/users/admin`}
               className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
             >

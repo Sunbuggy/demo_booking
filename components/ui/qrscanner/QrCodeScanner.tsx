@@ -54,7 +54,7 @@ const QrCodeScanner = () => {
             {scanResults.map((result, index) => (
               <li key={index}>
                 {/* Render the result as a clickable link */}
-                <a href={result.startsWith('http') ? result : `http://${result}`} target="_blank" rel="noopener noreferrer">
+                <a href={result.startsWith('http') ? result : `http://${result}`}  rel="noopener noreferrer">
                   {result}
                 </a>
               </li>

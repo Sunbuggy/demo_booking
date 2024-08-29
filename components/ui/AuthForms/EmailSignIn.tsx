@@ -64,7 +64,7 @@ export default function EmailSignIn({
         <>
           <p>
             <Link
-              target="_blank"
+              
               href="/signin/password_signin"
               className="font-light text-sm"
             >
@@ -73,7 +73,7 @@ export default function EmailSignIn({
           </p>
           <p>
             <Link
-              target="_blank"
+              
               href="/signin/signup"
               className="font-light text-sm"
             >

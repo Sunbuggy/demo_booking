@@ -79,7 +79,7 @@ export default function SignUp({ allowEmail, redirectMethod }: SignUpProps) {
       <p>Already have an account?</p>
       <p>
         <Link
-          target="_blank"
+          
           href="/signin/password_signin"
           className="font-light text-sm"
         >
@@ -89,7 +89,7 @@ export default function SignUp({ allowEmail, redirectMethod }: SignUpProps) {
       {allowEmail && (
         <p>
           <Link
-            target="_blank"
+            
             href="/signin/email_signin"
             className="font-light text-sm"
           >

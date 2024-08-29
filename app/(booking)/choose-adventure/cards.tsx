@@ -78,7 +78,7 @@ const AdventureCard = ({
         <CardFooter>
           {showBookButton && (
             <Button asChild onClick={() => setLoading(true)}>
-              <Link target="_blank" href={linkHref}>
+              <Link  href={linkHref}>
                 Book
               </Link>
             </Button>
