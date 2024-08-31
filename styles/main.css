@@ -55,8 +55,11 @@
 .ant-picker-content>thead>tr>th, 
 .ant-picker-calendar-date-value {
   text-align: left;
-
 }
+.HotelListing {
+  font-weight: bold;
+  }
+
 @font-face {
   font-family: "banco";
   src: local("banco"),

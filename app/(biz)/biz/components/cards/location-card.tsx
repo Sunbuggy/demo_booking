@@ -29,12 +29,12 @@ const LocationCard = ({
   return (
     <Card
       key={locationKey}
-      className="p-2 flex flex-col gap-4 border-t-0 border-r-0"
+      className="p-2 flex flex-col gap-4"
     >
       <CardTitle>
         <span className="text-sm font-light flex gap-2 items-center">
           <span className="text-xl">{locationKey} </span>
-          <span className="text-lime-300">
+          <span className="text-orange-500">
             P-
             {
               // map throuugh the location and get the total count of people
@@ -44,9 +44,9 @@ const LocationCard = ({
             }
             ,{' '}
           </span>
-          <span className="text-orange-300">
+          <span className="text-orange-500">
             {' '}
-            F-
+            V-
             {
               // map throuugh the location and get the total count of vehicles
               data[id][locationKey].reduce((acc, reservation) => {
@@ -54,7 +54,7 @@ const LocationCard = ({
               }, 0)
             }
           </span>
-          <span className="text-xs font-light italic text-orange-300">
+          <span className="text-xs font-light italic text-orange-500">
             (
             {
               // Group and count vehicles for the given location. if same vehicle add count and display vehicle with count ignore if count is 0

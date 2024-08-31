@@ -32,7 +32,7 @@ const BookingCard = async ({
   return (
     <Card
       key={reservation.res_id}
-      className={` rounded-md border-l-0 border-t-0 pl-3 py-2 shadow-none ${reservation.is_special_event ? 'text-green-600 dark:text-green-500' : ''}`}
+      className={` rounded-md pl-3 py-2 shadow-none ${reservation.is_special_event ? 'text-orange-500 dark:text-orange-500' : ''}`}
     >
       <CardTitle className="text-base flex gap-2">
         <i>
@@ -50,14 +50,15 @@ const BookingCard = async ({
           </p>
           <p>
             {reservation.hotel?.toLocaleLowerCase() === 'drive here' ? (
-              <span className="text-gray-600 dark:text-red-300">
+              <span className="HotelListing">
+                 {/*come back here and add links to call the hotel or get directions, or see pickup location */}
                 {reservation.hotel?.toLowerCase()}
               </span>
-            ) : (
-              reservation.hotel?.toLowerCase().slice(0, 12)
-            )}
+            ) : (<span className="HotelListing">
+              {reservation.hotel?.toLowerCase().slice(0, 12)}
+              </span>)}
           </p>
-          <p className=" text-sm text-lime-200 flex items-end">
+          <p className=" text-sm text-orange-500 flex items-end">
             P-{reservation.ppl_count}
           </p>
         </div>
@@ -73,10 +74,10 @@ const BookingCard = async ({
               );
               return (
                 <div key={idx}>
-                  <p className="italic font-thin text-orange-200" key={key}>
+                  <span className="italic font-thin text-orange-500" key={key}>
                     {count}-{key}
                     {count > 1 ? 's' : ''}
-                  </p>
+                  </span>
                 </div>
               );
             })}

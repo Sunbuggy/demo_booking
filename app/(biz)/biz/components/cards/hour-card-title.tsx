@@ -20,21 +20,7 @@ const HourCardTitle = ({
     <CardTitle className="my-3 ml-4 flex gap-3 items-start">
       {hr}{' '}
       <span className="text-base flex gap-3">
-        <span className="text-orange-500">
-          F-
-          {
-            // map through the data and get the total count of vehicles by  adding up every location found and return the sum
-            Object.keys(data[hr]).reduce((acc, locationKey) => {
-              return (
-                acc +
-                data[hr][locationKey].reduce((acc, reservation) => {
-                  return acc + getVehicleCount(reservation);
-                }, 0)
-              );
-            }, 0)
-          }
-        </span>
-        <span className="text-lime-500">
+      <span className="text-orange-500">
           P-
           {
             // map through the data and get the total count of people by  adding up every location found and return the sum
@@ -47,7 +33,22 @@ const HourCardTitle = ({
               );
             }, 0)
           }
-        </span>{' '}
+        </span>
+        <span className="text-orange-500">
+          V-
+          {
+            // map through the data and get the total count of vehicles by  adding up every location found and return the sum
+            Object.keys(data[hr]).reduce((acc, locationKey) => {
+              return (
+                acc +
+                data[hr][locationKey].reduce((acc, reservation) => {
+                  return acc + getVehicleCount(reservation);
+                }, 0)
+              );
+            }, 0)
+          }
+        </span>
+        {' '}
         <span className="text-base font-light italic text-orange-500">
           ({' '}
           {
