@@ -35,14 +35,14 @@ const LocationCard = ({
         <span className="text-sm font-light flex gap-2 items-center">
           <span className="text-xl">{locationKey} </span>
           <span className="text-orange-500">
-            P-
+            
             {
               // map throuugh the location and get the total count of people
               data[id][locationKey].reduce((acc, reservation) => {
                 return acc + countPeople(reservation);
               }, 0)
-            }
-            ,{' '}
+            }-PPL:
+            {' '}
           </span>
           <span className="text-orange-500">
             {' '}

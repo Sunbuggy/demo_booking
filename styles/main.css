@@ -83,3 +83,9 @@
     /* padding-left: 4rem; */
   }
 }
+.maincard {
+  @apply rounded-lg border border-zinc-200 bg-white text-zinc-950 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50
+}
+.itembox {
+  border: 1px solid yellow; border-radius: 5px; padding-right:2px; padding-left:2px;
+}

@@ -37,7 +37,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           <div className="flex flex-col gap-5 max-w-full">
           <Navbar/>
             {/* <NewNav /> */}
-            <main className="max-w-6xl mx-auto"> {children}</main>
+            <main className="p-5"> {children}</main>
             <Footer />
           </div>
         </ThemeProvider>

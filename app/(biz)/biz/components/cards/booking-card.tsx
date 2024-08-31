@@ -42,27 +42,27 @@ const BookingCard = async ({
         {display_cost && (
           <i className="text-green-600"> ${reservation.total_cost}</i>
         )}
-      </CardTitle>
+      
       <CardContent className="p-0">
         <div className="flex gap-2">
-          <p>
-            {reservation.occasion?.toLowerCase().slice(0, 12) || 'occasion'}
-          </p>
-          <p>
+          <p className="itembox">
+            {reservation.occasion?.toLowerCase().slice(0, 12) || 'occasion' }
+            </p>
+            <p>
             {reservation.hotel?.toLocaleLowerCase() === 'drive here' ? (
-              <span className="HotelListing">
-                 {/*come back here and add links to call the hotel or get directions, or see pickup location */}
+              <span className="HotelListing itembox">
+                 {/* OBJECTIVE come back here and add links to call the hotel or get directions, or see pickup location */}
                 {reservation.hotel?.toLowerCase()}
               </span>
-            ) : (<span className="HotelListing">
-              {reservation.hotel?.toLowerCase().slice(0, 12)}
+            ) : (<span className="HotelListing itembox">
+              {reservation.hotel?.toLowerCase().slice(0, 28)}
               </span>)}
           </p>
-          <p className=" text-sm text-orange-500 flex items-end">
-            P-{reservation.ppl_count}
+          <p className=" text-sm text-orange-500 flex ">
+            {reservation.ppl_count}-PPL:
           </p>
-        </div>
-        <div className="flex gap-2 text-sm ">
+        
+        <span className="flex gap-2 text-sm ">
           {/* Vehicles */}
           {vehiclesList
             .filter(
@@ -81,9 +81,10 @@ const BookingCard = async ({
                 </div>
               );
             })}
-          <div className="flex gap-2 "></div>
-        </div>
+                  </span>
+                  </div>
       </CardContent>
+      </CardTitle>
     </Card>
   );
 };

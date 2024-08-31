@@ -21,7 +21,7 @@ const HourCardTitle = ({
       {hr}{' '}
       <span className="text-base flex gap-3">
       <span className="text-orange-500">
-          P-
+        
           {
             // map through the data and get the total count of people by  adding up every location found and return the sum
             Object.keys(data[hr]).reduce((acc, locationKey) => {
@@ -32,7 +32,7 @@ const HourCardTitle = ({
                 }, 0)
               );
             }, 0)
-          }
+          }-PPL:
         </span>
         <span className="text-orange-500">
           V-
