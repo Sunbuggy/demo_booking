@@ -6,6 +6,7 @@ import { updateName, updatePhone } from '@/utils/auth-helpers/server';
 import { handleRequest } from '@/utils/auth-helpers/client';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Input } from '../input';
 
 export default function NameForm({
   userName,
@@ -66,19 +67,19 @@ export default function NameForm({
           onSubmit={(e) => handleSubmit(e)}
           className="flex flex-col gap-5"
         >
-          <input
+          <Input
             type="text"
             name="fullName"
-            className="w-1/2 p-3 rounded-md bg-zinc-800"
             defaultValue={userName}
             placeholder="Your name"
+            className="w-1/2 p-3 rounded-md "
             maxLength={64}
           />
-          <input
+          <Input
             type="tel"
             name="phone"
             defaultValue={phone ?? ''}
-            className="w-1/2 p-3 rounded-md bg-zinc-800"
+            className="w-1/2 p-3 rounded-md "
             placeholder="Phone Number"
             // pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
           />

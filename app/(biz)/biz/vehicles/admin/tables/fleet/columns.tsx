@@ -5,6 +5,9 @@ import { VehicleType } from '../../page';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CarIcon } from 'lucide-react';
 import { DataTableRowActions } from '../components/row-actions';
+import { Input } from '@/components/ui/input';
+import React from 'react';
+import { Button } from '@/components/ui/button';
 export interface TimeSinceClockIn {
   data: number;
 }
@@ -15,6 +18,7 @@ export const columns: ColumnDef<VehicleType, any>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="" />,
     cell: ({ row }) => {
       const name = row.getValue('name') as string;
+      const profile_pic = row.getValue('profile_pic') as string;
 
       return (
         <div className="w-[50px]">
@@ -99,6 +103,82 @@ export const columns: ColumnDef<VehicleType, any>[] = [
     },
     enableSorting: true
   },
+
+  {
+    accessorKey: 'profile_pic_upload',
+    header: ({ column }) => <div>Add Pics</div>,
+    cell: ({ row }) => {
+      const [file, setFile] = React.useState<File | null>(null);
+      const [uploading, setUploading] = React.useState(false);
+
+      const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
+        if (!file) {
+          alert('Please select a file to upload.');
+          return;
+        }
+
+        setUploading(true);
+
+        // Convert file to base64
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onloadend = async () => {
+          const base64data = reader.result;
+
+          const response = await fetch(
+            process.env.NEXT_PUBLIC_SITE_URL + '/api/s3/upload-pic',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                file: {
+                  name: file.name,
+                  type: file.type,
+                  data: base64data
+                },
+                mainDir: 'vehicles',
+                subDir: 'profile',
+                bucket: 'sb-fleet'
+              })
+            }
+          );
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log(result);
+          } else {
+            alert('Failed to get pre-signed URL.');
+          }
+
+          setUploading(false);
+        };
+      };
+
+      return (
+        <form onSubmit={handleSubmit}>
+          <input
+            id="file"
+            type="file"
+            onChange={(e) => {
+              const files = e.target.files;
+              if (files) {
+                setFile(files[0]);
+              }
+            }}
+            accept="image/png, image/jpeg"
+          />
+          <button type="submit" disabled={uploading}>
+            Upload
+          </button>
+        </form>
+      );
+    }
+  },
+  // Actions COLUMN
   {
     id: 'actions',
     cell: ({ row }) => <DataTableRowActions row={row} />
