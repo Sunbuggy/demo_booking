@@ -128,7 +128,7 @@ export const columns: ColumnDef<VehicleType, any>[] = [
           const base64data = reader.result;
 
           const response = await fetch(
-            process.env.NEXT_PUBLIC_SITE_URL + '/api/s3/upload-pic',
+            process.env.NEXT_PUBLIC_SITE_URL + '/api/s3/upload',
             {
               method: 'POST',
               headers: {
@@ -147,14 +147,15 @@ export const columns: ColumnDef<VehicleType, any>[] = [
             }
           );
 
+          const result = await response.json();
           if (response.ok) {
-            const result = await response.json();
-            console.log(result);
+            alert(result.message);
           } else {
-            alert('Failed to get pre-signed URL.');
+            alert(result.message);
           }
 
           setUploading(false);
+          setFile(null);
         };
       };
 

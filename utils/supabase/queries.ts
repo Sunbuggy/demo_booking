@@ -687,3 +687,29 @@ export const removeVehicle = cache(
     return data;
   }
 );
+export const insertIntoVehiclePics = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle_id: string,
+    pic_url: string,
+    bucket: string,
+    key: string
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicle_pics')
+      .insert([
+        {
+          vehicle_id,
+          pic_url,
+          bucket,
+          key
+        }
+      ])
+      .select();
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);

@@ -1,7 +1,10 @@
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  GetObjectCommand,
+  HeadObjectCommand
+} from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import dayjs from 'dayjs';
 import { NextRequest, NextResponse } from 'next/server';
 
 const s3Client = new S3Client({
@@ -29,9 +32,24 @@ export async function POST(req: Request) {
     );
   }
   const { file, mainDir, subDir, bucket } = await req.json();
-  const key = `${mainDir}/${subDir}/${file.name}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}`;
+  const key = `${mainDir}/${subDir}/${file.name}`;
 
   try {
+    // Check if the file already exists
+    try {
+      await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+      console.log('File already exists');
+      return NextResponse.json(
+        { success: false, message: 'File with the same name already exists' },
+        { status: 400 }
+      );
+    } catch (error) {
+      //  if it is type error...
+      if (error instanceof Error && error.name === 'NotFound') {
+        console.log('File does not exist, uploading...');
+      }
+    }
+
     const upload = new Upload({
       client: s3Client,
       params: {
@@ -46,10 +64,8 @@ export async function POST(req: Request) {
     await upload.done();
 
     const endpoint = s3Client.config.endpoint;
-    const url = `${endpoint}/${bucket}/${key}`;
     return NextResponse.json({
       message: `file Uploaded`,
-      url,
       key
     });
   } catch (error) {
