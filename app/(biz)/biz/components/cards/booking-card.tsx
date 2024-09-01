@@ -32,23 +32,20 @@ const BookingCard = async ({
   return (
     <Card
       key={reservation.res_id}
-      className={` rounded-md pl-3 py-2 shadow-none ${reservation.is_special_event ? 'text-orange-500 dark:text-orange-500' : ''}`}
+      className={`bookingcard ${reservation.is_special_event ? 'text-orange-500 dark:text-orange-500' : ''}`}
     >
-      <CardTitle className="text-base flex gap-2">
+      <CardContent className="bookingcardcontent">
         <i>
           <DialogDemo reservation={reservation} />
         </i>{' '}
-        <strong>{reservation.full_name}</strong> {/* Total Cost */}
+        {reservation.full_name} {/* Total Cost */}
         {display_cost && (
           <i className="text-green-600"> ${reservation.total_cost}</i>
         )}
-      
-      <CardContent className="p-0">
-        <div className="flex gap-2">
-          <p className="itembox">
-            {reservation.occasion?.toLowerCase().slice(0, 12) || 'occasion' }
-            </p>
-            <p>
+           <div className="flex gap-2 items-center">        
+          <p className="occasionbox itembox">
+            {reservation.occasion?.toLowerCase().slice(0, 28) || 'occasion' }
+           </p><p> 
             {reservation.hotel?.toLocaleLowerCase() === 'drive here' ? (
               <span className="HotelListing itembox">
                  {/* OBJECTIVE come back here and add links to call the hotel or get directions, or see pickup location */}
@@ -58,11 +55,12 @@ const BookingCard = async ({
               {reservation.hotel?.toLowerCase().slice(0, 28)}
               </span>)}
           </p>
-          <p className=" text-sm text-orange-500 flex ">
+          
+          <span className="text-sm text-orange-500">
             {reservation.ppl_count}-PPL:
-          </p>
+          </span>
         
-        <span className="flex gap-2 text-sm ">
+        <span className="flex gap-2 text-sm">
           {/* Vehicles */}
           {vehiclesList
             .filter(
@@ -82,9 +80,9 @@ const BookingCard = async ({
               );
             })}
                   </span>
-                  </div>
+                  </div>     
       </CardContent>
-      </CardTitle>
+      
     </Card>
   );
 };

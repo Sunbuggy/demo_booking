@@ -17,7 +17,7 @@ const HourCardTitle = ({
   display_cost: boolean;
 }) => {
   return (
-    <CardTitle className="my-3 ml-4 flex gap-3 items-start">
+    <CardTitle className="m-2 flex gap-3 items-start max-w-full">
       {hr}{' '}
       <span className="text-base flex gap-3">
       <span className="text-orange-500">

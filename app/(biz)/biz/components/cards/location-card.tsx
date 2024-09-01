@@ -29,7 +29,7 @@ const LocationCard = ({
   return (
     <Card
       key={locationKey}
-      className="p-2 flex flex-col gap-4"
+      className="p-2 flex flex-col gap-2"
     >
       <CardTitle>
         <span className="text-sm font-light flex gap-2 items-center">
@@ -100,7 +100,7 @@ const LocationCard = ({
           </div>
         )}
       </CardTitle>{' '}
-      <CardContent className=" flex flex-col gap-3 p-2">
+      <CardContent className=" flex flex-col gap-2 p-1">
         {data[id][locationKey].map((reservation, key) => {
           return (
             <BookingCard
