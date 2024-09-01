@@ -16,8 +16,9 @@ const RedirectButton = ({
   function clickAction() {
     console.log(path);
     console.log(redirect_path);
+    const pathUrl = process.env.NEXT_PUBLIC_SITE_URL!.replace('https://', '');
     return router.push(
-      `${process.env.NEXT_PUBLIC_SITE_URL}/${path.replace(process.env.NEXT_PUBLIC_SITE_URL!, '')}/${redirect_path}`
+      `${process.env.NEXT_PUBLIC_SITE_URL}/${path.replace(pathUrl, '')}/${redirect_path}`
     );
   }
   return (
