@@ -18,9 +18,12 @@ export default function NavSideBar({ user }: NavSideBarProps) {
           href="/"
           className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
         >
-          Home
+          Home Page
         </Link>
       </SheetClose>
+      {user && user.user_level > 299 && (
+        <span className="menulinks">INTERNAL</span>
+      )}
       {user && user.user_level > 299 && (
         <div className="flex flex-col gap-3">
           <SheetClose asChild>
@@ -29,20 +32,23 @@ export default function NavSideBar({ user }: NavSideBarProps) {
               href={`/biz/${date}`}
               className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
             >
-              Internal
+              Board View
             </Link>
           </SheetClose>
 
           <SheetClose asChild>
             <Link
               
-              href="https://www.sunbuggy.biz/login.php"
+              href="https://www.sunbuggy.biz/" target="_blank"
               className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
             >
               Old Biz
             </Link>
           </SheetClose>
         </div>
+      )}
+      {user && user.user_level > 899 && (
+        <span className="menulinks">ADMIN</span>
       )}
       {user && user.user_level > 899 && (
         <div className="flex flex-col gap-3">

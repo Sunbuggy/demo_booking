@@ -101,3 +101,6 @@
 .occasionbox {
   @apply p-1 max-w-fit
 }
+.menulinks {
+  @apply text-center bg-gradient-to-b from-zinc-950 to-yellow-500 rounded-lg
+}
