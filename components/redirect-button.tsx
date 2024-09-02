@@ -13,16 +13,28 @@ const RedirectButton = ({
 }) => {
   const path = usePathname();
   const router = useRouter();
+
   function clickAction() {
-    console.log(path);
-    console.log(redirect_path);
-    const pathUrl = process.env.NEXT_PUBLIC_SITE_URL!.replace('https://', '');
-    return router.push(
-      `${process.env.NEXT_PUBLIC_SITE_URL}/${path.replace(pathUrl, '')}/${redirect_path}`
-    );
+    if (!process.env.NEXT_PUBLIC_SITE_URL) {
+      console.error("NEXT_PUBLIC_SITE_URL is not defined.");
+      return;
+    }
+    const baseUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL).host;
+
+    // If the path already contains the base URLremove it
+    const currentPath = path.replace(new RegExp(`^/${baseUrl}`), '');
+
+    console.log("Current Path:", path);
+    console.log("Redirect Path:", redirect_path);
+
+    // Construct the new URL without duplicating the base URL
+    const newUrl = `/${currentPath}/${redirect_path}`.replace(/\/+/g, '/');
+
+    router.push(newUrl);
   }
+
   return (
-    <Button variant="ghost" size="sm" onClick={() => clickAction()}>
+    <Button variant="ghost" size="sm" onClick={clickAction}>
       {name}
     </Button>
   );
