@@ -1,11 +1,13 @@
 import {
   S3Client,
-  GetObjectCommand,
-  HeadObjectCommand
+  ListObjectsV2Command,
+  HeadObjectCommand,
+  GetObjectCommand
 } from '@aws-sdk/client-s3';
-import { Upload } from '@aws-sdk/lib-storage';
+import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { NextRequest, NextResponse } from 'next/server';
+import { createId } from '@paralleldrive/cuid2';
 
 const s3Client = new S3Client({
   region: process.env.STORAGE_REGION!,
@@ -31,8 +33,8 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-  const { file, mainDir, subDir, bucket } = await req.json();
-  const key = `${mainDir}/${subDir}/${file.name}`;
+  const { mainDir, subDir, bucket, contentType } = await req.json();
+  const key = `${mainDir}/${subDir}/${createId()}`;
 
   try {
     // Check if the file already exists
@@ -49,24 +51,26 @@ export async function POST(req: Request) {
         console.log('File does not exist, uploading...');
       }
     }
-
-    const upload = new Upload({
-      client: s3Client,
-      params: {
-        Bucket: bucket,
-        Key: key,
-        Body: file.data,
-        ACL: 'public-read',
-        ContentType: file.type
-      }
+    const { url, fields } = await createPresignedPost(s3Client, {
+      Bucket: bucket,
+      Key: key,
+      Conditions: [
+        ['content-length-range', 0, 10485760], // up to 10 MB
+        ['starts-with', '$Content-Type', contentType]
+      ],
+      Fields: {
+        acl: 'public-read',
+        'Content-Type': contentType
+      },
+      Expires: 600 // Seconds before the presigned post expires. 3600 by default.
     });
-
-    await upload.done();
-
-    const endpoint = s3Client.config.endpoint;
+    const endpoint = process.env.STORAGE_ENDPOINT!;
     return NextResponse.json({
       message: `file Uploaded`,
-      key
+      key,
+      endpoint,
+      url,
+      fields
     });
   } catch (error) {
     console.error('Error uploading to S3:', error);
@@ -77,25 +81,49 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: NextRequest) {
-  const searchParams = req.nextUrl.searchParams;
-  const bucket = searchParams.get('bucket') as string;
-  const key = searchParams.get('key') as string;
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const bucket = url.searchParams.get('bucket');
+  const mainDir = url.searchParams.get('mainDir');
+  const subDir = url.searchParams.get('subDir');
+  const prefix = `${mainDir}/${subDir}/`;
+
+  if (!bucket || !mainDir || !subDir) {
+    return NextResponse.json(
+      { success: false, body: 'Missing bucket or key' },
+      { status: 400 }
+    );
+  }
 
   try {
-    const url = await getSignedUrl(
-      s3Client,
-      new GetObjectCommand({
-        Bucket: bucket,
-        Key: key
+    const listObjects = await s3Client.send(
+      new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix })
+    );
+    if (!listObjects.Contents) return NextResponse.json({ objects: [] });
+
+    const objects = await Promise.all(
+      listObjects.Contents.map(async (object) => {
+        const signedUrl = await getSignedUrl(
+          s3Client,
+          new GetObjectCommand({
+            Bucket: bucket,
+            Key: object.Key
+          }),
+          { expiresIn: 3600 }
+        ); // URL expires in 1 hour
+        return {
+          key: object.Key,
+          url: signedUrl
+        };
       })
     );
 
+    // Return the list of pictures with their URLs
     return NextResponse.json({
-      url
+      objects
     });
   } catch (error) {
-    console.error('Error getting file from S3:', error);
+    console.error('Error fetching objects:', error);
     return NextResponse.json(
       { success: false, body: JSON.stringify(error) },
       { status: 500 }

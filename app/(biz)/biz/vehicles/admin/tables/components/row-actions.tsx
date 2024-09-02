@@ -14,6 +14,14 @@ import { Row } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
 import React from 'react';
 import { VehicleType } from '../../page';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
+import { DialogClose } from '@radix-ui/react-dialog';
+import Image from 'next/image';
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
@@ -22,12 +30,19 @@ interface DataTableRowActionsProps<TData> {
 export function DataTableRowActions<TData>({
   row
 }: DataTableRowActionsProps<TData>) {
+  interface VehiclePics {
+    key: string;
+    url: string;
+  }
   const vehicle = row.original as VehicleType;
   const supabase = createClient();
   const [deleteVehicle, setDeleteVehicle] = React.useState<boolean>(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [pictures, setPictures] = React.useState<VehiclePics[]>([]);
+  const [showPics, setShowPics] = React.useState<boolean>(false);
   const { toast } = useToast();
   const router = useRouter();
-
   React.useEffect(() => {
     const channel = supabase
       .channel('fetch vehicles')
@@ -73,47 +88,110 @@ export function DataTableRowActions<TData>({
     setDeleteVehicle(false);
   }, [deleteVehicle]);
 
+  const fetchPics = async () => {
+    const bucket = 'sb-fleet';
+    const mainDir = 'vehicles';
+    const subDir = vehicle.name;
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload/?bucket=${bucket}&mainDir=${mainDir}&subDir=${subDir}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    const { objects } = (await response.json()) as { objects: VehiclePics[] };
+    if (response.ok) {
+      console.log(objects);
+      setPictures(objects);
+    } else {
+      console.error(objects);
+    }
+  };
+  const handleButtonClick = async () => {
+    setShowPics(!showPics);
+    if (showPics) setPictures([]);
+    await fetchPics();
+  };
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
-        >
-          <DotsHorizontalIcon className="h-4 w-4" />
-          <span className="sr-only">Open menu</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="w-[160px] flex flex-col gap-3 items-center"
-      >
-        <DropdownMenuItem asChild>
-          <Button className="rounded-md mt-3">Edit Vehicle</Button>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button
-            variant={'destructive'}
-            className="rounded-md"
-            onClick={() => setDeleteVehicle(true)}
+            variant="ghost"
+            className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
           >
-            Delete Vehicle
+            <DotsHorizontalIcon className="h-4 w-4" />
+            <span className="sr-only">Open menu</span>
           </Button>
-        </DropdownMenuItem>
-        {/* <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Timeclock</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup>
-              {timeClocklabels.map((label) => (
-                <DropdownMenuRadioItem key={label.value} value={label.value}>
-                  {label.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub> */}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="w-[160px] flex flex-col gap-1 items-center"
+        >
+          <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+            <Button variant={'ghost'}>Edit</Button>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)}>
+            <Button variant={'ghost'}>Delete</Button>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Dialog
+        open={isEditDialogOpen || isDeleteDialogOpen}
+        onOpenChange={
+          isEditDialogOpen ? setIsEditDialogOpen : setIsDeleteDialogOpen
+        }
+      >
+        {isEditDialogOpen ? (
+          <DialogContent>
+            <DialogTitle>Editing {vehicle.name}</DialogTitle>
+            <Button
+              onClick={() => {
+                handleButtonClick();
+              }}
+            >
+              {!showPics ? 'View Pics' : 'Hide Pics'}
+            </Button>
+            {showPics && (
+              <div className="flex flex-col gap-2">
+                {pictures.map((pic) => (
+                  <img
+                    width={80}
+                    height={80}
+                    key={pic.key}
+                    src={pic.url}
+                    alt={pic.key}
+                    className="h-20 w-20"
+                  />
+                ))}
+              </div>
+            )}
+
+            <DialogClose>Close</DialogClose>
+          </DialogContent>
+        ) : (
+          <DialogContent>
+            <DialogTitle>
+              Are you sure you want to delete {vehicle.name}?
+            </DialogTitle>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setDeleteVehicle(true);
+                  setIsDeleteDialogOpen(false);
+                }}
+              >
+                Yes
+              </Button>
+              <Button onClick={() => setIsDeleteDialogOpen(false)}>No</Button>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
+    </>
   );
 }

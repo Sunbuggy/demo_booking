@@ -691,8 +691,8 @@ export const insertIntoVehiclePics = cache(
   async (
     supabase: SupabaseClient,
     vehicle_id: string,
-    pic_url: string,
     bucket: string,
+    endpoint: string,
     key: string
   ) => {
     const { data, error } = await supabase
@@ -700,8 +700,8 @@ export const insertIntoVehiclePics = cache(
       .insert([
         {
           vehicle_id,
-          pic_url,
           bucket,
+          endpoint,
           key
         }
       ])

@@ -3,11 +3,14 @@ import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '../components/column-header';
 import { VehicleType } from '../../page';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CarIcon } from 'lucide-react';
+import { CarIcon, UploadIcon } from 'lucide-react';
 import { DataTableRowActions } from '../components/row-actions';
 import { Input } from '@/components/ui/input';
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { insertIntoVehiclePics } from '@/utils/supabase/queries';
+import { createClient } from '@/utils/supabase/client';
 export interface TimeSinceClockIn {
   data: number;
 }
@@ -18,8 +21,6 @@ export const columns: ColumnDef<VehicleType, any>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="" />,
     cell: ({ row }) => {
       const name = row.getValue('name') as string;
-      const profile_pic = row.getValue('profile_pic') as string;
-
       return (
         <div className="w-[50px]">
           <Avatar className="h-9 w-9">
@@ -110,6 +111,10 @@ export const columns: ColumnDef<VehicleType, any>[] = [
     cell: ({ row }) => {
       const [file, setFile] = React.useState<File | null>(null);
       const [uploading, setUploading] = React.useState(false);
+      const inputFile = React.useRef<HTMLInputElement>(null);
+      const supabase = createClient();
+      // get toast
+      const { toast } = useToast();
 
       const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -118,64 +123,119 @@ export const columns: ColumnDef<VehicleType, any>[] = [
           alert('Please select a file to upload.');
           return;
         }
-
         setUploading(true);
-
-        // Convert file to base64
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onloadend = async () => {
-          const base64data = reader.result;
-
-          const response = await fetch(
-            process.env.NEXT_PUBLIC_SITE_URL + '/api/s3/upload',
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                file: {
-                  name: file.name,
-                  type: file.type,
-                  data: base64data
-                },
-                mainDir: 'vehicles',
-                subDir: 'profile',
-                bucket: 'sb-fleet'
-              })
-            }
-          );
-
-          const result = await response.json();
-          if (response.ok) {
-            alert(result.message);
-          } else {
-            alert(result.message);
+        const response = await fetch(
+          process.env.NEXT_PUBLIC_SITE_URL + '/api/s3/upload',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              mainDir: 'vehicles',
+              subDir: row.getValue('name'),
+              bucket: 'sb-fleet',
+              contentType: file.type
+            })
           }
+        );
+
+        const result = await response.json();
+        if (response.ok) {
+          console.log(result);
+          const formData = new FormData();
+          Object.entries(result.fields).forEach(([key, value]) => {
+            formData.append(key, value as string);
+          });
+          formData.append('file', file);
+          const uploadResponse = await fetch(result.url, {
+            method: 'POST',
+            body: formData
+          });
+
+          const uploadResult = await uploadResponse.json();
+          console.log(uploadResult);
+          // if(uploadResponse.ok){
+          //   toast({
+          //     title: 'Success',
+          //     description: uploadResult.message,
+          //     duration: 2000,
+          //     variant: 'success'
+          //   });
+          // }else{
+          //   toast({
+          //     title: 'Error',
+          //     description: uploadResult.message,
+          //     duration: 2000,
+          //     variant: 'destructive'
+          //   });
+          // }
+          //   insertIntoVehiclePics(
+          //     supabase,
+          //     row.original.id,
+          //     result.bucket,
+          //     result.endpoint,
+          //     result.key
+          //   )
+          //     .then(() => {
+          //       toast({
+          //         title: 'Success',
+          //         description: result.message,
+          //         duration: 2000,
+          //         variant: 'success'
+          //       });
+          //     })
+          //     .catch((err) => {
+          //       toast({
+          //         title: 'Error',
+          //         description: 'Database error',
+          //         duration: 2000,
+          //         variant: 'destructive'
+          //       });
+          //     });
+          // } else {
+          //   toast({
+          //     title: 'Error',
+          //     description: result.message,
+          //     duration: 2000,
+          //     variant: 'destructive'
+          //   });
+          // }
 
           setUploading(false);
-          setFile(null);
-        };
+
+          // Clear the input file
+          if (inputFile.current) {
+            inputFile.current.value = '';
+          }
+        }
       };
 
       return (
-        <form onSubmit={handleSubmit}>
-          <input
-            id="file"
-            type="file"
-            onChange={(e) => {
-              const files = e.target.files;
-              if (files) {
-                setFile(files[0]);
-              }
-            }}
-            accept="image/png, image/jpeg"
-          />
-          <button type="submit" disabled={uploading}>
-            Upload
-          </button>
-        </form>
+        <div>
+          {uploading ? (
+            <div>Uploading...</div>
+          ) : (
+            <form onSubmit={handleSubmit} className=" flex gap-3">
+              <Input
+                id="file"
+                type="file"
+                ref={inputFile}
+                className="w-[120px] hover:cursor-pointer"
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (files) {
+                    setFile(files[0]);
+                  }
+                }}
+                accept="image/png, image/jpeg"
+              />
+              <Button size={'icon'} type="submit" disabled={uploading}>
+                <UploadIcon />
+              </Button>
+            </form>
+          )}
+        </div>
       );
     }
   },
