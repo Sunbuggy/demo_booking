@@ -155,6 +155,7 @@ export const columns: ColumnDef<VehicleType, any>[] = [
 
           const uploadResult = await uploadResponse.json();
           console.log(uploadResult);
+
           // if(uploadResponse.ok){
           //   toast({
           //     title: 'Success',
