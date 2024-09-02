@@ -51,7 +51,7 @@ export function UserNav({
         <DropdownMenuItem>
           {userName} (admin) <ThemeButton/>
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem asChild>
         <Link
               
               href="/account"
@@ -60,15 +60,15 @@ export function UserNav({
               Profile <ImNewTab />
             </Link>        
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem asChild>
             <form onSubmit={(e) => handleRequest(e, SignOut, router)}>
               <input type="hidden" name="pathName" value={path} />
-              <button
+              <Button
                 type="submit"
-                className="inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md p-1 h-[36px]"
+                className=""
               >
                 Sign out
-              </button>
+              </Button>
             </form>        
             </DropdownMenuItem>
       </DropdownMenuContent>

@@ -14,26 +14,46 @@ import {
 import { Button } from '@/components/ui/button';
 
 function Navhead() {
-  const [position, setPosition] = React.useState('bottom');
+  // Define the type of possible positions as a union of string literals
+  type LocationKey = 'lasvegas' | 'pismo' | 'silverlake';
+  
+  const [position, setPosition] = React.useState<LocationKey | null>(null); // no default location selected
+
+  const locations: Record<LocationKey, string> = {
+    lasvegas: 'Las Vegas',
+    pismo: 'Pismo',
+    silverlake: 'Silverlake',
+  };
 
   return (
-    <div className="">
+    <div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          {/* Span acting as dropdown trigger */}
-          <span className="nav_head flex items-center text-xl font-bold cursor-pointer">
+          <span className="nav_head flex flex-col items-center text-xl font-bold cursor-pointer">
             SunBuggy
+            <span className="text-sm font-normal">
+              {position ? locations[position] : 'Choose a location'}
+            </span>
           </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56">
-          <DropdownMenuLabel className="text-center w-full">Choose a Location</DropdownMenuLabel>
+          <DropdownMenuLabel className="text-center w-full">
+            Choose a Location
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuRadioGroup value={position} onValueChange={setPosition}>
-            <Link href="/"> 
+          <DropdownMenuRadioGroup 
+            value={position || ''} 
+            onValueChange={(value) => setPosition(value as LocationKey)}
+          >
+            <Link href="/">
               <DropdownMenuRadioItem value="lasvegas">Las Vegas</DropdownMenuRadioItem>
             </Link>
+            <Link href="https://www.sunbuggy.com/sunbuggy_pismo.php">
             <DropdownMenuRadioItem value="pismo">Pismo</DropdownMenuRadioItem>
+            </Link>
+            <Link href="https://www.sunbuggy.com/silverlake/">
             <DropdownMenuRadioItem value="silverlake">Silverlake</DropdownMenuRadioItem>
+            </Link>            
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
