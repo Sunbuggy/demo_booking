@@ -32,7 +32,7 @@ function Navhead() {
           <span className="nav_head flex flex-col items-center text-xl font-bold cursor-pointer">
             SunBuggy
             <span className="text-sm font-normal">
-              {position ? locations[position] : 'Choose a location'}
+              {position ? locations[position] : 'Choose location'}
             </span>
           </span>
         </DropdownMenuTrigger>
