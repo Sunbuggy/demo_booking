@@ -8,9 +8,9 @@ export const getURL = (path: string = '') => {
   // If not in production or NEXT_PUBLIC_SITE_URL is not set, fallback to localhost or Vercel URL
   else {
     url =
-      process?.env?.NEXT_PUBLIC_SITE_URL &&
-      process.env.NEXT_PUBLIC_SITE_URL.trim() !== ''
-        ? process.env.NEXT_PUBLIC_SITE_URL
+      process?.env?.NEXT_PUBLIC_VERCEL_URL &&
+      process.env.NEXT_PUBLIC_VERCEL_URL.trim() !== ''
+        ? process.env.NEXT_PUBLIC_VERCEL_URL
         : 'http://localhost:3000';
   }
 
