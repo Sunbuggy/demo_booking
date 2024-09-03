@@ -1,29 +1,17 @@
 export const getURL = (path: string = '') => {
-  let url = '';
+  // Dynamically determine the base URL
+  const baseUrl = 
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_VERCEL_URL?.trim() ||
+    (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000');
 
-  // Check if we are in production and NEXT_PUBLIC_SITE_URL is set
-  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_SITE_URL) {
-    url = process.env.NEXT_PUBLIC_SITE_URL.trim();
-  } 
-  // If not in production or NEXT_PUBLIC_SITE_URL is not set, fallback to localhost or Vercel URL
-  else {
-    url =
-      process?.env?.NEXT_PUBLIC_VERCEL_URL &&
-      process.env.NEXT_PUBLIC_VERCEL_URL.trim() !== ''
-        ? process.env.NEXT_PUBLIC_VERCEL_URL
-        : 'http://localhost:3000';
-  }
+  // Ensure the base URL is clean (no trailing slashes)
+  const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
+  const cleanPath = path.replace(/^\/+/, ''); // Clean the path to prevent double slashes
 
-  // Trim the URL and remove trailing slash if exists
-  url = url.replace(/\/+$/, '');
-  // Make sure to include `https://` when not localhost
-  url = url.includes('http') ? url : `https://${url}`;
-  // Ensure path starts without a slash to avoid double slashes in the final URL
-  path = path.replace(/^\/+/, '');
-
-  // Concatenate the URL and the path
-  return path ? `${url}/${path}` : url;
+  return cleanPath ? `${cleanBaseUrl}/${cleanPath}` : cleanBaseUrl;
 };
+
 
 
 export const toDateTime = (secs: number) => {
