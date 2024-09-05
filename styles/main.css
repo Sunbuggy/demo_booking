@@ -108,3 +108,12 @@
 .menulinks {
   @apply text-center bg-gradient-to-b from-zinc-950 to-yellow-500 rounded-lg;
 }
+.itembox {
+  border: 1px solid yellow;
+  border-radius: 5px;
+  padding-right: 2px;
+  padding-left: 2px;
+}
+::file-selector-button {
+  display: none;
+}
