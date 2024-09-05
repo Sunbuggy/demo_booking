@@ -6,6 +6,7 @@ import {
   getUserDetails
 } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
+import QrHistory from '@/components/ui/qrscanner/QrHistory';
 // import RoleForm from '@/components/ui/AccountForms/RoleForm';
 type TimeEntry = {
   id: any;
@@ -55,6 +56,7 @@ export default async function Account() {
             </p>
           </div>
         </div>
+        <QrHistory></QrHistory>
         <div className="p-4">
           <NameForm
             userName={userName ?? ''}

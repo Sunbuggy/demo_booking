@@ -22,7 +22,7 @@ export const getURL = (path: string = '') => {
   path = path.replace(/^\/+/, '');
 
   // Log the generated URL to debug
-  console.log(`Generated URL: ${url}/${path}`);
+  // console.log(`Generated URL: ${url}/${path}`);
 
   // Concatenate the URL and the path
   return path ? `${url}/${path}` : url;

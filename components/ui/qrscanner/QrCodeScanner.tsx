@@ -7,6 +7,14 @@ const QrCodeScanner = () => {
   const [error, setError] = useState<string | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
 
+  // Load previous QR codes from localStorage
+  useEffect(() => {
+    const storedResults = localStorage.getItem('qrHistory');
+    if (storedResults) {
+      setScanResults(JSON.parse(storedResults));
+    }
+  }, []);
+
   useEffect(() => {
     const codeReader = new BrowserMultiFormatReader();
 
@@ -17,9 +25,17 @@ const QrCodeScanner = () => {
             const scannedCode = result.getText();
 
             // Add the new result if it hasn't been scanned already
-            if (!scanResults.includes(scannedCode)) {
-              setScanResults((prevResults) => [...prevResults, scannedCode]);
-            }
+            setScanResults((prevResults) => {
+              if (!prevResults.includes(scannedCode)) {
+                const updatedResults = [...prevResults, scannedCode];
+                
+                // Save updated scan results to localStorage
+                localStorage.setItem('qrHistory', JSON.stringify(updatedResults));
+                
+                return updatedResults;
+              }
+              return prevResults;
+            });
           }
 
           if (err && !(err.name === 'NotFoundException')) {
@@ -39,11 +55,10 @@ const QrCodeScanner = () => {
         controlsRef.current.stop();
       }
     };
-  }, [scanResults]); // Added scanResults as a dependency
+  }, []); // Removed scanResults dependency to prevent re-initialization
 
   return (
     <div className="qr-scanner">
-      {/* <h1>QR Code Scanner</h1> */}
       {error && <p className="error">{error}</p>}
       <video ref={videoRef} style={{ width: '100%', height: 'auto' }} />
 
@@ -53,8 +68,11 @@ const QrCodeScanner = () => {
           <ul>
             {scanResults.map((result, index) => (
               <li key={index}>
-                {/* Render the result as a clickable link */}
-                <a href={result.startsWith('http') ? result : `http://${result}`}  rel="noopener noreferrer">
+                <a
+                  href={result.startsWith('http') ? result : `http://${result}`}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
                   {result}
                 </a>
               </li>
