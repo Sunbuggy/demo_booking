@@ -9,7 +9,7 @@
        URL: https://gradient.page */
 
     /* CSS: .bg-gradient { background: var(--gradient) } */
-    --gradient: linear-gradient(to top left,#FF8008,#FFC837);
+    --gradient: linear-gradient(to top left, #ff8008, #ffc837);
 
     --background: 31 65% 4.16%;
     --foreground: 31 10% 97.6%;
@@ -52,23 +52,24 @@
 .white_button {
   @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-50/90 h-10 px-4 py-2;
 }
-.ant-picker-content>thead>tr>th, 
+.ant-picker-content > thead > tr > th,
 .ant-picker-calendar-date-value {
   text-align: left;
 }
 .HotelListing {
   font-weight: bold;
-  }
+}
 
 @font-face {
-  font-family: "banco";
-  src: local("banco"),
-    url("fonts/Banco_Regular.ttf") format("opentype") tech(color-COLRv1),
-    url("fonts/Banco_Regular.ttf") format("opentype"),
-    url("fonts/Banco_Regular.ttf") format("ttf");
+  font-family: 'banco';
+  src:
+    local('banco'),
+    url('fonts/Banco_Regular.ttf') format('opentype') tech(color-COLRv1),
+    url('fonts/Banco_Regular.ttf') format('opentype'),
+    url('fonts/Banco_Regular.ttf') format('ttf');
 }
 .nav_head {
-  font-family: "banco", Fallback, sans-serif;
+  font-family: 'banco', Fallback, sans-serif;
   padding-bottom: 0.5rem;
   padding-top: 0.5rem;
   background-color: transparent;
@@ -84,6 +85,7 @@
   }
 }
 .maincard {
+<<<<<<< HEAD
   @apply w-full rounded-lg border border-zinc-200 bg-white text-zinc-950 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50
 }
 .itembox {
@@ -104,3 +106,16 @@
 .menulinks {
   @apply text-center bg-gradient-to-b from-zinc-950 to-yellow-500 rounded-lg
 }
+=======
+  @apply rounded-lg border border-zinc-200 bg-white text-zinc-950 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50;
+}
+.itembox {
+  border: 1px solid yellow;
+  border-radius: 5px;
+  padding-right: 2px;
+  padding-left: 2px;
+}
+::file-selector-button {
+  display: none;
+}
+>>>>>>> feature/image_upload

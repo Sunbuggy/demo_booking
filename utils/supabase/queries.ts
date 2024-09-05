@@ -687,3 +687,41 @@ export const removeVehicle = cache(
     return data;
   }
 );
+
+export const changeVehicleProfilePic = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle_id: string,
+    bucket: string,
+    key: string,
+    url: string
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .update({
+        profile_pic_bucket: bucket,
+        profile_pic_key: key,
+        profile_pic_url: url
+      })
+      .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const getVehicleProfilePic = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('profile_pic_bucket, profile_pic_key, profile_pic_url')
+      .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);

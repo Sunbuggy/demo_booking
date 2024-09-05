@@ -10,6 +10,12 @@ module.exports = {
         protocol: 'https',
         hostname: 'placehold.co',
         port: ''
+      },
+
+      {
+        protocol: 'https',
+        hostname: 'usc1.contabostorage.com',
+        port: ''
       }
     ]
   }

@@ -24,7 +24,6 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: PropsWithChildren) {
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
@@ -34,8 +33,8 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex flex-col gap-2 max-w-11/12">
-          <Navbar/>
+          <div className="flex flex-col gap-5 max-w-full">
+            <Navbar />
             {/* <NewNav /> */}
             <main className="p-2 max-w-11/12 flex mx-auto"> {children}</main>
             <Footer />

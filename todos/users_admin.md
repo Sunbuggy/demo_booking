@@ -8,15 +8,15 @@
     - Name [done]
     - Role Number [done]
     - Email [done]
-    - Phone Number
-    - Permissions
-    - Status
+    - Phone Number [done]
+    - Permissions [done]
+    - Status [done]
       - Clocked In/Out [done]
   - Tab for Customers
     - Name [done]
     - Email [done]
-    - Phone Number
-    - Permissions
+    - Phone Number [done]
+    - Permissions [done]
     - Status
       - Has/Hasn't Ordered
       - Has/Hasn't Paid
@@ -81,4 +81,4 @@
 ## Delete User
 
 - Delete Customer
-- Delete Employee
+- Remove From Employees

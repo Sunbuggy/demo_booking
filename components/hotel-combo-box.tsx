@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/popover';
 import { CheckCheckIcon, ChevronsUpDown } from 'lucide-react';
 import React, { Dispatch, SetStateAction } from 'react';
-import { HotelType } from '../app/(booking)/book/serve-bookings/mbj';
+import { HotelType } from '../app/(com)/book/serve-bookings/mbj';
 import { cn } from '@/utils/cn';
 
 const ComboBox = ({
