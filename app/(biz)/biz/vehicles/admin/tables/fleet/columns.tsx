@@ -19,7 +19,6 @@ export interface TimeSinceClockIn {
 interface ProfilePic {
   profile_pic_bucket: any;
   profile_pic_key: any;
-  profile_pic_url: any;
 }
 export const columns: ColumnDef<VehicleType, any>[] = [
   // Pic Column
@@ -41,12 +40,13 @@ export const columns: ColumnDef<VehicleType, any>[] = [
         };
         fetchProfilePic();
       }, []);
+      console.log(profilePic);
       const name = row.getValue('name') as string;
 
       return (
         <div className="w-[50px]">
           <Avatar className="h-9 w-9">
-            <ImageGalleryComponent
+            {/* <ImageGalleryComponent
               items={
                 profilePic
                   ? [
@@ -56,7 +56,7 @@ export const columns: ColumnDef<VehicleType, any>[] = [
                     ]
                   : []
               }
-            />
+            /> */}
             {!profilePic && (
               <AvatarFallback>
                 <CarIcon />

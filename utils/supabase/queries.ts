@@ -693,15 +693,13 @@ export const changeVehicleProfilePic = cache(
     supabase: SupabaseClient,
     vehicle_id: string,
     bucket: string,
-    key: string,
-    url: string
+    key: string
   ) => {
     const { data, error } = await supabase
       .from('vehicles')
       .update({
         profile_pic_bucket: bucket,
-        profile_pic_key: key,
-        profile_pic_url: url
+        profile_pic_key: key
       })
       .eq('id', vehicle_id);
     if (error) {
@@ -716,7 +714,7 @@ export const getVehicleProfilePic = cache(
   async (supabase: SupabaseClient, vehicle_id: string) => {
     const { data, error } = await supabase
       .from('vehicles')
-      .select('profile_pic_bucket, profile_pic_key, profile_pic_url')
+      .select('profile_pic_bucket, profile_pic_key ')
       .eq('id', vehicle_id);
     if (error) {
       console.error(error);
