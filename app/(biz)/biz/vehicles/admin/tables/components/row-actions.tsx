@@ -21,8 +21,8 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog';
 import { DialogClose } from '@radix-ui/react-dialog';
-import Image from 'next/image';
-
+import ImageGallery from 'react-image-gallery';
+import 'react-image-gallery/styles/css/image-gallery.css';
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
 }
@@ -149,28 +149,21 @@ export function DataTableRowActions<TData>({
         {isEditDialogOpen ? (
           <DialogContent>
             <DialogTitle>Editing {vehicle.name}</DialogTitle>
-            <Button
-              onClick={() => {
-                handleButtonClick();
-              }}
-            >
+            <Button onClick={handleButtonClick}>
               {!showPics ? 'View Pics' : 'Hide Pics'}
             </Button>
             {showPics && (
               <div className="flex flex-col gap-2">
-                {pictures.map((pic) => (
-                  <img
-                    width={80}
-                    height={80}
-                    key={pic.key}
-                    src={pic.url}
-                    alt={pic.key}
-                    className="h-20 w-20"
-                  />
-                ))}
+                <ImageGallery
+                  items={pictures.map((pic) => ({
+                    original: pic.url,
+                    thumbnail: pic.url
+                  }))}
+                  showFullscreenButton={true}
+                  showPlayButton={false}
+                />
               </div>
             )}
-
             <DialogClose>Close</DialogClose>
           </DialogContent>
         ) : (
