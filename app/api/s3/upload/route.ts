@@ -3,7 +3,8 @@ import {
   ListObjectsV2Command,
   HeadObjectCommand,
   GetObjectCommand,
-  PutObjectCommand
+  PutObjectCommand,
+  DeleteObjectCommand
 } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -24,8 +25,8 @@ const s3Client = new S3Client({
 
 export const config = {
   api: {
-    bodyParser: false,
-  },
+    bodyParser: false
+  }
 };
 
 export async function POST(req: NextRequest) {
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
       Key: key,
       Body: Buffer.from(buffer),
       ContentType: contentType,
-      ACL: 'public-read',
+      ACL: 'public-read'
     });
 
     await s3Client.send(command);
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
       message: 'File uploaded successfully',
       key,
       endpoint,
-      url: `${endpoint}/${bucket}/${key}`,
+      url: `${endpoint}/${bucket}/${key}`
     });
   } catch (error) {
     console.error('Error uploading to S3:', error);
@@ -148,6 +149,66 @@ export async function GET(req: Request) {
     console.error('Error fetching objects:', error);
     return NextResponse.json(
       { success: false, body: JSON.stringify(error) },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  if (
+    !process.env.STORAGE_ACCESSKEY ||
+    !process.env.STORAGE_SECRETKEY ||
+    !process.env.STORAGE_REGION ||
+    !process.env.STORAGE_ENDPOINT
+  ) {
+    console.error('Missing AWS credentials');
+    return NextResponse.json(
+      { success: false, message: 'Missing AWS credentials' },
+      { status: 500 }
+    );
+  }
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const bucket = searchParams.get('bucket');
+    const key = searchParams.get('key');
+
+    if (!bucket || !key) {
+      return NextResponse.json(
+        { success: false, message: 'Missing bucket or key parameter' },
+        { status: 400 }
+      );
+    }
+
+    // Check if the file exists
+    try {
+      await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    } catch (error) {
+      if (error instanceof Error && error.name === 'NotFound') {
+        return NextResponse.json(
+          { success: false, message: 'File not found' },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
+
+    // Delete the file
+    const deleteCommand = new DeleteObjectCommand({
+      Bucket: bucket,
+      Key: key
+    });
+
+    await s3Client.send(deleteCommand);
+
+    return NextResponse.json({
+      success: true,
+      message: 'File deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting file from S3:', error);
+    return NextResponse.json(
+      { success: false, message: 'Error deleting file from S3' },
       { status: 500 }
     );
   }

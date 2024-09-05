@@ -8,7 +8,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/utils/supabase/client';
-import { removeVehicle } from '@/utils/supabase/queries';
+import {
+  changeVehicleProfilePic,
+  removeVehicle
+} from '@/utils/supabase/queries';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
@@ -104,7 +107,6 @@ export function DataTableRowActions<TData>({
 
     const { objects } = (await response.json()) as { objects: VehiclePics[] };
     if (response.ok) {
-      console.log(objects);
       setPictures(objects);
     } else {
       console.error(objects);
@@ -116,6 +118,68 @@ export function DataTableRowActions<TData>({
     await fetchPics();
   };
 
+  const handleMakeProfilePic = async (
+    bucket: string,
+    key: string,
+    url: string
+  ) => {
+    await changeVehicleProfilePic(supabase, vehicle.id, bucket, key, url)
+      .then((res) => {
+        toast({
+          title: 'Success',
+          description: 'Profile picture changed successfully',
+          duration: 2000,
+          variant: 'success'
+        });
+      })
+      .catch((err) => {
+        console.error(err);
+        toast({
+          title: 'Error',
+          description: 'Error changing profile picture',
+          duration: 2000,
+          variant: 'destructive'
+        });
+      });
+  };
+
+  const handleDeleteImage = async (bucket: string, key: string) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload?bucket=${bucket}&key=${key}`,
+        {
+          method: 'DELETE'
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log('File deleted successfully');
+        // update pictures
+        setPictures(pictures.filter((pic) => pic.key !== key));
+        // show toast
+        toast({
+          title: 'Success',
+          description: 'File deleted successfully',
+          duration: 2000,
+          variant: 'success'
+        });
+      } else {
+        // show toast
+        toast({
+          title: 'Error',
+          description: 'Error deleting file',
+          duration: 2000,
+          variant: 'destructive'
+        });
+        throw new Error(data.message || 'Failed to delete file');
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      // Handle error (e.g., show error message to user)
+    }
+  };
   return (
     <>
       <DropdownMenu>
@@ -133,7 +197,7 @@ export function DataTableRowActions<TData>({
           className="w-[160px] flex flex-col gap-1 items-center"
         >
           <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
-            <Button variant={'ghost'}>Edit</Button>
+            <Button variant={'ghost'}>View</Button>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)}>
             <Button variant={'ghost'}>Delete</Button>
@@ -155,9 +219,34 @@ export function DataTableRowActions<TData>({
             {showPics && (
               <div className="flex flex-col gap-2">
                 <ImageGallery
-                  items={pictures.map((pic) => ({
+                  items={pictures.map((pic, index) => ({
                     original: pic.url,
-                    thumbnail: pic.url
+                    thumbnail: pic.url,
+                    renderItem: () => {
+                      // name of pic is found between the 5th and 6th slashes
+                      const picName = pic.url.split('/').slice(5, 6).join('');
+                      // bucket name is found between the 3rd and 4th slashes
+                      const bucket = pic.url.split('/').slice(3, 4).join('');
+                      return (
+                        <div>
+                          <img src={pic.url} alt={picName} />
+                          <div className="flex gap-8 mt-5">
+                            <Button
+                              onClick={() =>
+                                handleMakeProfilePic(bucket, pic.key, pic.url)
+                              }
+                            >
+                              Make Profile Pic
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteImage(bucket, pic.key)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    }
                   }))}
                   showFullscreenButton={true}
                   showPlayButton={false}
