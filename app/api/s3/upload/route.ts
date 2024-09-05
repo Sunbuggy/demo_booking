@@ -2,12 +2,15 @@ import {
   S3Client,
   ListObjectsV2Command,
   HeadObjectCommand,
-  GetObjectCommand
+  GetObjectCommand,
+  PutObjectCommand
 } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { NextRequest, NextResponse } from 'next/server';
 import { createId } from '@paralleldrive/cuid2';
+import formidable from 'formidable';
+import fs from 'fs';
 
 const s3Client = new S3Client({
   region: process.env.STORAGE_REGION!,
@@ -19,8 +22,13 @@ const s3Client = new S3Client({
   }
 });
 
-export async function POST(req: Request) {
-  // Precheck for AWS credentials
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export async function POST(req: NextRequest) {
   if (
     !process.env.STORAGE_ACCESSKEY ||
     !process.env.STORAGE_SECRETKEY ||
@@ -29,14 +37,28 @@ export async function POST(req: Request) {
   ) {
     console.error('Missing AWS credentials');
     return NextResponse.json(
-      { success: false, body: 'Missing AWS credentials' },
+      { success: false, message: 'Missing AWS credentials' },
       { status: 500 }
     );
   }
-  const { mainDir, subDir, bucket, contentType } = await req.json();
-  const key = `${mainDir}/${subDir}/${createId()}`;
 
   try {
+    const formData = await req.formData();
+    const file = formData.get('file') as File | null;
+    const mainDir = formData.get('mainDir') as string;
+    const subDir = formData.get('subDir') as string;
+    const bucket = formData.get('bucket') as string;
+    const contentType = formData.get('contentType') as string;
+
+    if (!file || !mainDir || !subDir || !bucket || !contentType) {
+      return NextResponse.json(
+        { success: false, message: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    const key = `${mainDir}/${subDir}/${createId()}`;
+
     // Check if the file already exists
     try {
       await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
@@ -46,36 +68,36 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     } catch (error) {
-      //  if it is type error...
-      if (error instanceof Error && error.name === 'NotFound') {
-        console.log('File does not exist, uploading...');
+      if (error instanceof Error && error.name !== 'NotFound') {
+        throw error;
       }
+      console.log('File does not exist, uploading...');
     }
-    const { url, fields } = await createPresignedPost(s3Client, {
+
+    const buffer = await file.arrayBuffer();
+
+    const command = new PutObjectCommand({
       Bucket: bucket,
       Key: key,
-      Conditions: [
-        ['content-length-range', 0, 10485760], // up to 10 MB
-        ['starts-with', '$Content-Type', contentType]
-      ],
-      Fields: {
-        acl: 'public-read',
-        'Content-Type': contentType
-      },
-      Expires: 600 // Seconds before the presigned post expires. 3600 by default.
+      Body: Buffer.from(buffer),
+      ContentType: contentType,
+      ACL: 'public-read',
     });
+
+    await s3Client.send(command);
+
     const endpoint = process.env.STORAGE_ENDPOINT!;
     return NextResponse.json({
-      message: `file Uploaded`,
+      success: true,
+      message: 'File uploaded successfully',
       key,
       endpoint,
-      url,
-      fields
+      url: `${endpoint}/${bucket}/${key}`,
     });
   } catch (error) {
     console.error('Error uploading to S3:', error);
     return NextResponse.json(
-      { success: false, body: JSON.stringify(error) },
+      { success: false, message: 'Error uploading to S3' },
       { status: 500 }
     );
   }

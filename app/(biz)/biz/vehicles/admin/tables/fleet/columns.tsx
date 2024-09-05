@@ -115,103 +115,57 @@ export const columns: ColumnDef<VehicleType, any>[] = [
       const supabase = createClient();
       // get toast
       const { toast } = useToast();
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
 
-      const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+  if (!file) {
+    toast({
+      title: "Error",
+      description: "Please select a file to upload.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-        if (!file) {
-          alert('Please select a file to upload.');
-          return;
-        }
-        setUploading(true);
-        const response = await fetch(
-          process.env.NEXT_PUBLIC_SITE_URL + '/api/s3/upload',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              mainDir: 'vehicles',
-              subDir: row.getValue('name'),
-              bucket: 'sb-fleet',
-              contentType: file.type
-            })
-          }
-        );
+  setUploading(true);
 
-        const result = await response.json();
-        if (response.ok) {
-          console.log(result);
-          const formData = new FormData();
-          Object.entries(result.fields).forEach(([key, value]) => {
-            formData.append(key, value as string);
-          });
-          formData.append('file', file);
-          const uploadResponse = await fetch(result.url, {
-            method: 'POST',
-            body: formData
-          });
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mainDir', 'vehicles');
+    formData.append('subDir', row.original.name); // Replace with actual subdirectory
+    formData.append('bucket', 'sb-fleet');
+    formData.append('contentType', file.type);
 
-          const uploadResult = await uploadResponse.json();
-          console.log(uploadResult);
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
 
-          // if(uploadResponse.ok){
-          //   toast({
-          //     title: 'Success',
-          //     description: uploadResult.message,
-          //     duration: 2000,
-          //     variant: 'success'
-          //   });
-          // }else{
-          //   toast({
-          //     title: 'Error',
-          //     description: uploadResult.message,
-          //     duration: 2000,
-          //     variant: 'destructive'
-          //   });
-          // }
-          //   insertIntoVehiclePics(
-          //     supabase,
-          //     row.original.id,
-          //     result.bucket,
-          //     result.endpoint,
-          //     result.key
-          //   )
-          //     .then(() => {
-          //       toast({
-          //         title: 'Success',
-          //         description: result.message,
-          //         duration: 2000,
-          //         variant: 'success'
-          //       });
-          //     })
-          //     .catch((err) => {
-          //       toast({
-          //         title: 'Error',
-          //         description: 'Database error',
-          //         duration: 2000,
-          //         variant: 'destructive'
-          //       });
-          //     });
-          // } else {
-          //   toast({
-          //     title: 'Error',
-          //     description: result.message,
-          //     duration: 2000,
-          //     variant: 'destructive'
-          //   });
-          // }
+    const data = await response.json();
 
-          setUploading(false);
-
-          // Clear the input file
-          if (inputFile.current) {
-            inputFile.current.value = '';
-          }
-        }
-      };
-
+    if (response.ok) {
+      toast({
+        title: "Success",
+        description: "File uploaded successfully",
+      });
+    } else {
+      throw new Error(data.message || 'Failed to upload file');
+    }
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    toast({
+      title: "Error",
+      description: "Failed to upload file. Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setUploading(false);
+  }
+};
       return (
         <div>
           {uploading ? (
