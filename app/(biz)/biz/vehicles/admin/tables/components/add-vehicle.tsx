@@ -9,74 +9,140 @@ import {
 import { z } from 'zod';
 import { FactoryForm, FieldConfig } from './factory-form';
 import React from 'react';
+import { insertIntoVehicles } from '@/utils/supabase/queries';
+import { createClient } from '@/utils/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 
 const formSchema = z.object({
-  username: z
-    .string()
-    .min(2, { message: 'Username must be at least 2 characters.' }),
-  role: z.string(),
-  bio: z.string().max(200, { message: 'Bio must not exceed 200 characters.' }),
-  newsletter: z.boolean(),
-  notification: z.enum(['email', 'sms', 'push'])
+  name: z.string(),
+  type: z.enum([
+    'shuttle',
+    'buggy',
+    'atv',
+    'utv',
+    'sedan',
+    'truck',
+    'trailer',
+    'tram',
+    'forktruck'
+  ]),
+  make: z.string(),
+  model: z.string(),
+  year: z.union([
+    z.number().min(1970).max(new Date().getFullYear()),
+    z.string().transform((val) => parseInt(val))
+  ]),
+  seats: z.union([
+    z.number().max(500),
+    z.string().transform((val) => parseInt(val))
+  ])
 });
 
 const fields: FieldConfig[] = [
   {
     type: 'input',
-    name: 'username',
-    label: 'Username',
-    placeholder: 'Enter your username',
-    description: 'This is your public display name.'
+    name: 'name',
+    label: 'Name',
+    placeholder: 'Enter the name',
+    description: 'The name of the vehicle.'
   },
   {
     type: 'select',
-    name: 'role',
-    label: 'Role',
+    name: 'type',
+    label: 'Type',
     options: [
-      { value: 'user', label: 'User' },
-      { value: 'admin', label: 'Admin' },
-      { value: 'moderator', label: 'Moderator' }
+      { value: 'shuttle', label: 'Shuttle' },
+      { value: 'buggy', label: 'Buggy' },
+      { value: 'atv', label: 'ATV' },
+      { value: 'utv', label: 'UTV' },
+      { value: 'sedan', label: 'Sedan' },
+      { value: 'truck', label: 'Truck' },
+      { value: 'trailer', label: 'Trailer' },
+      { value: 'tram', label: 'Tram' },
+      { value: 'forktruck', label: 'Forktruck' }
     ]
   },
   {
-    type: 'textarea',
-    name: 'bio',
-    label: 'Bio',
-    placeholder: 'Tell us about yourself',
-    description: 'A brief description about yourself (max 200 characters).'
+    type: 'input',
+    name: 'make',
+    label: 'Make',
+    placeholder: 'Enter the make',
+    description: 'The make of the vehicle.'
   },
   {
-    type: 'checkbox',
-    name: 'newsletter',
-    label: 'Subscribe to newsletter'
+    type: 'input',
+    name: 'model',
+    label: 'Model',
+    placeholder: 'Enter the model',
+    description: 'The model of the vehicle.'
   },
   {
-    type: 'radio',
-    name: 'notification',
-    label: 'Preferred notification method',
-    options: [
-      { value: 'email', label: 'Email' },
-      { value: 'sms', label: 'SMS' },
-      { value: 'push', label: 'Push Notification' }
-    ]
+    type: 'input',
+    name: 'year',
+    label: 'Year',
+    placeholder: 'Enter the year',
+    description: 'The year of the vehicle.'
+  },
+  {
+    type: 'input',
+    name: 'seats',
+    label: 'Seats',
+    placeholder: 'Enter the number of seats',
+    description: 'The number of seats in the vehicle.'
   }
 ];
 
 const AddVehicle = () => {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [formData, setFormData] = React.useState<
+    z.infer<typeof formSchema> | undefined
+  >(undefined);
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (formData !== undefined) {
+      const supabase = createClient();
+      insertIntoVehicles(supabase, formData)
+        .then((res) => {
+          toast({
+            title: 'Success',
+            description: 'User has been deleted',
+            duration: 2000,
+            variant: 'success'
+          });
+        })
+        .catch((err) => {
+          toast({
+            title: 'Error',
+            description: 'Error deleting user',
+            duration: 2000,
+            variant: 'destructive'
+          });
+          console.error(err);
+        })
+        .finally(() => {
+          setFormData(undefined);
+          setIsModalOpen(false);
+        });
+    }
+  }, [formData]);
+
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    console.log(data);
+    setFormData(data);
   };
   return (
     <>
       <Button
         onClick={() => setIsModalOpen(true)}
         variant={'ghost'}
-        className="underline"
+        className="underline text-green-500 font-bold"
       >
-        +Add
+        +Add New Vehicle
       </Button>
-      <Dialog open={isModalOpen}>
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(isOpen) => setIsModalOpen(isOpen)}
+      >
         <DialogContent>
           <DialogTitle>Add a Vehicle</DialogTitle>
           <DialogDescription>
