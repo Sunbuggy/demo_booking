@@ -256,6 +256,7 @@ export const columns: ColumnDef<VehicleType, any>[] = [
     id: 'actions',
     cell: ({ row }) => <DataTableRowActions row={row} />
   }
+
   // profile pic COLUMN
 
   // EMAIL COLUMN
