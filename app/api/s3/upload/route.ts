@@ -107,6 +107,36 @@ export async function GET(req: Request) {
   const mainDir = url.searchParams.get('mainDir');
   const subDir = url.searchParams.get('subDir');
   const prefix = `${mainDir}/${subDir}/`;
+  const fetchOne = url.searchParams.get('fetchOne') as Boolean | null;
+  const key = url.searchParams.get('key');
+
+  if (fetchOne) {
+    if (!bucket || !key) {
+      return NextResponse.json(
+        { success: false, body: 'Missing bucket or key' },
+        { status: 400 }
+      );
+    }
+
+    try {
+      const signedUrl = await getSignedUrl(
+        s3Client,
+        new GetObjectCommand({ Bucket: bucket, Key: key }),
+        { expiresIn: 3600 }
+      ); // URL expires in 1 hour
+
+      return NextResponse.json({
+        key,
+        url: signedUrl
+      });
+    } catch (error) {
+      console.error('Error fetching object:', error);
+      return NextResponse.json(
+        { success: false, body: JSON.stringify(error) },
+        { status: 500 }
+      );
+    }
+  }
 
   if (!bucket || !mainDir || !subDir) {
     return NextResponse.json(

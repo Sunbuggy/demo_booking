@@ -20,15 +20,19 @@ interface ProfilePic {
   profile_pic_bucket: any;
   profile_pic_key: any;
 }
+interface PicUrl {
+  url: string;
+  key: string;
+}
 export const columns: ColumnDef<VehicleType, any>[] = [
   // Pic Column
   {
     accessorKey: 'profile_pic',
     header: ({ column }) => <DataTableColumnHeader column={column} title="" />,
     cell: ({ row }) => {
-      const [profilePic, setProfilePic] = React.useState<ProfilePic | null>(
-        null
-      );
+      const [profilePicData, setProfilePicData] =
+        React.useState<ProfilePic | null>(null);
+      const [profilePic, setProfilePic] = React.useState<string>('');
       const supabase = createClient();
       React.useEffect(() => {
         const fetchProfilePic = async () => {
@@ -36,28 +40,53 @@ export const columns: ColumnDef<VehicleType, any>[] = [
             supabase,
             row.original.id
           )) as ProfilePic[];
-          setProfilePic(pic[0]);
+          setProfilePicData(pic[0]);
         };
         fetchProfilePic();
       }, []);
-      console.log(profilePic);
+      React.useEffect(() => {
+        async function fetchProfilePic() {
+          if (
+            profilePicData?.profile_pic_key !== undefined &&
+            profilePicData?.profile_pic_bucket !== undefined
+          ) {
+            try {
+              const response = await fetch(
+                `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload?bucket=${profilePicData?.profile_pic_bucket}&key=${profilePicData?.profile_pic_key}&fetchOne=true`
+              );
+              if (response.ok) {
+                const result = await response.json();
+                setProfilePic(result.url);
+              } else {
+                throw new Error('Network response was not ok.');
+              }
+            } catch (error) {
+              console.error(
+                'There has been a problem with your fetch operation:',
+                error
+              );
+            }
+          }
+        }
+        fetchProfilePic() as unknown as PicUrl;
+      }, [profilePicData]);
       const name = row.getValue('name') as string;
-
       return (
         <div className="w-[50px]">
           <Avatar className="h-9 w-9">
-            {/* <ImageGalleryComponent
+            <ImageGalleryComponent
               items={
                 profilePic
                   ? [
                       {
-                        original: profilePic.profile_pic_url
+                        original: profilePic
                       }
                     ]
                   : []
               }
-            /> */}
-            {!profilePic && (
+              alt={name}
+            />
+            {profilePic === '' && (
               <AvatarFallback>
                 <CarIcon />
               </AvatarFallback>

@@ -4,9 +4,11 @@ import ImageGallery from 'react-image-gallery';
 import { type ReactImageGalleryItem } from 'react-image-gallery';
 
 const ImageGalleryComponent = ({
-  items
+  items,
+  alt
 }: {
   items: ReactImageGalleryItem[];
+  alt: string;
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | undefined>(
@@ -37,7 +39,7 @@ const ImageGalleryComponent = ({
             <span className="close" onClick={closeModal}>
               &times;
             </span>
-            <img src={selectedImage} alt="Selected Image" />
+            <img src={selectedImage} alt={alt} />
           </div>
         </div>
       )}
