@@ -15,6 +15,7 @@ import {
   TramFrontIcon,
   TruckIcon
 } from 'lucide-react';
+import AddVehicle from './add-vehicle';
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
@@ -63,9 +64,7 @@ export function DataTableToolbar<TData>({
             <Cross2Icon className="ml-2 h-4 w-4" />
           </Button>
         )}
-        <Button variant={'ghost'} className="underline">
-          +Add
-        </Button>
+        <AddVehicle />
       </div>
       <DataTableViewOptions table={table} />
     </div>

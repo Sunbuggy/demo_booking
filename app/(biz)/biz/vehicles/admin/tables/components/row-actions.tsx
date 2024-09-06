@@ -123,7 +123,7 @@ export function DataTableRowActions<TData>({
     key: string,
     url: string
   ) => {
-    await changeVehicleProfilePic(supabase, vehicle.id, bucket, key, url)
+    await changeVehicleProfilePic(supabase, vehicle.id, bucket, key)
       .then((res) => {
         toast({
           title: 'Success',
