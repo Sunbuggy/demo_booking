@@ -130,7 +130,7 @@ const fields: FieldConfig[] = [
   }
 ];
 
-const EditVehicle = ({ id }: { id: string }) => {
+const EditVehicle = ({ id, cols }: { id: string; cols?: number }) => {
   const [formData, setFormData] = React.useState<
     z.infer<typeof formSchema> | undefined
   >(undefined);
@@ -195,6 +195,7 @@ const EditVehicle = ({ id }: { id: string }) => {
           formSchema={formSchema}
           onSubmit={onSubmit}
           initialData={initialData}
+          cols={cols}
         />
       ) : (
         <div>Loading...</div>

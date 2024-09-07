@@ -95,13 +95,15 @@ type FactoryFormProps = {
   formSchema: z.ZodObject<any>;
   onSubmit: (data: any) => void;
   initialData?: Record<string, any>;
+  cols?: number;
 };
 
 export function FactoryForm({
   fields,
   formSchema,
   onSubmit,
-  initialData
+  initialData,
+  cols
 }: FactoryFormProps) {
   const [showAllFields, setShowAllFields] = useState(false);
 
@@ -128,7 +130,10 @@ export function FactoryForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className={`space-y-8 grid grid-cols-1 md:grid-cols-2 gap-8`}
+      >
         <FormField
           control={form.control}
           name="showAllFields"
