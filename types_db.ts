@@ -650,36 +650,51 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          color: string | null
           id: string
+          licenseplate: string | null
           make: string
           model: string
           name: string
+          notes: string | null
           profile_pic_bucket: string | null
           profile_pic_key: string | null
           seats: number
+          state: string | null
           type: Database["public"]["Enums"]["vehicle_type"]
+          vin: string | null
           year: number
         }
         Insert: {
+          color?: string | null
           id?: string
+          licenseplate?: string | null
           make?: string
           model?: string
           name: string
+          notes?: string | null
           profile_pic_bucket?: string | null
           profile_pic_key?: string | null
           seats?: number
+          state?: string | null
           type: Database["public"]["Enums"]["vehicle_type"]
+          vin?: string | null
           year?: number
         }
         Update: {
+          color?: string | null
           id?: string
+          licenseplate?: string | null
           make?: string
           model?: string
           name?: string
+          notes?: string | null
           profile_pic_bucket?: string | null
           profile_pic_key?: string | null
           seats?: number
+          state?: string | null
           type?: Database["public"]["Enums"]["vehicle_type"]
+          vin?: string | null
           year?: number
         }
         Relationships: []
@@ -737,6 +752,7 @@ export type Database = {
         | "trailer"
         | "tram"
         | "forktruck"
+        | "gocart"
     }
     CompositeTypes: {
       [_ in never]: never

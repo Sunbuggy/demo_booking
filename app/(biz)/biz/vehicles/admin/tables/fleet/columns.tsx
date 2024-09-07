@@ -68,25 +68,31 @@ export const columns: ColumnDef<VehicleType, any>[] = [
             }
           }
         }
-        fetchProfilePic() as unknown as PicUrl;
+        if (
+          profilePicData?.profile_pic_bucket !== null &&
+          profilePicData?.profile_pic_key !== null
+        )
+          fetchProfilePic() as unknown as PicUrl;
       }, [profilePicData]);
       const name = row.getValue('name') as string;
+      const bucket = profilePicData?.profile_pic_bucket;
       return (
         <div className="w-[50px]">
           <Avatar className="h-9 w-9">
-            <ImageGalleryComponent
-              items={
-                profilePic
-                  ? [
-                      {
-                        original: profilePic
-                      }
-                    ]
-                  : []
-              }
-              alt={name}
-            />
-            {profilePic === '' && (
+            {bucket !== null && bucket !== undefined ? (
+              <ImageGalleryComponent
+                items={
+                  profilePic
+                    ? [
+                        {
+                          original: profilePic
+                        }
+                      ]
+                    : []
+                }
+                alt={name}
+              />
+            ) : (
               <AvatarFallback>
                 <CarIcon />
               </AvatarFallback>
@@ -97,7 +103,6 @@ export const columns: ColumnDef<VehicleType, any>[] = [
     },
     enableSorting: false
   },
-
   // FULL NAME COLUMN
   {
     accessorKey: 'name',
@@ -163,9 +168,69 @@ export const columns: ColumnDef<VehicleType, any>[] = [
     },
     enableSorting: true
   },
-
+  // COLOR COLUMN
   {
-    accessorKey: 'profile_pic_upload',
+    accessorKey: 'color',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Color" />
+    ),
+    cell: ({ row }) => {
+      const color = row.getValue('color') as string;
+      return <div className="w-[80px] ">{color}</div>;
+    },
+    enableSorting: true
+  },
+  // VIN COLUMN
+  {
+    accessorKey: 'vin',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="VIN" />
+    ),
+    cell: ({ row }) => {
+      const vin = row.getValue('vin') as string;
+      return <div className="w-[80px] ">{vin}</div>;
+    },
+    enableSorting: true
+  },
+  //Notes COLUMN
+  {
+    accessorKey: 'notes',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Notes" />
+    ),
+    cell: ({ row }) => {
+      const notes = row.getValue('notes') as string;
+      return <div className="w-[80px] ">{notes}</div>;
+    },
+    enableSorting: true
+  },
+  // STATE COLUMN
+  {
+    accessorKey: 'state',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="State" />
+    ),
+    cell: ({ row }) => {
+      const state = row.getValue('state') as string;
+      return <div className="w-[80px] ">{state}</div>;
+    },
+    enableSorting: true
+  },
+  // LICENSE PLATE COLUMN
+  {
+    accessorKey: 'licenseplate',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="License Plate" />
+    ),
+    cell: ({ row }) => {
+      const licensePlate = row.getValue('licenseplate') as string;
+      return <div className="w-[80px] ">{licensePlate}</div>;
+    },
+    enableSorting: true
+  },
+  //  PIC UPLOAD COLUMN
+  {
+    accessorKey: 'pic_upload',
     header: ({ column }) => <div>Add Pics</div>,
     cell: ({ row }) => {
       const [file, setFile] = React.useState<File | null>(null);
@@ -251,20 +316,10 @@ export const columns: ColumnDef<VehicleType, any>[] = [
       );
     }
   },
+
   // Actions COLUMN
   {
     id: 'actions',
     cell: ({ row }) => <DataTableRowActions row={row} />
   }
-
-  // profile pic COLUMN
-
-  // EMAIL COLUMN
-  // {
-  //   accessorKey: 'email',
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title="Email" />
-  //   ),
-  //   cell: ({ row }) => <div className="w-[250px]">{row.getValue('email')}</div>
-  // }
 ];

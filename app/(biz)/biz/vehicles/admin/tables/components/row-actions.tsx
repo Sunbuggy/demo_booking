@@ -40,8 +40,9 @@ export function DataTableRowActions<TData>({
   const vehicle = row.original as VehicleType;
   const supabase = createClient();
   const [deleteVehicle, setDeleteVehicle] = React.useState<boolean>(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [pictures, setPictures] = React.useState<VehiclePics[]>([]);
   const [showPics, setShowPics] = React.useState<boolean>(false);
   const { toast } = useToast();
@@ -73,7 +74,7 @@ export function DataTableRowActions<TData>({
         .then((res) => {
           toast({
             title: 'Success',
-            description: 'User has been deleted',
+            description: 'Vehicle has been deleted',
             duration: 2000,
             variant: 'success'
           });
@@ -196,83 +197,96 @@ export function DataTableRowActions<TData>({
           align="end"
           className="w-[160px] flex flex-col gap-1 items-center"
         >
-          <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+          <DropdownMenuItem onClick={() => setIsViewDialogOpen(true)}>
             <Button variant={'ghost'}>View</Button>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)}>
             <Button variant={'ghost'}>Delete</Button>
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+            <Button variant={'ghost'}>Edit</Button>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Dialog
-        open={isEditDialogOpen || isDeleteDialogOpen}
-        onOpenChange={
-          isEditDialogOpen ? setIsEditDialogOpen : setIsDeleteDialogOpen
-        }
-      >
-        {isEditDialogOpen ? (
-          <DialogContent>
-            <DialogTitle>Editing {vehicle.name}</DialogTitle>
-            <Button onClick={handleButtonClick}>
-              {!showPics ? 'View Pics' : 'Hide Pics'}
-            </Button>
-            {showPics && (
-              <div className="flex flex-col gap-2">
-                <ImageGallery
-                  items={pictures.map((pic, index) => ({
-                    original: pic.url,
-                    thumbnail: pic.url,
-                    renderItem: () => {
-                      // name of pic is found between the 5th and 6th slashes
-                      const picName = pic.url.split('/').slice(5, 6).join('');
-                      // bucket name is found between the 3rd and 4th slashes
-                      const bucket = pic.url.split('/').slice(3, 4).join('');
-                      return (
-                        <div>
-                          <img src={pic.url} alt={picName} />
-                          <div className="flex gap-8 mt-5">
-                            <Button
-                              onClick={() =>
-                                handleMakeProfilePic(bucket, pic.key, pic.url)
-                              }
-                            >
-                              Make Profile Pic
-                            </Button>
-                            <Button
-                              onClick={() => handleDeleteImage(bucket, pic.key)}
-                            >
-                              Delete
-                            </Button>
-                          </div>
+
+      {/* View Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent>
+          <DialogTitle>Viewing {vehicle.name}</DialogTitle>
+          <Button onClick={handleButtonClick}>
+            {!showPics ? 'View Pics' : 'Hide Pics'}
+          </Button>
+          {showPics && (
+            <div className="flex flex-col gap-2">
+              <ImageGallery
+                items={pictures.map((pic, index) => ({
+                  original: pic.url,
+                  thumbnail: pic.url,
+                  renderItem: () => {
+                    // name of pic is found between the 5th and 6th slashes
+                    const picName = pic.url.split('/').slice(5, 6).join('');
+                    // bucket name is found between the 3rd and 4th slashes
+                    const bucket = pic.url.split('/').slice(3, 4).join('');
+                    return (
+                      <div>
+                        <img src={pic.url} alt={picName} />
+                        <div className="flex gap-8 mt-5">
+                          <Button
+                            onClick={() =>
+                              handleMakeProfilePic(bucket, pic.key, pic.url)
+                            }
+                          >
+                            Make Profile Pic
+                          </Button>
+                          <Button
+                            onClick={() => handleDeleteImage(bucket, pic.key)}
+                          >
+                            Delete
+                          </Button>
                         </div>
-                      );
-                    }
-                  }))}
-                  showFullscreenButton={true}
-                  showPlayButton={false}
-                />
-              </div>
-            )}
-            <DialogClose>Close</DialogClose>
-          </DialogContent>
-        ) : (
-          <DialogContent>
-            <DialogTitle>
-              Are you sure you want to delete {vehicle.name}?
-            </DialogTitle>
-            <div className="flex gap-3">
-              <Button
-                onClick={() => {
-                  setDeleteVehicle(true);
-                  setIsDeleteDialogOpen(false);
-                }}
-              >
-                Yes
-              </Button>
-              <Button onClick={() => setIsDeleteDialogOpen(false)}>No</Button>
+                      </div>
+                    );
+                  }
+                }))}
+                showFullscreenButton={true}
+                showPlayButton={false}
+              />
             </div>
-          </DialogContent>
-        )}
+          )}
+          <DialogClose>Close</DialogClose>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogTitle>
+            Are you sure you want to delete {vehicle.name}?
+          </DialogTitle>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setDeleteVehicle(true);
+                setIsDeleteDialogOpen(false);
+              }}
+            >
+              Yes
+            </Button>
+            <Button onClick={() => setIsDeleteDialogOpen(false)}>No</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogTitle>Editing {vehicle.name}</DialogTitle>
+          <div>
+            {/* Add your edit vehicle form or content here */}
+            <p>Edit vehicle details here.</p>
+          </div>
+          <DialogClose>Close</DialogClose>
+        </DialogContent>
       </Dialog>
     </>
   );

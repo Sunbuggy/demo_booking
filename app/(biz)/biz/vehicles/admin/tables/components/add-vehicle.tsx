@@ -35,7 +35,12 @@ const formSchema = z.object({
   seats: z.union([
     z.number().max(500),
     z.string().transform((val) => parseInt(val))
-  ])
+  ]),
+  color: z.string().optional(),
+  notes: z.string().optional(),
+  vin: z.string().optional(),
+  licenseplate: z.string().optional(),
+  state: z.string().optional()
 });
 
 const fields: FieldConfig[] = [
@@ -89,6 +94,46 @@ const fields: FieldConfig[] = [
     label: 'Seats',
     placeholder: 'Enter the number of seats',
     description: 'The number of seats in the vehicle.'
+  },
+  {
+    type: 'input',
+    name: 'color',
+    label: 'Color',
+    placeholder: 'Enter the color',
+    description: 'The color of the vehicle.',
+    hidden: true
+  },
+  {
+    type: 'input',
+    name: 'notes',
+    label: 'Notes',
+    placeholder: 'Enter the notes',
+    description: 'The notes of the vehicle.',
+    hidden: true
+  },
+  {
+    type: 'input',
+    name: 'vin',
+    label: 'VIN',
+    placeholder: 'Enter the VIN',
+    description: 'The VIN of the vehicle.',
+    hidden: true
+  },
+  {
+    type: 'input',
+    name: 'licenseplate',
+    label: 'License Plate',
+    placeholder: 'Enter the license plate',
+    description: 'The license plate of the vehicle.',
+    hidden: true
+  },
+  {
+    type: 'input',
+    name: 'state',
+    label: 'State',
+    placeholder: 'Enter the state',
+    description: 'The state of the vehicle.',
+    hidden: true
   }
 ];
 
@@ -143,7 +188,9 @@ const AddVehicle = () => {
         open={isModalOpen}
         onOpenChange={(isOpen) => setIsModalOpen(isOpen)}
       >
-        <DialogContent>
+        <DialogContent
+          className={'lg:max-w-screen-lg overflow-y-scroll max-h-screen'}
+        >
           <DialogTitle>Add a Vehicle</DialogTitle>
           <DialogDescription>
             Plese Enter the most accurate info you can find for this vehicle

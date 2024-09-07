@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useState, useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,7 +27,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
-// Define the field configuration type
 export type FieldConfig = {
   type: 'input' | 'select' | 'checkbox' | 'textarea' | 'radio';
   name: string;
@@ -34,9 +34,9 @@ export type FieldConfig = {
   placeholder?: string;
   description?: string;
   options?: { value: string; label: string }[];
+  hidden?: boolean;
 };
 
-// Component to render different field types
 const FieldComponent = ({
   field,
   fieldConfig
@@ -55,7 +55,7 @@ const FieldComponent = ({
       );
     case 'select':
       return (
-        <Select onValueChange={field.onChange} defaultValue={field.value}>
+        <Select onValueChange={field.onChange} value={field.value}>
           <SelectTrigger>
             <SelectValue placeholder={fieldConfig.placeholder} />
           </SelectTrigger>
@@ -76,7 +76,7 @@ const FieldComponent = ({
       return <Textarea {...field} placeholder={fieldConfig.placeholder} />;
     case 'radio':
       return (
-        <RadioGroup onValueChange={field.onChange} defaultValue={field.value}>
+        <RadioGroup onValueChange={field.onChange} value={field.value}>
           {fieldConfig.options?.map((option) => (
             <div key={option.value} className="flex items-center space-x-2">
               <RadioGroupItem value={option.value} id={option.value} />
@@ -94,21 +94,61 @@ type FactoryFormProps = {
   fields: FieldConfig[];
   formSchema: z.ZodObject<any>;
   onSubmit: (data: any) => void;
+  initialData?: Record<string, any>;
 };
 
 export function FactoryForm({
   fields,
   formSchema,
-  onSubmit
+  onSubmit,
+  initialData
 }: FactoryFormProps) {
+  const [showAllFields, setShowAllFields] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema)
+    resolver: zodResolver(formSchema),
+    defaultValues: initialData || {}
   });
+
+  useEffect(() => {
+    if (initialData) {
+      Object.keys(initialData).forEach((key) => {
+        form.setValue(key, initialData[key]);
+      });
+    }
+  }, [initialData, form]);
+
+  const visibleFields = fields.filter(
+    (field) => !field.hidden || showAllFields
+  );
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {fields.map((fieldConfig) => (
+        <FormField
+          control={form.control}
+          name="showAllFields"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormControl>
+                <Checkbox
+                  checked={showAllFields}
+                  onCheckedChange={(checked) => {
+                    setShowAllFields(checked as boolean);
+                    field.onChange(checked);
+                  }}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>Show all fields</FormLabel>
+                <FormDescription>
+                  Check this box to reveal all hidden fields.
+                </FormDescription>
+              </div>
+            </FormItem>
+          )}
+        />
+        {visibleFields.map((fieldConfig) => (
           <FormField
             key={fieldConfig.name}
             control={form.control}
