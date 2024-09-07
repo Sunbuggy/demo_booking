@@ -703,3 +703,33 @@ export const insertIntoVehicles = cache(
     return data;
   }
 );
+export const fetchVehicleInfo = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select()
+      .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+export const updateVehicle = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle: Database['public']['Tables']['vehicles']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .update(vehicle)
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);

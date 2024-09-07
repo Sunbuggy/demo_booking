@@ -26,6 +26,7 @@ import {
 import { DialogClose } from '@radix-ui/react-dialog';
 import ImageGallery from 'react-image-gallery';
 import 'react-image-gallery/styles/css/image-gallery.css';
+import EditVehicle from './edit-vehicle';
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
 }
@@ -216,43 +217,46 @@ export function DataTableRowActions<TData>({
           <Button onClick={handleButtonClick}>
             {!showPics ? 'View Pics' : 'Hide Pics'}
           </Button>
-          {showPics && (
-            <div className="flex flex-col gap-2">
-              <ImageGallery
-                items={pictures.map((pic, index) => ({
-                  original: pic.url,
-                  thumbnail: pic.url,
-                  renderItem: () => {
-                    // name of pic is found between the 5th and 6th slashes
-                    const picName = pic.url.split('/').slice(5, 6).join('');
-                    // bucket name is found between the 3rd and 4th slashes
-                    const bucket = pic.url.split('/').slice(3, 4).join('');
-                    return (
-                      <div>
-                        <img src={pic.url} alt={picName} />
-                        <div className="flex gap-8 mt-5">
-                          <Button
-                            onClick={() =>
-                              handleMakeProfilePic(bucket, pic.key, pic.url)
-                            }
-                          >
-                            Make Profile Pic
-                          </Button>
-                          <Button
-                            onClick={() => handleDeleteImage(bucket, pic.key)}
-                          >
-                            Delete
-                          </Button>
+          {showPics &&
+            (pictures.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                <ImageGallery
+                  items={pictures.map((pic, index) => ({
+                    original: pic.url,
+                    thumbnail: pic.url,
+                    renderItem: () => {
+                      // name of pic is found between the 5th and 6th slashes
+                      const picName = pic.url.split('/').slice(5, 6).join('');
+                      // bucket name is found between the 3rd and 4th slashes
+                      const bucket = pic.url.split('/').slice(3, 4).join('');
+                      return (
+                        <div>
+                          <img src={pic.url} alt={picName} />
+                          <div className="flex gap-8 mt-5">
+                            <Button
+                              onClick={() =>
+                                handleMakeProfilePic(bucket, pic.key, pic.url)
+                              }
+                            >
+                              Make Profile Pic
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteImage(bucket, pic.key)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  }
-                }))}
-                showFullscreenButton={true}
-                showPlayButton={false}
-              />
-            </div>
-          )}
+                      );
+                    }
+                  }))}
+                  showFullscreenButton={true}
+                  showPlayButton={false}
+                />
+              </div>
+            ) : (
+              <>no pictures for this vehicle</>
+            ))}
           <DialogClose>Close</DialogClose>
         </DialogContent>
       </Dialog>
@@ -279,13 +283,13 @@ export function DataTableRowActions<TData>({
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent
+          className={'lg:max-w-screen-lg overflow-y-scroll max-h-screen'}
+        >
           <DialogTitle>Editing {vehicle.name}</DialogTitle>
-          <div>
-            {/* Add your edit vehicle form or content here */}
-            <p>Edit vehicle details here.</p>
-          </div>
-          <DialogClose>Close</DialogClose>
+          {/* Add your edit vehicle form or content here */}
+          <EditVehicle id={vehicle.id} />
+          <DialogClose className="text-red-500">Close</DialogClose>
         </DialogContent>
       </Dialog>
     </>

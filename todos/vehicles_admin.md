@@ -7,3 +7,9 @@
 -is_profile = False
 -delete from db
 -delete from bucket
+
+crud vehicles
+-Create Vehicle
+-Read Vehicle [done]
+-Update Vehicle
+-Delete Vehicle

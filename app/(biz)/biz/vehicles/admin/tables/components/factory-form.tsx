@@ -109,14 +109,18 @@ export function FactoryForm({
     resolver: zodResolver(formSchema),
     defaultValues: initialData || {}
   });
+  // Log initialData before useEffect
 
   useEffect(() => {
     if (initialData) {
-      Object.keys(initialData).forEach((key) => {
-        form.setValue(key, initialData[key]);
+      Object.keys(initialData[0]).forEach((key) => {
+        form.setValue(key, initialData[0][key]);
       });
+      // Log form values after setting them
     }
   }, [initialData, form]);
+
+  // Log form values during rendering
 
   const visibleFields = fields.filter(
     (field) => !field.hidden || showAllFields
