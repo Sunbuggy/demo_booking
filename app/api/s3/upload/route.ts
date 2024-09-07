@@ -20,12 +20,6 @@ const s3Client = new S3Client({
   }
 });
 
-export const config = {
-  api: {
-    bodyParser: false
-  }
-};
-
 export async function POST(req: NextRequest) {
   if (
     !process.env.STORAGE_ACCESSKEY ||
