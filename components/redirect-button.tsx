@@ -27,7 +27,7 @@ const RedirectButton = ({
     console.log("Current Path:", path);
     console.log("Redirect Path:", redirect_path);
     if(process.env.NEXT_PUBLIC_URL === 'book.sunbuggy.com'){
-      router.push(redirect_path);
+      router.push(`/${redirect_path}`);
     }
 
     // Construct the new URL without duplicating the base URL
