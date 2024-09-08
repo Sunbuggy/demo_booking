@@ -10,17 +10,19 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
+  SheetDescription
 } from '@/components/ui/sheet';
 import { UserNav } from '@/app/(biz)/biz/users/admin/tables/components/user-nav';
 import { UserType } from '@/app/(biz)/biz/users/types';
 import QrCodeScanner from '../qrscanner'; // QR code scanner component
+import { usePathname } from 'next/navigation';
 
 interface NavlinksProps {
   user: UserType | null;
 }
 
 export default function Navlinks({ user }: NavlinksProps) {
+  const path = usePathname();
   return (
     <div className="flex justify-between">
       {/* Left Side: Logo with Sheet Drawer */}
@@ -101,12 +103,15 @@ export default function Navlinks({ user }: NavlinksProps) {
             userName={user.full_name}
           />
         ) : (
-          <Link
-            href="/signin"
-            className="inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md h-[36px]"
-          >
-            Sign In
-          </Link>
+          path &&
+          !path.includes('signin') && (
+            <Link
+              href="/signin"
+              className="inline-flex underline items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md h-[36px]"
+            >
+              Log In
+            </Link>
+          )
         )}
       </div>
     </div>

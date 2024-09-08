@@ -27,17 +27,18 @@ import { DialogClose } from '@radix-ui/react-dialog';
 import ImageGallery from 'react-image-gallery';
 import 'react-image-gallery/styles/css/image-gallery.css';
 import EditVehicle from './edit-vehicle';
+import Link from 'next/link';
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
+}
+export interface VehiclePics {
+  key: string;
+  url: string;
 }
 
 export function DataTableRowActions<TData>({
   row
 }: DataTableRowActionsProps<TData>) {
-  interface VehiclePics {
-    key: string;
-    url: string;
-  }
   const vehicle = row.original as VehicleType;
   const supabase = createClient();
   const [deleteVehicle, setDeleteVehicle] = React.useState<boolean>(false);
@@ -96,7 +97,7 @@ export function DataTableRowActions<TData>({
   const fetchPics = async () => {
     const bucket = 'sb-fleet';
     const mainDir = 'vehicles';
-    const subDir = vehicle.name;
+    const subDir = vehicle.id;
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload/?bucket=${bucket}&mainDir=${mainDir}&subDir=${subDir}`,
       {
@@ -193,18 +194,18 @@ export function DataTableRowActions<TData>({
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          className="w-[160px] flex flex-col gap-1 items-center"
-        >
+        <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setIsViewDialogOpen(true)}>
-            <Button variant={'ghost'}>View</Button>
+            View
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)}>
-            <Button variant={'ghost'}>Delete</Button>
+            Delete
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
-            <Button variant={'ghost'}>Edit</Button>
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`/biz/vehicles/${vehicle.id}`}>Explore</Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

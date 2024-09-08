@@ -1,4 +1,4 @@
-'use client'
+'use client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import { ImNewTab } from 'react-icons/im';
 import { getRedirectMethod } from '@/utils/auth-helpers/settings';
 import { handleRequest } from '@/utils/auth-helpers/client';
 import ThemeButton from '@/components/ui/mode-toggle';
+import { PowerCircleIcon, Unplug } from 'lucide-react';
 
 export function UserNav({
   email,
@@ -49,28 +50,29 @@ export function UserNav({
           </div>
         </DropdownMenuLabel>
         <DropdownMenuItem>
-          {userName} (admin) <ThemeButton/>
+          {userName} (admin) <ThemeButton />
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-        <Link
-              
-              href="/account"
-              className="cursor-pointer dark:text-yellow-500 text-black flex items-center"
-            >
-              Profile <ImNewTab />
-            </Link>        
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-            <form onSubmit={(e) => handleRequest(e, SignOut, router)}>
-              <input type="hidden" name="pathName" value={path} />
-              <Button
-                type="submit"
-                className=""
-              >
-                Sign out
-              </Button>
-            </form>        
-            </DropdownMenuItem>
+          <Link
+            href="/account"
+            className="cursor-pointer dark:text-yellow-500 text-black flex items-center"
+          >
+            Profile <ImNewTab />
+          </Link>
+        </DropdownMenuItem>
+        <form
+          className="flex justify-end"
+          onSubmit={(e) => handleRequest(e, SignOut, router)}
+        >
+          <input type="hidden" name="pathName" value={path} />
+          <Button
+            type="submit"
+            variant={'ghost'}
+            className="text-red-600 flex gap-1 items-center flex-row-reverse"
+          >
+            <PowerCircleIcon /> Log Out
+          </Button>
+        </form>
       </DropdownMenuContent>
     </DropdownMenu>
   );

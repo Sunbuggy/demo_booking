@@ -255,7 +255,7 @@ export const columns: ColumnDef<VehicleType, any>[] = [
           const formData = new FormData();
           formData.append('file', file);
           formData.append('mainDir', 'vehicles');
-          formData.append('subDir', row.original.name); // Replace with actual subdirectory
+          formData.append('subDir', row.original.id);
           formData.append('bucket', 'sb-fleet');
           formData.append('contentType', file.type);
 

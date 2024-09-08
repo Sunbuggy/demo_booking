@@ -8,7 +8,7 @@ export async function getServerSideProps() {
   const user = await getUserDetails(supabase);
 
   return {
-    props: { user },
+    props: { user }
   };
 }
 
@@ -17,11 +17,8 @@ export default async function Navbar() {
   const user = await getUserDetails(supabase); // Expecting user to be of type UserType | null
 
   return (
-    <nav className="z-50 w-screen border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 h-fit p-2 ">
-      <div className="">
-        {/* Pass the user directly */}
-        <Navlinks user={user ? user[0] : null} />
-      </div>
+    <nav className="z-50 w-[99.7%]  bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 h-fit p-2 ">
+      <Navlinks user={user ? user[0] : null} />
     </nav>
   );
 }
