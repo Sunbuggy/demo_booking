@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     // Check if the file already exists
     try {
       await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
-      console.log('File already exists');
+      console.error('File already exists');
       return NextResponse.json(
         { success: false, message: 'File with the same name already exists' },
         { status: 400 }
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       if (error instanceof Error && error.name !== 'NotFound') {
         throw error;
       }
-      console.log('File does not exist, uploading...');
+      console.info('File does not exist, uploading...');
     }
 
     const buffer = await file.arrayBuffer();

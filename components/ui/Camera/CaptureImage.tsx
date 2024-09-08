@@ -35,7 +35,7 @@ const CaptureImage: React.FC<CaptureImageProps> = ({ onCapture }) => {
         setCaptureSuccess(true); // Mark capture as successful
 
         // Log a success message in the console
-        console.log('Photo taken successfully!');
+        console.info('Photo taken successfully!');
       }
     }
   }, [webcamRef, onCapture]); // Dependencies: re-create the function if these change
@@ -45,7 +45,9 @@ const CaptureImage: React.FC<CaptureImageProps> = ({ onCapture }) => {
     const isClient = typeof window !== 'undefined'; // Ensure code is only executed on the client side
     if (isClient) {
       // Check if the user agent corresponds to a mobile device
-      setPermissionsGranted(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+      setPermissionsGranted(
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      );
     }
   }, []); // Empty dependency array: this effect runs once on component mount
 
@@ -57,7 +59,7 @@ const CaptureImage: React.FC<CaptureImageProps> = ({ onCapture }) => {
 
   // Constraints for the video stream; uses the back camera on mobile devices
   const videoConstraints = {
-    facingMode: 'environment', // Use back camera on mobile devices
+    facingMode: 'environment' // Use back camera on mobile devices
   };
 
   // The return statement defines the UI of the component
@@ -68,7 +70,11 @@ const CaptureImage: React.FC<CaptureImageProps> = ({ onCapture }) => {
         <div>
           <h3>Captured Image:</h3>
           {/* Show the captured image */}
-          <img src={capturedImage} alt="Captured" className="mx-auto my-4 border border-gray-300" />
+          <img
+            src={capturedImage}
+            alt="Captured"
+            className="mx-auto my-4 border border-gray-300"
+          />
           {/* Button to reset the captured image, allowing the user to retake the picture */}
           <button
             className="m-4 rounded border-0 bg-orange-600 px-4 py-2 text-white hover:bg-orange-700 focus:outline-none"

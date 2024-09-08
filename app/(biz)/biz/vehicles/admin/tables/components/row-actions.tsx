@@ -157,7 +157,6 @@ export function DataTableRowActions<TData>({
       const data = await response.json();
 
       if (response.ok) {
-        console.log('File deleted successfully');
         // update pictures
         setPictures(pictures.filter((pic) => pic.key !== key));
         // show toast
