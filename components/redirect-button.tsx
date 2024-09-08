@@ -15,16 +15,25 @@ const RedirectButton = ({
   const router = useRouter();
 
   function clickAction() {
-    if (!process.env.NEXT_PUBLIC_SITE_URL) {
-      console.error('NEXT_PUBLIC_SITE_URL is not defined.');
-      return;
-    }
-    if (process.env.NEXT_PUBLIC_URL === 'book.sunbuggy.com') {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
+    const isBookSite =
+      process.env.NEXT_PUBLIC_URL === 'https://book.sunbuggy.com';
+
+    if (isBookSite) {
       return router.push(`/${redirect_path}`);
     }
-    const baseUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL).host;
 
-    // If the path already contains the base URLremove it
+    let baseUrl = '';
+    try {
+      // Try to get the host from NEXT_PUBLIC_SITE_URL
+      baseUrl = new URL(siteUrl).host;
+    } catch (error) {
+      console.warn('Invalid NEXT_PUBLIC_SITE_URL, using fallback method');
+      // Fallback: use the current window location
+      baseUrl = window.location.host;
+    }
+
+    // Remove the baseUrl from the current path if it exists
     const currentPath = path.replace(new RegExp(`^/${baseUrl}`), '');
 
     // Construct the new URL without duplicating the base URL
