@@ -96,6 +96,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: Request) {
+  console.log('GET request received:', req.url);
   const url = new URL(req.url);
   const bucket = url.searchParams.get('bucket');
   const mainDir = url.searchParams.get('mainDir');
@@ -140,11 +141,13 @@ export async function GET(req: Request) {
   }
 
   try {
+    console.log('Attempting to list objects from S3:', { bucket, prefix });
     const listObjects = await s3Client.send(
       new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix })
     );
-    if (!listObjects.Contents) return NextResponse.json({ objects: [] });
 
+    if (!listObjects.Contents) return NextResponse.json({ objects: [] });
+    console.log('S3 ListObjects response:', listObjects);
     const objects = await Promise.all(
       listObjects.Contents.map(async (object) => {
         const signedUrl = await getSignedUrl(
@@ -167,7 +170,13 @@ export async function GET(req: Request) {
       objects
     });
   } catch (error) {
-    console.error('Error fetching objects:', error);
+    if (error instanceof Error) {
+      console.error('Detailed error in GET route:', {
+        error: error.message,
+        stack: error.stack,
+        cause: error.cause
+      });
+    }
     return NextResponse.json(
       { success: false, body: JSON.stringify(error) },
       { status: 500 }
