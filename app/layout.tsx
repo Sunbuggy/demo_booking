@@ -8,7 +8,7 @@ import { getURL } from '@/utils/helpers';
 import 'styles/main.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toster } from '@/components/ui/toaster';
-import { Agent, setGlobalDispatcher } from 'undici';
+
 const title = 'Sunbuggy Fun Rentals';
 const description =
   'Sunbuggy Fun Rentals is the ultimate off-road adventure experience.';
@@ -22,8 +22,6 @@ export const metadata: Metadata = {
     description: description
   }
 };
-
-setGlobalDispatcher(new Agent({ connect: { timeout: 60_000 } }));
 
 export default async function RootLayout({ children }: PropsWithChildren) {
   return (
