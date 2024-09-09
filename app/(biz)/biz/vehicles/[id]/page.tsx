@@ -11,24 +11,31 @@ async function getVehicleData(id: string) {
   const bucket = 'sb-fleet';
   const mainDir = 'vehicles';
   const subDir = id;
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload/?bucket=${bucket}&mainDir=${mainDir}&subDir=${subDir}`,
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload/?bucket=${bucket}&mainDir=${mainDir}&subDir=${subDir}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       }
-    }
-  );
+    );
 
-  const { objects } = (await response.json()) as { objects: VehiclePics[] };
+    const { objects } = (await response.json()) as { objects: VehiclePics[] };
 
-  return {
-    vehicleInfo: vehicleInfo[0],
-    images: objects
-  };
+    return {
+      vehicleInfo: vehicleInfo[0],
+      images: objects
+    };
+  } catch (error) {
+    console.error('Error fetching objects:', error);
+    return {
+      vehicleInfo: null,
+      images: []
+    };
+  }
 }
-
 export default async function VehiclePage({
   params
 }: {
