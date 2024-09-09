@@ -3,7 +3,7 @@ import { fetchVehicleInfo } from '@/utils/supabase/queries';
 import { VehiclePics } from '../admin/tables/components/row-actions';
 import { createClient } from '@/utils/supabase/server';
 import VehicleClientComponent from './components/vehicleClient';
-import axios from 'axios';
+import { fetchObjects } from '@/utils/biz/pics/get';
 
 async function getVehicleData(id: string) {
   const supabase = createClient();
@@ -13,20 +13,17 @@ async function getVehicleData(id: string) {
   const mainDir = 'vehicles';
   const subDir = id;
   try {
-    const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload/?bucket=${bucket}&mainDir=${mainDir}&subDir=${subDir}`,
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    const response = await fetchObjects(bucket, mainDir, subDir);
 
-    const { objects } = (await response.data) as { objects: VehiclePics[] };
+    if (response?.success === false) {
+      throw new Error(response.error);
+    }
+
+    const objs = response?.objects;
 
     return {
       vehicleInfo: vehicleInfo[0],
-      images: objects
+      images: objs as VehiclePics[]
     };
   } catch (error) {
     console.error(`Error fetching objects for ${id} `, error);
@@ -36,13 +33,13 @@ async function getVehicleData(id: string) {
     };
   }
 }
+
 export default async function VehiclePage({
   params
 }: {
   params: { id: string };
 }) {
   const { vehicleInfo, images } = await getVehicleData(params.id);
-
   return (
     <VehicleClientComponent
       id={params.id}
