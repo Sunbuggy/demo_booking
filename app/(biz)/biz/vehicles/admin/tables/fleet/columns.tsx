@@ -12,7 +12,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/utils/supabase/client';
 import { getVehicleProfilePic } from '@/utils/supabase/queries';
 import ImageGalleryComponent from '@/components/ui/image-gallery';
+import getConfig from 'next/config';
 
+const { publicRuntimeConfig } = getConfig();
 export interface TimeSinceClockIn {
   data: number;
 }
@@ -260,7 +262,7 @@ export const columns: ColumnDef<VehicleType, any>[] = [
           formData.append('contentType', file.type);
 
           const response = await fetch(
-            `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
+            `${publicRuntimeConfig.siteUrl}/api/s3/upload`,
             {
               method: 'POST',
               body: formData
