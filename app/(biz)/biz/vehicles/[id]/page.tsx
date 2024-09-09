@@ -29,7 +29,10 @@ async function getVehicleData(id: string) {
       images: objects
     };
   } catch (error) {
-    console.error('Error fetching objects:', error);
+    console.error(
+      `Error fetching objects for site ${process.env.NEXT_PUBLIC_SITE_URL} :`,
+      error
+    );
     return {
       vehicleInfo: null,
       images: []
