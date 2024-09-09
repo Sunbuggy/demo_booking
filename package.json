@@ -20,6 +20,7 @@
     "supabase:pull": "npx supabase db pull"
   },
   "dependencies": {
+    "@ant-design/icons": "^5.4.0",
     "@ant-design/nextjs-registry": "^1.0.1",
     "@aws-sdk/client-s3": "^3.637.0",
     "@aws-sdk/lib-storage": "^3.637.0",
