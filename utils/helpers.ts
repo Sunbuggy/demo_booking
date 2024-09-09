@@ -2,9 +2,12 @@ export const getURL = (path: string = '') => {
   let url = '';
 
   // Check if we are in production and NEXT_PUBLIC_SITE_URL is set
-  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_SITE_URL) {
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.NEXT_PUBLIC_SITE_URL
+  ) {
     url = process.env.NEXT_PUBLIC_SITE_URL.trim();
-  } 
+  }
   // If not in production or NEXT_PUBLIC_SITE_URL is not set, fallback to localhost or Vercel URL
   else {
     url =
@@ -21,14 +24,9 @@ export const getURL = (path: string = '') => {
   // Ensure path starts without a slash to avoid double slashes in the final URL
   path = path.replace(/^\/+/, '');
 
-  // Log the generated URL to debug
-  // console.log(`Generated URL: ${url}/${path}`);
-
   // Concatenate the URL and the path
   return path ? `${url}/${path}` : url;
 };
-
-
 
 export const toDateTime = (secs: number) => {
   var t = new Date(+0); // Unix epoch start.

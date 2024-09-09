@@ -1,3 +1,4 @@
+import { Database } from '@/types_db';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { equal } from 'assert';
 import { cache } from 'react';
@@ -639,12 +640,12 @@ export const fetchVehicles = cache(async (supabase: SupabaseClient) => {
   return data;
 });
 
-export const fetchVehiclePics = cache(
-  async (supabase: SupabaseClient, vehicle_id: number) => {
+export const removeVehicle = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
     const { data, error } = await supabase
-      .from('vehicle_pics')
-      .select('pic_url')
-      .eq('vehicle_id', vehicle_id);
+      .from('vehicles')
+      .delete()
+      .eq('id', vehicle_id);
     if (error) {
       console.error(error);
       return [];
@@ -653,33 +654,78 @@ export const fetchVehiclePics = cache(
   }
 );
 
-// Join tables vehicles and vehicle_pics on vehicle_id
-
-export const fetchVehiclesWithPics = cache(async (supabase: SupabaseClient) => {
-  const { data, error } = await supabase.from('vehicles').select(`
-      id,
-      make,
-      model,
-      name,
-      type,
-      year,
-      vehicle_pics (pic_url)
-    `);
-
-  if (error) {
-    console.error(error);
-    return [];
+export const changeVehicleProfilePic = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle_id: string,
+    bucket: string,
+    key: string
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .update({
+        profile_pic_bucket: bucket,
+        profile_pic_key: key
+      })
+      .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
   }
+);
 
-  return data;
-});
-
-export const removeVehicle = cache(
+export const getVehicleProfilePic = cache(
   async (supabase: SupabaseClient, vehicle_id: string) => {
     const { data, error } = await supabase
       .from('vehicles')
-      .delete()
+      .select('profile_pic_bucket, profile_pic_key ')
       .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const insertIntoVehicles = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle: Database['public']['Tables']['vehicles']['Insert']
+  ) => {
+    const { data, error } = await supabase.from('vehicles').insert([vehicle]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+export const fetchVehicleInfo = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select()
+      .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+export const updateVehicle = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle: Database['public']['Tables']['vehicles']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .update(vehicle)
+      .eq('id', id);
     if (error) {
       console.error(error);
       return [];

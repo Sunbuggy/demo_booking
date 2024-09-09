@@ -35,9 +35,6 @@ export async function signInWithOAuth(e: React.FormEvent<HTMLFormElement>) {
   const supabase = createClient();
   const redirectURL = getURL('/auth/callback');
 
-  // Log the redirectURL before making the request
-  console.log(`OAuth redirect URL: ${redirectURL}`);
-
   await supabase.auth.signInWithOAuth({
     provider: provider,
     options: {
@@ -45,4 +42,3 @@ export async function signInWithOAuth(e: React.FormEvent<HTMLFormElement>) {
     }
   });
 }
-

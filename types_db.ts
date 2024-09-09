@@ -429,6 +429,32 @@ export type Database = {
         }
         Relationships: []
       }
+      qr_history: {
+        Row: {
+          id: number
+          link: string | null
+          user: string | null
+        }
+        Insert: {
+          id?: number
+          link?: string | null
+          user?: string | null
+        }
+        Update: {
+          id?: number
+          link?: string | null
+          user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_history_user_fkey"
+            columns: ["user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shuttle_assignment: {
         Row: {
           created_at: string
@@ -622,64 +648,53 @@ export type Database = {
           },
         ]
       }
-      vehicle_pics: {
-        Row: {
-          created_at: string
-          id: string
-          pic_url: string
-          vehicle_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          pic_url: string
-          vehicle_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          pic_url?: string
-          vehicle_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vehicle_pics_vehicle_id_fkey"
-            columns: ["vehicle_id"]
-            isOneToOne: false
-            referencedRelation: "vehicles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       vehicles: {
         Row: {
+          color: string | null
           id: string
+          licenseplate: string | null
           make: string
           model: string
           name: string
-          profile_pic: string | null
+          notes: string | null
+          profile_pic_bucket: string | null
+          profile_pic_key: string | null
           seats: number
+          state: string | null
           type: Database["public"]["Enums"]["vehicle_type"]
+          vin: string | null
           year: number
         }
         Insert: {
+          color?: string | null
           id?: string
+          licenseplate?: string | null
           make?: string
           model?: string
           name: string
-          profile_pic?: string | null
+          notes?: string | null
+          profile_pic_bucket?: string | null
+          profile_pic_key?: string | null
           seats?: number
+          state?: string | null
           type: Database["public"]["Enums"]["vehicle_type"]
+          vin?: string | null
           year?: number
         }
         Update: {
+          color?: string | null
           id?: string
+          licenseplate?: string | null
           make?: string
           model?: string
           name?: string
-          profile_pic?: string | null
+          notes?: string | null
+          profile_pic_bucket?: string | null
+          profile_pic_key?: string | null
           seats?: number
+          state?: string | null
           type?: Database["public"]["Enums"]["vehicle_type"]
+          vin?: string | null
           year?: number
         }
         Relationships: []
@@ -737,6 +752,7 @@ export type Database = {
         | "trailer"
         | "tram"
         | "forktruck"
+        | "gocart"
     }
     CompositeTypes: {
       [_ in never]: never

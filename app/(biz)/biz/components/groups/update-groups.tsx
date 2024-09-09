@@ -50,7 +50,7 @@ const EditGroups = ({
           const matchesVehicleName = group.old_vehicle_name === vehicleName;
           // const matchesQuantity = Number(group.quantity) === quantity;
 
-          // console.log({
+          // console.table({
           //   groupNames,
           //   includesGroupName,
           //   matchesResNo,
@@ -69,7 +69,7 @@ const EditGroups = ({
           const matchesVehicleName = group.old_vehicle_name === vehicleName;
           // const matchesQuantity = Number(group.quantity) === quantity;
 
-          // console.log({
+          // console.table({
           //   matchesGroupName,
           //   matchesResNo,
           //   matchesVehicleName,
