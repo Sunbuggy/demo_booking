@@ -10,6 +10,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { NextRequest, NextResponse } from 'next/server';
 import { createId } from '@paralleldrive/cuid2';
 
+console.log('1:', process.env.NEXT_PUBLIC_SITE_URL);
+
 const s3Client = new S3Client({
   region: process.env.STORAGE_REGION!,
   forcePathStyle: true,
@@ -19,6 +21,7 @@ const s3Client = new S3Client({
     secretAccessKey: process.env.STORAGE_SECRETKEY!
   }
 });
+console.log('2:', process.env.NEXT_PUBLIC_SITE_URL);
 
 export async function POST(req: NextRequest) {
   if (
@@ -96,6 +99,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: Request) {
+  console.log('reached in get from:', process.env.NEXT_PUBLIC_SITE_URL);
+  // if no s3 client throw an error
   const url = new URL(req.url);
   const bucket = url.searchParams.get('bucket');
   const mainDir = url.searchParams.get('mainDir');
