@@ -28,9 +28,6 @@ import ImageGallery from 'react-image-gallery';
 import 'react-image-gallery/styles/css/image-gallery.css';
 import EditVehicle from './edit-vehicle';
 import Link from 'next/link';
-import getConfig from 'next/config';
-
-const { publicRuntimeConfig } = getConfig();
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
 }
@@ -102,7 +99,7 @@ export function DataTableRowActions<TData>({
     const mainDir = 'vehicles';
     const subDir = vehicle.id;
     const response = await fetch(
-      `${publicRuntimeConfig.siteUrl}/api/s3/upload/?bucket=${bucket}&mainDir=${mainDir}&subDir=${subDir}`,
+      `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload/?bucket=${bucket}&mainDir=${mainDir}&subDir=${subDir}`,
       {
         method: 'GET',
         headers: {
@@ -152,7 +149,7 @@ export function DataTableRowActions<TData>({
   const handleDeleteImage = async (bucket: string, key: string) => {
     try {
       const response = await fetch(
-        `${publicRuntimeConfig.siteUrl}/api/s3/upload?bucket=${bucket}&key=${key}`,
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload?bucket=${bucket}&key=${key}`,
         {
           method: 'DELETE'
         }

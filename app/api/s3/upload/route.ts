@@ -20,6 +20,12 @@ const s3Client = new S3Client({
   }
 });
 
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};
+
 export async function POST(req: NextRequest) {
   if (
     !process.env.STORAGE_ACCESSKEY ||
@@ -54,7 +60,7 @@ export async function POST(req: NextRequest) {
     // Check if the file already exists
     try {
       await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
-      console.error('File already exists');
+      console.log('File already exists');
       return NextResponse.json(
         { success: false, message: 'File with the same name already exists' },
         { status: 400 }
@@ -63,7 +69,7 @@ export async function POST(req: NextRequest) {
       if (error instanceof Error && error.name !== 'NotFound') {
         throw error;
       }
-      console.info('File does not exist, uploading...');
+      console.log('File does not exist, uploading...');
     }
 
     const buffer = await file.arrayBuffer();
@@ -96,42 +102,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: Request) {
-  console.log('GET request received:', req.url);
   const url = new URL(req.url);
   const bucket = url.searchParams.get('bucket');
   const mainDir = url.searchParams.get('mainDir');
   const subDir = url.searchParams.get('subDir');
   const prefix = `${mainDir}/${subDir}/`;
-  const fetchOne = url.searchParams.get('fetchOne') as Boolean | null;
-  const key = url.searchParams.get('key');
-
-  if (fetchOne) {
-    if (!bucket || !key) {
-      return NextResponse.json(
-        { success: false, body: 'Missing bucket or key' },
-        { status: 400 }
-      );
-    }
-
-    try {
-      const signedUrl = await getSignedUrl(
-        s3Client,
-        new GetObjectCommand({ Bucket: bucket, Key: key }),
-        { expiresIn: 3600 }
-      ); // URL expires in 1 hour
-
-      return NextResponse.json({
-        key,
-        url: signedUrl
-      });
-    } catch (error) {
-      console.error('Error fetching object:', error);
-      return NextResponse.json(
-        { success: false, body: JSON.stringify(error) },
-        { status: 500 }
-      );
-    }
-  }
 
   if (!bucket || !mainDir || !subDir) {
     return NextResponse.json(
@@ -141,13 +116,11 @@ export async function GET(req: Request) {
   }
 
   try {
-    console.log('Attempting to list objects from S3:', { bucket, prefix });
     const listObjects = await s3Client.send(
       new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix })
     );
-
     if (!listObjects.Contents) return NextResponse.json({ objects: [] });
-    console.log('S3 ListObjects response:', listObjects);
+
     const objects = await Promise.all(
       listObjects.Contents.map(async (object) => {
         const signedUrl = await getSignedUrl(
@@ -170,13 +143,7 @@ export async function GET(req: Request) {
       objects
     });
   } catch (error) {
-    if (error instanceof Error) {
-      console.error('Detailed error in GET route:', {
-        error: error.message,
-        stack: error.stack,
-        cause: error.cause
-      });
-    }
+    console.error('Error fetching objects:', error);
     return NextResponse.json(
       { success: false, body: JSON.stringify(error) },
       { status: 500 }
