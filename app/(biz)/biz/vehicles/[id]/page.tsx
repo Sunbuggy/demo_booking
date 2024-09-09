@@ -3,6 +3,7 @@ import { fetchVehicleInfo } from '@/utils/supabase/queries';
 import { VehiclePics } from '../admin/tables/components/row-actions';
 import { createClient } from '@/utils/supabase/server';
 import VehicleClientComponent from './components/vehicleClient';
+import axios from 'axios';
 
 async function getVehicleData(id: string) {
   const supabase = createClient();
@@ -12,17 +13,16 @@ async function getVehicleData(id: string) {
   const mainDir = 'vehicles';
   const subDir = id;
   try {
-    const response = await fetch(
+    const response = await axios.get(
       `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload/?bucket=${bucket}&mainDir=${mainDir}&subDir=${subDir}`,
       {
-        method: 'GET',
         headers: {
           'Content-Type': 'application/json'
         }
       }
     );
 
-    const { objects } = (await response.json()) as { objects: VehiclePics[] };
+    const { objects } = (await response.data) as { objects: VehiclePics[] };
 
     return {
       vehicleInfo: vehicleInfo[0],
