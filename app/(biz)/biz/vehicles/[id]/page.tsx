@@ -30,7 +30,7 @@ async function getVehicleData(id: string) {
     };
   } catch (error) {
     console.error(
-      `Error fetching objects for site ${process.env.NEXT_PUBLIC_SITE_URL} :`,
+      `Error fetching objects for site ${process.env.NEXT_PUBLIC_SITE_URL} and id ${id} : \n tried to go to ${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload/?bucket=${bucket}&mainDir=${mainDir}&subDir=${subDir}`,
       error
     );
     return {
