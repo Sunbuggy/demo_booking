@@ -5,6 +5,7 @@ import React from 'react';
 import { fetchVehicleInfo, updateVehicle } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const formSchema = z.object({
   name: z.string(),
@@ -198,7 +199,7 @@ const EditVehicle = ({ id, cols }: { id: string; cols?: number }) => {
           cols={cols}
         />
       ) : (
-        <div>Loading...</div>
+        <Skeleton className="w-[798] h-[648]" />
       )}
     </div>
   );

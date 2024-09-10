@@ -96,6 +96,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: Request) {
+  // if no s3 client throw an error
   const url = new URL(req.url);
   const bucket = url.searchParams.get('bucket');
   const mainDir = url.searchParams.get('mainDir');
@@ -103,7 +104,6 @@ export async function GET(req: Request) {
   const prefix = `${mainDir}/${subDir}/`;
   const fetchOne = url.searchParams.get('fetchOne') as Boolean | null;
   const key = url.searchParams.get('key');
-
   if (fetchOne) {
     if (!bucket || !key) {
       return NextResponse.json(
@@ -111,14 +111,12 @@ export async function GET(req: Request) {
         { status: 400 }
       );
     }
-
     try {
       const signedUrl = await getSignedUrl(
         s3Client,
         new GetObjectCommand({ Bucket: bucket, Key: key }),
         { expiresIn: 3600 }
       ); // URL expires in 1 hour
-
       return NextResponse.json({
         key,
         url: signedUrl
@@ -131,7 +129,6 @@ export async function GET(req: Request) {
       );
     }
   }
-
   if (!bucket || !mainDir || !subDir) {
     return NextResponse.json(
       { success: false, body: 'Missing bucket or key' },
