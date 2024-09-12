@@ -2,7 +2,7 @@ import React from 'react';
 import { fetchVehicleInfo } from '@/utils/supabase/queries';
 import { VehiclePics } from '../admin/tables/components/row-actions';
 import { createClient } from '@/utils/supabase/server';
-import VehicleClientComponent from './components/vehicleClient';
+import VehicleClientComponent from './components/vehicle-client';
 import { fetchObjects } from '@/utils/biz/pics/get';
 
 async function getVehicleData(id: string) {

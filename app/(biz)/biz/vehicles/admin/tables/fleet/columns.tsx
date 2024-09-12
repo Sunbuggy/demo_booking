@@ -9,7 +9,7 @@ import React from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import UploadForm from '../components/upload-form';
 import DialogFactory from '../components/dialog-factory';
-import ImageView from '../../../[id]/components/imageView';
+import ImageView from '../../../[id]/components/image-view';
 import Link from 'next/link';
 
 export interface TimeSinceClockIn {

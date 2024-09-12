@@ -4,7 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { VehicleType } from '../../admin/page';
 import EditVehicle from '../../admin/tables/components/edit-vehicle';
-import ImageView from './imageView';
+import ImageView from './image-view';
 import Link from 'next/link';
 import { ArrowBigLeftIcon } from 'lucide-react';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
@@ -15,6 +15,7 @@ import {
   AccordionTrigger
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
+import ImageGrid from './image-grid';
 interface VehicleClientComponentProps {
   id: string;
   initialVehicleInfo: VehicleType;
@@ -66,7 +67,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               <AccordionItem value="show-normal-images">
                 <AccordionTrigger>Show Normal Images</AccordionTrigger>
                 <AccordionContent>
-                  Placeholder for showing normal images
+                  <ImageGrid images={images} />
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="show-damage-pics">
