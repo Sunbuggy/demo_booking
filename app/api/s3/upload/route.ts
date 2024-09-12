@@ -41,12 +41,34 @@ export async function POST(req: NextRequest) {
     const subDir = formData.get('subDir') as string;
     const bucket = formData.get('bucket') as string;
     const contentType = formData.get('contentType') as string;
+    const pic_key = formData.get('pic_key') as string;
+    const mode = formData.get('mode') as string;
 
     if (!file || !mainDir || !subDir || !bucket || !contentType) {
       return NextResponse.json(
         { success: false, message: 'Missing required fields' },
         { status: 400 }
       );
+    }
+    if (mode === 'profile_pic') {
+      const key = `${mainDir}/${subDir}/${pic_key}`;
+      const buffer = await file.arrayBuffer();
+      const command = new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: Buffer.from(buffer),
+        ContentType: contentType,
+        ACL: 'public-read'
+      });
+      await s3Client.send(command);
+      const endpoint = process.env.STORAGE_ENDPOINT!;
+      return NextResponse.json({
+        success: true,
+        message: 'File uploaded successfully',
+        key,
+        endpoint,
+        url: `${endpoint}/${bucket}/${key}`
+      });
     }
 
     const key = `${mainDir}/${subDir}/${createId()}`;
@@ -112,21 +134,37 @@ export async function GET(req: Request) {
       );
     }
     try {
+      const realKey = `${mainDir}/${subDir}/${key}`;
+      // Check if the object exists
+      await s3Client.send(
+        new HeadObjectCommand({ Bucket: bucket, Key: realKey })
+      );
+
+      // If the object exists, generate a signed URL
       const signedUrl = await getSignedUrl(
         s3Client,
-        new GetObjectCommand({ Bucket: bucket, Key: key }),
+        new GetObjectCommand({ Bucket: bucket, Key: realKey }),
         { expiresIn: 3600 }
-      ); // URL expires in 1 hour
+      );
       return NextResponse.json({
         key,
         url: signedUrl
       });
     } catch (error) {
-      console.error('Error fetching object:', error);
-      return NextResponse.json(
-        { success: false, body: JSON.stringify(error) },
-        { status: 500 }
-      );
+      if (error instanceof Error)
+        if (error.name === 'NotFound') {
+          // If the object does not exist, return null
+          return NextResponse.json({
+            key,
+            url: null
+          });
+        } else {
+          console.error('Error fetching object:', error);
+          return NextResponse.json(
+            { success: false, body: JSON.stringify(error) },
+            { status: 500 }
+          );
+        }
     }
   }
   if (!bucket || !mainDir || !subDir) {

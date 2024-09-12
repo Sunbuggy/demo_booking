@@ -14,9 +14,23 @@ async function getVehicleData(id: string) {
   const subDir = id;
   try {
     const response = await fetchObjects(bucket, mainDir, subDir);
+    const profilePicResponse = await fetchObjects(
+      bucket,
+      mainDir,
+      'profile_pic',
+      true,
+      id
+    );
+
+    if (profilePicResponse?.url) {
+      vehicleInfo[0].profile_pic = profilePicResponse.url;
+    }
 
     if (response?.success === false) {
-      throw new Error(response.error);
+      return {
+        vehicleInfo: vehicleInfo[0],
+        images: []
+      };
     }
 
     const objs = response?.objects;
@@ -44,7 +58,8 @@ export default async function VehiclePage({
     <VehicleClientComponent
       id={params.id}
       initialVehicleInfo={vehicleInfo}
-      initialImages={images}
+      profilePic={vehicleInfo?.profile_pic}
+      images={images}
     />
   );
 }

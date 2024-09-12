@@ -1,7 +1,8 @@
 import {
   S3Client,
   ListObjectsV2Command,
-  GetObjectCommand
+  GetObjectCommand,
+  HeadObjectCommand
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -18,9 +19,57 @@ const s3Client = new S3Client({
 export async function fetchObjects(
   bucket: string,
   mainDir: string,
-  subDir: string
+  subDir: string,
+  fetchOne?: boolean,
+  key?: string
 ) {
   const prefix = `${mainDir}/${subDir}/`;
+
+  if (fetchOne) {
+    if (!bucket || !key) {
+      return {
+        success: false,
+        error: {
+          message: 'Missing required fields'
+        }
+      };
+    }
+    try {
+      const realKey = `${mainDir}/${subDir}/${key}`;
+      // Check if the object exists
+      await s3Client.send(
+        new HeadObjectCommand({ Bucket: bucket, Key: realKey })
+      );
+
+      // If the object exists, generate a signed URL
+      const signedUrl = await getSignedUrl(
+        s3Client,
+        new GetObjectCommand({ Bucket: bucket, Key: realKey }),
+        { expiresIn: 3600 }
+      );
+      return {
+        key,
+        url: signedUrl
+      };
+    } catch (error) {
+      if (error instanceof Error)
+        if (error.name === 'NotFound') {
+          // If the object does not exist, return null
+          return {
+            key,
+            url: null
+          };
+        } else {
+          if (error instanceof Error) {
+            console.error('Error fetching objects:', error);
+            return {
+              success: false,
+              error: error.message
+            };
+          }
+        }
+    }
+  }
 
   try {
     const listObjects = await s3Client.send(

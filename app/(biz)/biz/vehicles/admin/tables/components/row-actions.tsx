@@ -204,9 +204,6 @@ export function DataTableRowActions<TData>({
           <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={`/biz/vehicles/${vehicle.id}`}>Explore</Link>
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
