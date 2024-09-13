@@ -10,40 +10,50 @@ async function getVehicleData(id: string) {
   const vehicleInfo = await fetchVehicleInfo(supabase, id);
 
   const bucket = 'sb-fleet';
-  const mainDir = 'vehicles';
-  const subDir = id;
   try {
-    const response = await fetchObjects(bucket, mainDir, subDir);
+    const normalPicsResponse = await fetchObjects(
+      bucket,
+      false,
+      `vehicles/${id}`
+    );
+    const damagePicsResponse = await fetchObjects(
+      bucket,
+      false,
+      `vehicle_damage/${id}`
+    );
     const profilePicResponse = await fetchObjects(
       bucket,
-      mainDir,
-      'profile_pic',
       true,
-      id
+      `profile_pic/${id}`
     );
 
     if (profilePicResponse?.url) {
       vehicleInfo[0].profile_pic = profilePicResponse.url;
     }
 
-    if (response?.success === false) {
+    if (normalPicsResponse?.success === false) {
       return {
         vehicleInfo: vehicleInfo[0],
-        images: []
+        normalImages: [],
+        damageImages: []
       };
     }
+    console.log(damagePicsResponse);
 
-    const objs = response?.objects;
+    const normalImages = normalPicsResponse?.objects;
+    const damageImages = damagePicsResponse?.objects;
 
     return {
       vehicleInfo: vehicleInfo[0],
-      images: objs as VehiclePics[]
+      normalImages: (normalImages as VehiclePics[]) || [],
+      damageImages: (damageImages as VehiclePics[]) || []
     };
   } catch (error) {
     console.error(`Error fetching objects for ${id} `, error);
     return {
       vehicleInfo: null,
-      images: []
+      normalImages: [],
+      damageImages: []
     };
   }
 }
@@ -53,13 +63,18 @@ export default async function VehiclePage({
 }: {
   params: { id: string };
 }) {
-  const { vehicleInfo, images } = await getVehicleData(params.id);
+  const { vehicleInfo, normalImages, damageImages } = await getVehicleData(
+    params.id
+  );
+
+  console.log('damageImages', damageImages);
   return (
     <VehicleClientComponent
       id={params.id}
       initialVehicleInfo={vehicleInfo}
       profilePic={vehicleInfo?.profile_pic}
-      images={images}
+      images={normalImages}
+      damageImages={damageImages}
     />
   );
 }

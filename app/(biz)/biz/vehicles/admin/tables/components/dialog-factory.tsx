@@ -2,20 +2,23 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogTitle
+  DialogTitle,
+  DialogDescription
 } from '@/components/ui/dialog';
 import React from 'react';
 
 const DialogFactory = ({
-  title,
+  title = 'Put Title Here',
   setIsDialogOpen,
   isDialogOpen,
+  description = 'Put Description Here',
   children
 }: {
   title: string;
   setIsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isDialogOpen: boolean;
   children: React.ReactNode;
+  description?: string;
 }) => {
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -24,6 +27,7 @@ const DialogFactory = ({
       >
         <DialogTitle>{title}</DialogTitle>
         {/* Add your edit vehicle form or content here */}
+        <DialogDescription>{description}</DialogDescription>
         {children}
         <DialogClose className="text-red-500">Close</DialogClose>
       </DialogContent>

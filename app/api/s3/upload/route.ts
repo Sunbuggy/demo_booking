@@ -8,7 +8,6 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { NextRequest, NextResponse } from 'next/server';
-import { createId } from '@paralleldrive/cuid2';
 
 const s3Client = new S3Client({
   region: process.env.STORAGE_REGION!,
@@ -37,21 +36,18 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
-    const mainDir = formData.get('mainDir') as string;
-    const subDir = formData.get('subDir') as string;
-    const bucket = formData.get('bucket') as string;
     const contentType = formData.get('contentType') as string;
-    const pic_key = formData.get('pic_key') as string;
     const mode = formData.get('mode') as string;
+    const key = formData.get('key') as string;
+    const bucket = formData.get('bucket') as string;
 
-    if (!file || !mainDir || !subDir || !bucket || !contentType) {
+    if (!file || !contentType || !key || !mode) {
       return NextResponse.json(
         { success: false, message: 'Missing required fields' },
         { status: 400 }
       );
     }
-    if (mode === 'profile_pic') {
-      const key = `${mainDir}/${subDir}/${pic_key}`;
+    if (mode === 'single') {
       const buffer = await file.arrayBuffer();
       const command = new PutObjectCommand({
         Bucket: bucket,
@@ -70,48 +66,10 @@ export async function POST(req: NextRequest) {
         url: `${endpoint}/${bucket}/${key}`
       });
     }
-
-    const key = `${mainDir}/${subDir}/${createId()}`;
-
-    // Check if the file already exists
-    try {
-      await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
-      console.error('File already exists');
-      return NextResponse.json(
-        { success: false, message: 'File with the same name already exists' },
-        { status: 400 }
-      );
-    } catch (error) {
-      if (error instanceof Error && error.name !== 'NotFound') {
-        throw error;
-      }
-      console.info('File does not exist, uploading...');
-    }
-
-    const buffer = await file.arrayBuffer();
-
-    const command = new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: Buffer.from(buffer),
-      ContentType: contentType,
-      ACL: 'public-read'
-    });
-
-    await s3Client.send(command);
-
-    const endpoint = process.env.STORAGE_ENDPOINT!;
-    return NextResponse.json({
-      success: true,
-      message: 'File uploaded successfully',
-      key,
-      endpoint,
-      url: `${endpoint}/${bucket}/${key}`
-    });
   } catch (error) {
-    console.error('Error uploading to S3:', error);
+    console.error('Error uploading file to S3:', error);
     return NextResponse.json(
-      { success: false, message: 'Error uploading to S3' },
+      { success: false, message: 'Error uploading file to S3' },
       { status: 500 }
     );
   }
@@ -120,12 +78,9 @@ export async function POST(req: NextRequest) {
 export async function GET(req: Request) {
   // if no s3 client throw an error
   const url = new URL(req.url);
-  const bucket = url.searchParams.get('bucket');
-  const mainDir = url.searchParams.get('mainDir');
-  const subDir = url.searchParams.get('subDir');
-  const prefix = `${mainDir}/${subDir}/`;
+  const bucket = url.searchParams.get('bucket') as string;
   const fetchOne = url.searchParams.get('fetchOne') as Boolean | null;
-  const key = url.searchParams.get('key');
+  const key = url.searchParams.get('key') as string;
   if (fetchOne) {
     if (!bucket || !key) {
       return NextResponse.json(
@@ -134,16 +89,13 @@ export async function GET(req: Request) {
       );
     }
     try {
-      const realKey = `${mainDir}/${subDir}/${key}`;
       // Check if the object exists
-      await s3Client.send(
-        new HeadObjectCommand({ Bucket: bucket, Key: realKey })
-      );
+      await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
 
       // If the object exists, generate a signed URL
       const signedUrl = await getSignedUrl(
         s3Client,
-        new GetObjectCommand({ Bucket: bucket, Key: realKey }),
+        new GetObjectCommand({ Bucket: bucket, Key: key }),
         { expiresIn: 3600 }
       );
       return NextResponse.json({
@@ -167,16 +119,10 @@ export async function GET(req: Request) {
         }
     }
   }
-  if (!bucket || !mainDir || !subDir) {
-    return NextResponse.json(
-      { success: false, body: 'Missing bucket or key' },
-      { status: 400 }
-    );
-  }
 
   try {
     const listObjects = await s3Client.send(
-      new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix })
+      new ListObjectsV2Command({ Bucket: bucket, Prefix: key })
     );
     if (!listObjects.Contents) return NextResponse.json({ objects: [] });
 

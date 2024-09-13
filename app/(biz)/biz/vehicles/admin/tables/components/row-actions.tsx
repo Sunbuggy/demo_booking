@@ -1,33 +1,20 @@
 'use client';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/utils/supabase/client';
-import {
-  changeVehicleProfilePic,
-  removeVehicle
-} from '@/utils/supabase/queries';
-import { DotsHorizontalIcon } from '@radix-ui/react-icons';
+import { DotsVerticalIcon } from '@radix-ui/react-icons';
 import { Row } from '@tanstack/react-table';
 import { useRouter } from 'next/navigation';
 import React from 'react';
 import { VehicleType } from '../../page';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog';
-import { DialogClose } from '@radix-ui/react-dialog';
-import ImageGallery from 'react-image-gallery';
 import 'react-image-gallery/styles/css/image-gallery.css';
-import EditVehicle from './edit-vehicle';
-import Link from 'next/link';
+import DialogFactory from './dialog-factory';
+import UploadForm from './upload-form';
+import { useToast } from '@/components/ui/use-toast';
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
 }
@@ -41,14 +28,14 @@ export function DataTableRowActions<TData>({
 }: DataTableRowActionsProps<TData>) {
   const vehicle = row.original as VehicleType;
   const supabase = createClient();
-  const [deleteVehicle, setDeleteVehicle] = React.useState<boolean>(false);
-  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
-  const [pictures, setPictures] = React.useState<VehiclePics[]>([]);
-  const [showPics, setShowPics] = React.useState<boolean>(false);
-  const { toast } = useToast();
+  const [isDamagePicsDialogOpen, setIsDamagePicsDialogOpen] =
+    React.useState(false);
   const router = useRouter();
+  const [file, setFile] = React.useState<File | null>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const inputFile = React.useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const id = vehicle.id;
   React.useEffect(() => {
     const channel = supabase
       .channel('fetch vehicles')
@@ -70,225 +57,92 @@ export function DataTableRowActions<TData>({
     };
   }, [supabase, router]);
 
-  React.useEffect(() => {
-    if (deleteVehicle) {
-      removeVehicle(supabase, vehicle.id)
-        .then((res) => {
-          toast({
-            title: 'Success',
-            description: 'Vehicle has been deleted',
-            duration: 2000,
-            variant: 'success'
-          });
-        })
-        .catch((err) => {
-          toast({
-            title: 'Error',
-            description: 'Error deleting user',
-            duration: 2000,
-            variant: 'destructive'
-          });
-          console.error(err);
-        });
-    }
-    setDeleteVehicle(false);
-  }, [deleteVehicle]);
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-  const fetchPics = async () => {
-    const bucket = 'sb-fleet';
-    const mainDir = 'vehicles';
-    const subDir = vehicle.id;
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload/?bucket=${bucket}&mainDir=${mainDir}&subDir=${subDir}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    const { objects } = (await response.json()) as { objects: VehiclePics[] };
-    if (response.ok) {
-      setPictures(objects);
-    } else {
-      console.error(objects);
-    }
-  };
-  const handleButtonClick = async () => {
-    setShowPics(!showPics);
-    if (showPics) setPictures([]);
-    await fetchPics();
-  };
-
-  const handleMakeProfilePic = async (
-    bucket: string,
-    key: string,
-    url: string
-  ) => {
-    await changeVehicleProfilePic(supabase, vehicle.id, bucket, key)
-      .then((res) => {
-        toast({
-          title: 'Success',
-          description: 'Profile picture changed successfully',
-          duration: 2000,
-          variant: 'success'
-        });
-      })
-      .catch((err) => {
-        console.error(err);
-        toast({
-          title: 'Error',
-          description: 'Error changing profile picture',
-          duration: 2000,
-          variant: 'destructive'
-        });
+    if (!file) {
+      toast({
+        title: 'Error',
+        description: 'Please select a file to upload.',
+        variant: 'destructive'
       });
-  };
+      return;
+    }
 
-  const handleDeleteImage = async (bucket: string, key: string) => {
+    setUploading(true);
+
     try {
+      const bucket = 'sb-fleet';
+      //date in mm-yy-dd
+      const date = new Date().toLocaleDateString('en-US').replaceAll('/', '-');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('bucket', bucket);
+      formData.append('key', `vehicle_damage/${id}/${date}`);
+      formData.append('mode', 'single');
+      formData.append('contentType', file.type);
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload?bucket=${bucket}&key=${key}`,
+        `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
         {
-          method: 'DELETE'
+          method: 'POST',
+          body: formData
         }
       );
 
       const data = await response.json();
 
       if (response.ok) {
-        // update pictures
-        setPictures(pictures.filter((pic) => pic.key !== key));
-        // show toast
         toast({
           title: 'Success',
-          description: 'File deleted successfully',
-          duration: 2000,
-          variant: 'success'
+          description: 'File uploaded successfully'
         });
       } else {
-        // show toast
-        toast({
-          title: 'Error',
-          description: 'Error deleting file',
-          duration: 2000,
-          variant: 'destructive'
-        });
-        throw new Error(data.message || 'Failed to delete file');
+        throw new Error(data.message || 'Failed to upload file');
       }
     } catch (error) {
-      console.error('Error deleting file:', error);
-      // Handle error (e.g., show error message to user)
+      console.error('Error uploading file:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload file. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setUploading(false);
     }
   };
+
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
-          >
-            <DotsHorizontalIcon className="h-4 w-4" />
+          <div className="hover:cursor-pointer">
+            <DotsVerticalIcon className="h-4" />
             <span className="sr-only">Open menu</span>
-          </Button>
+          </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setIsViewDialogOpen(true)}>
-            View
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)}>
-            Delete
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
-            Edit
+          <DropdownMenuItem onClick={() => setIsDamagePicsDialogOpen(true)}>
+            Add Damage Pics
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* View Dialog */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent>
-          <DialogTitle>Viewing {vehicle.name}</DialogTitle>
-          <Button onClick={handleButtonClick}>
-            {!showPics ? 'View Pics' : 'Hide Pics'}
-          </Button>
-          {showPics &&
-            (pictures.length > 0 ? (
-              <div className="flex flex-col gap-2">
-                <ImageGallery
-                  items={pictures.map((pic, index) => ({
-                    original: pic.url,
-                    thumbnail: pic.url,
-                    renderItem: () => {
-                      // name of pic is found between the 5th and 6th slashes
-                      const picName = pic.url.split('/').slice(5, 6).join('');
-                      // bucket name is found between the 3rd and 4th slashes
-                      const bucket = pic.url.split('/').slice(3, 4).join('');
-                      return (
-                        <div>
-                          <img src={pic.url} alt={picName} />
-                          <div className="flex gap-8 mt-5">
-                            <Button
-                              onClick={() =>
-                                handleMakeProfilePic(bucket, pic.key, pic.url)
-                              }
-                            >
-                              Make Profile Pic
-                            </Button>
-                            <Button
-                              onClick={() => handleDeleteImage(bucket, pic.key)}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    }
-                  }))}
-                  showFullscreenButton={true}
-                  showPlayButton={false}
-                />
-              </div>
-            ) : (
-              <>no pictures for this vehicle</>
-            ))}
-          <DialogClose>Close</DialogClose>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogTitle>
-            Are you sure you want to delete {vehicle.name}?
-          </DialogTitle>
-          <div className="flex gap-3">
-            <Button
-              onClick={() => {
-                setDeleteVehicle(true);
-                setIsDeleteDialogOpen(false);
-              }}
-            >
-              Yes
-            </Button>
-            <Button onClick={() => setIsDeleteDialogOpen(false)}>No</Button>
+      <DialogFactory
+        isDialogOpen={isDamagePicsDialogOpen}
+        setIsDialogOpen={setIsDamagePicsDialogOpen}
+        title="Damage Pictures"
+        children={
+          <div>
+            <UploadForm
+              handleSubmit={handleSubmit}
+              inputFile={inputFile}
+              setFile={setFile}
+              uploading={uploading}
+            />
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent
-          className={'lg:max-w-screen-lg overflow-y-scroll max-h-screen'}
-        >
-          <DialogTitle>Editing {vehicle.name}</DialogTitle>
-          {/* Add your edit vehicle form or content here */}
-          <EditVehicle id={vehicle.id} />
-          <DialogClose className="text-red-500">Close</DialogClose>
-        </DialogContent>
-      </Dialog>
+        }
+      />
     </>
   );
 }

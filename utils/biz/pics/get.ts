@@ -18,13 +18,9 @@ const s3Client = new S3Client({
 
 export async function fetchObjects(
   bucket: string,
-  mainDir: string,
-  subDir: string,
   fetchOne?: boolean,
   key?: string
 ) {
-  const prefix = `${mainDir}/${subDir}/`;
-
   if (fetchOne) {
     if (!bucket || !key) {
       return {
@@ -35,16 +31,12 @@ export async function fetchObjects(
       };
     }
     try {
-      const realKey = `${mainDir}/${subDir}/${key}`;
-      // Check if the object exists
-      await s3Client.send(
-        new HeadObjectCommand({ Bucket: bucket, Key: realKey })
-      );
+      await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
 
       // If the object exists, generate a signed URL
       const signedUrl = await getSignedUrl(
         s3Client,
-        new GetObjectCommand({ Bucket: bucket, Key: realKey }),
+        new GetObjectCommand({ Bucket: bucket, Key: key }),
         { expiresIn: 3600 }
       );
       return {
@@ -73,7 +65,7 @@ export async function fetchObjects(
 
   try {
     const listObjects = await s3Client.send(
-      new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix })
+      new ListObjectsV2Command({ Bucket: bucket, Prefix: key })
     );
     if (!listObjects.Contents) return { objects: [] };
 

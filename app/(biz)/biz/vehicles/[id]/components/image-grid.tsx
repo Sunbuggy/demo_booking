@@ -19,15 +19,15 @@ const ImageGrid = ({ images }: { images: VehiclePics[] }) => {
   const selectedImages = images.slice(startIndex, startIndex + imagesPerPage);
 
   return (
-    <div>
-      <div className="grid grid-cols-4 gap-4">
+    <div className="flex flex-col items-center">
+      <div className="grid md:grid-cols-4 grid-cols-1 md:gap-4 gap-2">
         {selectedImages.map((pic, index) => (
           <div key={index}>
             <ImageView src={pic.url} />
           </div>
         ))}
       </div>
-      <div className="flex justify-between mt-4">
+      <div className="flex justify-between mt-4  w-full">
         <button
           onClick={handlePrevious}
           disabled={currentPage === 0}
