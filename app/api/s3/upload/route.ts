@@ -35,19 +35,21 @@ export async function POST(req: NextRequest) {
 
   try {
     const formData = await req.formData();
-    const file = formData.get('file') as File | null;
+    const files = formData.getAll('files') as File[];
     const contentType = formData.get('contentType') as string;
     const mode = formData.get('mode') as string;
     const key = formData.get('key') as string;
     const bucket = formData.get('bucket') as string;
 
-    if (!file || !contentType || !key || !mode) {
+    if (files.length === 0 || !contentType || !key || !mode) {
       return NextResponse.json(
         { success: false, message: 'Missing required fields' },
         { status: 400 }
       );
     }
+
     if (mode === 'single') {
+      const file = files[0];
       const buffer = await file.arrayBuffer();
       const command = new PutObjectCommand({
         Bucket: bucket,
@@ -65,11 +67,35 @@ export async function POST(req: NextRequest) {
         endpoint,
         url: `${endpoint}/${bucket}/${key}`
       });
+    } else if (mode === 'multiple') {
+      const uploadResults = [];
+      for (const file of files) {
+        const buffer = await file.arrayBuffer();
+        const fileKey = `${key}/${file.name}`;
+        const command = new PutObjectCommand({
+          Bucket: bucket,
+          Key: fileKey,
+          Body: Buffer.from(buffer),
+          ContentType: file.type,
+          ACL: 'public-read'
+        });
+        await s3Client.send(command);
+        const endpoint = process.env.STORAGE_ENDPOINT!;
+        uploadResults.push({
+          key: fileKey,
+          url: `${endpoint}/${bucket}/${fileKey}`
+        });
+      }
+      return NextResponse.json({
+        success: true,
+        message: 'Files uploaded successfully',
+        results: uploadResults
+      });
     }
   } catch (error) {
-    console.error('Error uploading file to S3:', error);
+    console.error('Error uploading files to S3:', error);
     return NextResponse.json(
-      { success: false, message: 'Error uploading file to S3' },
+      { success: false, message: 'Error uploading files to S3' },
       { status: 500 }
     );
   }

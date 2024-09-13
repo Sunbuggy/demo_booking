@@ -2,18 +2,18 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '../components/column-header';
 import { VehicleType } from '../../page';
-import { DataTableRowActions } from '../components/row-actions';
+// import { DataTableRowActions } from '../components/row-actions';
 import React from 'react';
 import Link from 'next/link';
 export interface TimeSinceClockIn {
   data: number;
 }
 export const columns: ColumnDef<VehicleType, any>[] = [
-  // Actions COLUMN
-  {
-    id: 'actions',
-    cell: ({ row }) => <DataTableRowActions row={row} />
-  },
+  // // Actions COLUMN
+  // {
+  //   id: 'actions',
+  //   cell: ({ row }) => <DataTableRowActions row={row} />
+  // },
 
   // FULL NAME COLUMN
   {

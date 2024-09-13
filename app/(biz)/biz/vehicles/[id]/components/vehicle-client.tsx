@@ -19,12 +19,17 @@ import ImageGrid from './image-grid';
 import { useToast } from '@/components/ui/use-toast';
 import DialogFactory from '../../admin/tables/components/dialog-factory';
 import UploadForm from '../../admin/tables/components/upload-form';
+
+interface GroupImagesType {
+  [date: string]: string[];
+}
+
 interface VehicleClientComponentProps {
   id: string;
   initialVehicleInfo: VehicleType;
   images: VehiclePics[];
-  damageImages: VehiclePics[];
   profilePic?: string;
+  damageImages: GroupImagesType;
 }
 
 const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
@@ -37,17 +42,25 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const vehicleInfo = initialVehicleInfo;
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [file, setFile] = React.useState<File | null>(null);
+  const [files, setFiles] = React.useState<File[]>([]);
   const [uploading, setUploading] = React.useState(false);
   const inputFile = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [isDamagePicsDialogOpen, setIsDamagePicsDialogOpen] =
+    React.useState(false);
+  const [isViewDamagePicsDialogOpen, setIsViewDamagePicsDialogOpen] =
+    React.useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>,
+    key: string
+  ) => {
     e.preventDefault();
 
-    if (!file) {
+    if (files.length === 0) {
       toast({
         title: 'Error',
-        description: 'Please select a file to upload.',
+        description: 'Please select files to upload.',
         variant: 'destructive'
       });
       return;
@@ -58,11 +71,14 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     try {
       const bucket = 'sb-fleet';
       const formData = new FormData();
-      formData.append('file', file);
+      for (const file of files) {
+        formData.append('files', file);
+      }
       formData.append('bucket', bucket);
-      formData.append('mode', 'single');
-      formData.append('contentType', file.type);
-      formData.append('key', `profile_pic/${id}`);
+      formData.append('mode', files.length > 1 ? 'multiple' : 'single');
+      formData.append('contentType', files[0].type); // Assuming all files have the same type
+      formData.append('key', key);
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
         {
@@ -76,16 +92,16 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       if (response.ok) {
         toast({
           title: 'Success',
-          description: 'File uploaded successfully'
+          description: 'Files uploaded successfully'
         });
       } else {
-        throw new Error(data.message || 'Failed to upload file');
+        throw new Error(data.message || 'Failed to upload files');
       }
     } catch (error) {
-      console.error('Error uploading file:', error);
+      console.error('Error uploading files:', error);
       toast({
         title: 'Error',
-        description: 'Failed to upload file. Please try again.',
+        description: 'Failed to upload files. Please try again.',
         variant: 'destructive'
       });
     } finally {
@@ -118,7 +134,9 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 children={
                   <div>
                     <UploadForm
-                      handleSubmit={handleSubmit}
+                      handleSubmit={(e) =>
+                        handleSubmit(e, `vehicle_profile/${id}`)
+                      }
                       inputFile={inputFile}
                       setFile={setFile}
                       uploading={uploading}
@@ -149,7 +167,32 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               <AccordionItem value="show-damage-pics">
                 <AccordionTrigger>Show Damage Pics</AccordionTrigger>
                 <AccordionContent>
-                  <ImageGrid images={damageImages} />
+                  <Button onClick={() => setIsDamagePicsDialogOpen(true)}>
+                    Add Damage Pics
+                  </Button>
+                  <DialogFactory
+                    isDialogOpen={isViewDamagePicsDialogOpen}
+                    setIsDialogOpen={setIsViewDamagePicsDialogOpen}
+                    title="View Damage Pictures"
+                    children={<div></div>}
+                  />
+                  {Object.keys(damageImages).map((date) => {
+                    const damagePics = damageImages[date];
+                    return (
+                      <div key={date}>
+                        <h2>{date}</h2>
+                        <div className="flex gap-2">
+                          {damagePics.map((pic, idx) => {
+                            return (
+                              <div key={idx} className="w-1/4">
+                                <ImageView src={pic} />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="add-tag">
@@ -159,6 +202,27 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
             </Accordion>
           </CardContent>
         </Card>
+        <DialogFactory
+          isDialogOpen={isDamagePicsDialogOpen}
+          setIsDialogOpen={setIsDamagePicsDialogOpen}
+          title="Add Damage Pictures"
+          children={
+            <div>
+              <UploadForm
+                handleSubmit={(e) =>
+                  handleSubmit(
+                    e,
+                    `vehicle_damage/${id}/${new Date().toISOString()}`
+                  )
+                }
+                inputFile={inputFile}
+                setFiles={setFiles}
+                uploading={uploading}
+                multiple={true}
+              />
+            </div>
+          }
+        />
       </div>
     );
 };

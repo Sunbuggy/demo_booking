@@ -8,12 +8,16 @@ const UploadForm = ({
   handleSubmit,
   inputFile,
   setFile,
-  uploading
+  setFiles,
+  uploading,
+  multiple = false
 }: {
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   inputFile: React.RefObject<HTMLInputElement>;
-  setFile: (value: React.SetStateAction<File | null>) => void;
+  setFile?: (value: React.SetStateAction<File | null>) => void;
+  setFiles?: (value: React.SetStateAction<File[]>) => void;
   uploading: boolean;
+  multiple?: boolean;
 }) => {
   return (
     <form onSubmit={handleSubmit} className=" flex gap-3">
@@ -25,10 +29,16 @@ const UploadForm = ({
         onChange={(e) => {
           const files = e.target.files;
           if (files) {
-            setFile(files[0]);
+            if (setFile) {
+              setFile(files[0]);
+            }
+            if (setFiles) {
+              setFiles(Array.from(files));
+            }
           }
         }}
         accept="image/png, image/jpeg"
+        multiple={multiple}
       />
       <Button size={'icon'} type="submit" disabled={uploading}>
         <UploadIcon />
