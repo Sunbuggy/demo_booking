@@ -113,7 +113,6 @@ async function fetchFormToken(
   }
 }
 
-// Named export for GET method
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
 
