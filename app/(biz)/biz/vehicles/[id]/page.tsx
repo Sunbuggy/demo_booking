@@ -4,12 +4,25 @@ import { VehiclePics } from '../admin/tables/components/row-actions';
 import { createClient } from '@/utils/supabase/server';
 import VehicleClientComponent from './components/vehicle-client';
 import { fetchObjects } from '@/utils/biz/pics/get';
-interface GroupImagesType {
-  [date: string]: string[];
-}
+import { VehicleTagType } from '../admin/page';
+
 async function getVehicleData(id: string) {
   const supabase = createClient();
   const vehicleInfo = await fetchVehicleInfo(supabase, id);
+
+  const fetchVehicleTagInfo = async () => {
+    const { data, error } = await supabase
+      .from('vehicle_tag')
+      .select('*')
+      .eq('vehicle_id', id);
+    if (error) {
+      console.error('Error fetching vehicle tags', error);
+      return [];
+    }
+    return (data as VehicleTagType[]) || [];
+  };
+
+  const vehicleTags = await fetchVehicleTagInfo();
 
   const bucket = 'sb-fleet';
   try {
@@ -18,11 +31,7 @@ async function getVehicleData(id: string) {
       false,
       `vehicles/${id}`
     );
-    const damagePicsResponse = await fetchObjects(
-      bucket,
-      false,
-      `vehicle_damage/${id}`
-    );
+
     const profilePicResponse = await fetchObjects(
       bucket,
       true,
@@ -34,29 +43,18 @@ async function getVehicleData(id: string) {
     }
 
     const normalImages = normalPicsResponse?.objects as VehiclePics[];
-    const damageImages = damagePicsResponse?.objects as VehiclePics[];
-
-    const groupedImages: GroupImagesType = {};
-
-    damageImages.forEach((image) => {
-      const date = image.key.split('/')[2].split('T')[0];
-      if (!groupedImages[date]) {
-        groupedImages[date] = [];
-      }
-      groupedImages[date].push(image.url);
-    });
 
     return {
       vehicleInfo: vehicleInfo[0],
       normalImages: normalImages || [],
-      damageImages: groupedImages || {}
+      vehicleTags
     };
   } catch (error) {
     console.error(`Error fetching objects for ${id} `, error);
     return {
       vehicleInfo: null,
       normalImages: [],
-      damageImages: {}
+      vehicleTags: []
     };
   }
 }
@@ -66,7 +64,7 @@ export default async function VehiclePage({
 }: {
   params: { id: string };
 }) {
-  const { vehicleInfo, normalImages, damageImages } = await getVehicleData(
+  const { vehicleInfo, normalImages, vehicleTags } = await getVehicleData(
     params.id
   );
 
@@ -76,7 +74,7 @@ export default async function VehiclePage({
       initialVehicleInfo={vehicleInfo}
       profilePic={vehicleInfo?.profile_pic}
       images={normalImages}
-      damageImages={damageImages}
+      vehicleTags={vehicleTags}
     />
   );
 }

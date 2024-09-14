@@ -5,6 +5,7 @@ import { fetchVehicles, getUser } from '@/utils/supabase/queries';
 import { Database } from '@/types_db';
 
 export type VehicleType = Database['public']['Tables']['vehicles']['Row'];
+export type VehicleTagType = Database['public']['Tables']['vehicle_tag']['Row'];
 const VehiclesManagementPage = async () => {
   const supabase = createClient();
   const vehicles = (await fetchVehicles(supabase)) as unknown as VehicleType[];

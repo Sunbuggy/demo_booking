@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import { VehicleType } from '../../admin/page';
+import { VehicleTagType, VehicleType } from '../../admin/page';
 import EditVehicle from '../../admin/tables/components/edit-vehicle';
 import ImageView from './image-view';
 import Link from 'next/link';
-import { ArrowBigLeftIcon } from 'lucide-react';
+import { ArrowBigLeftIcon, Trash } from 'lucide-react';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
 import {
   Accordion,
@@ -19,17 +19,14 @@ import ImageGrid from './image-grid';
 import { useToast } from '@/components/ui/use-toast';
 import DialogFactory from '../../admin/tables/components/dialog-factory';
 import UploadForm from '../../admin/tables/components/upload-form';
-
-interface GroupImagesType {
-  [date: string]: string[];
-}
+import TagManagement from './tag-management';
 
 interface VehicleClientComponentProps {
   id: string;
   initialVehicleInfo: VehicleType;
   images: VehiclePics[];
   profilePic?: string;
-  damageImages: GroupImagesType;
+  vehicleTags: VehicleTagType[];
 }
 
 const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
@@ -37,18 +34,15 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   initialVehicleInfo,
   profilePic,
   images,
-  damageImages
+  vehicleTags
 }) => {
   const vehicleInfo = initialVehicleInfo;
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [file, setFile] = React.useState<File | null>(null);
   const [files, setFiles] = React.useState<File[]>([]);
   const [uploading, setUploading] = React.useState(false);
   const inputFile = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [isDamagePicsDialogOpen, setIsDamagePicsDialogOpen] =
-    React.useState(false);
-  const [isViewDamagePicsDialogOpen, setIsViewDamagePicsDialogOpen] =
     React.useState(false);
 
   const handleSubmit = async (
@@ -56,7 +50,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     key: string
   ) => {
     e.preventDefault();
-
     if (files.length === 0) {
       toast({
         title: 'Error',
@@ -111,7 +104,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
 
   if (vehicleInfo)
     return (
-      <div className="md:w-[800px] min-w-[360px] space-y-5">
+      <div className="md:w-[800px] min-w-[360px] space-y-5 relative">
         <Link
           href={'/biz/vehicles/admin'}
           className="flex gap-2 hover:cursor-pointer text-pink-500 underline"
@@ -120,7 +113,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
         </Link>
 
         <Card className="space-y-7 w-full">
-          <div>{<ImageView src={profilePic} />}</div>
+          <ImageView src={profilePic} />
           {!profilePic && (
             <div className="flex justify-center">
               <Button variant={'link'} onClick={() => setIsDialogOpen(true)}>
@@ -138,7 +131,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         handleSubmit(e, `vehicle_profile/${id}`)
                       }
                       inputFile={inputFile}
-                      setFile={setFile}
+                      setFiles={setFiles}
                       uploading={uploading}
                     />
                   </div>
@@ -146,7 +139,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               />
             </div>
           )}
-          <CardTitle className="text-center">
+          <CardTitle className="text-center mt-5">
             Sunbuggy Fleet{' '}
             <span className="text-orange-500">[{vehicleInfo.name}]</span>
           </CardTitle>
@@ -158,54 +151,29 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                   <EditVehicle id={id} cols={2} />
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="show-normal-images">
-                <AccordionTrigger>Show Normal Images</AccordionTrigger>
+              <AccordionItem value="show-images">
+                <AccordionTrigger>Show Images</AccordionTrigger>
                 <AccordionContent>
                   <ImageGrid images={images} />
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="show-damage-pics">
-                <AccordionTrigger>Show Damage Pics</AccordionTrigger>
+              <AccordionItem value="tag-management">
+                <AccordionTrigger>Tag Management</AccordionTrigger>
                 <AccordionContent>
-                  <Button onClick={() => setIsDamagePicsDialogOpen(true)}>
-                    Add Damage Pics
-                  </Button>
-                  <DialogFactory
-                    isDialogOpen={isViewDamagePicsDialogOpen}
-                    setIsDialogOpen={setIsViewDamagePicsDialogOpen}
-                    title="View Damage Pictures"
-                    children={<div></div>}
-                  />
-                  {Object.keys(damageImages).map((date) => {
-                    const damagePics = damageImages[date];
-                    return (
-                      <div key={date}>
-                        <h2>{date}</h2>
-                        <div className="flex gap-2">
-                          {damagePics.map((pic, idx) => {
-                            return (
-                              <div key={idx} className="w-1/4">
-                                <ImageView src={pic} />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <TagManagement tags={vehicleTags} id={vehicleInfo.id} />
                 </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="add-tag">
-                <AccordionTrigger>Add Tag</AccordionTrigger>
-                <AccordionContent>Placeholder for adding tags</AccordionContent>
               </AccordionItem>
             </Accordion>
           </CardContent>
         </Card>
+        <div className="absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-6 py-1 font-bold">
+          {vehicleInfo.vehicle_status}
+        </div>
         <DialogFactory
           isDialogOpen={isDamagePicsDialogOpen}
           setIsDialogOpen={setIsDamagePicsDialogOpen}
           title="Add Damage Pictures"
+          description="Upload damage pictures for the vehicle."
           children={
             <div>
               <UploadForm

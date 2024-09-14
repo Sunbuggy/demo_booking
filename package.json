@@ -93,7 +93,7 @@
     "postcss": "^8.4.41",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.6",
-    "supabase": "^1.187.10",
+    "supabase": "^1.192.5",
     "typescript": "^5.5.4"
   },
   "packageManager": "pnpm@9.9.0"

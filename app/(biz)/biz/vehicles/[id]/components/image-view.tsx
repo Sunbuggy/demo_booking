@@ -46,49 +46,51 @@ const ImageView: React.FC<ImageViewProps> = ({ src }) => {
         <Skeleton className="min-w-[385px] min-h-[201px] md:h-[448px]" />
       )}
       {isLoaded && (
-        <Image
-          width="100%"
-          height="100%"
-          src={src}
-          fallback="/placeholder.webp"
-          className="transition-opacity opacity-0 duration-[2s]"
-          onLoad={(image) => {
-            const imgElement =
-              image.currentTarget.querySelector('img.ant-image-img');
-            if (imgElement) {
-              imgElement.classList.remove('opacity-0');
-            }
-          }}
-          preview={{
-            toolbarRender: (
-              _,
-              {
-                image: { url },
-                transform: { scale },
-                actions: {
-                  onFlipY,
-                  onFlipX,
-                  onRotateLeft,
-                  onRotateRight,
-                  onZoomOut,
-                  onZoomIn,
-                  onReset
-                }
+        <div className="flex justify-center">
+          <Image
+            height={300}
+            width={400}
+            src={src}
+            fallback="/placeholder.webp"
+            className="transition-opacity opacity-0 duration-[2s]"
+            onLoad={(image) => {
+              const imgElement =
+                image.currentTarget.querySelector('img.ant-image-img');
+              if (imgElement) {
+                imgElement.classList.remove('opacity-0');
               }
-            ) => (
-              <Space size={12} className="toolbar-wrapper">
-                <DownloadOutlined onClick={() => onDownload(url)} />
-                <SwapOutlined rotate={90} onClick={onFlipY} />
-                <SwapOutlined onClick={onFlipX} />
-                <RotateLeftOutlined onClick={onRotateLeft} />
-                <RotateRightOutlined onClick={onRotateRight} />
-                <ZoomOutOutlined disabled={scale === 1} onClick={onZoomOut} />
-                <ZoomInOutlined disabled={scale === 50} onClick={onZoomIn} />
-                <UndoOutlined onClick={onReset} />
-              </Space>
-            )
-          }}
-        />
+            }}
+            preview={{
+              toolbarRender: (
+                _,
+                {
+                  image: { url },
+                  transform: { scale },
+                  actions: {
+                    onFlipY,
+                    onFlipX,
+                    onRotateLeft,
+                    onRotateRight,
+                    onZoomOut,
+                    onZoomIn,
+                    onReset
+                  }
+                }
+              ) => (
+                <Space size={12} className="toolbar-wrapper">
+                  <DownloadOutlined onClick={() => onDownload(url)} />
+                  <SwapOutlined rotate={90} onClick={onFlipY} />
+                  <SwapOutlined onClick={onFlipX} />
+                  <RotateLeftOutlined onClick={onRotateLeft} />
+                  <RotateRightOutlined onClick={onRotateRight} />
+                  <ZoomOutOutlined disabled={scale === 1} onClick={onZoomOut} />
+                  <ZoomInOutlined disabled={scale === 50} onClick={onZoomIn} />
+                  <UndoOutlined onClick={onReset} />
+                </Space>
+              )
+            }}
+          />
+        </div>
       )}
     </>
   );
