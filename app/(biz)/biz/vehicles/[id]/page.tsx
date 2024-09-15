@@ -1,5 +1,5 @@
 import React from 'react';
-import { fetchVehicleInfo } from '@/utils/supabase/queries';
+import { fetchVehicleInfo, getUser } from '@/utils/supabase/queries';
 import { VehiclePics } from '../admin/tables/components/row-actions';
 import { createClient } from '@/utils/supabase/server';
 import VehicleClientComponent from './components/vehicle-client';
@@ -9,7 +9,7 @@ import { VehicleTagType } from '../admin/page';
 async function getVehicleData(id: string) {
   const supabase = createClient();
   const vehicleInfo = await fetchVehicleInfo(supabase, id);
-
+  const userData = await getUser(supabase);
   const fetchVehicleTagInfo = async () => {
     const { data, error } = await supabase
       .from('vehicle_tag')
@@ -47,14 +47,16 @@ async function getVehicleData(id: string) {
     return {
       vehicleInfo: vehicleInfo[0],
       normalImages: normalImages || [],
-      vehicleTags
+      vehicleTags,
+      user: userData
     };
   } catch (error) {
     console.error(`Error fetching objects for ${id} `, error);
     return {
       vehicleInfo: null,
       normalImages: [],
-      vehicleTags: []
+      vehicleTags: [],
+      user: userData
     };
   }
 }
@@ -64,17 +66,24 @@ export default async function VehiclePage({
 }: {
   params: { id: string };
 }) {
-  const { vehicleInfo, normalImages, vehicleTags } = await getVehicleData(
+  const { vehicleInfo, normalImages, vehicleTags, user } = await getVehicleData(
     params.id
   );
 
   return (
-    <VehicleClientComponent
-      id={params.id}
-      initialVehicleInfo={vehicleInfo}
-      profilePic={vehicleInfo?.profile_pic}
-      images={normalImages}
-      vehicleTags={vehicleTags}
-    />
+    <>
+      {user ? (
+        <VehicleClientComponent
+          id={params.id}
+          initialVehicleInfo={vehicleInfo}
+          profilePic={vehicleInfo?.profile_pic}
+          images={normalImages}
+          vehicleTags={vehicleTags}
+          user={user}
+        />
+      ) : (
+        <div>No User</div>
+      )}
+    </>
   );
 }

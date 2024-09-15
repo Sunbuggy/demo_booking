@@ -20,6 +20,7 @@ import { useToast } from '@/components/ui/use-toast';
 import DialogFactory from '../../admin/tables/components/dialog-factory';
 import UploadForm from '../../admin/tables/components/upload-form';
 import TagManagement from './tag-management';
+import { User } from '@supabase/supabase-js';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -27,6 +28,7 @@ interface VehicleClientComponentProps {
   images: VehiclePics[];
   profilePic?: string;
   vehicleTags: VehicleTagType[];
+  user: User;
 }
 
 const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
@@ -34,7 +36,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   initialVehicleInfo,
   profilePic,
   images,
-  vehicleTags
+  vehicleTags,
+  user
 }) => {
   const vehicleInfo = initialVehicleInfo;
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -42,8 +45,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const [uploading, setUploading] = React.useState(false);
   const inputFile = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const [isDamagePicsDialogOpen, setIsDamagePicsDialogOpen] =
-    React.useState(false);
 
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>,
@@ -127,9 +128,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 children={
                   <div>
                     <UploadForm
-                      handleSubmit={(e) =>
-                        handleSubmit(e, `vehicle_profile/${id}`)
-                      }
+                      handleSubmit={(e) => handleSubmit(e, `profile_pic/${id}`)}
                       inputFile={inputFile}
                       setFiles={setFiles}
                       uploading={uploading}
@@ -160,7 +159,11 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               <AccordionItem value="tag-management">
                 <AccordionTrigger>Tag Management</AccordionTrigger>
                 <AccordionContent>
-                  <TagManagement tags={vehicleTags} id={vehicleInfo.id} />
+                  <TagManagement
+                    tags={vehicleTags}
+                    id={vehicleInfo.id}
+                    user={user}
+                  />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -169,28 +172,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
         <div className="absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-6 py-1 font-bold">
           {vehicleInfo.vehicle_status}
         </div>
-        <DialogFactory
-          isDialogOpen={isDamagePicsDialogOpen}
-          setIsDialogOpen={setIsDamagePicsDialogOpen}
-          title="Add Damage Pictures"
-          description="Upload damage pictures for the vehicle."
-          children={
-            <div>
-              <UploadForm
-                handleSubmit={(e) =>
-                  handleSubmit(
-                    e,
-                    `vehicle_damage/${id}/${new Date().toISOString()}`
-                  )
-                }
-                inputFile={inputFile}
-                setFiles={setFiles}
-                uploading={uploading}
-                multiple={true}
-              />
-            </div>
-          }
-        />
       </div>
     );
 };
