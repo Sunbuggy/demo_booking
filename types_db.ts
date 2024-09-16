@@ -657,6 +657,7 @@ export type Database = {
           id: string
           notes: string | null
           tag_status: Database["public"]["Enums"]["tag_status"]
+          tag_type: Database["public"]["Enums"]["vehicle_tag_type"] | null
           updated_at: string | null
           updated_by: string | null
           updated_by_legacy: string | null
@@ -670,6 +671,7 @@ export type Database = {
           id?: string
           notes?: string | null
           tag_status?: Database["public"]["Enums"]["tag_status"]
+          tag_type?: Database["public"]["Enums"]["vehicle_tag_type"] | null
           updated_at?: string | null
           updated_by?: string | null
           updated_by_legacy?: string | null
@@ -683,6 +685,7 @@ export type Database = {
           id?: string
           notes?: string | null
           tag_status?: Database["public"]["Enums"]["tag_status"]
+          tag_type?: Database["public"]["Enums"]["vehicle_tag_type"] | null
           updated_at?: string | null
           updated_by?: string | null
           updated_by_legacy?: string | null
@@ -804,6 +807,7 @@ export type Database = {
       time_entry_status: "clocked_in" | "clocked_out" | "on_break"
       user_type: "employee" | "customer" | "partner"
       vehicle_status: "broken" | "maintenance" | "fine"
+      vehicle_tag_type: "maintenance" | "repair"
       vehicle_type:
         | "shuttle"
         | "buggy"

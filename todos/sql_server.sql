@@ -1,231 +1,191 @@
-CREATE TABLE location (
-    Location_ID INT PRIMARY KEY,
-    City VARCHAR(50)
-);
-
-INSERT INTO location (Location_ID, City) VALUES (122, 'New York');
-INSERT INTO location (Location_ID, City) VALUES (123, 'Dallas');
-INSERT INTO location (Location_ID, City) VALUES (124, 'Chicago');
-INSERT INTO location (Location_ID, City) VALUES (167, 'Boston');
-
-
-CREATE TABLE DEPARTMENT (
-    DEPARTMENT_ID INT PRIMARY KEY,
-    NAME VARCHAR(50),
-    LOCATION_ID INT,
-    FOREIGN KEY (LOCATION_ID) REFERENCES location(Location_ID)
-);
-
-INSERT INTO DEPARTMENT (DEPARTMENT_ID, NAME, LOCATION_ID) VALUES (10, 'Accountiung', 122);
-INSERT INTO DEPARTMENT (DEPARTMENT_ID, NAME, LOCATION_ID) VALUES (20, 'Sales', 124);
-INSERT INTO DEPARTMENT (DEPARTMENT_ID, NAME, LOCATION_ID) VALUES (30, 'Research', 123);
-INSERT INTO DEPARTMENT (DEPARTMENT_ID, NAME, LOCATION_ID) VALUES (40, 'Operations', 167);
-
-
-CREATE TABLE JOB (
-    JOB_ID INT PRIMARY KEY,
-    Designation VARCHAR(50)
-);
-
-INSERT INTO JOB (JOB_ID, Designation) VALUES (667, 'Clerk');
-INSERT INTO JOB (JOB_ID, Designation) VALUES (668, 'Staff');
-INSERT INTO JOB (JOB_ID, Designation) VALUES (669, 'Analyst');
-INSERT INTO JOB (JOB_ID, Designation) VALUES (670, 'SalesPerson');
-INSERT INTO JOB (JOB_ID, Designation) VALUES (671, 'Manager');
-INSERT INTO JOB (JOB_ID, Designation) VALUES (672, 'President');
-
-CREATE TABLE EMPLOYEE (
-    EMPLOYEE_ID INT PRIMARY KEY,
-    Last_Name VARCHAR(50),
-    First_Name VARCHAR(50),
-    Middle_Name VARCHAR(50),
-    Job_ID INT,
-    Manager_ID INT,
-    Hire_Date DATE,
-    Salary INT,
-    Comm INT,
-    Department_ID INT,
-    FOREIGN KEY (Job_ID) REFERENCES JOB(JOB_ID),
-    FOREIGN KEY (Manager_ID) REFERENCES EMPLOYEE(EMPLOYEE_ID),
-    FOREIGN KEY (Department_ID) REFERENCES DEPARTMENT(DEPARTMENT_ID)
-);
-INSERT INTO EMPLOYEE (EMPLOYEE_ID, Last_Name, First_Name, Middle_Name, Job_ID, Manager_ID, Hire_Date, Salary, Comm, Department_ID) 
-VALUES (7500, 'Doe', 'John', 'M', 123, NULL, '2022-01-01', 5000, NULL, 10);
-INSERT INTO EMPLOYEE (EMPLOYEE_ID, Last_Name, First_Name, Middle_Name, Job_ID, Manager_ID, Hire_Date, Salary, Comm, Department_ID) 
-VALUES (7600, 'Doe', 'John', 'M', 123, NULL, '2022-01-01', 5000, NULL, 10);
-INSERT INTO EMPLOYEE (EMPLOYEE_ID, Last_Name, First_Name, Middle_Name, Job_ID, Manager_ID, Hire_Date, Salary, Comm, Department_ID) VALUES (7369, 'SMITH', 'JOHN', 'Q', 667, 7500, '1984-12-17', 800, NULL, 20);
-INSERT INTO EMPLOYEE (EMPLOYEE_ID, Last_Name, First_Name, Middle_Name, Job_ID, Manager_ID, Hire_Date, Salary, Comm, Department_ID) VALUES (7499, 'ALLEN', 'KEVIN', 'J', 670, 7600, '1985-02-20', 1600, 300, 30);
-INSERT INTO EMPLOYEE (EMPLOYEE_ID, Last_Name, First_Name, Middle_Name, Job_ID, Manager_ID, Hire_Date, Salary, Comm, Department_ID) VALUES (7505, 'DOYLE', 'JEAN', 'K', 671, 7500, '1985-04-04', 2850, NULL, 30);
-INSERT INTO EMPLOYEE (EMPLOYEE_ID, Last_Name, First_Name, Middle_Name, Job_ID, Manager_ID, Hire_Date, Salary, Comm, Department_ID) VALUES (7506, 'DENNIS', 'LYNN', 'S', 671, 7500, '1985-05-15', 2750, NULL, 30);
-INSERT INTO EMPLOYEE (EMPLOYEE_ID, Last_Name, First_Name, Middle_Name, Job_ID, Manager_ID, Hire_Date, Salary, Comm, Department_ID) VALUES (7507, 'BAKER', 'LESLIE', 'D', 671, 7500, '1985-06-10', 2200, NULL, 40);
-INSERT INTO EMPLOYEE (EMPLOYEE_ID, Last_Name, First_Name, Middle_Name, Job_ID, Manager_ID, Hire_Date, Salary, Comm, Department_ID) VALUES (7521, 'WARK', 'CYNTHIA', 'D', 670, 7600, '1985-02-22', 1250, 500, 30);
-
-
--- SIMPLE QUERIES:
--- 1. LIST ALL THE EMPLOYEE DETAILS.
-SELECT * FROM EMPLOYEE;
--- 2. LIST ALL THE DEPARTMENT DETAILS
-SELECT * FROM DEPARTMENT;
--- 3. LIST ALL JOB DETAILS.
-SELECT * FROM JOB;
--- 4. LIST ALL THE LOCATIONS.
-SELECT * FROM LOCATION;
--- 5.LIST OUT THE FIRSTNAME,LASTNAME,SALARY,COMMISSION FOR ALL EMPLOYEES.
-SELECT First_Name, Last_Name, Salary, Comm FROM EMPLOYEE;
--- 6. LIST OUT EMPLOYEEID,LASTNAME,DEPARTMENTID FOR ALL EMPLOYEES AND
--- ALIAS EMPLOYEEID AS "ID OF THE EMPLOYEE",LAST NAME AS "NAME OF THE EMPLOYEE",
--- DEPARTMENTID AS "DEP_ID".
-SELECT EMPLOYEE_ID AS "ID OF THE EMPLOYEE", Last_Name AS "NAME OF THE EMPLOYEE", Department_ID AS "DEP_ID" FROM EMPLOYEE;
-
-
--- 7. LIST OUT THE EMPLOYEES ANNUAL SALARY WITH THEIR NAMES ONLY.
-SELECT First_Name, Last_Name, Salary*12 AS "ANNUAL SALARY" FROM EMPLOYEE;
-
-
--- WHERE CONDITION:
--- 1. LIST THE DETAILS ABOUT "SMITH"
-SELECT * FROM EMPLOYEE WHERE Last_Name = 'SMITH';
--- 2. LIST OUT THE EMPLOYEES WHO ARE WORKING IN DEPARTMENT 20.
-SELECT * FROM EMPLOYEE WHERE Department_ID = 20;
--- 3. LIST OUT THE EMPLOYEES WHO ARE EARNING SALARY BETWEEN 3000 AND 4500.
-SELECT * FROM EMPLOYEE WHERE Salary BETWEEN 3000 AND 4500;
--- 4. LIST OUT THE EMPLOYEES WHO ARE WORKING IN DEPARTMENT 10 OR 20.
-SELECT * FROM EMPLOYEE WHERE Department_ID = 10 OR Department_ID = 20;
--- 5. FIND OUT THE EMPLOYEES WHO ARE NOT WORKING IN DEPARTMENT 10 OR 30.
-SELECT * FROM EMPLOYEE WHERE Department_ID != 10 AND Department_ID != 30;
--- 6. LIST OUT THE EMPLOYEES WHOSE NAME STARTS WITH 'S'.
-SELECT * FROM EMPLOYEE WHERE Last_Name LIKE 'S%';
--- 7. LIST OUT THE EMPLOYEES WHOSE NAME STARTS WITH 'S' AND ENDS WITH
--- 'H'.
-SELECT * FROM EMPLOYEE WHERE Last_Name LIKE 'S%H';
--- 8. LIST OUT THE EMPLOYEES WHOSE NAME LENGTH IS 4 AND START WITH 'S'.
-SELECT * FROM EMPLOYEE WHERE Last_Name LIKE 'S___' AND LEN(Last_Name) = 4;
--- 9. LIST OUT EMPLOYEES WHO ARE WORKING IN DEPARRTMENT 10 AND DRAW THE SALARIES
--- MORE THAN 3500.
-SELECT * FROM EMPLOYEE WHERE Department_ID = 10 AND Salary > 3500;
--- 10. LIST OUT THE EMPLOYEES WHO ARE NOT RECEVING COMMISSION.
-SELECT * FROM EMPLOYEE WHERE Comm IS NULL;
-
--- ORDER BY CLAUSE:
--- 1. LIST OUT THE EMPLOYEE ID, LAST NAME IN ASCENDING ORDER BASED ON THE EMPLOYEE ID.
-SELECT EMPLOYEE_ID, Last_Name FROM EMPLOYEE ORDER BY EMPLOYEE_ID;
--- 2. LIST OUT THE EMPLOYEE ID, NAME IN DESCENDING ORDER BASED ON SALARY.
-SELECT EMPLOYEE_ID, Last_Name FROM EMPLOYEE ORDER BY Salary DESC;
--- 3. LIST OUT THE EMPLOYEE DETAILS ACCORDING TO THEIR LAST-NAME IN ASCENDING ORDER AND
--- SALARIES IN DESCENDING ORDER.
-SELECT * FROM EMPLOYEE ORDER BY Last_Name ASC, Salary DESC;
--- 4. LIST OUT THE EMPLOYEE DETAILS ACCORDING TO THEIR LAST-NAME IN ASCENDING ORDER AND
--- THEN ON DEPARTMENT_ID IN DESCENDING ORDER.
-SELECT * FROM EMPLOYEE ORDER BY Last_Name ASC, Department_ID DESC;
 
 
 
--- GROUP BY & HAVING CLAUSE
--- 1. HOW MANY EMPLOYEES WHO ARE IN DIFFERENT DEPARTMENTS WISE IN THE ORGANIZATION.
-SELECT Department_ID, COUNT(*) FROM EMPLOYEE GROUP BY Department_ID;
--- 2. LIST OUT THE DEPARTMENT WISE MAXIMUM SALARY, MINIMUM SALARY, AVERAGE SALARY OF
--- THE EMPLOYEES.
-SELECT Department_ID, MAX(Salary), MIN(Salary), AVG(Salary) FROM EMPLOYEE GROUP BY Department_ID;
--- 3. LIST OUT JOB WISE MAXIMUM SALARY, MINIMUM SALARY, AVERAGE SALARIES OF THE
--- EMPLOYEES.
-SELECT Job_ID, MAX(Salary), MIN(Salary), AVG(Salary) FROM EMPLOYEE GROUP BY Job_ID;
-
--- 4. LIST OUT THE NUMBER OF EMPLOYEES JOINED IN EVERY MONTH IN ASCENDING ORDER.
-SELECT MONTH(Hire_Date), COUNT(*) FROM EMPLOYEE GROUP BY MONTH(Hire_Date) ORDER BY MONTH(Hire_Date);
--- 5. LIST OUT THE NUMBER OF EMPLOYEES FOR EACH MONTH AND YEAR, IN THE ASCENDING
--- ORDER BASED ON THE YEAR, MONTH.
-SELECT YEAR(Hire_Date), MONTH(Hire_Date), COUNT(*) FROM EMPLOYEE GROUP BY YEAR(Hire_Date), MONTH(Hire_Date) ORDER BY YEAR(Hire_Date), MONTH(Hire_Date);
--- 6. LIST OUT THE DEPARTMENT ID HAVING ATLEAST FOUR EMPLOYEES.
-SELECT Department_ID, COUNT(*) FROM EMPLOYEE GROUP BY Department_ID HAVING COUNT(*) >= 4;
--- 7. HOW MANY EMPLOYEES JOINED IN JANUARY MONTH.
-SELECT COUNT(*) FROM EMPLOYEE WHERE MONTH(Hire_Date) = 1;
--- 8. HOW MANY EMPLOYEES JOINED IN JANUARY OR SEPTEMBER MONTH.
-SELECT COUNT(*) FROM EMPLOYEE WHERE MONTH(Hire_Date) = 1 OR MONTH(Hire_Date) = 9;
--- 9. HOW MANY EMPLOYEES WERE JOINED IN 1985.
-SELECT COUNT(*) FROM EMPLOYEE WHERE YEAR(Hire_Date) = 1985;
--- 10. HOW MANY EMPLOYEES WERE JOINED EACH MONTH IN 1985.
-SELECT YEAR(Hire_Date), MONTH(Hire_Date), COUNT(*) FROM EMPLOYEE WHERE YEAR(Hire_Date) = 1985 GROUP BY YEAR(Hire_Date), MONTH(Hire_Date);
--- 11. HOW MANY EMPLOYEES WERE JOINED IN MARCH 1985.
-SELECT COUNT(*) FROM EMPLOYEE WHERE YEAR(Hire_Date) = 1985 AND MONTH(Hire_Date) = 3;
--- 12. WHICH IS THE DEPARTMENT ID, HAVING GREATER THAN OR EQUAL TO 3 EMPLOYEES JOINED IN
--- APRIL 1985.
-SELECT Department_ID, COUNT(*) FROM EMPLOYEE WHERE YEAR(Hire_Date) = 1985 AND MONTH(Hire_Date) = 4 GROUP BY Department_ID HAVING COUNT(*) >= 3;
 
 
--- JOINS
--- 1. LIST OUT EMPLOYEES WITH THEIR DEPARTMENT NAMES.
-SELECT E.*, D.NAME FROM EMPLOYEE E JOIN DEPARTMENT D ON E.Department_ID = D.DEPARTMENT_ID;
--- 2. DISPLAY EMPLOYEES WITH THEIR DESIGNATIONS.
-SELECT E.*, J.Designation FROM EMPLOYEE E JOIN JOB J ON E.Job_ID = J.JOB_ID;
--- 3. DISPLAY THE EMPLOYEES WITH THEIR DEPARTMENT NAMES AND REGIONAL GROUPS.
-SELECT E.*, D.NAME, L.City FROM EMPLOYEE E JOIN DEPARTMENT D ON E.Department_ID = D.DEPARTMENT_ID JOIN LOCATION L ON D.LOCATION_ID = L.LOCATION_ID;
--- 4. HOW MANY EMPLOYEES WHO ARE WORKING IN DIFFERENT DEPARTMENTS AND DISPLAY WITH
--- DEPARTMENT NAMES.
-SELECT D.NAME, COUNT(*) FROM EMPLOYEE E JOIN DEPARTMENT D ON E.Department_ID = D.DEPARTMENT_ID GROUP BY D.NAME;
--- 5. HOW MANY EMPLOYEES WHO ARE WORKING IN SALES DEPARTMENT.
-SELECT COUNT(*) FROM EMPLOYEE E JOIN DEPARTMENT D ON E.Department_ID = D.DEPARTMENT_ID WHERE D.NAME = 'Sales';
--- 6. WHICH IS THE DEPARTMENT HAVING GREATER THAN OR EQUAL TO 5 EMPLOYEES AND DISPLAY
--- THE DEPARTMENT NAMES IN ASCENDING ORDER.
-SELECT D.NAME, COUNT(*) FROM EMPLOYEE E JOIN DEPARTMENT D ON E.Department_ID = D.DEPARTMENT_ID GROUP BY D.NAME HAVING COUNT(*) >= 5 ORDER BY D.NAME;
--- 7. HOW MANY JOBS IN THE ORGANIZATION WITH DESIGNATIONS.
-SELECT J.Designation, COUNT(*) FROM EMPLOYEE E JOIN JOB J ON E.Job_ID = J.JOB_ID GROUP BY J.Designation;
--- 8. HOW MANY EMPLOYEES ARE WORKING IN "NEW YORK".
-SELECT COUNT(*) FROM EMPLOYEE E JOIN DEPARTMENT D ON E.Department_ID = D.DEPARTMENT_ID JOIN LOCATION L ON D.LOCATION_ID = L.LOCATION_ID WHERE L.City = 'New York';
--- 9. DISPLAY THE EMPLOYEE DETAILS WITH SALARY GRADES.
-SELECT E.*, CASE WHEN Salary BETWEEN 1000 AND 2000 THEN 'GRADE A' WHEN Salary BETWEEN 2001 AND 3000 THEN 'GRADE B' WHEN Salary BETWEEN 3001 AND 4000 THEN 'GRADE C' ELSE 'GRADE D' END AS "SALARY GRADE" FROM EMPLOYEE E;
--- 10.LIST OUT THE NO. OF EMPLOYEES ON GRADE WISE.
-SELECT CASE WHEN Salary BETWEEN 1000 AND 2000 THEN 'GRADE A' WHEN Salary BETWEEN 2001 AND 3000 THEN 'GRADE B' WHEN Salary BETWEEN 3001 AND 4000 THEN 'GRADE C' ELSE 'GRADE D' END AS "SALARY GRADE", COUNT(*) FROM EMPLOYEE GROUP BY "SALARY GRADE";
--- 11.DISPLAY THE EMPLOYEE SALARY GRADES AND NO. OF EMPLOYEES BETWEEN 2000 TO 5000
--- RANGE OF SALARY.
-SELECT CASE WHEN Salary BETWEEN 2000 AND 3000 THEN 'GRADE A' WHEN Salary BETWEEN 3001 AND 4000 THEN 'GRADE B' WHEN Salary BETWEEN 4001 AND 5000 THEN 'GRADE C' ELSE 'GRADE D' END AS "SALARY GRADE", COUNT(*) FROM EMPLOYEE WHERE Salary BETWEEN 2000 AND 5000 GROUP BY "SALARY GRADE";
--- 12.DISPLAY THE EMPLOYEE DETAILS WITH THEIR MANAGER NAMES.
-SELECT E.*, M.Last_Name AS "MANAGER NAME" FROM EMPLOYEE E JOIN EMPLOYEE M ON E.Manager_ID = M.EMPLOYEE_ID;
--- 13.DISPLAY THE EMPLOYEE DETAILS WHO EARN MORE THAN THEIR MANAGERS SALARIES.
-SELECT E.*, M.Salary AS "MANAGER SALARY" FROM EMPLOYEE E JOIN EMPLOYEE M ON E.Manager_ID = M.EMPLOYEE_ID WHERE E.Salary > M.Salary;
--- 14.SHOW THE NO. OF EMPLOYEES WORKING UNDER EVERY MANAGER.
-SELECT M.EMPLOYEE_ID AS "MANAGER ID", COUNT(*) FROM EMPLOYEE E JOIN EMPLOYEE M ON E.Manager_ID = M.EMPLOYEE_ID GROUP BY M.EMPLOYEE_ID;
--- 15.DISPLAY EMPLOYEE DETAILS WITH THEIR MANAGER NAMES.
-SELECT E.*, M.Last_Name AS "MANAGER NAME" FROM EMPLOYEE E LEFT JOIN EMPLOYEE M ON E.Manager_ID = M.EMPLOYEE_ID;
--- 16.DISPLAY ALL EMPLOYEES IN SALES OR OPERATION DEPARTMENTS.
-SELECT E.*, D.NAME FROM EMPLOYEE E JOIN DEPARTMENT D ON E.Department_ID = D.DEPARTMENT_ID WHERE D.NAME = 'Sales' OR D.NAME = 'Operations';
+-- 1. Write a query to create route details table using suitable data types for the fields, such as route_id, flight_num, origin_airport, destination_airport, aircraft_id, and distance_miles. Implement the check constraint for the flight number and unique constraint for the route_id fields. Also, make sure that the distance miles field is greater than 0.
 
--- SET OPERATORS
--- 1. LIST OUT THE DISTINCT JOBS IN SALES AND ACCOUNTING DEPARTMENTS.
-SELECT J.Designation FROM EMPLOYEE E JOIN JOB J ON E.Job_ID = J.JOB_ID JOIN DEPARTMENT D ON E.Department_ID = D.DEPARTMENT_ID WHERE D.NAME = 'Sales' OR D.NAME = 'Accounting' GROUP BY J.Designation;
--- 2. LIST OUT ALL THE JOBS IN SALES AND ACCOUNTING DEPARTMENTS.
-SELECT J.Designation FROM EMPLOYEE E JOIN JOB J ON E.Job_ID = J.JOB_ID JOIN DEPARTMENT D ON E.Department_ID = D.DEPARTMENT_ID WHERE D.NAME = 'Sales' OR D.NAME = 'Accounting';
--- 3. LIST OUT THE COMMON JOBS IN RESEARCH AND ACCOUNTING DEPARTMENTS IN ASCENDING
--- ORDER.
-SELECT J.Designation FROM EMPLOYEE E JOIN JOB J ON E.Job_ID = J.JOB_ID JOIN DEPARTMENT D ON E.Department_ID = D.DEPARTMENT_ID WHERE D.NAME = 'Research' INTERSECT SELECT J.Designation FROM EMPLOYEE E JOIN JOB J ON E.Job_ID = J.JOB_ID JOIN DEPARTMENT D ON E.Department_ID = D.DEPARTMENT_ID WHERE D.NAME = 'Accounting' ORDER BY J.Designation;
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'route_details')
+BEGIN
+    CREATE TABLE route_details (
+        route_id INT PRIMARY KEY,
+        flight_num INT CHECK (flight_num > 0),
+        origin_airport VARCHAR(50),
+        destination_airport VARCHAR(50),
+        aircraft_id INT,
+        distance_miles INT CHECK (distance_miles > 0),
+        CONSTRAINT unique_route_id UNIQUE (route_id)
+    );
+END
+GO
+
+-- Write a query to display all the passengers (customers) who have travelled in routes 01 to 25. Take data  from the passengers_on_flights table.
+
+SELECT * FROM passengers WHERE route_id BETWEEN 1 AND 25;
 
 
--- SUB QUERIES
--- 1. DISPLAY THE EMPLOYEES LIST WHO GOT THE MAXIMUM SALARY.
-SELECT * FROM EMPLOYEE WHERE Salary = (SELECT MAX(Salary) FROM EMPLOYEE);
--- 2. DISPLAY THE EMPLOYEES WHO ARE WORKING IN SALES DEPARTMENT.
-SELECT * FROM EMPLOYEE WHERE Department_ID = (SELECT DEPARTMENT_ID FROM DEPARTMENT WHERE NAME = 'Sales');
--- 3. DISPLAY THE EMPLOYEES WHO ARE WORKING AS 'CLERCK'.
-SELECT * FROM EMPLOYEE WHERE Job_ID = (SELECT JOB_ID FROM JOB WHERE Designation = 'Clerk');
--- 4. DISPLAY THE LIST OF EMPLOYEES WHO ARE LIVING IN "NEW YORK".
-SELECT * FROM EMPLOYEE WHERE Department_ID = (SELECT DEPARTMENT_ID FROM DEPARTMENT WHERE LOCATION_ID = (SELECT LOCATION_ID FROM LOCATION WHERE City = 'New York'));
--- 5. FIND OUT NO. OF EMPLOYEES WORKING IN "SALES" DEPARTMENT.
-SELECT COUNT(*) FROM EMPLOYEE WHERE Department_ID = (SELECT DEPARTMENT_ID FROM DEPARTMENT WHERE NAME = 'Sales');
--- 6. UPDATE THE EMPLOYEES SALARIES, WHO ARE WORKING AS CLERK ON THE BASIS OF 10%.
-UPDATE EMPLOYEE SET Salary = Salary + (Salary * 0.10) WHERE Job_ID = (SELECT JOB_ID FROM JOB WHERE Designation = 'Clerk');
--- 7. DELETE THE EMPLOYEES WHO ARE WORKING IN ACCOUNTING DEPARTMENT.
-DELETE FROM EMPLOYEE WHERE Department_ID = (SELECT DEPARTMENT_ID FROM DEPARTMENT WHERE NAME = 'Accounting');
--- 8. DISPLAY THE SECOND HIGHEST SALARY DRAWING EMPLOYEE DETAILS.
-SELECT * FROM EMPLOYEE WHERE Salary = (SELECT MAX(Salary) FROM EMPLOYEE WHERE Salary < (SELECT MAX(Salary) FROM EMPLOYEE));
--- 9. DISPLAY THE N'TH HIGHEST SALARY DRAWING EMPLOYEE DETAILS.
-SELECT * FROM EMPLOYEE WHERE Salary = (SELECT MAX(Salary) FROM EMPLOYEE WHERE Salary < (SELECT MAX(Salary) FROM EMPLOYEE WHERE Salary < (SELECT MAX(Salary) FROM EMPLOYEE)));
--- 10. LIST OUT THE EMPLOYEES WHO EARN MORE THAN EVERY EMPLOYEE IN DEPARTMENT 30.
-SELECT * FROM EMPLOYEE WHERE Salary > ALL (SELECT Salary FROM EMPLOYEE WHERE Department_ID = 30);
--- 11. LIST OUT THE EMPLOYEES WHO EARN MORE THAN THE LOWEST SALARY IN DEPARTMENT 30.
-SELECT * FROM EMPLOYEE WHERE Salary > (SELECT MIN(Salary) FROM EMPLOYEE WHERE Department_ID = 30);
--- 12. FIND OUT WHOSE DEPARTMENT HAS NOT EMPLOYEES.
-SELECT * FROM DEPARTMENT WHERE DEPARTMENT_ID NOT IN (SELECT DISTINCT Department_ID FROM EMPLOYEE);
--- 13. FIND OUT WHICH DEPARTMENT DOES NOT HAVE ANY EMPLOYEES.
-SELECT * FROM DEPARTMENT WHERE DEPARTMENT_ID NOT IN (SELECT Department_ID FROM EMPLOYEE);
--- 14. FIND OUT THE EMPLOYEES WHO EARN GREATER THAN THE AVERAGE SALARY FOR THEIR
--- DEPARTMENT.
-SELECT * FROM EMPLOYEE WHERE Salary > (SELECT AVG(Salary) FROM EMPLOYEE WHERE Department_ID = EMPLOYEE.Department_ID);
+-- Write a query to identify the number of passengers and total revenue in business class from the ticket_details table.
+
+SELECT COUNT(customer_id) AS num_passengers, SUM(price_per_ticket) AS total_revenue
+FROM ticket
+WHERE class_id = 'Business';
+-- Write a query to display the full name of the customer by extracting the first name and last name from the customer table.
+
+SELECT first_name + ' ' + last_name AS full_name FROM customers;
+-- Write a query to extract the customers who have registered and booked a ticket. Use data from the customer and ticket_details tables.
+
+SELECT c.first_name, c.last_name
+FROM customers c
+JOIN ticket t
+ON c.customer_id = t.customer_id;
+
+
+-- Write a query to identify the customer’s first name and last name based on their customer ID and brand (Emirates) from the ticket_details table.
+
+SELECT c.first_name, c.last_name
+FROM customers c
+JOIN ticket t
+ON c.customer_id = t.customer_id
+WHERE t.brand = 'Emirates';
+
+
+-- Write a query to identify the customers who have travelled by Economy Plus class using Group By and Having clause on the passengers_on_flights table.
+
+SELECT customer_id
+FROM passengers
+WHERE class_id = 'Economy Plus'
+GROUP BY customer_id;
+
+
+-- Write a query to identify whether the revenue has crossed 10000 using the IF clause on the ticket_details table.
+
+SELECT CASE 
+         WHEN SUM(price_per_ticket) > 10000 THEN 'Revenue crossed 10000'
+         ELSE 'Revenue is less than 10000'
+       END AS revenue_status 
+FROM ticket;
+-- Write a query to create and grant access to a new user to perform operations on a database.
+
+CREATE LOGIN new_user WITH PASSWORD = 'password';
+CREATE USER new_user FOR LOGIN new_user;
+EXEC sp_addrolemember 'db_datareader', 'new_user';
+EXEC sp_addrolemember 'db_datawriter', 'new_user';
+
+-- Write a query to find the maximum ticket price for each class using window functions on the ticket_details table.
+
+
+SELECT class_id, MAX(price_per_ticket) OVER (PARTITION BY class_id) AS max_ticket_price 
+FROM ticket;
+
+-- Write a query to extract the passengers whose route ID is 4 by improving the speed and performance of the passengers_on_flights table.
+
+SELECT * FROM passengers WHERE route_id = 4;
+CREATE INDEX idx_route_id ON passengers(route_id);
+
+--  For the route ID 4, write a query to view the execution plan of the passengers_on_flights table.
+
+GO
+
+-- Enable the display of the execution plan
+SET SHOWPLAN_ALL ON;
+GO
+
+-- The SELECT statement to analyze the execution plan
+SELECT * FROM passengers WHERE route_id = 4;
+GO
+
+-- Disable the display of the execution plan
+SET SHOWPLAN_ALL OFF;
+GO
+
+-- Write a query to calculate the total price of all tickets booked by a customer across different aircraft IDs using rollup function.
+
+SELECT customer_id, aircraft_id, SUM(price_per_ticket) AS total_price
+FROM ticket
+GROUP BY ROLLUP (customer_id, aircraft_id);
+
+-- Write a query to create a view with only business class customers along with the brand of airlines.
+
+GO
+CREATE VIEW business_class_customers AS
+SELECT c.first_name, c.last_name, t.brand
+FROM customers c
+JOIN ticket  t
+ON c.customer_id = t.customer_id
+WHERE t.class_id = 'Business';
+GO
+
+
+-- Write a query to create a stored procedure to get the details of all passengers flying between a range of routes defined in run time. Also, return an error message if the table doesn't exist.
+
+CREATE PROCEDURE get_passengers_by_route_range
+    @route_start INT,
+    @route_end INT
+AS
+BEGIN
+    IF EXISTS (SELECT * FROM sys.tables WHERE name = 'passengers_on_flights')
+    BEGIN
+        SELECT * FROM passengers WHERE route_id BETWEEN @route_start AND @route_end;
+    END
+    ELSE
+    BEGIN
+        SELECT 'Table does not exist' AS error_message;
+    END
+END;
+GO
+
+-- Write a query to create a stored procedure that extracts all the details from the routes table where the travelled distance is more than 2000 miles.
+
+CREATE PROCEDURE get_long_distance_routes
+AS
+BEGIN
+    SELECT * FROM routes WHERE distance_miles > 2000;
+END;
+
+
+-- Write a query to create a stored procedure that groups the distance travelled by each flight into three categories. The categories are, short distance travel (SDT) for >=0 AND <= 2000 miles, intermediate distance travel (IDT) for >2000 AND <=6500, and long-distance travel (LDT) for >6500.
+GO
+CREATE PROCEDURE categorize_distance_travelled
+AS
+BEGIN
+    SELECT route_id, distance_miles,
+    CASE
+        WHEN distance_miles >= 0 AND distance_miles <= 2000 THEN 'Short Distance Travel (SDT)'
+        WHEN distance_miles > 2000 AND distance_miles <= 6500 THEN 'Intermediate Distance Travel (IDT)'
+        WHEN distance_miles > 6500 THEN 'Long Distance Travel (LDT)'
+    END AS distance_category
+    FROM routes;
+END;
+
+
+-- Write a query to extract ticket purchase date, customer ID, class ID and specify if the complimentary services are provided for the specific class using a stored function in stored procedure on the ticket details table.
+-- Condition:
+-- If the class is Business and Economy Plus, then complimentary services are given as Yes, else it is No
+GO
+CREATE FUNCTION check_complimentary_services
+    (@class_id VARCHAR(50))
+RETURNS VARCHAR(3)
+AS
+BEGIN
+    DECLARE @complimentary_services VARCHAR(3);
+    IF @class_id = 'Business' OR @class_id = 'Economy Plus'
+    BEGIN
+        SET @complimentary_services = 'Yes';
+    END
+    ELSE
+    BEGIN
+        SET @complimentary_services = 'No';
+    END
+    RETURN @complimentary_services;
+END;
+
+GO
+
+-- Write a query to extract the first record of the customer whose last name ends with Scott using a cursor from the customer table.
+
+DECLARE @first_name VARCHAR(50);
+DECLARE @last_name VARCHAR(50);
+DECLARE customer_cursor CURSOR FOR
+SELECT first_name, last_name
+FROM customers
+WHERE last_name LIKE '%Scott';

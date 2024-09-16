@@ -751,3 +751,31 @@ export const updateVehicleTag = cache(
     return data;
   }
 );
+
+export const changeVehicleStatusToMaintenance = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .update({ vehicle_status: 'maintenance' })
+      .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const changeVehicleStatusToBroken = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .update({ vehicle_status: 'broken' })
+      .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
