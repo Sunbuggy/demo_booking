@@ -29,7 +29,7 @@ const LocationCard = ({
   return (
     <Card
       key={locationKey}
-      className="p-2 flex flex-col gap-2"
+      className="LocationCardStyle"
     >
       <CardTitle>
         <span className="text-sm font-light flex gap-2 items-center">

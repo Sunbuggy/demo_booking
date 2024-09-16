@@ -733,3 +733,21 @@ export const updateVehicle = cache(
     return data;
   }
 );
+
+export const updateVehicleTag = cache(
+  async (
+    supabase: SupabaseClient,
+    tag: Database['public']['Tables']['vehicle_tag']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicle_tag')
+      .update(tag)
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);

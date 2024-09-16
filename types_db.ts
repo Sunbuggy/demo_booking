@@ -648,6 +648,63 @@ export type Database = {
           },
         ]
       }
+      vehicle_tag: {
+        Row: {
+          close_tag_comment: string | null
+          created_at: string | null
+          created_by: string | null
+          created_by_legacy: string | null
+          id: string
+          notes: string | null
+          tag_status: Database["public"]["Enums"]["tag_status"]
+          updated_at: string | null
+          updated_by: string | null
+          updated_by_legacy: string | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          close_tag_comment?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          created_by_legacy?: string | null
+          id?: string
+          notes?: string | null
+          tag_status?: Database["public"]["Enums"]["tag_status"]
+          updated_at?: string | null
+          updated_by?: string | null
+          updated_by_legacy?: string | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          close_tag_comment?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          created_by_legacy?: string | null
+          id?: string
+          notes?: string | null
+          tag_status?: Database["public"]["Enums"]["tag_status"]
+          updated_at?: string | null
+          updated_by?: string | null
+          updated_by_legacy?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_tag_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_tag_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           color: string | null
@@ -662,6 +719,7 @@ export type Database = {
           seats: number
           state: string | null
           type: Database["public"]["Enums"]["vehicle_type"]
+          vehicle_status: Database["public"]["Enums"]["vehicle_status"]
           vin: string | null
           year: number
         }
@@ -678,6 +736,7 @@ export type Database = {
           seats?: number
           state?: string | null
           type: Database["public"]["Enums"]["vehicle_type"]
+          vehicle_status?: Database["public"]["Enums"]["vehicle_status"]
           vin?: string | null
           year?: number
         }
@@ -694,6 +753,7 @@ export type Database = {
           seats?: number
           state?: string | null
           type?: Database["public"]["Enums"]["vehicle_type"]
+          vehicle_status?: Database["public"]["Enums"]["vehicle_status"]
           vin?: string | null
           year?: number
         }
@@ -740,8 +800,10 @@ export type Database = {
         | "past_due"
         | "unpaid"
         | "paused"
+      tag_status: "open" | "closed"
       time_entry_status: "clocked_in" | "clocked_out" | "on_break"
       user_type: "employee" | "customer" | "partner"
+      vehicle_status: "broken" | "maintenance" | "fine"
       vehicle_type:
         | "shuttle"
         | "buggy"

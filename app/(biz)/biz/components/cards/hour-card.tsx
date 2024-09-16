@@ -27,7 +27,7 @@ const HourCard = async ({
   );
   const groupHr = hr.split(':')[0];
   return (
-    <Card key={hr} className="p-0 ">
+    <Card key={hr} className="p-0 HourCardStyle">
       <HourCardTitle hr={hr} data={data} display_cost={display_cost} />
       <MainGroups
         date={date}
