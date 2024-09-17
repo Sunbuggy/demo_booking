@@ -19,7 +19,8 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
     updated_at: null,
     updated_by: null,
     updated_by_legacy: null,
-    vehicle_id: null
+    vehicle_id: null,
+    tag_type: 'maintenance'
   });
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,6 +43,24 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
             className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
             placeholder="Describe the issue with the vehicle..."
           />
+        </div>
+        {/* tag status select */}
+
+        <div>
+          <label
+            htmlFor="tag-status"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Maintenance or Repair?
+          </label>
+          <select
+            id="tag-status"
+            name="tag-status"
+            className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+          >
+            <option value="maintenance">maintenance</option>
+            <option value="repair">repair</option>
+          </select>
         </div>
         {/* <DialogFactory
           isDialogOpen={isDamagePicsDialogOpen}
