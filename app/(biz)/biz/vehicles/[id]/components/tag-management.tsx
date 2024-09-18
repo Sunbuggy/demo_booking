@@ -47,7 +47,7 @@ const TagManagement = ({
           Add A New Tag
         </Button>
         <DialogFactory
-          children={<TagForm user={user} tag={null} />}
+          children={<TagForm user={user} tag={null} id={id} />}
           title="Add a New Tag"
           description="Add a new tag to the vehicle."
           isDialogOpen={isAddTagDialogOpen}

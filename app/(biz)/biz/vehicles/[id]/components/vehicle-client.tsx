@@ -169,7 +169,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
             </Accordion>
           </CardContent>
         </Card>
-        <div className="absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 bg-green-500 text-white px-6 py-1 font-bold">
+        <div className={
+          `absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === "maintenance" ? "bg-yellow-600" : vehicleInfo.vehicle_status === "broken" ? "bg-red-600" : "bg-green-600"}`}>
           {vehicleInfo.vehicle_status}
         </div>
       </div>

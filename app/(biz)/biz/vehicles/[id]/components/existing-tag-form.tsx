@@ -4,7 +4,7 @@ import { VehicleTagType } from '../../admin/page';
 import { Textarea } from '@/components/ui/textarea';
 import dayjs from 'dayjs';
 import { User } from '@supabase/supabase-js';
-import { updateVehicleTag } from '@/utils/supabase/queries';
+import { checkAndChangeVehicleStatus, updateVehicleTag } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { DialogClose } from '@/components/ui/dialog';
@@ -95,6 +95,7 @@ const ExistingTagForm = ({
           });
         });
     }
+    checkAndChangeVehicleStatus(supabase, tag?.vehicle_id || '');
   };
 
   return (

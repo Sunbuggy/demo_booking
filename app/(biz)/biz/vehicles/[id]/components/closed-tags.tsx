@@ -21,7 +21,7 @@ const ClosedTags = ({ tags, user }: { tags: VehicleTagType[]; user: User }) => {
   console.log('how many tags: ', tags.length);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 w-full">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
       {/* sort tags by created_at date then map */}
       {tags
         .sort(
