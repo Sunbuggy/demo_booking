@@ -267,7 +267,7 @@ const toPacificTime = (date: Date) => {
   const dateCellRender = (value: Dayjs) => {
     const date_data = monthData.filter(
       (reservation) =>
-        dayjs(reservation.sch_date).format('YYYY-MM-DD') ===
+        toPacificTime(new Date(reservation.sch_date)).format('YYYY-MM-DD') ===
         toPacificTime(value.toDate()).format('YYYY-MM-DD')
     );
     return (
