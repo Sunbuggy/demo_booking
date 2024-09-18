@@ -220,6 +220,18 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
   // React.useEffect(() => {
   // }, [month_total_location_cost]);
 
+const toPacificTime = (date: Date) => {
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  };
+  const pacificDate = new Intl.DateTimeFormat('en-US', options).format(new Date(date));
+  return dayjs(pacificDate);
+};
+
+
   const monthCellRender = (value: Dayjs) => {
     const month_data = yearData.filter(
       (reservation) =>
@@ -256,7 +268,7 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
     const date_data = monthData.filter(
       (reservation) =>
         dayjs(reservation.sch_date).format('YYYY-MM-DD') ===
-        value.format('YYYY-MM-DD')
+        toPacificTime(value.toDate()).format('YYYY-MM-DD')
     );
     return (
       <DateCell date_data={date_data} role={role} showRevenue={showRevenue} />

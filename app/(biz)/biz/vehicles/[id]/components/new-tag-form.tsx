@@ -9,8 +9,11 @@ import { changeVehicleStatusToBroken, changeVehicleStatusToMaintenance, checkAnd
 import { createClient } from '@/utils/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { DialogClose } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 
 const NewTagForm = ({ user, id }: { user: User; id: string }) => {
+  const supabase = createClient();
+  const router = useRouter();
   const {toast} = useToast()
   const [isDamagePicsDialogOpen, setIsDamagePicsDialogOpen] =
     React.useState(false);
@@ -110,6 +113,37 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
 
 
   };
+
+    React.useEffect(() => {
+    const channel = supabase
+      .channel('realtime vehicle tags & vehicle')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle_tag'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router]);
 
   return (
     <div className=" mx-auto  p-8 rounded-lg shadow-md w-full">

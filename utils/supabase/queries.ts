@@ -57,6 +57,25 @@ export const getUserDetails = cache(
   }
 );
 
+export const getUserDetailsById = cache(
+  async (supabase: SupabaseClient, id: string): Promise<UserDetails[] | null | undefined> => {
+    try {
+      if (!supabase) {
+        return null;
+      }
+      const { data: userDetails} = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', id);
+
+      return userDetails as UserDetails[];
+    } catch (error) {
+      console.error(error);
+    }
+
+  }
+);
+
 export const getAllUsers = cache(async (supabase: SupabaseClient) => {
   const { data, error } = await supabase.from('users').select();
   if (error) {

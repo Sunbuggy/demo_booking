@@ -43,6 +43,7 @@ const BizPage = async ({
     // Proceed with your query execution
     const data = (await fetch_from_old_db(query)) as Reservation[];
     const loadedData = data && (await getTimeSortedData(data));
+    console.log('loaded data',data)
     return (
       <div className="min-h-screen flex flex-col gap-5">
         {role && role > 299 && (
