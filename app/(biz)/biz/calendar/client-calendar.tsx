@@ -220,18 +220,6 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
   // React.useEffect(() => {
   // }, [month_total_location_cost]);
 
-const toPacificTime = (date: Date) => {
-  const options: Intl.DateTimeFormatOptions = {
-    timeZone: 'America/Los_Angeles',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  };
-  const pacificDate = new Intl.DateTimeFormat('en-US', options).format(new Date(date));
-  return dayjs(pacificDate);
-};
-
-
   const monthCellRender = (value: Dayjs) => {
     const month_data = yearData.filter(
       (reservation) =>
@@ -251,7 +239,6 @@ const toPacificTime = (date: Date) => {
   };
 
   const handleDateClick = (value: Dayjs, selectInfo: SelectInfo) => {
-    console.log(value)
     setLoading(true);
     setYear(value.format('YYYY'));
     const month = String(value.month() + 1);
@@ -268,18 +255,20 @@ const toPacificTime = (date: Date) => {
   const dateCellRender = (value: Dayjs) => {
     const date_data = monthData.filter(
       (reservation) =>
-        toPacificTime(new Date(reservation.sch_date)).format('YYYY-MM-DD') ===
-        toPacificTime(value.toDate()).format('YYYY-MM-DD')
+        dayjs(reservation.sch_date)
+        .add(process.env.NODE_ENV === 'production' ? 1 : 0, 'day')
+        .format('YYYY-MM-DD') ===
+        value.format('YYYY-MM-DD')
     );
     return (
-      <DateCell date_data={date_data} role={role} showRevenue={showRevenue} cellDate={value}  />
+      <DateCell date_data={date_data} role={role} showRevenue={showRevenue} />
     );
   };
 
   const cellRender: CalendarProps<Dayjs>['cellRender'] = (current, info) => {
-    if (info.type === 'date') return dateCellRender(toPacificTime(current.toDate()));
+    if (info.type === 'date') return dateCellRender(current);
     if (info.type === 'month') {
-      return monthCellRender(toPacificTime(current.toDate()));
+      return monthCellRender(current);
     }
     return info.originNode;
   };

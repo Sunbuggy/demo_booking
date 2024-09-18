@@ -3,18 +3,15 @@ import { vehiclesList } from '@/utils/old_db/helpers';
 import React from 'react';
 import { Reservation } from '../types';
 import { ImFilesEmpty } from 'react-icons/im';
-import { Dayjs } from 'dayjs';
 
 const DateCell = ({
   date_data,
   role,
-  showRevenue,
-  cellDate
+  showRevenue
 }: {
   date_data: Reservation[];
   role: number;
   showRevenue: boolean;
-  cellDate?: Dayjs;
 }) => {
   // Collect daily revenue adding up the total_cost of each reservation in date_data
   const daily_revenue = date_data.reduce((acc, reservation) => {
@@ -61,7 +58,6 @@ const DateCell = ({
 
   return (
     <div>
-      {cellDate?.format('YYYY-MM-DD')}
       {!total_vehicle_count ? (
         <div>
           <span className="text-red-600">{<ImFilesEmpty />}</span>
