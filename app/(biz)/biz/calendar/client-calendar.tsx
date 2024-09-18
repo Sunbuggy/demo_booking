@@ -276,9 +276,9 @@ const toPacificTime = (date: Date) => {
   };
 
   const cellRender: CalendarProps<Dayjs>['cellRender'] = (current, info) => {
-    if (info.type === 'date') return dateCellRender(current);
+    if (info.type === 'date') return dateCellRender(toPacificTime(current.toDate()));
     if (info.type === 'month') {
-      return monthCellRender(current);
+      return monthCellRender(toPacificTime(current.toDate()));
     }
     return info.originNode;
   };
