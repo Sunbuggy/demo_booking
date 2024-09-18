@@ -251,6 +251,7 @@ const toPacificTime = (date: Date) => {
   };
 
   const handleDateClick = (value: Dayjs, selectInfo: SelectInfo) => {
+    console.log(value)
     setLoading(true);
     setYear(value.format('YYYY'));
     const month = String(value.month() + 1);
@@ -271,7 +272,7 @@ const toPacificTime = (date: Date) => {
         toPacificTime(value.toDate()).format('YYYY-MM-DD')
     );
     return (
-      <DateCell date_data={date_data} role={role} showRevenue={showRevenue} />
+      <DateCell date_data={date_data} role={role} showRevenue={showRevenue}  />
     );
   };
 
