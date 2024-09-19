@@ -28,9 +28,11 @@ const onDownload = (imgUrl: string) => {
 
 interface ImageViewProps {
   src: string | undefined;
+  height: number;
+  width: number;
 }
 
-const ImageView: React.FC<ImageViewProps> = ({ src }) => {
+const ImageView: React.FC<ImageViewProps> = ({ src, width, height }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -48,8 +50,8 @@ const ImageView: React.FC<ImageViewProps> = ({ src }) => {
       {isLoaded && (
         <div className="flex justify-center">
           <Image
-            height={300}
-            width={400}
+            height={height}
+            width={width}
             src={src}
             fallback="/placeholder.webp"
             className="transition-opacity opacity-0 duration-[2s]"

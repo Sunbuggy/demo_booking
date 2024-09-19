@@ -21,6 +21,7 @@ import DialogFactory from '../../admin/tables/components/dialog-factory';
 import UploadForm from '../../admin/tables/components/upload-form';
 import TagManagement from './tag-management';
 import { User } from '@supabase/supabase-js';
+import { createId } from '@paralleldrive/cuid2';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -43,6 +44,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
     React.useState(false);
   const [isUpdateUploadDialogOpen, setIsUpdateUploadDialogOpen] =
+    React.useState(false);
+  const [isUploadImagesDialogOpen, setIsUploadImagesDialogOpen] =
     React.useState(false);
   const [files, setFiles] = React.useState<File[]>([]);
   const [uploading, setUploading] = React.useState(false);
@@ -120,7 +123,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
         </Link>
 
         <Card className="space-y-7 w-full">
-          <ImageView src={profilePic} />
+          <ImageView width={400} height={300} src={profilePic} />
           {!profilePic && (
             <div className="flex justify-center">
               <Button
@@ -156,10 +159,10 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 Update Profile Pic
               </Button>
               <DialogFactory
-                title="Add Profile Pic"
+                title="Update the Profile Pic"
                 setIsDialogOpen={setIsUpdateUploadDialogOpen}
                 isDialogOpen={isUpdateUploadDialogOpen}
-                description="Upload a profile picture for the vehicle."
+                description="Update the profile picture for the vehicle. Please just upload a single image."
                 children={
                   <div>
                     <UploadForm
@@ -182,7 +185,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
           <CardContent>
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="edit-vehicle">
-                <AccordionTrigger>Edit Vehicle</AccordionTrigger>
+                <AccordionTrigger>Edit Vehicle Details</AccordionTrigger>
                 <AccordionContent>
                   <EditVehicle id={id} cols={2} />
                 </AccordionContent>
@@ -190,7 +193,33 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               <AccordionItem value="show-images">
                 <AccordionTrigger>Show Images</AccordionTrigger>
                 <AccordionContent>
-                  <ImageGrid images={images} />
+                  <div className="flex flex-col gap-5">
+                    <div>
+                      <Button onClick={() => setIsUploadImagesDialogOpen(true)}>
+                        Upload Images
+                      </Button>
+                      <DialogFactory
+                        title="Upload Images for This Vehicle"
+                        setIsDialogOpen={setIsUploadImagesDialogOpen}
+                        isDialogOpen={isUploadImagesDialogOpen}
+                        description="Upload one or multiple images for the vehicle."
+                        children={
+                          <div>
+                            <UploadForm
+                              handleSubmit={(e) =>
+                                handleSubmit(e, `vehicles/${id}/${createId()}`)
+                              }
+                              inputFile={inputFile}
+                              setFiles={setFiles}
+                              uploading={uploading}
+                              multiple={true}
+                            />
+                          </div>
+                        }
+                      />
+                    </div>
+                    <ImageGrid images={images} width={200} height={120} />
+                  </div>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="tag-management">

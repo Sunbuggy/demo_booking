@@ -22,4 +22,5 @@ retrieve vehicle maintenance history [done]
 
 update vehicle profile pic [done]
 -create an updater/put route for pics in route.ts [done]
+add upload normal pics on show images
 add pics for damages
