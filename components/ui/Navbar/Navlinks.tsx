@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/sheet';
 import { UserNav } from '@/app/(biz)/biz/users/admin/tables/components/user-nav';
 import { UserType } from '@/app/(biz)/biz/users/types';
-import QrCodeScanner from '../qrscanner'; // QR code scanner component
+import QrCodeScanner from '../QrScanner'; // QR code scanner component
 import { usePathname } from 'next/navigation';
 
 interface NavlinksProps {

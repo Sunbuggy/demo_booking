@@ -1,4 +1,3 @@
-'use client'
 import NameForm from '@/components/ui/AccountForms/NameForm';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
@@ -7,7 +6,6 @@ import {
   getUserDetails
 } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
-import QrHistory from '@/app/account/components/QrHistory';
 // import RoleForm from '@/components/ui/AccountForms/RoleForm';
 type TimeEntry = {
   id: any;

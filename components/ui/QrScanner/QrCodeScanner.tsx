@@ -18,6 +18,7 @@ const QrCodeScanner = () => {
 
             // Add the new result if it hasn't been scanned already
             if (!scanResults.includes(scannedCode)) {
+              // Update the results without re-rendering the entire component
               setScanResults((prevResults) => [...prevResults, scannedCode]);
             }
           }
@@ -34,16 +35,16 @@ const QrCodeScanner = () => {
         });
     }
 
+    // Cleanup function to stop the camera when the component unmounts
     return () => {
       if (controlsRef.current) {
         controlsRef.current.stop();
       }
     };
-  }, [scanResults]); // Added scanResults as a dependency
+  }, []); // Removed scanResults from the dependency array
 
   return (
     <div className="qr-scanner">
-      {/* <h1>QR Code Scanner</h1> */}
       {error && <p className="error">{error}</p>}
       <video ref={videoRef} style={{ width: '100%', height: 'auto' }} />
 
@@ -53,7 +54,6 @@ const QrCodeScanner = () => {
           <ul>
             {scanResults.map((result, index) => (
               <li key={index}>
-                {/* Render the result as a clickable link */}
                 <a href={result.startsWith('http') ? result : `http://${result}`}  rel="noopener noreferrer">
                   {result}
                 </a>

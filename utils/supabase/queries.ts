@@ -779,3 +779,48 @@ export const changeVehicleStatusToBroken = cache(
     return data;
   }
 );
+
+
+// export const insertIntoqr_historys = cache(
+//   async (
+//     supabase: SupabaseClient,
+//     qr_history: Database['public']['Tables']['qr_history']['Insert']
+//   ) => {
+//     const { data, error } = await supabase.from('qr_history').insert([qr_history]);
+//     if (error) {
+//       console.error(error);
+//       return [];
+//     }
+//     return data;
+//   }
+// );
+// export const fetchqr_historyInfo = cache(
+//   async (supabase: SupabaseClient, qr_history_id: string) => {
+//     const { data, error } = await supabase
+//       .from('qr_history')
+//       .select()
+//       .eq('id', qr_history_id);
+//     if (error) {
+//       console.error(error);
+//       return [];
+//     }
+//     return data;
+//   }
+// );
+// export const updateqr_history = cache(
+//   async (
+//     supabase: SupabaseClient,
+//     qr_history: Database['public']['Tables']['qr_history']['Update'],
+//     id: string
+//   ) => {
+//     const { data, error } = await supabase
+//       .from('qr_history')
+//       .update(qr_history)
+//       .eq('id', id);
+//     if (error) {
+//       console.error(error);
+//       return [];
+//     }
+//     return data;
+//   }
+// );
