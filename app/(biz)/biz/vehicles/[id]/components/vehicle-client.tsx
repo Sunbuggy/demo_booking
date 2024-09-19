@@ -40,7 +40,10 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   user
 }) => {
   const vehicleInfo = initialVehicleInfo;
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
+    React.useState(false);
+  const [isUpdateUploadDialogOpen, setIsUpdateUploadDialogOpen] =
+    React.useState(false);
   const [files, setFiles] = React.useState<File[]>([]);
   const [uploading, setUploading] = React.useState(false);
   const inputFile = React.useRef<HTMLInputElement>(null);
@@ -48,7 +51,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
 
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>,
-    key: string
+    key: string,
+    update_pic?: boolean
   ) => {
     e.preventDefault();
     if (files.length === 0) {
@@ -76,7 +80,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
         {
-          method: 'POST',
+          method: update_pic ? 'PUT' : 'POST',
           body: formData
         }
       );
@@ -100,6 +104,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       });
     } finally {
       setUploading(false);
+      // reload page
+      window.location.reload();
     }
   };
 
@@ -117,18 +123,49 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
           <ImageView src={profilePic} />
           {!profilePic && (
             <div className="flex justify-center">
-              <Button variant={'link'} onClick={() => setIsDialogOpen(true)}>
+              <Button
+                variant={'link'}
+                onClick={() => setIsNewUploadDialogOpen(true)}
+              >
                 Upload Profile Pic
               </Button>
               <DialogFactory
                 title="Add Profile Pic"
-                setIsDialogOpen={setIsDialogOpen}
-                isDialogOpen={isDialogOpen}
+                setIsDialogOpen={setIsNewUploadDialogOpen}
+                isDialogOpen={isNewUploadDialogOpen}
                 description="Upload a profile picture for the vehicle."
                 children={
                   <div>
                     <UploadForm
                       handleSubmit={(e) => handleSubmit(e, `profile_pic/${id}`)}
+                      inputFile={inputFile}
+                      setFiles={setFiles}
+                      uploading={uploading}
+                    />
+                  </div>
+                }
+              />
+            </div>
+          )}
+          {profilePic && (
+            <div className="flex justify-center">
+              <Button
+                variant={'link'}
+                onClick={() => setIsUpdateUploadDialogOpen(true)}
+              >
+                Update Profile Pic
+              </Button>
+              <DialogFactory
+                title="Add Profile Pic"
+                setIsDialogOpen={setIsUpdateUploadDialogOpen}
+                isDialogOpen={isUpdateUploadDialogOpen}
+                description="Upload a profile picture for the vehicle."
+                children={
+                  <div>
+                    <UploadForm
+                      handleSubmit={(e) =>
+                        handleSubmit(e, `profile_pic/${id}`, true)
+                      }
                       inputFile={inputFile}
                       setFiles={setFiles}
                       uploading={uploading}
@@ -169,8 +206,9 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
             </Accordion>
           </CardContent>
         </Card>
-        <div className={
-          `absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === "maintenance" ? "bg-yellow-600" : vehicleInfo.vehicle_status === "broken" ? "bg-red-600" : "bg-green-600"}`}>
+        <div
+          className={`absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === 'maintenance' ? 'bg-yellow-600' : vehicleInfo.vehicle_status === 'broken' ? 'bg-red-600' : 'bg-green-600'}`}
+        >
           {vehicleInfo.vehicle_status}
         </div>
       </div>

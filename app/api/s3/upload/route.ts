@@ -101,6 +101,61 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  if (
+    !process.env.STORAGE_ACCESSKEY ||
+    !process.env.STORAGE_SECRETKEY ||
+    !process.env.STORAGE_REGION ||
+    !process.env.STORAGE_ENDPOINT
+  ) {
+    console.error('Missing AWS credentials');
+    return NextResponse.json(
+      { success: false, message: 'Missing AWS credentials' },
+      { status: 500 }
+    );
+  }
+
+  try {
+    const formData = await req.formData();
+    const files = formData.getAll('files') as File[];
+    const contentType = formData.get('contentType') as string;
+    const key = formData.get('key') as string;
+    const bucket = formData.get('bucket') as string;
+
+    if (files.length === 0 || !contentType || !key) {
+      return NextResponse.json(
+        { success: false, message: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    const file = files[0];
+    const buffer = await file.arrayBuffer();
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: Buffer.from(buffer),
+      ContentType: contentType,
+      ACL: 'public-read'
+    });
+    await s3Client.send(command);
+    const endpoint = process.env.STORAGE_ENDPOINT!;
+    return NextResponse.json({
+      success: true,
+      message: 'File uploaded successfully',
+      key,
+      endpoint,
+      url: `${endpoint}/${bucket}/${key}`
+    });
+  } catch (error) {
+    console.error('Error uploading file to S3:', error);
+    return NextResponse.json(
+      { success: false, message: 'Error uploading file to S3' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(req: Request) {
   // if no s3 client throw an error
   const url = new URL(req.url);
