@@ -1,101 +1,107 @@
+'use client';
 import { useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
-import { createClient } from '@/utils/supabase/client'; // Import your client setup
-import { getUser } from '@/utils/supabase/queries'; // Reuse the getUser function
-import { Database } from '@/types_db'; // Assuming this is where your types are defined
+import { createClient } from '@/utils/supabase/server'; // Supabase server client
+import { getUserDetails, insertIntoQrHistorys, fetchQrHistoryInfo } from '@/utils/supabase/queries';
 
 const QrCodeScanner = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [scanResults, setScanResults] = useState<string[]>([]); // Store multiple results
-  const [previousScanResults, setPreviousScanResults] = useState<string[]>([]); // Store previously scanned QR codes
   const [error, setError] = useState<string | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
-  const supabase = createClient(); // Initialize Supabase client
-  
-  // Function to fetch the user's scanned QR codes from Supabase
-  const fetchUserScans = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('qr_history')
-        .select('link')
-        .eq('user', userId);
-      
-      if (error) {
-        console.error('Error fetching previous scan results:', error.message);
-        return;
-      }
+  const [loading, setLoading] = useState<boolean>(true); // Loading state for history
+  const [userId, setUserId] = useState<string | null>(null); // Track user ID
 
-      if (data) {
-        // Filter out null links before updating state
-        const validLinks = data.map((row) => row.link).filter((link): link is string => link !== null);
-        setPreviousScanResults(validLinks);
-      }
-    } catch (err) {
-      console.error('Error fetching scanned codes:', err);
-    }
-  };
-
-  // Function to save the scanned QR code to the database
-  const saveScanToDatabase = async (userId: string, link: string) => {
-    try {
-      const { error } = await supabase
-        .from('qr_history')
-        .insert({ user: userId, link });
-
-      if (error) {
-        console.error('Error saving scan to database:', error.message);
-      }
-    } catch (err) {
-      console.error('Error saving scan to database:', err);
-    }
-  };
-
+  // Fetch user details and previous QR code scans
   useEffect(() => {
-    const fetchAndStartScanner = async () => {
-      const user = await getUser(supabase); // Get the logged-in user
-      if (!user) {
-        setError('User is not logged in');
+    const supabase = createClient();
+
+    const fetchUserAndHistory = async () => {
+      // Fetch user details
+      const user = await getUserDetails(supabase);
+      if (!user || user.length === 0) {
+        setError('User not authenticated.');
+        setLoading(false);
         return;
       }
+      const userId = user[0].id; // Assuming 'id' is the user's ID
+      setUserId(userId);
 
-      await fetchUserScans(user.id); // Fetch previously scanned QR codes for the user
-
-      const codeReader = new BrowserMultiFormatReader();
-
-      if (videoRef.current) {
-        codeReader
-          .decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
-            if (result) {
-              const scannedCode = result.getText();
-
-              // Add the new result if it hasn't been scanned already
-              if (!scanResults.includes(scannedCode)) {
-                setScanResults((prevResults) => [...prevResults, scannedCode]);
-                saveScanToDatabase(user.id, scannedCode); // Save the scan to the database
-              }
-            }
-
-            if (err && !(err.name === 'NotFoundException')) {
-              setError('Error scanning QR Code. Please try again.');
-            }
-          })
-          .then((controls) => {
-            controlsRef.current = controls;
-          })
-          .catch((err) => {
-            setError(`Camera error: ${err.message}`);
-          });
+      // Fetch previously scanned QR codes
+      const qrHistory = await fetchUserQrHistory(supabase, userId);
+      if (qrHistory && qrHistory.length > 0) {
+        const scannedLinks = qrHistory.map((entry: any) => entry.qr_link);
+        setScanResults(scannedLinks);
       }
+
+      setLoading(false);
     };
 
-    fetchAndStartScanner();
+    fetchUserAndHistory();
+  }, []);
+
+  // Handle QR code scanning and saving results
+  useEffect(() => {
+    const codeReader = new BrowserMultiFormatReader();
+
+    if (videoRef.current && userId) {
+      codeReader
+        .decodeFromVideoDevice(undefined, videoRef.current, async (result, err) => {
+          if (result) {
+            const scannedCode = result.getText();
+
+            // Add the new result if it hasn't been scanned already
+            if (!scanResults.includes(scannedCode)) {
+              setScanResults((prevResults) => [...prevResults, scannedCode]);
+
+              // Save the new QR code to the database
+              const supabase = createClient();
+              await insertIntoQrHistorys(supabase, {
+                user: userId,
+                link: scannedCode, 
+                // scanned_at: new Date(), // Add a timestamp
+              });
+            }
+          }
+
+          if (err && !(err.name === 'NotFoundException')) {
+            setError('Error scanning QR Code. Please try again.');
+          }
+        })
+        .then((controls) => {
+          controlsRef.current = controls;
+        })
+        .catch((err) => {
+          setError(`Camera error: ${err.message}`);
+        });
+    }
 
     return () => {
       if (controlsRef.current) {
         controlsRef.current.stop();
       }
     };
-  }, [scanResults, supabase]); // Added scanResults and supabase as dependencies
+  }, [scanResults, userId]); // Dependency includes userId
+
+  // Fetch user's QR code history (modified fetchQrHistoryInfo)
+  const fetchUserQrHistory = async (supabase: any, userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('qr_history')
+        .select('qr_link')
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error fetching QR history:', error);
+        return [];
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error fetching user QR history:', error);
+      return [];
+    }
+  };
 
   return (
     <div className="qr-scanner">
@@ -104,11 +110,14 @@ const QrCodeScanner = () => {
 
       <div>
         <h2>Scanned QR Codes:</h2>
-        {scanResults.length > 0 ? (
+        {loading ? (
+          <p>Loading your scan history...</p>
+        ) : scanResults.length > 0 ? (
           <ul>
             {scanResults.map((result, index) => (
               <li key={index}>
-                <a href={result.startsWith('http') ? result : `http://${result}`}  rel="noopener noreferrer">
+                {/* Render the result as a clickable link */}
+                <a href={result.startsWith('http') ? result : `http://${result}`} target="_blank" rel="noopener noreferrer">
                   {result}
                 </a>
               </li>
@@ -116,23 +125,6 @@ const QrCodeScanner = () => {
           </ul>
         ) : (
           <p>No QR codes detected yet.</p>
-        )}
-      </div>
-
-      <div>
-        <h2>Previously Scanned QR Codes:</h2>
-        {previousScanResults.length > 0 ? (
-          <ul>
-            {previousScanResults.map((result, index) => (
-              <li key={index}>
-                <a href={result.startsWith('http') ? result : `http://${result}`}  rel="noopener noreferrer">
-                  {result}
-                </a>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No previously scanned QR codes found.</p>
         )}
       </div>
     </div>
