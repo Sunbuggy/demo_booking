@@ -255,7 +255,9 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
   const dateCellRender = (value: Dayjs) => {
     const date_data = monthData.filter(
       (reservation) =>
-        dayjs(reservation.sch_date).format('YYYY-MM-DD') ===
+        dayjs(reservation.sch_date)
+        .add(process.env.NODE_ENV === 'production' ? 1 : 0, 'day')
+        .format('YYYY-MM-DD') ===
         value.format('YYYY-MM-DD')
     );
     return (

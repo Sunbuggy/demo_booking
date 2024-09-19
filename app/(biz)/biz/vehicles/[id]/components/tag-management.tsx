@@ -8,6 +8,8 @@ import { Eye, Plus } from 'lucide-react';
 import { VehicleTagType } from '../../admin/page';
 import dayjs from 'dayjs';
 import { User } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
 
 const TagManagement = ({
   id,
@@ -18,6 +20,10 @@ const TagManagement = ({
   tags: VehicleTagType[];
   user: User;
 }) => {
+
+    const supabase = createClient();
+  const router = useRouter();
+
   const [isAddTagDialogOpen, setIsAddTagDialogOpen] = React.useState(false);
   const [isDisplayClosedTagsDialogOpen, setDisplayClosedTagsDialogOpen] =
     React.useState(false);
@@ -31,6 +37,37 @@ const TagManagement = ({
   const handleCloseTagDialog = (tagId: string) => {
     setOpenTagDialogs((prev) => ({ ...prev, [tagId]: false }));
   };
+
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('realtime vehicle tags and vehicle')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle_tag'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -47,7 +84,7 @@ const TagManagement = ({
           Add A New Tag
         </Button>
         <DialogFactory
-          children={<TagForm user={user} tag={null} />}
+          children={<TagForm user={user} tag={null} id={id} />}
           title="Add a New Tag"
           description="Add a new tag to the vehicle."
           isDialogOpen={isAddTagDialogOpen}

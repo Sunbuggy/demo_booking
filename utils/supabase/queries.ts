@@ -57,6 +57,25 @@ export const getUserDetails = cache(
   }
 );
 
+export const getUserDetailsById = cache(
+  async (supabase: SupabaseClient, id: string): Promise<UserDetails[] | null | undefined> => {
+    try {
+      if (!supabase) {
+        return null;
+      }
+      const { data: userDetails} = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', id);
+
+      return userDetails as UserDetails[];
+    } catch (error) {
+      console.error(error);
+    }
+
+  }
+);
+
 export const getAllUsers = cache(async (supabase: SupabaseClient) => {
   const { data, error } = await supabase.from('users').select();
   if (error) {
@@ -734,6 +753,20 @@ export const updateVehicle = cache(
   }
 );
 
+export const createVehicleTag = cache(
+  async (
+    supabase: SupabaseClient,
+    tag: Database['public']['Tables']['vehicle_tag']['Insert']
+  ) => {
+    const { data, error } = await supabase.from('vehicle_tag').insert([tag]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
 export const updateVehicleTag = cache(
   async (
     supabase: SupabaseClient,
@@ -779,6 +812,59 @@ export const changeVehicleStatusToBroken = cache(
     return data;
   }
 );
+
+export const changeVehicleStatusToFine = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .update({ vehicle_status: 'fine' })
+      .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// create a checkandchangevehiclestatus function
+// check all the statuses inside the vehicle_tag table for the given vehicle_id
+// if all the statuses are 'closed' then change the vehicle status to 'fine'
+// if any of the statuses are 'open' and all their statuses are 'maintenance' then change the vehicle status to 'maintenance'
+// if any of the statuses are 'open' and any of their statuses are 'repair' then change the vehicle status to 'broken'
+
+export const checkAndChangeVehicleStatus = async (
+  supabase: SupabaseClient,
+  vehicle_id: string
+) => {
+  const { data: vehicleTags, error: tagError } = await supabase
+    .from('vehicle_tag')
+    .select('tag_status, tag_type')
+    .eq('vehicle_id', vehicle_id);
+  if (tagError) {
+    console.error(tagError);
+    return [];
+  }
+
+  const allClosed = vehicleTags.every((tag) => tag.tag_status === 'closed');
+  if (allClosed) {
+    return changeVehicleStatusToFine(supabase, vehicle_id);
+  }
+
+  const allMaintenance = vehicleTags.every(
+    (tag) => tag.tag_status === 'open' && tag.tag_type === 'maintenance'
+  );
+  if (allMaintenance) {
+    return changeVehicleStatusToMaintenance(supabase, vehicle_id);
+  }
+
+  const allRepair = vehicleTags.some(
+    (tag) => tag.tag_status === 'open' && tag.tag_type === 'repair'
+  );
+  if (allRepair) {
+    return changeVehicleStatusToBroken(supabase, vehicle_id);
+  }
+}
 
 export const insertIntoQrHistorys = cache(
   async (

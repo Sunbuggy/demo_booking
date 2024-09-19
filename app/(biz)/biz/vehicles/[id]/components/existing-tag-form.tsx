@@ -4,10 +4,11 @@ import { VehicleTagType } from '../../admin/page';
 import { Textarea } from '@/components/ui/textarea';
 import dayjs from 'dayjs';
 import { User } from '@supabase/supabase-js';
-import { updateVehicleTag } from '@/utils/supabase/queries';
+import { checkAndChangeVehicleStatus, getUserDetailsById, updateVehicleTag, UserDetails } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { DialogClose } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 
 const ExistingTagForm = ({
   tag,
@@ -20,7 +21,9 @@ const ExistingTagForm = ({
 }) => {
   const supabase = createClient();
   const { toast } = useToast();
-
+  const [createdBy, setCreatedBy] = React.useState<string | null>(null);
+  const [updatedBy, setUpdatedBy] = React.useState<string | null>(null);
+  const router = useRouter()
   const [formValues, setFormValues] = React.useState<VehicleTagType>({
     tag_status: tag?.tag_status || 'open',
     notes: tag?.notes || '',
@@ -45,11 +48,10 @@ const ExistingTagForm = ({
         ...formValues,
         updated_by: user.id,
         updated_at: new Date().toISOString(),
-        close_tag_comment: formValues.close_tag_comment,
+        close_tag_comment: `(${user.user_metadata.full_name}) ${formValues.close_tag_comment}` ,
         tag_status: 'closed'
       };
       // close the tag
-      console.log('close the tag');
       await updateVehicleTag(supabase, updatedFormValues, tag?.id || '')
         .then((res) => {
           toast({
@@ -95,23 +97,82 @@ const ExistingTagForm = ({
           });
         });
     }
+    checkAndChangeVehicleStatus(supabase, tag?.vehicle_id || '');
   };
+  const new_created_by_id= tag?.created_by as string
+  const new_updated_by_id= tag?.updated_by as string
+
+
+  React.useEffect(() => {
+    if(new_created_by_id && new_created_by_id !== ""){
+      getUserDetailsById(supabase, new_created_by_id)
+        .then((res) => {
+          if (res)
+          setCreatedBy(res[0].full_name || "");
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    }
+    if( new_updated_by_id && new_updated_by_id !== ""){
+      getUserDetailsById(supabase, new_updated_by_id)
+        .then((res) => {
+          if (res)
+          setUpdatedBy(res[0].full_name || "");
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    }
+  }, []);
+
+
+ React.useEffect(() => {
+    const channel = supabase
+      .channel('realtime vehicle tags and vehicle')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle_tag'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router]);
 
   return (
     <div className="max-w-md mx-auto  p-8 rounded-lg shadow-md w-full">
       <div className="text-gray-700 text-md mb-5">
-        opened by {tag?.created_by_legacy || tag?.created_by || 'unknown user'}
+        opened by {tag?.created_by_legacy || createdBy || 'unknown user'}
         <br />
         on {dayjs(tag?.created_at || '').format('YY/MM/DD@hh:mm a')}
         <br />
         {(tag?.updated_by_legacy || tag?.updated_by) &&
-          `last updated by: ${tag?.updated_by_legacy || tag?.updated_by || 'unknown user'} @ ${dayjs(tag?.updated_at || '').format('YY/MM/DD@hh:mm a')}`}
+          `last updated by: ${tag?.updated_by_legacy || updatedBy || 'unknown user'} @ ${dayjs(tag?.updated_at || '').format('YY/MM/DD@hh:mm a')}`}
         {/* if there is a close_tag_comment and the status is closed add a closed by here */}
         {tag?.close_tag_comment && tag?.tag_status === 'closed' && (
           <>
             <br />
             closed by{' '}
-            {tag?.updated_by_legacy || tag?.updated_by || 'unknown user'}
+            {tag?.updated_by_legacy || updatedBy || 'unknown user'}
             <br />
             on{' '}
             {tag?.updated_at
