@@ -14,9 +14,13 @@ crud vehicles
 -Update Vehicle [done]
 -Delete Vehicle [done]
 
-insert profile pic for vehicle
--create a profile pic directory in bucket
--make key vehicle_id
+insert profile pic for vehicle [done]
+-create a profile pic directory in bucket [done]
 insert damage pic for vehicle
-insert maintenance for vehicle (put vehicle in maintenance mode)
-retrieve vehicle maintenance history
+insert maintenance for vehicle (put vehicle in maintenance mode) [done]
+retrieve vehicle maintenance history [done]
+
+update vehicle profile pic [done]
+-create an updater/put route for pics in route.ts [done]
+add upload normal pics on show images
+add pics for damages

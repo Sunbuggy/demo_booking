@@ -21,6 +21,7 @@ import DialogFactory from '../../admin/tables/components/dialog-factory';
 import UploadForm from '../../admin/tables/components/upload-form';
 import TagManagement from './tag-management';
 import { User } from '@supabase/supabase-js';
+import { createId } from '@paralleldrive/cuid2';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -40,7 +41,12 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   user
 }) => {
   const vehicleInfo = initialVehicleInfo;
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
+    React.useState(false);
+  const [isUpdateUploadDialogOpen, setIsUpdateUploadDialogOpen] =
+    React.useState(false);
+  const [isUploadImagesDialogOpen, setIsUploadImagesDialogOpen] =
+    React.useState(false);
   const [files, setFiles] = React.useState<File[]>([]);
   const [uploading, setUploading] = React.useState(false);
   const inputFile = React.useRef<HTMLInputElement>(null);
@@ -48,7 +54,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
 
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>,
-    key: string
+    key: string,
+    update_pic?: boolean
   ) => {
     e.preventDefault();
     if (files.length === 0) {
@@ -76,7 +83,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
         {
-          method: 'POST',
+          method: update_pic ? 'PUT' : 'POST',
           body: formData
         }
       );
@@ -100,6 +107,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       });
     } finally {
       setUploading(false);
+      // reload page
+      window.location.reload();
     }
   };
 
@@ -114,21 +123,52 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
         </Link>
 
         <Card className="space-y-7 w-full">
-          <ImageView src={profilePic} />
+          <ImageView width={400} height={300} src={profilePic} />
           {!profilePic && (
             <div className="flex justify-center">
-              <Button variant={'link'} onClick={() => setIsDialogOpen(true)}>
+              <Button
+                variant={'link'}
+                onClick={() => setIsNewUploadDialogOpen(true)}
+              >
                 Upload Profile Pic
               </Button>
               <DialogFactory
                 title="Add Profile Pic"
-                setIsDialogOpen={setIsDialogOpen}
-                isDialogOpen={isDialogOpen}
+                setIsDialogOpen={setIsNewUploadDialogOpen}
+                isDialogOpen={isNewUploadDialogOpen}
                 description="Upload a profile picture for the vehicle."
                 children={
                   <div>
                     <UploadForm
                       handleSubmit={(e) => handleSubmit(e, `profile_pic/${id}`)}
+                      inputFile={inputFile}
+                      setFiles={setFiles}
+                      uploading={uploading}
+                    />
+                  </div>
+                }
+              />
+            </div>
+          )}
+          {profilePic && (
+            <div className="flex justify-center">
+              <Button
+                variant={'link'}
+                onClick={() => setIsUpdateUploadDialogOpen(true)}
+              >
+                Update Profile Pic
+              </Button>
+              <DialogFactory
+                title="Update the Profile Pic"
+                setIsDialogOpen={setIsUpdateUploadDialogOpen}
+                isDialogOpen={isUpdateUploadDialogOpen}
+                description="Update the profile picture for the vehicle. Please just upload a single image."
+                children={
+                  <div>
+                    <UploadForm
+                      handleSubmit={(e) =>
+                        handleSubmit(e, `profile_pic/${id}`, true)
+                      }
                       inputFile={inputFile}
                       setFiles={setFiles}
                       uploading={uploading}
@@ -145,7 +185,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
           <CardContent>
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="edit-vehicle">
-                <AccordionTrigger>Edit Vehicle</AccordionTrigger>
+                <AccordionTrigger>Edit Vehicle Details</AccordionTrigger>
                 <AccordionContent>
                   <EditVehicle id={id} cols={2} />
                 </AccordionContent>
@@ -153,7 +193,33 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               <AccordionItem value="show-images">
                 <AccordionTrigger>Show Images</AccordionTrigger>
                 <AccordionContent>
-                  <ImageGrid images={images} />
+                  <div className="flex flex-col gap-5">
+                    <div>
+                      <Button onClick={() => setIsUploadImagesDialogOpen(true)}>
+                        Upload Images
+                      </Button>
+                      <DialogFactory
+                        title="Upload Images for This Vehicle"
+                        setIsDialogOpen={setIsUploadImagesDialogOpen}
+                        isDialogOpen={isUploadImagesDialogOpen}
+                        description="Upload one or multiple images for the vehicle."
+                        children={
+                          <div>
+                            <UploadForm
+                              handleSubmit={(e) =>
+                                handleSubmit(e, `vehicles/${id}/${createId()}`)
+                              }
+                              inputFile={inputFile}
+                              setFiles={setFiles}
+                              uploading={uploading}
+                              multiple={true}
+                            />
+                          </div>
+                        }
+                      />
+                    </div>
+                    <ImageGrid images={images} width={200} height={120} />
+                  </div>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="tag-management">
@@ -169,8 +235,9 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
             </Accordion>
           </CardContent>
         </Card>
-        <div className={
-          `absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === "maintenance" ? "bg-yellow-600" : vehicleInfo.vehicle_status === "broken" ? "bg-red-600" : "bg-green-600"}`}>
+        <div
+          className={`absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === 'maintenance' ? 'bg-yellow-600' : vehicleInfo.vehicle_status === 'broken' ? 'bg-red-600' : 'bg-green-600'}`}
+        >
           {vehicleInfo.vehicle_status}
         </div>
       </div>

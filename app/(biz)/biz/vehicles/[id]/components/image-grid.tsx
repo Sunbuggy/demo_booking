@@ -2,7 +2,15 @@ import React, { useState } from 'react';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
 import ImageView from './image-view';
 
-const ImageGrid = ({ images }: { images: VehiclePics[] }) => {
+const ImageGrid = ({
+  images,
+  width,
+  height
+}: {
+  images: VehiclePics[];
+  width: number;
+  height: number;
+}) => {
   const [currentPage, setCurrentPage] = useState(0);
   const imagesPerPage = 4;
   const totalPages = Math.ceil(images.length / imagesPerPage);
@@ -20,10 +28,14 @@ const ImageGrid = ({ images }: { images: VehiclePics[] }) => {
 
   return (
     <div className="flex flex-col items-center">
+      {
+        // if there are no images to display show a message
+        images.length === 0 && <p>No images to display</p>
+      }
       <div className="grid md:grid-cols-4 grid-cols-1 md:gap-4 gap-2">
         {selectedImages.map((pic, index) => (
           <div key={index}>
-            <ImageView src={pic.url} />
+            <ImageView src={pic.url} height={height} width={width} />
           </div>
         ))}
       </div>

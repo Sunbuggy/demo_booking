@@ -5,6 +5,8 @@ import { cache } from 'react';
 
 // Utility function to get the current date and time in PST
 
+// Get Generated uuid from supabase
+
 // Usage
 export const getUser = cache(async (supabase: SupabaseClient) => {
   try {
@@ -58,12 +60,15 @@ export const getUserDetails = cache(
 );
 
 export const getUserDetailsById = cache(
-  async (supabase: SupabaseClient, id: string): Promise<UserDetails[] | null | undefined> => {
+  async (
+    supabase: SupabaseClient,
+    id: string
+  ): Promise<UserDetails[] | null | undefined> => {
     try {
       if (!supabase) {
         return null;
       }
-      const { data: userDetails} = await supabase
+      const { data: userDetails } = await supabase
         .from('users')
         .select('*')
         .eq('id', id);
@@ -72,7 +77,6 @@ export const getUserDetailsById = cache(
     } catch (error) {
       console.error(error);
     }
-
   }
 );
 
@@ -758,7 +762,10 @@ export const createVehicleTag = cache(
     supabase: SupabaseClient,
     tag: Database['public']['Tables']['vehicle_tag']['Insert']
   ) => {
-    const { data, error } = await supabase.from('vehicle_tag').insert([tag]);
+    const { data, error } = await supabase
+      .from('vehicle_tag')
+      .insert([tag])
+      .select('id');
     if (error) {
       console.error(error);
       return [];
@@ -864,14 +871,16 @@ export const checkAndChangeVehicleStatus = async (
   if (allRepair) {
     return changeVehicleStatusToBroken(supabase, vehicle_id);
   }
-}
+};
 
 export const insertIntoQrHistorys = cache(
   async (
     supabase: SupabaseClient,
     qr_history: Database['public']['Tables']['qr_history']['Insert']
   ) => {
-    const { data, error } = await supabase.from('qr_history').insert([qr_history]);
+    const { data, error } = await supabase
+      .from('qr_history')
+      .insert([qr_history]);
     if (error) {
       console.error(error);
       return [];
