@@ -403,88 +403,92 @@ const ExistingTagForm = ({
         <AccordionItem value="tag-pics">
           <AccordionTrigger>Associated Images</AccordionTrigger>
           <AccordionContent className="flex flex-col gap-4">
-            <Button onClick={() => setIsNewUploadDialogOpen(true)}>
-              Upload more images
-            </Button>
-            <DialogFactory
-              title="Add Profile Pic"
-              setIsDialogOpen={setIsNewUploadDialogOpen}
-              isDialogOpen={isNewUploadDialogOpen}
-              description="Upload a profile picture for the vehicle."
-              children={
-                <>
-                  {selectedFiles.length === 0 && (
+            {status !== 'closed' && (
+              <div>
+                <DialogFactory
+                  title="Add Profile Pic"
+                  setIsDialogOpen={setIsNewUploadDialogOpen}
+                  isDialogOpen={isNewUploadDialogOpen}
+                  description="Upload a profile picture for the vehicle."
+                  children={
                     <>
-                      <Label
-                        htmlFor="file"
-                        className="block text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-2 text-center cursor-pointer"
-                      >
-                        <Input
-                          type="file"
-                          id="file"
-                          className="hidden"
-                          multiple
-                          ref={inputFile}
-                          onChange={handleFileChange}
-                          accept="image/png, image/jpeg"
-                        />
-                        Click Here To Upload Pics
-                      </Label>
-                      <Label
-                        htmlFor="camera"
-                        className="flex w-full justify-center gap-5 text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-2 text-center cursor-pointer mt-2 lg:hidden"
-                      >
-                        <Input
-                          type="file"
-                          id="camera"
-                          className="hidden"
-                          capture="environment"
-                          onChange={handleFileChange}
-                          accept="image/png, image/jpeg"
-                        />
-                        {/*camera icon  */}
-                        <CameraIcon size={24} />
-                        Click Here To Take A Picture
-                      </Label>
-                    </>
-                  )}
-                  {selectedFiles.length > 0 && (
-                    <>
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {selectedFiles.map((file, index) => (
-                          <div key={index} className="relative">
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt={`Selected file ${index + 1}`}
-                              className="w-20 h-20 object-cover"
+                      {selectedFiles.length === 0 && (
+                        <>
+                          <Label
+                            htmlFor="file"
+                            className="block text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-2 text-center cursor-pointer"
+                          >
+                            <Input
+                              type="file"
+                              id="file"
+                              className="hidden"
+                              multiple
+                              ref={inputFile}
+                              onChange={handleFileChange}
+                              accept="image/png, image/jpeg"
                             />
-                            <button
-                              type="button"
-                              onClick={() => removeFile(index)}
-                              className="absolute top-0 right-0 bg-red-500 w-[20px] h-[20px] text-white rounded-full p-1 flex items-center justify-center"
-                            >
-                              &minus;
-                            </button>
+                            Click Here To Upload Pics
+                          </Label>
+                          <Label
+                            htmlFor="camera"
+                            className="flex w-full justify-center gap-5 text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-2 text-center cursor-pointer mt-2 lg:hidden"
+                          >
+                            <Input
+                              type="file"
+                              id="camera"
+                              className="hidden"
+                              capture="environment"
+                              onChange={handleFileChange}
+                              accept="image/png, image/jpeg"
+                            />
+                            {/*camera icon  */}
+                            <CameraIcon size={24} />
+                            Click Here To Take A Picture
+                          </Label>
+                        </>
+                      )}
+                      {selectedFiles.length > 0 && (
+                        <>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {selectedFiles.map((file, index) => (
+                              <div key={index} className="relative">
+                                <img
+                                  src={URL.createObjectURL(file)}
+                                  alt={`Selected file ${index + 1}`}
+                                  className="w-20 h-20 object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeFile(index)}
+                                  className="absolute top-0 right-0 bg-red-500 w-[20px] h-[20px] text-white rounded-full p-1 flex items-center justify-center"
+                                >
+                                  &minus;
+                                </button>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                      <DialogClose asChild>
-                        <Button
-                          onClick={() =>
-                            handleSubmit(
-                              `vehicle_damage/${tag?.vehicle_id}/${tag?.id}`,
-                              false
-                            )
-                          }
-                        >
-                          Upload
-                        </Button>
-                      </DialogClose>
+                          <DialogClose asChild>
+                            <Button
+                              onClick={() =>
+                                handleSubmit(
+                                  `vehicle_damage/${tag?.vehicle_id}/${tag?.id}`,
+                                  false
+                                )
+                              }
+                            >
+                              Upload
+                            </Button>
+                          </DialogClose>
+                        </>
+                      )}
                     </>
-                  )}
-                </>
-              }
-            />
+                  }
+                />
+                <Button onClick={() => setIsNewUploadDialogOpen(true)}>
+                  Upload more images
+                </Button>
+              </div>
+            )}
             <ImageGrid images={images} width={100} height={75} />
           </AccordionContent>
         </AccordionItem>

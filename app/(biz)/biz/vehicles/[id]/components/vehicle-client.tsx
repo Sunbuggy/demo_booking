@@ -22,6 +22,8 @@ import UploadForm from '../../admin/tables/components/upload-form';
 import TagManagement from './tag-management';
 import { User } from '@supabase/supabase-js';
 import { createId } from '@paralleldrive/cuid2';
+import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -41,6 +43,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   user
 }) => {
   const vehicleInfo = initialVehicleInfo;
+  const supabase = createClient();
+  const router = useRouter();
   const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
     React.useState(false);
   const [isUpdateUploadDialogOpen, setIsUpdateUploadDialogOpen] =
@@ -111,6 +115,37 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       window.location.reload();
     }
   };
+
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('realtime vehicle tags and vehicle')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle_tag'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router]);
 
   if (vehicleInfo)
     return (
@@ -196,10 +231,10 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                   <div className="flex flex-col gap-5">
                     <div>
                       <Button onClick={() => setIsUploadImagesDialogOpen(true)}>
-                        Upload Images
+                        Upload More Images
                       </Button>
                       <DialogFactory
-                        title="Upload Images for This Vehicle"
+                        title="Upload More  Images for This Vehicle"
                         setIsDialogOpen={setIsUploadImagesDialogOpen}
                         isDialogOpen={isUploadImagesDialogOpen}
                         description="Upload one or multiple images for the vehicle."
