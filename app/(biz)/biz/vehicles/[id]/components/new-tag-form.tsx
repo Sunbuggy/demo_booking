@@ -23,7 +23,6 @@ import { CameraIcon } from 'lucide-react';
 const NewTagForm = ({ user, id }: { user: User; id: string }) => {
   const supabase = createClient();
   const [files, setFiles] = React.useState<File[]>([]);
-  const [ultimateId, setUltimateId] = React.useState('');
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
   const inputFile = React.useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -200,7 +199,6 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
       .catch((err) => {
         console.error(err);
       });
-    console.log(`vehicle_damage/${id}/${ultimateId}`);
   };
 
   React.useEffect(() => {
