@@ -756,6 +756,20 @@ export const updateVehicle = cache(
   }
 );
 
+export const getVehicleIdFromName = cache(
+  async (supabase: SupabaseClient, vehicle_name: string) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('id')
+      .eq('name', vehicle_name);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
 export const createVehicleTag = cache(
   async (
     supabase: SupabaseClient,
