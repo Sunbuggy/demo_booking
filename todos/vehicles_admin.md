@@ -19,8 +19,33 @@ insert profile pic for vehicle [done]
 insert damage pic for vehicle
 insert maintenance for vehicle (put vehicle in maintenance mode) [done]
 retrieve vehicle maintenance history [done]
+retrieve vehicle damage history [done]
+retrieve vehicle profile pic [done]
+retrieve vehicle pics [done]
+retrieve vehicle pics for damages [done]
+remove vehicle from maintenance mode [done]
+remove vehicle from broken/damage mode [done]
+remove image from vehicle [done]
 
 update vehicle profile pic [done]
 -create an updater/put route for pics in route.ts [done]
-add upload normal pics on show images
-add pics for damages
+add upload normal pics on show images [done]
+add pics for damages [done]
+remove pics for damages [done]
+add pics for maintenance [done]
+
+pretrip form
+-Create Pretrip Form
+-Read Pretrip Form
+
+Vehicle Location Table
+
+Add Current Location for Vehicle
+Show Current Location for Vehicle
+Show Past Locations for Vehicle Based On Date
+Create Future Locations for Vehicle Based On Date
+Show Future Locations for Vehicle Based On Date
+update available vehicles table
+
+Available Vehicles Table
+for every vehicle type display number of available vehicles for a given date and location

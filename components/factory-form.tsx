@@ -39,10 +39,12 @@ export type FieldConfig = {
 
 const FieldComponent = ({
   field,
-  fieldConfig
+  fieldConfig,
+  allDisabled
 }: {
   field: any;
   fieldConfig: FieldConfig;
+  allDisabled?: boolean;
 }) => {
   switch (fieldConfig.type) {
     case 'input':
@@ -51,11 +53,16 @@ const FieldComponent = ({
           {...field}
           placeholder={fieldConfig.placeholder}
           value={field.value || ''}
+          disabled={allDisabled}
         />
       );
     case 'select':
       return (
-        <Select onValueChange={field.onChange} value={field.value}>
+        <Select
+          onValueChange={field.onChange}
+          value={field.value}
+          disabled={allDisabled}
+        >
           <SelectTrigger>
             <SelectValue placeholder={fieldConfig.placeholder} />
           </SelectTrigger>
@@ -70,16 +77,34 @@ const FieldComponent = ({
       );
     case 'checkbox':
       return (
-        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+        <Checkbox
+          checked={field.value}
+          onCheckedChange={field.onChange}
+          disabled={allDisabled}
+        />
       );
     case 'textarea':
-      return <Textarea {...field} placeholder={fieldConfig.placeholder} />;
+      return (
+        <Textarea
+          {...field}
+          placeholder={fieldConfig.placeholder}
+          disabled={allDisabled}
+        />
+      );
     case 'radio':
       return (
-        <RadioGroup onValueChange={field.onChange} value={field.value}>
+        <RadioGroup
+          onValueChange={field.onChange}
+          value={field.value}
+          disabled={allDisabled}
+        >
           {fieldConfig.options?.map((option) => (
             <div key={option.value} className="flex items-center space-x-2">
-              <RadioGroupItem value={option.value} id={option.value} />
+              <RadioGroupItem
+                value={option.value}
+                id={option.value}
+                disabled={allDisabled}
+              />
               <label htmlFor={option.value}>{option.label}</label>
             </div>
           ))}
@@ -95,7 +120,8 @@ type FactoryFormProps = {
   formSchema: z.ZodObject<any>;
   onSubmit: (data: any) => void;
   initialData?: Record<string, any>;
-  cols?: number;
+  hideFilterBoxField?: boolean;
+  allDisabled?: boolean;
 };
 
 export function FactoryForm({
@@ -103,7 +129,8 @@ export function FactoryForm({
   formSchema,
   onSubmit,
   initialData,
-  cols
+  hideFilterBoxField,
+  allDisabled
 }: FactoryFormProps) {
   const [showAllFields, setShowAllFields] = useState(false);
 
@@ -134,29 +161,31 @@ export function FactoryForm({
         onSubmit={form.handleSubmit(onSubmit)}
         className={`space-y-8 grid grid-cols-1 md:grid-cols-2 gap-8`}
       >
-        <FormField
-          control={form.control}
-          name="showAllFields"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-              <FormControl>
-                <Checkbox
-                  checked={showAllFields}
-                  onCheckedChange={(checked) => {
-                    setShowAllFields(checked as boolean);
-                    field.onChange(checked);
-                  }}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Show all fields</FormLabel>
-                <FormDescription>
-                  Check this box to reveal all hidden fields.
-                </FormDescription>
-              </div>
-            </FormItem>
-          )}
-        />
+        {!hideFilterBoxField && (
+          <FormField
+            control={form.control}
+            name="showAllFields"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={showAllFields}
+                    onCheckedChange={(checked) => {
+                      setShowAllFields(checked as boolean);
+                      field.onChange(checked);
+                    }}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Show all fields</FormLabel>
+                  <FormDescription>
+                    Check this box to reveal all hidden fields.
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+        )}
         {visibleFields.map((fieldConfig) => (
           <FormField
             key={fieldConfig.name}
@@ -165,12 +194,16 @@ export function FactoryForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{fieldConfig.label}</FormLabel>
-                <FormControl>
-                  <FieldComponent field={field} fieldConfig={fieldConfig} />
-                </FormControl>
                 {fieldConfig.description && (
                   <FormDescription>{fieldConfig.description}</FormDescription>
                 )}
+                <FormControl>
+                  <FieldComponent
+                    field={field}
+                    fieldConfig={fieldConfig}
+                    allDisabled={allDisabled}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

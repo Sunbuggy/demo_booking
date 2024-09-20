@@ -1,0 +1,409 @@
+'use client';
+
+import { z } from 'zod';
+import { FactoryForm, FieldConfig } from '@/components/factory-form';
+import React from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { insertIntoPretripForm } from '@/utils/supabase/queries';
+
+const formSchema = z.object({
+  milage: z.union([
+    z.number().min(1),
+    z.string().transform((val) => parseInt(val))
+  ]),
+  ac_working: z.boolean().optional(),
+  all_light_bulbs_intact: z.boolean().optional(),
+  all_tire_pressure_within_5_psi_of_spec: z.boolean().optional(),
+  annual_inspection_all_shuttles: z.boolean().optional(),
+  antifreeze_level_proper_level: z.boolean().optional(),
+  battery_working: z.boolean().optional(),
+  belts_intact: z.boolean().optional(),
+  body_damage: z.string().optional(),
+  brake_fluid_level: z.boolean().optional(),
+  buggy_on_roof_secured: z.boolean().optional(),
+  fire_extinguisher_present: z.boolean().optional(),
+  first_aid_kit_mounted: z.boolean().optional(),
+  first_aid_kit_stocked: z.boolean().optional(),
+  fuel_level: z.enum(['low', 'almost_full', 'half', 'full']).optional(),
+  heater_working: z.boolean().optional(),
+  ice_chest_in_shuttle: z.boolean().optional(),
+  insurance_valid: z.boolean().optional(),
+  is_check_engine_on: z.boolean().optional(),
+  is_horn_working: z.boolean().optional(),
+  is_vehicle_clean: z.boolean().optional(),
+  light_indicators_work: z.boolean().optional(),
+  mirror_working: z.boolean().optional(),
+  notes: z.string().optional(),
+  oil_proper_level: z.boolean().optional(),
+  power_steering_fluid_proper_level: z.boolean().optional(),
+  registration_valid: z.boolean().optional(),
+  shuttles_plugged_in_winter: z.boolean().optional(),
+  triangles_present: z.boolean().optional(),
+  visible_hoses_intact: z.boolean().optional(),
+  visible_leaks: z.boolean().optional(),
+  wind_shield_washer_fluid_full: z.boolean().optional()
+});
+
+// all booleans are radio buttons, all enums are select dropdowns, numbers are inputs, and all strings are text inputs
+const fields: FieldConfig[] = [
+  {
+    type: 'input',
+    name: 'milage',
+    label: 'Milage',
+    placeholder: 'Enter the milage',
+    description: 'The milage of the vehicle.'
+  },
+  {
+    type: 'radio',
+    name: 'ac_working',
+    label: 'AC Working',
+    description: 'Is the AC working?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'all_light_bulbs_intact',
+    label: 'All Light Bulbs Intact',
+    description: 'Are all light bulbs intact?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'all_tire_pressure_within_5_psi_of_spec',
+    label: 'All Tire Pressure Within 5 PSI of Spec',
+    description: 'Is all tire pressure within 5 PSI of spec?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'annual_inspection_all_shuttles',
+    label: 'Annual Inspection All Shuttles',
+    description: 'Has the annual inspection been completed on all shuttles?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'antifreeze_level_proper_level',
+    label: 'Antifreeze Level Proper Level',
+    description: 'Is the antifreeze level at the proper level?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'battery_working',
+    label: 'Battery Working',
+    description: 'Is the battery working?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'belts_intact',
+    label: 'Belts Intact',
+    description: 'Are the belts intact?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'input',
+    name: 'body_damage',
+    label: 'Body Damage',
+    placeholder: 'Enter the body damage',
+    description: 'The body damage of the vehicle.'
+  },
+  {
+    type: 'radio',
+    name: 'brake_fluid_level',
+    label: 'Brake Fluid Level',
+    description: 'Is the brake fluid level at the proper level?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'buggy_on_roof_secured',
+    label: 'Buggy on Roof Secured',
+    description: 'Is the buggy on the roof secured?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+
+  {
+    type: 'radio',
+    name: 'fire_extinguisher_present',
+    label: 'Fire Extinguisher Present',
+    description: 'Is the fire extinguisher present?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'first_aid_kit_mounted',
+    label: ' First Aid Kit Mounted',
+    description: 'Is the first aid kit mounted?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'first_aid_kit_stocked',
+    label: 'First Aid Kit Stocked',
+    description: 'Is the first aid kit stocked?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'select',
+    name: 'fuel_level',
+    label: 'Fuel Level',
+    options: [
+      { value: 'empty', label: 'Empty' },
+      { value: 'quarter', label: 'Quarter' },
+      { value: 'half', label: 'Half' },
+      { value: 'three_quarters', label: 'Three Quarters' },
+      { value: 'full', label: 'Full' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'heater_working',
+    label: 'Heater Working',
+    description: 'Is the heater working?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'ice_chest_in_shuttle',
+    label: 'Ice Chest in Shuttle',
+    description: 'Is the ice chest in the shuttle?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+
+  {
+    type: 'radio',
+    name: 'insurance_valid',
+    label: 'Insurance Valid',
+    description: 'Is the insurance valid?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'is_check_engine_on',
+    label: 'Is Check Engine On',
+    description: 'Is the check engine light on?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'is_horn_working',
+    label: 'Is Horn Working',
+    description: 'Is the horn working?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'is_vehicle_clean',
+    label: 'Is Vehicle Clean',
+    description: 'Is the vehicle clean?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'light_indicators_work',
+    label: 'Light Indicators Work',
+    description: 'Do the light indicators work?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'mirror_working',
+    label: 'Mirror Working',
+    description: 'Is the mirror working?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+
+  {
+    type: 'radio',
+    name: 'oil_proper_level',
+    label: 'Oil Proper Level',
+    description: 'Is the oil at the proper level?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'power_steering_fluid_proper_level',
+    label: 'Power Steering Fluid Proper Level',
+    description: 'Is the power steering fluid at the proper level?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'registration_valid',
+    label: 'Registration Valid',
+    description: 'Is the registration valid?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'shuttles_plugged_in_winter',
+    label: 'Shuttles Plugged in Winter',
+    description: 'Are the shuttles plugged in for the winter?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'triangles_present',
+    label: 'Triangles Present',
+    description: 'Are the triangles present?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+
+  {
+    type: 'radio',
+    name: 'visible_hoses_intact',
+    label: 'Visible Hoses Intact',
+    description: 'Are the visible hoses intact?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'visible_leaks',
+    label: 'Visible Leaks',
+    description: 'Are there any visible leaks?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'wind_shield_washer_fluid_full',
+    label: 'Wind Shield Washer Fluid Full',
+    description: 'Is the wind shield washer fluid full?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'textarea',
+    name: 'notes',
+    label: 'Notes',
+    placeholder: 'Enter Any additional notes',
+    description: 'Any additional notes...'
+  }
+];
+
+const PretripForm = ({ id, user_id }: { id?: string; user_id: string }) => {
+  const [formData, setFormData] = React.useState<
+    z.infer<typeof formSchema> | undefined
+  >(undefined);
+
+  React.useEffect(() => {
+    if (formData !== undefined) {
+      const supabase = createClient();
+      console.log('formData', formData);
+      const data = {
+        ...formData,
+        vehicle_id: id,
+        created_at: new Date().toISOString(),
+        created_by: user_id
+      };
+      insertIntoPretripForm(supabase, data)
+        .then((res) => {
+          console.log('res', res);
+          // clear the form
+          //   setFormData(undefined);
+        })
+        .catch((error) => {
+          console.error('Error inserting into pretrip form', error);
+        });
+    }
+  }, [formData]);
+
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    setFormData(data);
+  };
+
+  return (
+    <FactoryForm
+      onSubmit={onSubmit}
+      formSchema={formSchema}
+      fields={fields}
+      hideFilterBoxField={true}
+    />
+  );
+};
+
+export default PretripForm;

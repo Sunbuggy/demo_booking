@@ -24,6 +24,7 @@ import { User } from '@supabase/supabase-js';
 import { createId } from '@paralleldrive/cuid2';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import PretripForm from '../../admin/tables/components/pretrip-form';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -222,7 +223,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               <AccordionItem value="edit-vehicle">
                 <AccordionTrigger>Edit Vehicle Details</AccordionTrigger>
                 <AccordionContent>
-                  <EditVehicle id={id} cols={2} />
+                  <EditVehicle id={id} />
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="show-images">
@@ -265,6 +266,12 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                     id={vehicleInfo.id}
                     user={user}
                   />
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="pre-trip-form">
+                <AccordionTrigger>Pretrip Form</AccordionTrigger>
+                <AccordionContent>
+                  <PretripForm user_id={user.id} id={vehicleInfo.id} />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

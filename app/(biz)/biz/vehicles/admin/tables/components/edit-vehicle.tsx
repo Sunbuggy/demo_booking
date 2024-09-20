@@ -1,6 +1,6 @@
 'use client';
 import { z } from 'zod';
-import { FactoryForm, FieldConfig } from './factory-form';
+import { FactoryForm, FieldConfig } from '@/components/factory-form';
 import React from 'react';
 import { fetchVehicleInfo, updateVehicle } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
@@ -138,7 +138,6 @@ const EditVehicle = ({ id, cols }: { id: string; cols?: number }) => {
   const [initialData, setInitialData] = React.useState<
     Record<string, any> | undefined
   >(undefined);
-  const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -171,7 +170,6 @@ const EditVehicle = ({ id, cols }: { id: string; cols?: number }) => {
 
   React.useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true);
       try {
         const supabase = createClient();
         const data = await fetchVehicleInfo(supabase, id);
@@ -179,7 +177,6 @@ const EditVehicle = ({ id, cols }: { id: string; cols?: number }) => {
       } catch (error) {
         console.error('Failed to load user data', error);
       } finally {
-        setIsLoading(false);
       }
     };
     loadData();
@@ -196,7 +193,6 @@ const EditVehicle = ({ id, cols }: { id: string; cols?: number }) => {
           formSchema={formSchema}
           onSubmit={onSubmit}
           initialData={initialData}
-          cols={cols}
         />
       ) : (
         <Skeleton className="w-[798] h-[648]" />

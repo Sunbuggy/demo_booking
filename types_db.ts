@@ -648,6 +648,138 @@ export type Database = {
           },
         ]
       }
+      vehicle_pretrip: {
+        Row: {
+          ac_working: boolean | null
+          all_light_bulbs_intact: boolean | null
+          all_tire_pressure_within_5_psi_of_spec: boolean | null
+          annual_inspection_all_shuttles: boolean | null
+          antifreeze_level_proper_level: boolean | null
+          battery_working: boolean | null
+          belts_intact: boolean | null
+          body_damage: string | null
+          brake_fluid_level: boolean | null
+          buggy_on_roof_secured: boolean | null
+          created_at: string
+          created_by: string | null
+          fire_extinguisher_present: boolean | null
+          first_aid_kit_mounted: boolean | null
+          first_aid_kit_stocked: boolean | null
+          fuel_level: Database["public"]["Enums"]["vehicle_fuel_level"] | null
+          heater_working: boolean | null
+          ice_chest_in_shuttle: boolean | null
+          id: string
+          insurance_valid: boolean | null
+          is_check_engine_on: boolean | null
+          is_horn_working: boolean | null
+          is_vehicle_clean: boolean | null
+          light_indicators_work: boolean | null
+          milage: number | null
+          mirror_working: boolean | null
+          notes: string | null
+          oil_proper_level: boolean | null
+          power_steering_fluid_proper_level: boolean | null
+          registration_valid: boolean | null
+          shuttles_plugged_in_winter: boolean | null
+          triangles_present: boolean | null
+          vehicle_id: string | null
+          visible_hoses_intact: boolean | null
+          visible_leaks: boolean | null
+          wind_shield_washer_fluid_full: boolean | null
+        }
+        Insert: {
+          ac_working?: boolean | null
+          all_light_bulbs_intact?: boolean | null
+          all_tire_pressure_within_5_psi_of_spec?: boolean | null
+          annual_inspection_all_shuttles?: boolean | null
+          antifreeze_level_proper_level?: boolean | null
+          battery_working?: boolean | null
+          belts_intact?: boolean | null
+          body_damage?: string | null
+          brake_fluid_level?: boolean | null
+          buggy_on_roof_secured?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          fire_extinguisher_present?: boolean | null
+          first_aid_kit_mounted?: boolean | null
+          first_aid_kit_stocked?: boolean | null
+          fuel_level?: Database["public"]["Enums"]["vehicle_fuel_level"] | null
+          heater_working?: boolean | null
+          ice_chest_in_shuttle?: boolean | null
+          id?: string
+          insurance_valid?: boolean | null
+          is_check_engine_on?: boolean | null
+          is_horn_working?: boolean | null
+          is_vehicle_clean?: boolean | null
+          light_indicators_work?: boolean | null
+          milage?: number | null
+          mirror_working?: boolean | null
+          notes?: string | null
+          oil_proper_level?: boolean | null
+          power_steering_fluid_proper_level?: boolean | null
+          registration_valid?: boolean | null
+          shuttles_plugged_in_winter?: boolean | null
+          triangles_present?: boolean | null
+          vehicle_id?: string | null
+          visible_hoses_intact?: boolean | null
+          visible_leaks?: boolean | null
+          wind_shield_washer_fluid_full?: boolean | null
+        }
+        Update: {
+          ac_working?: boolean | null
+          all_light_bulbs_intact?: boolean | null
+          all_tire_pressure_within_5_psi_of_spec?: boolean | null
+          annual_inspection_all_shuttles?: boolean | null
+          antifreeze_level_proper_level?: boolean | null
+          battery_working?: boolean | null
+          belts_intact?: boolean | null
+          body_damage?: string | null
+          brake_fluid_level?: boolean | null
+          buggy_on_roof_secured?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          fire_extinguisher_present?: boolean | null
+          first_aid_kit_mounted?: boolean | null
+          first_aid_kit_stocked?: boolean | null
+          fuel_level?: Database["public"]["Enums"]["vehicle_fuel_level"] | null
+          heater_working?: boolean | null
+          ice_chest_in_shuttle?: boolean | null
+          id?: string
+          insurance_valid?: boolean | null
+          is_check_engine_on?: boolean | null
+          is_horn_working?: boolean | null
+          is_vehicle_clean?: boolean | null
+          light_indicators_work?: boolean | null
+          milage?: number | null
+          mirror_working?: boolean | null
+          notes?: string | null
+          oil_proper_level?: boolean | null
+          power_steering_fluid_proper_level?: boolean | null
+          registration_valid?: boolean | null
+          shuttles_plugged_in_winter?: boolean | null
+          triangles_present?: boolean | null
+          vehicle_id?: string | null
+          visible_hoses_intact?: boolean | null
+          visible_leaks?: boolean | null
+          wind_shield_washer_fluid_full?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_pretrip_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_pretrip_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_tag: {
         Row: {
           close_tag_comment: string | null
@@ -806,6 +938,7 @@ export type Database = {
       tag_status: "open" | "closed"
       time_entry_status: "clocked_in" | "clocked_out" | "on_break"
       user_type: "employee" | "customer" | "partner"
+      vehicle_fuel_level: "low" | "half" | "almost_full" | "full"
       vehicle_status: "broken" | "maintenance" | "fine"
       vehicle_tag_type: "maintenance" | "repair"
       vehicle_type:

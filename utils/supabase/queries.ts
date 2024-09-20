@@ -1,6 +1,5 @@
 import { Database } from '@/types_db';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { equal } from 'assert';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { cache } from 'react';
 
 // Utility function to get the current date and time in PST
@@ -911,6 +910,50 @@ export const updateQrHistory = cache(
       .from('qr_history')
       .update(qr_history)
       .eq('id', id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const fetchPretripFormHistory = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicle_pretrip')
+      .select()
+      .eq('vehicle_id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const fetchPretripById = cache(
+  async (supabase: SupabaseClient, id: string) => {
+    const { data, error } = await supabase
+      .from('vehicle_pretrip')
+      .select()
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const insertIntoPretripForm = cache(
+  async (
+    supabase: SupabaseClient,
+    pretrip: Database['public']['Tables']['vehicle_pretrip']['Insert']
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicle_pretrip')
+      .insert([pretrip]);
     if (error) {
       console.error(error);
       return [];

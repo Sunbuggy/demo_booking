@@ -7,7 +7,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { z } from 'zod';
-import { FactoryForm, FieldConfig } from './factory-form';
+import { FactoryForm, FieldConfig } from '@/components/factory-form';
 import React from 'react';
 import { insertIntoVehicles } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
