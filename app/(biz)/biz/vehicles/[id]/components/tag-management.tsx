@@ -90,6 +90,15 @@ const TagManagement = ({
     };
   }, [supabase, router]);
 
+  const add_new_tag_title = (
+    <div>
+      <p>
+        Add a New Tag for{' '}
+        <span className="text-xl text-orange-500">{vehicle_name}</span>
+      </p>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-5">
@@ -105,8 +114,15 @@ const TagManagement = ({
           Add A New Tag
         </Button>
         <DialogFactory
-          children={<TagForm user={user} tag={null} id={id} />}
-          title="Add a New Tag"
+          children={
+            <TagForm
+              user={user}
+              tag={null}
+              id={id}
+              vehicle_name={vehicle_name}
+            />
+          }
+          title={add_new_tag_title}
           description="Add a new tag to the vehicle."
           isDialogOpen={isAddTagDialogOpen}
           setIsDialogOpen={setIsAddTagDialogOpen}
@@ -177,7 +193,13 @@ const TagManagement = ({
                       {tagTitleFromNotes}
                     </Button>
                     <DialogFactory
-                      children={<TagForm user={user} tag={tag} />}
+                      children={
+                        <TagForm
+                          user={user}
+                          tag={tag}
+                          vehicle_name={vehicle_name}
+                        />
+                      }
                       title={tagTitle}
                       description={`Edit ${tag.id}`}
                       isDialogOpen={openTagDialogs[tag.id] || false}
