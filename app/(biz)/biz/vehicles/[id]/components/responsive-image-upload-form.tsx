@@ -1,58 +1,51 @@
 import { Label } from '@/components/ui/label';
-import { CameraIcon } from 'lucide-react';
+import { CameraIcon, UploadIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import React from 'react';
+import React, { useState, FormEvent } from 'react';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { VehiclePics } from '../../admin/tables/components/row-actions';
 
-const ResponsiveImageUpload = ({
-  inputFile,
-  selectedFiles,
-  url_key,
-  files,
-  images,
-  setSelectedFiles,
-  setFiles,
-  setImages,
-  updatePic,
-  single = false
-}: {
-  inputFile: React.RefObject<HTMLInputElement>;
-  selectedFiles: File[];
+interface VehiclePic {
+  url: string;
+  key: string;
+}
+
+interface ResponsiveImageUploadProps {
   url_key: string;
-  images: VehiclePics[];
-  files: File[];
-  setImages: React.Dispatch<React.SetStateAction<VehiclePics[]>>;
-  setSelectedFiles: (value: React.SetStateAction<File[]>) => void;
-  setFiles: (value: React.SetStateAction<File[]>) => void;
+  images: VehiclePic[];
+  setImages: React.Dispatch<React.SetStateAction<VehiclePic[]>>;
   updatePic?: boolean;
   single?: boolean;
-}) => {
+}
+
+export default function ResponsiveImageUpload({
+  url_key,
+  images,
+  setImages,
+  updatePic = false,
+  single = false
+}: ResponsiveImageUploadProps) {
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const { toast } = useToast();
+  const formRef = React.useRef<HTMLFormElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
       const fileArray = Array.from(files);
       setSelectedFiles(fileArray);
-      if (setFiles) {
-        setFiles(fileArray);
-      }
     }
   };
 
   const removeFile = (index: number) => {
-    const newFiles = selectedFiles.filter((_, i) => i !== index);
-    setSelectedFiles(newFiles);
-    if (setFiles) {
-      setFiles(newFiles);
-    }
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (key: string, update_pic?: boolean) => {
-    if (files.length === 0) {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (selectedFiles.length === 0) {
       toast({
         title: 'Error',
         description: 'Please select files to upload.',
@@ -61,21 +54,28 @@ const ResponsiveImageUpload = ({
       return;
     }
 
-    try {
-      const bucket = 'sb-fleet';
-      const formData = new FormData();
-      for (const file of files) {
-        formData.append('files', file);
-      }
-      formData.append('bucket', bucket);
-      formData.append('mode', files.length > 1 ? 'multiple' : 'single');
-      formData.append('contentType', files[0].type); // Assuming all files have the same type
-      formData.append('key', key);
+    const formData = new FormData();
 
+    // Manually append all form data
+    formData.append('bucket', 'sb-fleet');
+    formData.append('mode', single ? 'single' : 'multiple');
+    formData.append('key', url_key);
+    formData.append('contentType', 'image/jpeg');
+    for (const entry of Array.from(formData.entries())) {
+      const [key, value] = entry;
+      console.log(`${key}:`, value);
+    }
+
+    // Append each file to formData
+    selectedFiles.forEach((file, index) => {
+      formData.append(`files`, file);
+    });
+
+    try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
         {
-          method: update_pic ? 'PUT' : 'POST',
+          method: updatePic ? 'PUT' : 'POST',
           body: formData
         }
       );
@@ -87,6 +87,13 @@ const ResponsiveImageUpload = ({
           title: 'Success',
           description: 'Files uploaded successfully'
         });
+        const newImages = selectedFiles.map((file) => ({
+          url: URL.createObjectURL(file),
+          key: file.name
+        }));
+        setImages((prev) => [...prev, ...newImages]);
+        setSelectedFiles([]);
+        if (formRef.current) formRef.current.reset();
       } else {
         throw new Error(data.message || 'Failed to upload files');
       }
@@ -97,85 +104,89 @@ const ResponsiveImageUpload = ({
         description: 'Failed to upload files. Please try again.',
         variant: 'destructive'
       });
-    } finally {
-      // Put files images in teh images state
-      const newImages = files.map((file) => {
-        return {
-          url: URL.createObjectURL(file),
-          key: file.name
-        };
-      }) as VehiclePics[];
-      setImages([...images, ...newImages]);
-      setSelectedFiles([]);
     }
   };
 
   return (
-    <>
+    <form onSubmit={handleSubmit} ref={formRef} className="space-y-4">
       {selectedFiles.length === 0 && (
-        <>
+        <div className="space-y-2">
           <Label
-            htmlFor="file"
-            className="block text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-2 text-center cursor-pointer"
+            htmlFor="file-upload"
+            className="block text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-4 text-center cursor-pointer hover:border-primary transition-colors"
           >
             <Input
+              id="file-upload"
+              name="files"
               type="file"
-              id="file"
-              className="hidden"
+              className="sr-only"
               multiple={!single}
-              ref={inputFile}
               onChange={handleFileChange}
               accept="image/png, image/jpeg"
             />
-            Click Here To Upload Pics
+            <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
+            <span className="mt-2 block text-sm font-semibold">
+              Click to upload images
+            </span>
           </Label>
           <Label
-            htmlFor="camera"
-            className="flex w-full justify-center gap-5 text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-2 text-center cursor-pointer mt-2 lg:hidden"
+            htmlFor="camera-upload"
+            className="flex items-center justify-center gap-2 text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-4 text-center cursor-pointer hover:border-primary transition-colors lg:hidden"
           >
             <Input
+              id="camera-upload"
+              name="files"
               type="file"
-              id="camera"
-              className="hidden"
+              className="sr-only"
               capture="environment"
               onChange={handleFileChange}
               accept="image/png, image/jpeg"
             />
-            {/*camera icon  */}
-            <CameraIcon size={24} />
-            Click Here To Take A Picture
+            <CameraIcon className="h-6 w-6 text-gray-400" />
+            <span className="font-semibold">Take a picture</span>
           </Label>
-        </>
+        </div>
       )}
       {selectedFiles.length > 0 && (
-        <>
-          <div className="flex flex-wrap gap-2 mt-3">
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-4">
             {selectedFiles.map((file, index) => (
-              <div key={index} className="relative">
+              <div key={index} className="relative group">
                 <img
                   src={URL.createObjectURL(file)}
                   alt={`Selected file ${index + 1}`}
-                  className="w-20 h-20 object-cover"
+                  className="w-full h-32 object-cover rounded-md"
                 />
                 <button
                   type="button"
                   onClick={() => removeFile(index)}
-                  className="absolute top-0 right-0 bg-red-500 w-[20px] h-[20px] text-white rounded-full p-1 flex items-center justify-center"
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label={`Remove image ${index + 1}`}
                 >
-                  &minus;
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
                 </button>
               </div>
             ))}
           </div>
           <DialogClose asChild>
-            <Button onClick={() => handleSubmit(url_key, updatePic)}>
-              Upload
+            <Button type="submit" className="w-full">
+              Upload {selectedFiles.length}{' '}
+              {selectedFiles.length === 1 ? 'file' : 'files'}
             </Button>
           </DialogClose>
-        </>
+        </div>
       )}
-    </>
+    </form>
   );
-};
-
-export default ResponsiveImageUpload;
+}

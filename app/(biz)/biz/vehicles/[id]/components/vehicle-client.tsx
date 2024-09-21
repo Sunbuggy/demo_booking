@@ -53,9 +53,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     React.useState(false);
   const [isUploadImagesDialogOpen, setIsUploadImagesDialogOpen] =
     React.useState(false);
-  const [files, setFiles] = React.useState<File[]>([]);
-  const inputFile = React.useRef<HTMLInputElement>(null);
-  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
 
   React.useEffect(() => {
     const channel = supabase
@@ -143,11 +140,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 children={
                   <div>
                     <ResponsiveImageUpload
-                      inputFile={inputFile}
-                      selectedFiles={selectedFiles}
-                      setFiles={setFiles}
-                      setSelectedFiles={setSelectedFiles}
-                      files={files}
                       images={incoming_images}
                       setImages={setIncomingImages}
                       url_key={`profile_pic/${id}`}
@@ -174,11 +166,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 children={
                   <div>
                     <ResponsiveImageUpload
-                      inputFile={inputFile}
-                      selectedFiles={selectedFiles}
-                      setFiles={setFiles}
-                      setSelectedFiles={setSelectedFiles}
-                      files={files}
                       images={incoming_images}
                       setImages={setIncomingImages}
                       url_key={`profile_pic/${id}`}
@@ -218,11 +205,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         children={
                           <div>
                             <ResponsiveImageUpload
-                              inputFile={inputFile}
-                              selectedFiles={selectedFiles}
-                              setFiles={setFiles}
-                              setSelectedFiles={setSelectedFiles}
-                              files={files}
                               images={incoming_images}
                               setImages={setIncomingImages}
                               url_key={`vehicles/${id}/${createId()}`}
