@@ -23,7 +23,11 @@ export const BarcodeScanner = () => {
   React.useEffect(() => {
     if (result && result.includes('/fleet/')) {
       const veh_name = result.split('/fleet/')[1].toLowerCase();
-      getVehicleIdFromName(supabase, veh_name).then((res) => {
+      //   if veh_name is just a number then add sb infront of it if it has a letter then just use it
+      const new_veh_name = isNaN(parseInt(veh_name))
+        ? veh_name
+        : `sb${veh_name}`;
+      getVehicleIdFromName(supabase, new_veh_name).then((res) => {
         const id = res[0].id as string;
         router.push(`/biz/vehicles/${id}`);
         setResult(`/biz/vehicles/${id}`);
