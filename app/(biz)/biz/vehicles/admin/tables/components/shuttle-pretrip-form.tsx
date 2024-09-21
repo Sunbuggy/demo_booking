@@ -365,7 +365,7 @@ const fields: FieldConfig[] = [
   }
 ];
 
-const PretripForm = ({ id, user_id }: { id?: string; user_id: string }) => {
+const ShuttlePretripForm = ({ id, user_id }: { id?: string; user_id: string }) => {
   const [formData, setFormData] = React.useState<
     z.infer<typeof formSchema> | undefined
   >(undefined);
@@ -406,4 +406,4 @@ const PretripForm = ({ id, user_id }: { id?: string; user_id: string }) => {
   );
 };
 
-export default PretripForm;
+export default ShuttlePretripForm;

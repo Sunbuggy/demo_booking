@@ -23,9 +23,7 @@ import ImageGrid from './image-grid';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
 import { Button } from '@/components/ui/button';
 import DialogFactory from '../../admin/tables/components/dialog-factory';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { CameraIcon } from 'lucide-react';
+import ResponsiveImageUpload from './responsive-image-upload-form';
 
 const ExistingTagForm = ({
   tag,
@@ -46,7 +44,6 @@ const ExistingTagForm = ({
   const router = useRouter();
   const [files, setFiles] = React.useState<File[]>([]);
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
-  const [uploading, setUploading] = React.useState(false);
   const inputFile = React.useRef<HTMLInputElement>(null);
   const [formValues, setFormValues] = React.useState<VehicleTagType>({
     tag_status: tag?.tag_status || 'open',
@@ -62,87 +59,6 @@ const ExistingTagForm = ({
     id: tag?.id || '',
     tag_type: tag?.tag_type || null
   });
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const fileArray = Array.from(files);
-      setSelectedFiles(fileArray);
-      if (setFiles) {
-        setFiles(fileArray);
-      }
-    }
-  };
-
-  const removeFile = (index: number) => {
-    const newFiles = selectedFiles.filter((_, i) => i !== index);
-    setSelectedFiles(newFiles);
-    if (setFiles) {
-      setFiles(newFiles);
-    }
-  };
-
-  const handleSubmit = async (key: string, update_pic?: boolean) => {
-    if (files.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please select files to upload.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setUploading(true);
-
-    try {
-      const bucket = 'sb-fleet';
-      const formData = new FormData();
-      for (const file of files) {
-        formData.append('files', file);
-      }
-      formData.append('bucket', bucket);
-      formData.append('mode', files.length > 1 ? 'multiple' : 'single');
-      formData.append('contentType', files[0].type); // Assuming all files have the same type
-      formData.append('key', key);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
-        {
-          method: update_pic ? 'PUT' : 'POST',
-          body: formData
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'Files uploaded successfully'
-        });
-      } else {
-        throw new Error(data.message || 'Failed to upload files');
-      }
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to upload files. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setUploading(false);
-      // Put files images in teh images state
-      const newImages = files.map((file) => {
-        return {
-          url: URL.createObjectURL(file),
-          key: file.name
-        };
-      }) as VehiclePics[];
-      setImages([...images, ...newImages]);
-      setSelectedFiles([]);
-    }
-  };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -411,77 +327,16 @@ const ExistingTagForm = ({
                   isDialogOpen={isNewUploadDialogOpen}
                   description="Upload a profile picture for the vehicle."
                   children={
-                    <>
-                      {selectedFiles.length === 0 && (
-                        <>
-                          <Label
-                            htmlFor="file"
-                            className="block text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-2 text-center cursor-pointer"
-                          >
-                            <Input
-                              type="file"
-                              id="file"
-                              className="hidden"
-                              multiple
-                              ref={inputFile}
-                              onChange={handleFileChange}
-                              accept="image/png, image/jpeg"
-                            />
-                            Click Here To Upload Pics
-                          </Label>
-                          <Label
-                            htmlFor="camera"
-                            className="flex w-full justify-center gap-5 text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-2 text-center cursor-pointer mt-2 lg:hidden"
-                          >
-                            <Input
-                              type="file"
-                              id="camera"
-                              className="hidden"
-                              capture="environment"
-                              onChange={handleFileChange}
-                              accept="image/png, image/jpeg"
-                            />
-                            {/*camera icon  */}
-                            <CameraIcon size={24} />
-                            Click Here To Take A Picture
-                          </Label>
-                        </>
-                      )}
-                      {selectedFiles.length > 0 && (
-                        <>
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {selectedFiles.map((file, index) => (
-                              <div key={index} className="relative">
-                                <img
-                                  src={URL.createObjectURL(file)}
-                                  alt={`Selected file ${index + 1}`}
-                                  className="w-20 h-20 object-cover"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => removeFile(index)}
-                                  className="absolute top-0 right-0 bg-red-500 w-[20px] h-[20px] text-white rounded-full p-1 flex items-center justify-center"
-                                >
-                                  &minus;
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                          <DialogClose asChild>
-                            <Button
-                              onClick={() =>
-                                handleSubmit(
-                                  `vehicle_damage/${tag?.vehicle_id}/${tag?.id}`,
-                                  false
-                                )
-                              }
-                            >
-                              Upload
-                            </Button>
-                          </DialogClose>
-                        </>
-                      )}
-                    </>
+                    <ResponsiveImageUpload
+                      inputFile={inputFile}
+                      selectedFiles={selectedFiles}
+                      setFiles={setFiles}
+                      setSelectedFiles={setSelectedFiles}
+                      files={files}
+                      images={images}
+                      setImages={setImages}
+                      url_key={`vehicle_damage/${tag?.vehicle_id}/${tag?.id}`}
+                    />
                   }
                 />
                 <Button onClick={() => setIsNewUploadDialogOpen(true)}>

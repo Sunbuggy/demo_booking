@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import { getUserDetailsById } from '@/utils/supabase/queries';
 
 const TagManagement = ({
   id,
@@ -20,10 +21,11 @@ const TagManagement = ({
   tags: VehicleTagType[];
   user: User;
 }) => {
-
-    const supabase = createClient();
+  const supabase = createClient();
   const router = useRouter();
-
+  const [createdByMap, setCreatedByMap] = React.useState<{
+    [key: string]: string | null;
+  }>({});
   const [isAddTagDialogOpen, setIsAddTagDialogOpen] = React.useState(false);
   const [isDisplayClosedTagsDialogOpen, setDisplayClosedTagsDialogOpen] =
     React.useState(false);
@@ -37,7 +39,24 @@ const TagManagement = ({
   const handleCloseTagDialog = (tagId: string) => {
     setOpenTagDialogs((prev) => ({ ...prev, [tagId]: false }));
   };
+  React.useEffect(() => {
+    const fetchCreatedBy = async () => {
+      const newCreatedByMap: { [key: string]: string | null } = {};
+      for (const tag of tags) {
+        if (tag.created_by) {
+          const userDetails = await getUserDetailsById(
+            supabase,
+            tag.created_by
+          );
+          if (userDetails)
+            newCreatedByMap[tag.id] = userDetails[0].full_name || null;
+        }
+      }
+      setCreatedByMap(newCreatedByMap);
+    };
 
+    fetchCreatedBy();
+  }, [tags, supabase]);
   React.useEffect(() => {
     const channel = supabase
       .channel('realtime vehicle tags and vehicle')
@@ -121,7 +140,7 @@ const TagManagement = ({
                 dayjs(a.created_at || '').unix()
             )
             .map((tag) => {
-              const tagTitle = `${dayjs(tag.created_at || '').format('YY/MM/DD@hh:mm a')} (${tag.created_by_legacy || tag.created_by || (tag.created_by_legacy === undefined && tag.created_by === '' && 'nouser')})`;
+              const tagTitle = `${dayjs(tag.created_at || '').format('YY/MM/DD@hh:mm a')} (${tag.created_by_legacy || createdByMap[tag.id] || (tag.created_by_legacy === undefined && createdByMap[tag.id] === '' && 'nouser')})`;
               // only 50 characters of notes are displayed
               const tagTitleFromNotes = `${dayjs(tag.created_at || '').format('YY/MM/DD@hh:mma')} ${tag.notes ? tag.notes.replace('|||', '').slice(0, 30).trim() : ''}`;
               if (tag.tag_status === 'open') {

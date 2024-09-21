@@ -1,4 +1,4 @@
-'use client'
+'use client';
 import React from 'react';
 import { VehicleTagType } from '../../admin/page';
 import TagForm from './tag-form-wrapper';
@@ -12,12 +12,14 @@ import { useRouter } from 'next/navigation';
 
 const ClosedTags = ({ tags, user }: { tags: VehicleTagType[]; user: User }) => {
   const supabase = createClient();
-  const router = useRouter()
+  const router = useRouter();
   // display all the existing tags for the vehicle where the tag_status is closed
   const [openTagDialogs, setOpenTagDialogs] = React.useState<{
     [key: string]: boolean;
   }>({});
-  const [createdByMap, setCreatedByMap] = React.useState<{ [key: string]: string | null }>({});
+  const [createdByMap, setCreatedByMap] = React.useState<{
+    [key: string]: string | null;
+  }>({});
   const handleOpenTagDialog = (tagId: string) => {
     setOpenTagDialogs((prev) => ({ ...prev, [tagId]: true }));
   };
@@ -26,14 +28,17 @@ const ClosedTags = ({ tags, user }: { tags: VehicleTagType[]; user: User }) => {
     setOpenTagDialogs((prev) => ({ ...prev, [tagId]: false }));
   };
 
-    React.useEffect(() => {
+  React.useEffect(() => {
     const fetchCreatedBy = async () => {
       const newCreatedByMap: { [key: string]: string | null } = {};
       for (const tag of tags) {
         if (tag.created_by) {
-          const userDetails = await getUserDetailsById( supabase, tag.created_by);
-          if(userDetails)
-          newCreatedByMap[tag.id] = userDetails[0].full_name || null;
+          const userDetails = await getUserDetailsById(
+            supabase,
+            tag.created_by
+          );
+          if (userDetails)
+            newCreatedByMap[tag.id] = userDetails[0].full_name || null;
         }
       }
       setCreatedByMap(newCreatedByMap);

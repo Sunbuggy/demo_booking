@@ -6,7 +6,7 @@ import { VehicleTagType, VehicleType } from '../../admin/page';
 import EditVehicle from '../../admin/tables/components/edit-vehicle';
 import ImageView from './image-view';
 import Link from 'next/link';
-import { ArrowBigLeftIcon, Trash } from 'lucide-react';
+import { ArrowBigLeftIcon } from 'lucide-react';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
 import {
   Accordion,
@@ -16,15 +16,14 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import ImageGrid from './image-grid';
-import { useToast } from '@/components/ui/use-toast';
 import DialogFactory from '../../admin/tables/components/dialog-factory';
-import UploadForm from '../../admin/tables/components/upload-form';
 import TagManagement from './tag-management';
 import { User } from '@supabase/supabase-js';
 import { createId } from '@paralleldrive/cuid2';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import PretripForm from '../../admin/tables/components/pretrip-form';
+import PretripForm from '../../admin/tables/components/shuttle-pretrip-form';
+import ResponsiveImageUpload from './responsive-image-upload-form';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -46,6 +45,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const vehicleInfo = initialVehicleInfo;
   const supabase = createClient();
   const router = useRouter();
+  const [incoming_images, setIncomingImages] =
+    React.useState<VehiclePics[]>(images);
   const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
     React.useState(false);
   const [isUpdateUploadDialogOpen, setIsUpdateUploadDialogOpen] =
@@ -53,69 +54,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const [isUploadImagesDialogOpen, setIsUploadImagesDialogOpen] =
     React.useState(false);
   const [files, setFiles] = React.useState<File[]>([]);
-  const [uploading, setUploading] = React.useState(false);
   const inputFile = React.useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
-
-  const handleSubmit = async (
-    e: React.FormEvent<HTMLFormElement>,
-    key: string,
-    update_pic?: boolean
-  ) => {
-    e.preventDefault();
-    if (files.length === 0) {
-      toast({
-        title: 'Error',
-        description: 'Please select files to upload.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setUploading(true);
-
-    try {
-      const bucket = 'sb-fleet';
-      const formData = new FormData();
-      for (const file of files) {
-        formData.append('files', file);
-      }
-      formData.append('bucket', bucket);
-      formData.append('mode', files.length > 1 ? 'multiple' : 'single');
-      formData.append('contentType', files[0].type); // Assuming all files have the same type
-      formData.append('key', key);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
-        {
-          method: update_pic ? 'PUT' : 'POST',
-          body: formData
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'Files uploaded successfully'
-        });
-      } else {
-        throw new Error(data.message || 'Failed to upload files');
-      }
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to upload files. Please try again.',
-        variant: 'destructive'
-      });
-    } finally {
-      setUploading(false);
-      // reload page
-      window.location.reload();
-    }
-  };
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
 
   React.useEffect(() => {
     const channel = supabase
@@ -169,17 +109,21 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 Upload Profile Pic
               </Button>
               <DialogFactory
-                title="Add Profile Pic"
+                title={`Add Profile Pic for ${vehicleInfo.name}`}
                 setIsDialogOpen={setIsNewUploadDialogOpen}
                 isDialogOpen={isNewUploadDialogOpen}
                 description="Upload a profile picture for the vehicle."
                 children={
                   <div>
-                    <UploadForm
-                      handleSubmit={(e) => handleSubmit(e, `profile_pic/${id}`)}
+                    <ResponsiveImageUpload
                       inputFile={inputFile}
+                      selectedFiles={selectedFiles}
                       setFiles={setFiles}
-                      uploading={uploading}
+                      setSelectedFiles={setSelectedFiles}
+                      files={files}
+                      images={incoming_images}
+                      setImages={setIncomingImages}
+                      url_key={`profile_pic/${id}`}
                     />
                   </div>
                 }
@@ -195,19 +139,22 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 Update Profile Pic
               </Button>
               <DialogFactory
-                title="Update the Profile Pic"
+                title={`Update the Profile Pic for ${vehicleInfo.name}`}
                 setIsDialogOpen={setIsUpdateUploadDialogOpen}
                 isDialogOpen={isUpdateUploadDialogOpen}
                 description="Update the profile picture for the vehicle. Please just upload a single image."
                 children={
                   <div>
-                    <UploadForm
-                      handleSubmit={(e) =>
-                        handleSubmit(e, `profile_pic/${id}`, true)
-                      }
+                    <ResponsiveImageUpload
                       inputFile={inputFile}
+                      selectedFiles={selectedFiles}
                       setFiles={setFiles}
-                      uploading={uploading}
+                      setSelectedFiles={setSelectedFiles}
+                      files={files}
+                      images={incoming_images}
+                      setImages={setIncomingImages}
+                      url_key={`profile_pic/${id}`}
+                      updatePic={true}
                     />
                   </div>
                 }
@@ -235,20 +182,21 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         Upload More Images
                       </Button>
                       <DialogFactory
-                        title="Upload More  Images for This Vehicle"
+                        title={`Upload More Images for ${vehicleInfo.name}`}
                         setIsDialogOpen={setIsUploadImagesDialogOpen}
                         isDialogOpen={isUploadImagesDialogOpen}
                         description="Upload one or multiple images for the vehicle."
                         children={
                           <div>
-                            <UploadForm
-                              handleSubmit={(e) =>
-                                handleSubmit(e, `vehicles/${id}/${createId()}`)
-                              }
+                            <ResponsiveImageUpload
                               inputFile={inputFile}
+                              selectedFiles={selectedFiles}
                               setFiles={setFiles}
-                              uploading={uploading}
-                              multiple={true}
+                              setSelectedFiles={setSelectedFiles}
+                              files={files}
+                              images={incoming_images}
+                              setImages={setIncomingImages}
+                              url_key={`vehicles/${id}/${createId()}`}
                             />
                           </div>
                         }
@@ -271,7 +219,9 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               <AccordionItem value="pre-trip-form">
                 <AccordionTrigger>Pretrip Form</AccordionTrigger>
                 <AccordionContent>
-                  <PretripForm user_id={user.id} id={vehicleInfo.id} />
+                  {vehicleInfo.type === 'shuttle' && (
+                    <PretripForm user_id={user.id} id={vehicleInfo.id} />
+                  )}
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
