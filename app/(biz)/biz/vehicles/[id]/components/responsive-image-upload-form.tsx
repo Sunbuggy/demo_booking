@@ -16,7 +16,8 @@ const ResponsiveImageUpload = ({
   setSelectedFiles,
   setFiles,
   setImages,
-  updatePic
+  updatePic,
+  single = false
 }: {
   inputFile: React.RefObject<HTMLInputElement>;
   selectedFiles: File[];
@@ -27,6 +28,7 @@ const ResponsiveImageUpload = ({
   setSelectedFiles: (value: React.SetStateAction<File[]>) => void;
   setFiles: (value: React.SetStateAction<File[]>) => void;
   updatePic?: boolean;
+  single?: boolean;
 }) => {
   const { toast } = useToast();
 
@@ -120,7 +122,7 @@ const ResponsiveImageUpload = ({
               type="file"
               id="file"
               className="hidden"
-              multiple
+              multiple={!single}
               ref={inputFile}
               onChange={handleFileChange}
               accept="image/png, image/jpeg"

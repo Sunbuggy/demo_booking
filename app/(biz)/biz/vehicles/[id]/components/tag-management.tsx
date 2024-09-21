@@ -15,11 +15,13 @@ import { getUserDetailsById } from '@/utils/supabase/queries';
 const TagManagement = ({
   id,
   tags,
-  user
+  user,
+  vehicle_name
 }: {
   id: string;
   tags: VehicleTagType[];
   user: User;
+  vehicle_name: string;
 }) => {
   const supabase = createClient();
   const router = useRouter();
@@ -122,7 +124,9 @@ const TagManagement = ({
             Display Closed Tags
           </Button>
           <DialogFactory
-            children={<ClosedTags user={user} tags={tags} />}
+            children={
+              <ClosedTags user={user} tags={tags} vehicle_name={vehicle_name} />
+            }
             title="Closed Tags"
             description="Display existing tags for the vehicle."
             isDialogOpen={isDisplayClosedTagsDialogOpen}
@@ -140,7 +144,25 @@ const TagManagement = ({
                 dayjs(a.created_at || '').unix()
             )
             .map((tag) => {
-              const tagTitle = `${dayjs(tag.created_at || '').format('YY/MM/DD@hh:mm a')} (${tag.created_by_legacy || createdByMap[tag.id] || (tag.created_by_legacy === undefined && createdByMap[tag.id] === '' && 'nouser')})`;
+              const tagTitle = (
+                <div className="flex gap-2 items-center">
+                  <div className="text-xl text-orange-500">
+                    [{vehicle_name}]
+                  </div>
+                  <div>
+                    {dayjs(tag.created_at || '').format('YY/MM/DD@hh:mm a')}
+                  </div>
+                  <div>
+                    {tag.created_by_legacy ||
+                      createdByMap[tag.id] ||
+                      (tag.created_by_legacy === undefined &&
+                        createdByMap[tag.id] === '' &&
+                        'nouser')}
+                  </div>
+                </div>
+              );
+
+              `${dayjs(tag.created_at || '').format('YY/MM/DD@hh:mm a')} (${tag.created_by_legacy || createdByMap[tag.id] || (tag.created_by_legacy === undefined && createdByMap[tag.id] === '' && 'nouser')})`;
               // only 50 characters of notes are displayed
               const tagTitleFromNotes = `${dayjs(tag.created_at || '').format('YY/MM/DD@hh:mma')} ${tag.notes ? tag.notes.replace('|||', '').slice(0, 30).trim() : ''}`;
               if (tag.tag_status === 'open') {

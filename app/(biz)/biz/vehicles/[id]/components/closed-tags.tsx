@@ -10,7 +10,15 @@ import { getUserDetailsById } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
-const ClosedTags = ({ tags, user }: { tags: VehicleTagType[]; user: User }) => {
+const ClosedTags = ({
+  tags,
+  user,
+  vehicle_name
+}: {
+  tags: VehicleTagType[];
+  user: User;
+  vehicle_name: string;
+}) => {
   const supabase = createClient();
   const router = useRouter();
   // display all the existing tags for the vehicle where the tag_status is closed
@@ -87,7 +95,21 @@ const ClosedTags = ({ tags, user }: { tags: VehicleTagType[]; user: User }) => {
             dayjs(b.created_at || '').unix() - dayjs(a.created_at || '').unix()
         )
         .map((tag) => {
-          const tagTitle = `${dayjs(tag.created_at || '').format('YY/MM/DD@hh:mm a')} (${tag.created_by_legacy || createdByMap[tag.id] || (tag.created_by_legacy === undefined && createdByMap[tag.id] === '' && 'nouser')})`;
+          const tagTitle = (
+            <div className="flex gap-2 items-center">
+              <div className="text-xl text-orange-500">[{vehicle_name}]</div>
+              <div>
+                {dayjs(tag.created_at || '').format('YY/MM/DD@hh:mm a')}
+              </div>
+              <div>
+                {tag.created_by_legacy ||
+                  createdByMap[tag.id] ||
+                  (tag.created_by_legacy === undefined &&
+                    createdByMap[tag.id] === '' &&
+                    'nouser')}
+              </div>
+            </div>
+          );
           // only 50 characters of notes are displayed
           const tagTitleFromNotes = `${dayjs(tag.created_at || '').format('YY/MM/DD@hh:mm a')} ${tag.notes ? tag.notes.replace('|||', '').slice(0, 30).trim() : ''}`;
           if (tag.tag_status === 'closed') {

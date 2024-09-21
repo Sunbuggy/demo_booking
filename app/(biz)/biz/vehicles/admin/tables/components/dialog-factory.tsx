@@ -14,7 +14,7 @@ const DialogFactory = ({
   description = 'Put Description Here',
   children
 }: {
-  title: string;
+  title: string | React.ReactNode;
   setIsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isDialogOpen: boolean;
   children: React.ReactNode;

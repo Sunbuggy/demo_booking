@@ -88,6 +88,33 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     };
   }, [supabase, router]);
 
+  const updateProfilePicTitle = (
+    <div>
+      <p>
+        Update the Profile Pic for{' '}
+        <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
+      </p>
+    </div>
+  );
+
+  const addProfilePicTitle = (
+    <div>
+      <p>
+        Add a Profile Pic for{' '}
+        <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
+      </p>
+    </div>
+  );
+
+  const uploadMoreImagesTitle = (
+    <div>
+      <p>
+        Upload More Images for{' '}
+        <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
+      </p>
+    </div>
+  );
+
   if (vehicleInfo)
     return (
       <div className="md:w-[800px] min-w-[360px] space-y-5 relative">
@@ -109,7 +136,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 Upload Profile Pic
               </Button>
               <DialogFactory
-                title={`Add Profile Pic for ${vehicleInfo.name}`}
+                title={addProfilePicTitle}
                 setIsDialogOpen={setIsNewUploadDialogOpen}
                 isDialogOpen={isNewUploadDialogOpen}
                 description="Upload a profile picture for the vehicle."
@@ -124,6 +151,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       images={incoming_images}
                       setImages={setIncomingImages}
                       url_key={`profile_pic/${id}`}
+                      single={true}
                     />
                   </div>
                 }
@@ -139,7 +167,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 Update Profile Pic
               </Button>
               <DialogFactory
-                title={`Update the Profile Pic for ${vehicleInfo.name}`}
+                title={updateProfilePicTitle}
                 setIsDialogOpen={setIsUpdateUploadDialogOpen}
                 isDialogOpen={isUpdateUploadDialogOpen}
                 description="Update the profile picture for the vehicle. Please just upload a single image."
@@ -155,6 +183,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       setImages={setIncomingImages}
                       url_key={`profile_pic/${id}`}
                       updatePic={true}
+                      single={true}
                     />
                   </div>
                 }
@@ -182,7 +211,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         Upload More Images
                       </Button>
                       <DialogFactory
-                        title={`Upload More Images for ${vehicleInfo.name}`}
+                        title={uploadMoreImagesTitle}
                         setIsDialogOpen={setIsUploadImagesDialogOpen}
                         isDialogOpen={isUploadImagesDialogOpen}
                         description="Upload one or multiple images for the vehicle."
@@ -213,6 +242,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                     tags={vehicleTags}
                     id={vehicleInfo.id}
                     user={user}
+                    vehicle_name={vehicleInfo.name}
                   />
                 </AccordionContent>
               </AccordionItem>
