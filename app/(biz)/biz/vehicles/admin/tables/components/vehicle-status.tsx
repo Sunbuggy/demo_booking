@@ -8,13 +8,19 @@ const VehicleStatus = ({ vehicles }: { vehicles: VehicleType[] }) => {
 
   const modifiedGroupsAndCounts = vehicles.reduce(
     (acc, vehicle) => {
+      const status =
+        vehicle.vehicle_status === 'maintenance' ||
+        vehicle.vehicle_status === 'fine'
+          ? 'running'
+          : vehicle.vehicle_status;
+
       if (!acc[vehicle.type]) {
         acc[vehicle.type] = { total: 0 };
       }
-      if (!acc[vehicle.type][vehicle.vehicle_status]) {
-        acc[vehicle.type][vehicle.vehicle_status] = 1;
+      if (!acc[vehicle.type][status]) {
+        acc[vehicle.type][status] = 1;
       } else {
-        acc[vehicle.type][vehicle.vehicle_status] += 1;
+        acc[vehicle.type][status] += 1;
       }
       acc[vehicle.type].total += 1;
       return acc;
@@ -37,7 +43,8 @@ const VehicleStatus = ({ vehicles }: { vehicles: VehicleType[] }) => {
               scope="col"
               className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
             >
-              Data
+              <span className="text-green-500">running</span>/
+              <span className="text-red-500">broken</span>
             </th>
           </tr>
         </thead>
@@ -54,11 +61,9 @@ const VehicleStatus = ({ vehicles }: { vehicles: VehicleType[] }) => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 flex gap-1">
                   {statusEntries.map(([status, count]) => {
                     let colorClass = '';
-                    if (status === 'maintenance') {
-                      colorClass = 'text-yellow-500';
-                    } else if (status === 'broken') {
+                    if (status === 'broken') {
                       colorClass = 'text-red-500';
-                    } else if (status === 'fine') {
+                    } else if (status === 'running') {
                       colorClass = 'text-green-500';
                     }
                     return (
@@ -66,7 +71,7 @@ const VehicleStatus = ({ vehicles }: { vehicles: VehicleType[] }) => {
                         key={status}
                         className={`flex items-center ${colorClass}`}
                       >
-                        <span className="mr-1">{status}:</span>
+                        {/* <span className="mr-1">{status}:</span> */}
                         <span>{count}</span>
                       </div>
                     );
