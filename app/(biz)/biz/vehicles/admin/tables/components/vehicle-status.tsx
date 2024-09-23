@@ -58,8 +58,8 @@ const VehicleStatus = ({ vehicles }: { vehicles: VehicleType[] }) => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                   {type} (Total: {statuses.total})
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 flex gap-1">
-                  {statusEntries.map(([status, count]) => {
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 flex">
+                  {statusEntries.map(([status, count], index) => {
                     let colorClass = '';
                     if (status === 'broken') {
                       colorClass = 'text-red-500';
@@ -67,13 +67,14 @@ const VehicleStatus = ({ vehicles }: { vehicles: VehicleType[] }) => {
                       colorClass = 'text-green-500';
                     }
                     return (
-                      <div
-                        key={status}
-                        className={`flex items-center ${colorClass}`}
-                      >
-                        {/* <span className="mr-1">{status}:</span> */}
-                        <span>{count}</span>
-                      </div>
+                      <React.Fragment key={status}>
+                        <div className={`flex items-center ${colorClass}`}>
+                          <span>{count}</span>
+                        </div>
+                        {index < statusEntries.length - 1 && (
+                          <span className="mx-1">/</span>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </td>
