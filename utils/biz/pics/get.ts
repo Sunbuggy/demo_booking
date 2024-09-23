@@ -35,7 +35,7 @@ export async function fetchObjects(
         .send(new HeadObjectCommand({ Bucket: bucket, Key: key }))
         .then((data) => {})
         .catch((error) => {
-          console.error('send_error', error);
+          // console.error('send_error', error);
         });
 
       // If the object exists, generate a signed URL
