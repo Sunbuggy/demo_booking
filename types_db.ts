@@ -648,7 +648,7 @@ export type Database = {
           },
         ]
       }
-      vehicle_pretrip: {
+      vehicle_pretrip_shuttle: {
         Row: {
           ac_working: boolean | null
           all_light_bulbs_intact: boolean | null
@@ -656,16 +656,16 @@ export type Database = {
           annual_inspection_all_shuttles: boolean | null
           antifreeze_level_proper_level: boolean | null
           battery_working: boolean | null
-          belts_intact: boolean | null
           body_damage: string | null
           brake_fluid_level: boolean | null
           buggy_on_roof_secured: boolean | null
           created_at: string
           created_by: string | null
+          engine_belts_intact: boolean | null
           fire_extinguisher_present: boolean | null
           first_aid_kit_mounted: boolean | null
           first_aid_kit_stocked: boolean | null
-          fuel_level: Database["public"]["Enums"]["vehicle_fuel_level"] | null
+          fuel_level: string | null
           heater_working: boolean | null
           ice_chest_in_shuttle: boolean | null
           id: string
@@ -674,12 +674,13 @@ export type Database = {
           is_horn_working: boolean | null
           is_vehicle_clean: boolean | null
           light_indicators_work: boolean | null
-          milage: number | null
+          milage: string | null
           mirror_working: boolean | null
           notes: string | null
           oil_proper_level: boolean | null
           power_steering_fluid_proper_level: boolean | null
           registration_valid: boolean | null
+          seat_belts_intact: boolean | null
           shuttles_plugged_in_winter: boolean | null
           triangles_present: boolean | null
           vehicle_id: string | null
@@ -694,16 +695,16 @@ export type Database = {
           annual_inspection_all_shuttles?: boolean | null
           antifreeze_level_proper_level?: boolean | null
           battery_working?: boolean | null
-          belts_intact?: boolean | null
           body_damage?: string | null
           brake_fluid_level?: boolean | null
           buggy_on_roof_secured?: boolean | null
-          created_at?: string
+          created_at: string
           created_by?: string | null
+          engine_belts_intact?: boolean | null
           fire_extinguisher_present?: boolean | null
           first_aid_kit_mounted?: boolean | null
           first_aid_kit_stocked?: boolean | null
-          fuel_level?: Database["public"]["Enums"]["vehicle_fuel_level"] | null
+          fuel_level?: string | null
           heater_working?: boolean | null
           ice_chest_in_shuttle?: boolean | null
           id?: string
@@ -712,12 +713,13 @@ export type Database = {
           is_horn_working?: boolean | null
           is_vehicle_clean?: boolean | null
           light_indicators_work?: boolean | null
-          milage?: number | null
+          milage?: string | null
           mirror_working?: boolean | null
           notes?: string | null
           oil_proper_level?: boolean | null
           power_steering_fluid_proper_level?: boolean | null
           registration_valid?: boolean | null
+          seat_belts_intact?: boolean | null
           shuttles_plugged_in_winter?: boolean | null
           triangles_present?: boolean | null
           vehicle_id?: string | null
@@ -732,16 +734,16 @@ export type Database = {
           annual_inspection_all_shuttles?: boolean | null
           antifreeze_level_proper_level?: boolean | null
           battery_working?: boolean | null
-          belts_intact?: boolean | null
           body_damage?: string | null
           brake_fluid_level?: boolean | null
           buggy_on_roof_secured?: boolean | null
           created_at?: string
           created_by?: string | null
+          engine_belts_intact?: boolean | null
           fire_extinguisher_present?: boolean | null
           first_aid_kit_mounted?: boolean | null
           first_aid_kit_stocked?: boolean | null
-          fuel_level?: Database["public"]["Enums"]["vehicle_fuel_level"] | null
+          fuel_level?: string | null
           heater_working?: boolean | null
           ice_chest_in_shuttle?: boolean | null
           id?: string
@@ -750,12 +752,13 @@ export type Database = {
           is_horn_working?: boolean | null
           is_vehicle_clean?: boolean | null
           light_indicators_work?: boolean | null
-          milage?: number | null
+          milage?: string | null
           mirror_working?: boolean | null
           notes?: string | null
           oil_proper_level?: boolean | null
           power_steering_fluid_proper_level?: boolean | null
           registration_valid?: boolean | null
+          seat_belts_intact?: boolean | null
           shuttles_plugged_in_winter?: boolean | null
           triangles_present?: boolean | null
           vehicle_id?: string | null
@@ -765,14 +768,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "vehicle_pretrip_created_by_fkey"
+            foreignKeyName: "vehicle_pretrip_shuttle_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "vehicle_pretrip_vehicle_id_fkey"
+            foreignKeyName: "vehicle_pretrip_shuttle_vehicle_id_fkey"
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"

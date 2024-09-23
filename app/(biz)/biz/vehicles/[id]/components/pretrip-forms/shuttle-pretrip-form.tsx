@@ -6,25 +6,21 @@ import React from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { insertIntoPretripForm } from '@/utils/supabase/queries';
 
-const formSchema = z.object({
-  milage: z.union([
-    z.number().min(1),
-    z.string().transform((val) => parseInt(val))
-  ]),
+export const formSchema = z.object({
+  milage: z.string().optional(),
   ac_working: z.boolean().optional(),
   all_light_bulbs_intact: z.boolean().optional(),
   all_tire_pressure_within_5_psi_of_spec: z.boolean().optional(),
   annual_inspection_all_shuttles: z.boolean().optional(),
   antifreeze_level_proper_level: z.boolean().optional(),
   battery_working: z.boolean().optional(),
-  belts_intact: z.boolean().optional(),
   body_damage: z.string().optional(),
   brake_fluid_level: z.boolean().optional(),
   buggy_on_roof_secured: z.boolean().optional(),
   fire_extinguisher_present: z.boolean().optional(),
   first_aid_kit_mounted: z.boolean().optional(),
   first_aid_kit_stocked: z.boolean().optional(),
-  fuel_level: z.enum(['low', 'almost_full', 'half', 'full']).optional(),
+  fuel_level: z.string().optional(),
   heater_working: z.boolean().optional(),
   ice_chest_in_shuttle: z.boolean().optional(),
   insurance_valid: z.boolean().optional(),
@@ -41,11 +37,15 @@ const formSchema = z.object({
   triangles_present: z.boolean().optional(),
   visible_hoses_intact: z.boolean().optional(),
   visible_leaks: z.boolean().optional(),
-  wind_shield_washer_fluid_full: z.boolean().optional()
+  wind_shield_washer_fluid_full: z.boolean().optional(),
+  created_by: z.string().optional(),
+  vehicle_id: z.string().optional(),
+  engine_belts_intact: z.boolean().optional(),
+  seat_belts_intact: z.boolean().optional()
 });
 
 // all booleans are radio buttons, all enums are select dropdowns, numbers are inputs, and all strings are text inputs
-const fields: FieldConfig[] = [
+export const fields: FieldConfig[] = [
   {
     type: 'input',
     name: 'milage',
@@ -115,7 +115,17 @@ const fields: FieldConfig[] = [
   },
   {
     type: 'radio',
-    name: 'belts_intact',
+    name: 'engine_belts_intact',
+    label: 'Belts Intact',
+    description: 'Are the belts intact?',
+    options: [
+      { value: 'true', label: 'Yes' },
+      { value: 'false', label: 'No' }
+    ]
+  },
+  {
+    type: 'radio',
+    name: 'seat_belts_intact',
     label: 'Belts Intact',
     description: 'Are the belts intact?',
     options: [
@@ -186,7 +196,6 @@ const fields: FieldConfig[] = [
     name: 'fuel_level',
     label: 'Fuel Level',
     options: [
-      { value: 'empty', label: 'Empty' },
       { value: 'quarter', label: 'Quarter' },
       { value: 'half', label: 'Half' },
       { value: 'three_quarters', label: 'Three Quarters' },
@@ -365,7 +374,13 @@ const fields: FieldConfig[] = [
   }
 ];
 
-const ShuttlePretripForm = ({ id, user_id }: { id?: string; user_id: string }) => {
+const ShuttlePretripForm = ({
+  vehicle_id,
+  user_id
+}: {
+  vehicle_id?: string;
+  user_id: string;
+}) => {
   const [formData, setFormData] = React.useState<
     z.infer<typeof formSchema> | undefined
   >(undefined);
@@ -376,11 +391,11 @@ const ShuttlePretripForm = ({ id, user_id }: { id?: string; user_id: string }) =
       console.log('formData', formData);
       const data = {
         ...formData,
-        vehicle_id: id,
+        vehicle_id: vehicle_id,
         created_at: new Date().toISOString(),
         created_by: user_id
       };
-      insertIntoPretripForm(supabase, data)
+      insertIntoPretripForm(supabase, data, 'vehicle_pretrip_shuttle')
         .then((res) => {
           console.log('res', res);
           // clear the form

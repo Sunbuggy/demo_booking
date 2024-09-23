@@ -2,14 +2,14 @@ import React from 'react';
 import { fetchVehicleInfo, getUser } from '@/utils/supabase/queries';
 import { VehiclePics } from '../admin/tables/components/row-actions';
 import { createClient } from '@/utils/supabase/server';
-import VehicleClientComponent from './components/vehicle-client';
 import { fetchObjects } from '@/utils/biz/pics/get';
-import { VehicleTagType } from '../admin/page';
+import { VehicleTagType, VehicleType } from '../admin/page';
+import VehicleClientComponent from './components/vehicle-client';
 
+const bucket = 'sb-fleet';
 async function getVehicleData(id: string) {
   const supabase = createClient();
   const vehicleInfo = await fetchVehicleInfo(supabase, id);
-  const userData = await getUser(supabase);
   const fetchVehicleTagInfo = async () => {
     const { data, error } = await supabase
       .from('vehicle_tag')
@@ -24,7 +24,6 @@ async function getVehicleData(id: string) {
 
   const vehicleTags = await fetchVehicleTagInfo();
 
-  const bucket = 'sb-fleet';
   try {
     const normalPicsResponse = await fetchObjects(
       bucket,
@@ -32,31 +31,19 @@ async function getVehicleData(id: string) {
       `vehicles/${id}`
     );
 
-    const profilePicResponse = await fetchObjects(
-      bucket,
-      true,
-      `profile_pic/${id}`
-    );
-
-    if (profilePicResponse?.url) {
-      vehicleInfo[0].profile_pic = profilePicResponse.url;
-    }
-
     const normalImages = normalPicsResponse?.objects as VehiclePics[];
 
     return {
-      vehicleInfo: vehicleInfo[0],
+      vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: normalImages || [],
-      vehicleTags,
-      user: userData
+      vehicleTags
     };
   } catch (error) {
     console.error(`Error fetching objects for ${id} `, error);
     return {
-      vehicleInfo: null,
+      vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: [],
-      vehicleTags: [],
-      user: userData
+      vehicleTags: []
     };
   }
 }
@@ -66,7 +53,18 @@ export default async function VehiclePage({
 }: {
   params: { id: string };
 }) {
-  const { vehicleInfo, normalImages, vehicleTags, user } = await getVehicleData(
+  // debug id going undefined
+  const supabase = createClient();
+  const user = await getUser(supabase);
+
+  const profilePicResponse = await fetchObjects(
+    bucket,
+    true,
+    `profile_pic/${params.id}`
+  );
+  const profilePic = profilePicResponse?.objects?.[0]?.url ?? '';
+
+  const { vehicleInfo, normalImages, vehicleTags } = await getVehicleData(
     params.id
   );
 
@@ -76,7 +74,7 @@ export default async function VehiclePage({
         <VehicleClientComponent
           id={params.id}
           initialVehicleInfo={vehicleInfo}
-          profilePic={vehicleInfo?.profile_pic}
+          profilePic={profilePic}
           images={normalImages}
           vehicleTags={vehicleTags}
           user={user}

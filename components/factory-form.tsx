@@ -209,7 +209,7 @@ export function FactoryForm({
             )}
           />
         ))}
-        <Button type="submit">Submit</Button>
+        {!allDisabled && <Button type="submit">Submit</Button>}
       </form>
     </Form>
   );

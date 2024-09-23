@@ -22,8 +22,9 @@ import { User } from '@supabase/supabase-js';
 import { createId } from '@paralleldrive/cuid2';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import PretripForm from '../../admin/tables/components/shuttle-pretrip-form';
+import ShuttlePretripForm from './pretrip-forms/shuttle-pretrip-form';
 import ResponsiveImageUpload from './responsive-image-upload-form';
+import ShuttlePretripHistory from './pretrip-forms/shuttle-pretrip-history';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -53,6 +54,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     React.useState(false);
   const [isUploadImagesDialogOpen, setIsUploadImagesDialogOpen] =
     React.useState(false);
+  const [isPretripFormOpen, setIsPretripFormOpen] = React.useState(false);
 
   React.useEffect(() => {
     const channel = supabase
@@ -231,9 +233,38 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               <AccordionItem value="pre-trip-form">
                 <AccordionTrigger>Pretrip Form</AccordionTrigger>
                 <AccordionContent>
-                  {vehicleInfo.type === 'shuttle' && (
-                    <PretripForm user_id={user.id} id={vehicleInfo.id} />
-                  )}
+                  <>
+                    <Button
+                      className="mb-5"
+                      onClick={() => setIsPretripFormOpen(true)}
+                    >
+                      View Pretrip Form History
+                    </Button>
+                    <DialogFactory
+                      title={'Pretrip Form History'}
+                      setIsDialogOpen={setIsPretripFormOpen}
+                      isDialogOpen={isPretripFormOpen}
+                      description="History of pretrip forms for the vehicle."
+                      children={
+                        vehicleInfo.type === 'shuttle' && (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
+                            <ShuttlePretripHistory
+                              veh_id={vehicleInfo.id}
+                              vehicle_name={vehicleInfo.name}
+                            />
+                          </div>
+                        )
+                      }
+                    />
+                    {vehicleInfo.type === 'shuttle' && (
+                      <div>
+                        <ShuttlePretripForm
+                          user_id={user.id}
+                          vehicle_id={vehicleInfo.id}
+                        />
+                      </div>
+                    )}
+                  </>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

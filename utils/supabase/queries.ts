@@ -933,25 +933,11 @@ export const updateQrHistory = cache(
 );
 
 export const fetchPretripFormHistory = cache(
-  async (supabase: SupabaseClient, vehicle_id: string) => {
+  async (supabase: SupabaseClient, vehicle_id: string, veh_table: string) => {
     const { data, error } = await supabase
-      .from('vehicle_pretrip')
+      .from(veh_table)
       .select()
       .eq('vehicle_id', vehicle_id);
-    if (error) {
-      console.error(error);
-      return [];
-    }
-    return data;
-  }
-);
-
-export const fetchPretripById = cache(
-  async (supabase: SupabaseClient, id: string) => {
-    const { data, error } = await supabase
-      .from('vehicle_pretrip')
-      .select()
-      .eq('id', id);
     if (error) {
       console.error(error);
       return [];
@@ -963,11 +949,10 @@ export const fetchPretripById = cache(
 export const insertIntoPretripForm = cache(
   async (
     supabase: SupabaseClient,
-    pretrip: Database['public']['Tables']['vehicle_pretrip']['Insert']
+    pretrip: Database['public']['Tables']['vehicle_pretrip_shuttle']['Insert'],
+    veh_table: string
   ) => {
-    const { data, error } = await supabase
-      .from('vehicle_pretrip')
-      .insert([pretrip]);
+    const { data, error } = await supabase.from(veh_table).insert([pretrip]);
     if (error) {
       console.error(error);
       return [];
