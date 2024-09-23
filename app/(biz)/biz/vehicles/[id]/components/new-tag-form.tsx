@@ -119,7 +119,6 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
       created_by: user.id,
       notes: `(${user.user_metadata.full_name}): ${tag.notes}`
     } as unknown as VehicleTagType;
-    console.log(newTag);
     const supabase = createClient();
 
     switch (newTag.tag_type) {
@@ -190,7 +189,6 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
           });
         break;
       default:
-        console.log('default');
     }
     checkAndChangeVehicleStatus(supabase, id)
       .then((res) => {

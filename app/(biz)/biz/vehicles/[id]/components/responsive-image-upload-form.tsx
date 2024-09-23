@@ -61,10 +61,6 @@ export default function ResponsiveImageUpload({
     formData.append('mode', single ? 'single' : 'multiple');
     formData.append('key', url_key);
     formData.append('contentType', 'image/jpeg');
-    for (const entry of Array.from(formData.entries())) {
-      const [key, value] = entry;
-      console.log(`${key}:`, value);
-    }
 
     // Append each file to formData
     selectedFiles.forEach((file, index) => {

@@ -53,7 +53,6 @@ const ShuttlePretripHistory = ({
     </div>
   );
 
-  console.log(shuttlePretripHistory);
   return (
     <>
       {shuttlePretripHistory.map((pretripHistory, index) => {

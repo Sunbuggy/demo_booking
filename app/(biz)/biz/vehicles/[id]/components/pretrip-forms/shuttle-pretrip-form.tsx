@@ -388,7 +388,6 @@ const ShuttlePretripForm = ({
   React.useEffect(() => {
     if (formData !== undefined) {
       const supabase = createClient();
-      console.log('formData', formData);
       const data = {
         ...formData,
         vehicle_id: vehicle_id,
@@ -397,9 +396,8 @@ const ShuttlePretripForm = ({
       };
       insertIntoPretripForm(supabase, data, 'vehicle_pretrip_shuttle')
         .then((res) => {
-          console.log('res', res);
           // clear the form
-          //   setFormData(undefined);
+          setFormData(undefined);
         })
         .catch((error) => {
           console.error('Error inserting into pretrip form', error);
