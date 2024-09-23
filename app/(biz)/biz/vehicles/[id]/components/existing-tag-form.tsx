@@ -328,8 +328,6 @@ const ExistingTagForm = ({
                   description="Upload a profile picture for the vehicle."
                   children={
                     <ResponsiveImageUpload
-                      images={images}
-                      setImages={setImages}
                       url_key={`vehicle_damage/${tag?.vehicle_id}/${tag?.id}`}
                     />
                   }

@@ -46,8 +46,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const vehicleInfo = initialVehicleInfo;
   const supabase = createClient();
   const router = useRouter();
-  const [incoming_images, setIncomingImages] =
-    React.useState<VehiclePics[]>(images);
   const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
     React.useState(false);
   const [isUpdateUploadDialogOpen, setIsUpdateUploadDialogOpen] =
@@ -142,8 +140,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 children={
                   <div>
                     <ResponsiveImageUpload
-                      images={incoming_images}
-                      setImages={setIncomingImages}
                       url_key={`profile_pic/${id}`}
                       single={true}
                     />
@@ -168,8 +164,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 children={
                   <div>
                     <ResponsiveImageUpload
-                      images={incoming_images}
-                      setImages={setIncomingImages}
                       url_key={`profile_pic/${id}`}
                       updatePic={true}
                       single={true}
@@ -207,8 +201,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         children={
                           <div>
                             <ResponsiveImageUpload
-                              images={incoming_images}
-                              setImages={setIncomingImages}
                               url_key={`vehicles/${id}/${createId()}`}
                             />
                           </div>

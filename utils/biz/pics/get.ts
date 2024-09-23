@@ -31,7 +31,12 @@ export async function fetchObjects(
       };
     }
     try {
-      await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+      await s3Client
+        .send(new HeadObjectCommand({ Bucket: bucket, Key: key }))
+        .then((data) => {})
+        .catch((error) => {
+          console.error('send_error', error);
+        });
 
       // If the object exists, generate a signed URL
       const signedUrl = await getSignedUrl(

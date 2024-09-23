@@ -13,16 +13,12 @@ interface VehiclePic {
 
 interface ResponsiveImageUploadProps {
   url_key: string;
-  images: VehiclePic[];
-  setImages: React.Dispatch<React.SetStateAction<VehiclePic[]>>;
   updatePic?: boolean;
   single?: boolean;
 }
 
 export default function ResponsiveImageUpload({
   url_key,
-  images,
-  setImages,
   updatePic = false,
   single = false
 }: ResponsiveImageUploadProps) {
@@ -81,15 +77,17 @@ export default function ResponsiveImageUpload({
       if (response.ok) {
         toast({
           title: 'Success',
-          description: 'Files uploaded successfully'
+          description: 'Files uploaded successfully',
+          variant: 'success'
         });
         const newImages = selectedFiles.map((file) => ({
           url: URL.createObjectURL(file),
           key: file.name
         }));
-        setImages((prev) => [...prev, ...newImages]);
         setSelectedFiles([]);
         if (formRef.current) formRef.current.reset();
+        // reload window
+        window.location.reload();
       } else {
         throw new Error(data.message || 'Failed to upload files');
       }

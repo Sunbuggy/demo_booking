@@ -62,8 +62,7 @@ export default async function VehiclePage({
     true,
     `profile_pic/${params.id}`
   );
-  const profilePic = profilePicResponse?.objects?.[0]?.url ?? '';
-
+  const profilePic = String(profilePicResponse?.url);
   const { vehicleInfo, normalImages, vehicleTags } = await getVehicleData(
     params.id
   );
