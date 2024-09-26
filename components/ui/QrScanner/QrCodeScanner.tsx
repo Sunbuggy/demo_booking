@@ -18,7 +18,7 @@ const QrCodeScanner: React.FC<QrCodeScannerProps> = ({ onScanSuccess }) => {
         .decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
           if (result) {
             const scannedCode = result.getText();
-            onScanSuccess(scannedCode); // Pass the scanned result to parent component
+            onScanSuccess(scannedCode); // Pass each scanned result to the parent
           }
 
           if (err && !(err.name === 'NotFoundException')) {
@@ -33,13 +33,13 @@ const QrCodeScanner: React.FC<QrCodeScannerProps> = ({ onScanSuccess }) => {
         });
     }
 
-    // Cleanup function to stop the camera when the component unmounts
+    // Cleanup to stop the camera when the component unmounts
     return () => {
       if (controlsRef.current) {
         controlsRef.current.stop();
       }
     };
-  }, [onScanSuccess]); // Only re-run if the scan success handler changes
+  }, [onScanSuccess]);
 
   return (
     <div className="qr-scanner">

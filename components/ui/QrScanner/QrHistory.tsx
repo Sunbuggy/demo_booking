@@ -1,9 +1,9 @@
+'use client'
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { getUserDetails, insertIntoQrHistorys, fetchQrHistoryInfo } from '@/utils/supabase/queries';
-import QrCodeScanner from './QrCodeScanner';
+import { getUserDetails } from '@/utils/supabase/queries';
 
-const QRHistoryScanner = () => {
+const QRHistoryList = () => {
   const [scanResults, setScanResults] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -35,24 +35,6 @@ const QRHistoryScanner = () => {
     fetchUserAndHistory();
   }, [supabase]);
 
-  // Function to handle successful scans from QrCodeScanner
-  const handleScanSuccess = async (scannedCode: string) => {
-    if (userId && !scanResults.includes(scannedCode)) {
-      setScanResults((prevResults) => [...prevResults, scannedCode]);
-
-      // Save the new QR code to the database
-      try {
-        await insertIntoQrHistorys(supabase, {
-          user: userId,
-          link: scannedCode,
-        });
-      } catch (e) {
-        console.error('Error inserting QR code:', e);
-        setError('Failed to save scanned QR code to the database.');
-      }
-    }
-  };
-
   // Fetch user's QR code history
   const fetchUserQrHistory = async (supabase: any, userId: string) => {
     try {
@@ -74,10 +56,9 @@ const QRHistoryScanner = () => {
   };
 
   return (
-    <div className="qr-scanner">
+    <div className="qr-history">
       {error && <p className="error">{error}</p>}
-      <QrCodeScanner onScanSuccess={handleScanSuccess} />
-
+      
       <div>
         <h2>Scanned QR Codes:</h2>
         {loading ? (
@@ -100,4 +81,4 @@ const QRHistoryScanner = () => {
   );
 };
 
-export default QRHistoryScanner;
+export default QRHistoryList;

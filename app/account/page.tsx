@@ -6,6 +6,7 @@ import {
   getUserDetails
 } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
+import QRHistoryScanner from '@/components/ui/QrScanner/QrHistory';
 // import RoleForm from '@/components/ui/AccountForms/RoleForm';
 type TimeEntry = {
   id: any;

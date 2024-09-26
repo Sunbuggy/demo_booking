@@ -14,8 +14,7 @@ import {
 } from '@/components/ui/sheet';
 import { UserNav } from '@/app/(biz)/biz/users/admin/tables/components/user-nav';
 import { UserType } from '@/app/(biz)/biz/users/types';
-import QrCodeScanner from '../QrScanner/QrCodeScanner';
-import QRHistoryScanner from '../QrScanner/QrHistory';
+import QrFunction from '../QrScanner/QrFunction';
 import { usePathname } from 'next/navigation';
 import { BarcodeScanner } from '@/components/qr-scanner';
 
@@ -92,7 +91,7 @@ export default function Navlinks({ user }: NavlinksProps) {
               <SheetTitle>QR Scanner</SheetTitle>
               <SheetDescription>Scan a QR Code</SheetDescription>
             </SheetHeader>
-            <QRHistoryScanner/>
+            <QrFunction/>
       
              {/* <BarcodeScanner /> */}
           </SheetContent>
