@@ -22,7 +22,7 @@ import {
 import ImageGrid from './image-grid';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
 import { Button } from '@/components/ui/button';
-import DialogFactory from '../../admin/tables/components/dialog-factory';
+import DialogFactory from '@/components/dialog-factory';
 import ResponsiveImageUpload from './responsive-image-upload-form';
 
 const ExistingTagForm = ({

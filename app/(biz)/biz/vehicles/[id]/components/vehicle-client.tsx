@@ -16,15 +16,23 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import ImageGrid from './image-grid';
-import DialogFactory from '../../admin/tables/components/dialog-factory';
+import DialogFactory from '@/components/dialog-factory';
 import TagManagement from './tag-management';
 import { User } from '@supabase/supabase-js';
 import { createId } from '@paralleldrive/cuid2';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import ShuttlePretripForm from './pretrip-forms/shuttle-pretrip-form';
+import ShuttlePretripForm from './pretrip-forms/shuttle/shuttle-pretrip-form';
+import ShuttlePretripHistory from './pretrip-forms/shuttle/shuttle-pretrip-history';
+import TruckPretripHistory from './pretrip-forms/truck/truck-pretrip-history';
+import TruckPretripForm from './pretrip-forms/truck/truck-pretrip-form';
+import ATVPretripHistory from './pretrip-forms/atv/atv-pretrip-history';
+import ATVPretripForm from './pretrip-forms/atv/atv-pretrip-form';
+import BuggyPretripHistory from './pretrip-forms/buggy/buggy-pretrip-history';
+import BuggyPretripForm from './pretrip-forms/buggy/buggy-pretrip-form';
+import ForkliftPretripForm from './pretrip-forms/forklift/forklift-pretrip-form';
+import ForkliftPretripHistory from './pretrip-forms/forklift/forklift-pretrip-history';
 import ResponsiveImageUpload from './responsive-image-upload-form';
-import ShuttlePretripHistory from './pretrip-forms/shuttle-pretrip-history';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -238,19 +246,87 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       isDialogOpen={isPretripFormOpen}
                       description="History of pretrip forms for the vehicle."
                       children={
-                        vehicleInfo.type === 'shuttle' && (
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
-                            <ShuttlePretripHistory
-                              veh_id={vehicleInfo.id}
-                              vehicle_name={vehicleInfo.name}
-                            />
-                          </div>
-                        )
+                        <>
+                          {vehicleInfo.type === 'shuttle' && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
+                              <ShuttlePretripHistory
+                                veh_id={vehicleInfo.id}
+                                vehicle_name={vehicleInfo.name}
+                              />
+                            </div>
+                          )}
+                          {vehicleInfo.type === 'truck' && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
+                              <TruckPretripHistory
+                                veh_id={vehicleInfo.id}
+                                vehicle_name={vehicleInfo.name}
+                              />
+                            </div>
+                          )}
+                          {vehicleInfo.type === 'atv' && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
+                              <ATVPretripHistory
+                                veh_id={vehicleInfo.id}
+                                vehicle_name={vehicleInfo.name}
+                              />
+                            </div>
+                          )}
+
+                          {vehicleInfo.type === 'buggy' && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
+                              <BuggyPretripHistory
+                                veh_id={vehicleInfo.id}
+                                vehicle_name={vehicleInfo.name}
+                              />
+                            </div>
+                          )}
+
+                          {vehicleInfo.type === 'forktruck' && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
+                              <ForkliftPretripHistory
+                                veh_id={vehicleInfo.id}
+                                vehicle_name={vehicleInfo.name}
+                              />
+                            </div>
+                          )}
+                        </>
                       }
                     />
                     {vehicleInfo.type === 'shuttle' && (
                       <div>
                         <ShuttlePretripForm
+                          user_id={user.id}
+                          vehicle_id={vehicleInfo.id}
+                        />
+                      </div>
+                    )}
+                    {vehicleInfo.type === 'truck' && (
+                      <div>
+                        <TruckPretripForm
+                          user_id={user.id}
+                          vehicle_id={vehicleInfo.id}
+                        />
+                      </div>
+                    )}
+                    {vehicleInfo.type === 'atv' && (
+                      <div>
+                        <ATVPretripForm
+                          user_id={user.id}
+                          vehicle_id={vehicleInfo.id}
+                        />
+                      </div>
+                    )}
+                    {vehicleInfo.type === 'buggy' && (
+                      <div>
+                        <BuggyPretripForm
+                          user_id={user.id}
+                          vehicle_id={vehicleInfo.id}
+                        />
+                      </div>
+                    )}
+                    {vehicleInfo.type === 'forktruck' && (
+                      <div>
+                        <ForkliftPretripForm
                           user_id={user.id}
                           vehicle_id={vehicleInfo.id}
                         />

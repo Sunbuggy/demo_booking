@@ -5,7 +5,7 @@ import TagForm from './tag-form-wrapper';
 import dayjs from 'dayjs';
 import { User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
-import DialogFactory from '../../admin/tables/components/dialog-factory';
+import DialogFactory from '@/components/dialog-factory';
 import { getUserDetailsById } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';

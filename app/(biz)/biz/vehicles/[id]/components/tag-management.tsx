@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import TagForm from './tag-form-wrapper';
-import DialogFactory from '../../admin/tables/components/dialog-factory';
+import DialogFactory from '@/components/dialog-factory';
 import { Button } from '@/components/ui/button';
 import ClosedTags from './closed-tags';
 import { Eye, Plus } from 'lucide-react';

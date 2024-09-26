@@ -946,10 +946,71 @@ export const fetchPretripFormHistory = cache(
   }
 );
 
-export const insertIntoPretripForm = cache(
+export const insertIntoShuttlePretripForm = cache(
   async (
     supabase: SupabaseClient,
     pretrip: Database['public']['Tables']['vehicle_pretrip_shuttle']['Insert'],
+    veh_table: string
+  ) => {
+    const { data, error } = await supabase.from(veh_table).insert([pretrip]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const insertIntoBuggyPretripForm = cache(
+  async (
+    supabase: SupabaseClient,
+    pretrip: Database['public']['Tables']['vehicle_pretrip_buggy']['Insert'],
+    veh_table: string
+  ) => {
+    const { data, error } = await supabase.from(veh_table).insert([pretrip]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// atv
+export const insertIntoAtvPretripForm = cache(
+  async (
+    supabase: SupabaseClient,
+    pretrip: Database['public']['Tables']['vehicle_pretrip_atv']['Insert'],
+    veh_table: string
+  ) => {
+    const { data, error } = await supabase.from(veh_table).insert([pretrip]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+// forklift
+export const insertIntoForkliftPretripForm = cache(
+  async (
+    supabase: SupabaseClient,
+    pretrip: Database['public']['Tables']['vehicle_pretrip_forklift']['Insert'],
+    veh_table: string
+  ) => {
+    const { data, error } = await supabase.from(veh_table).insert([pretrip]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+// truck
+export const insertIntoTruckPretripForm = cache(
+  async (
+    supabase: SupabaseClient,
+    pretrip: Database['public']['Tables']['vehicle_pretrip_truck']['Insert'],
     veh_table: string
   ) => {
     const { data, error } = await supabase.from(veh_table).insert([pretrip]);
