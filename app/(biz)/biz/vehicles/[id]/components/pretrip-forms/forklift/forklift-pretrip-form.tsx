@@ -7,7 +7,7 @@ import { createClient } from '@/utils/supabase/client';
 import { insertIntoForkliftPretripForm } from '@/utils/supabase/queries';
 import { useToast } from '@/components/ui/use-toast';
 
-const formSchema = z.object({
+export const formSchema = z.object({
   no_hydraulic_fluid_leaks: z.boolean(),
   back_up_alarm_operational: z.boolean(),
   battery_intact: z.boolean(),
