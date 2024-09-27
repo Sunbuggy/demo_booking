@@ -763,6 +763,7 @@ export type Database = {
           buggy_washed: boolean | null
           clean_of_trash: boolean | null
           created_at: string
+          created_by: string | null
           drive_belt_intact: boolean | null
           drive_test_pass: boolean | null
           frame_intact: boolean | null
@@ -810,6 +811,7 @@ export type Database = {
           buggy_washed?: boolean | null
           clean_of_trash?: boolean | null
           created_at?: string
+          created_by?: string | null
           drive_belt_intact?: boolean | null
           drive_test_pass?: boolean | null
           frame_intact?: boolean | null
@@ -857,6 +859,7 @@ export type Database = {
           buggy_washed?: boolean | null
           clean_of_trash?: boolean | null
           created_at?: string
+          created_by?: string | null
           drive_belt_intact?: boolean | null
           drive_test_pass?: boolean | null
           frame_intact?: boolean | null
@@ -902,16 +905,22 @@ export type Database = {
             referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "vehicle_pretrip_buggy_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       vehicle_pretrip_forklift: {
         Row: {
-          any_hydraulic_fluid_leaks: boolean | null
           back_up_alarm_operational: boolean | null
-          battery_intact: string | null
-          broken_or_loose_part: boolean | null
+          battery_intact: boolean | null
           controls_and_levers_work: boolean | null
           created_at: string | null
+          created_by: string | null
           electrical_lines_intact: boolean | null
           emergency_stop_and_brakes_work: boolean | null
           extension_cylinders_intact: boolean | null
@@ -920,7 +929,9 @@ export type Database = {
             | Database["public"]["Enums"]["vehicle_fuel_level"]
             | null
           id: string
-          motor_condition: boolean | null
+          motor_condition_intact: boolean | null
+          no_broken_or_loose_part: boolean | null
+          no_hydraulic_fluid_leaks: boolean | null
           notes: string | null
           oil_level_correct: boolean | null
           pivot_pins_intact: boolean | null
@@ -931,12 +942,11 @@ export type Database = {
           window_clean: boolean | null
         }
         Insert: {
-          any_hydraulic_fluid_leaks?: boolean | null
           back_up_alarm_operational?: boolean | null
-          battery_intact?: string | null
-          broken_or_loose_part?: boolean | null
+          battery_intact?: boolean | null
           controls_and_levers_work?: boolean | null
           created_at?: string | null
+          created_by?: string | null
           electrical_lines_intact?: boolean | null
           emergency_stop_and_brakes_work?: boolean | null
           extension_cylinders_intact?: boolean | null
@@ -945,7 +955,9 @@ export type Database = {
             | Database["public"]["Enums"]["vehicle_fuel_level"]
             | null
           id?: string
-          motor_condition?: boolean | null
+          motor_condition_intact?: boolean | null
+          no_broken_or_loose_part?: boolean | null
+          no_hydraulic_fluid_leaks?: boolean | null
           notes?: string | null
           oil_level_correct?: boolean | null
           pivot_pins_intact?: boolean | null
@@ -956,12 +968,11 @@ export type Database = {
           window_clean?: boolean | null
         }
         Update: {
-          any_hydraulic_fluid_leaks?: boolean | null
           back_up_alarm_operational?: boolean | null
-          battery_intact?: string | null
-          broken_or_loose_part?: boolean | null
+          battery_intact?: boolean | null
           controls_and_levers_work?: boolean | null
           created_at?: string | null
+          created_by?: string | null
           electrical_lines_intact?: boolean | null
           emergency_stop_and_brakes_work?: boolean | null
           extension_cylinders_intact?: boolean | null
@@ -970,7 +981,9 @@ export type Database = {
             | Database["public"]["Enums"]["vehicle_fuel_level"]
             | null
           id?: string
-          motor_condition?: boolean | null
+          motor_condition_intact?: boolean | null
+          no_broken_or_loose_part?: boolean | null
+          no_hydraulic_fluid_leaks?: boolean | null
           notes?: string | null
           oil_level_correct?: boolean | null
           pivot_pins_intact?: boolean | null
@@ -980,7 +993,15 @@ export type Database = {
           vert_mast_sliding_chains_parts_operational?: boolean | null
           window_clean?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_pretrip_forklift_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicle_pretrip_shuttle: {
         Row: {
@@ -1123,7 +1144,6 @@ export type Database = {
           all_tire_pressure_within_5_psi_of_spec: boolean | null
           battery_in_working_condition: boolean | null
           blm_permit_present: boolean | null
-          body_damage: boolean | null
           brake_fluid_full: boolean | null
           brakes_hold_in_good_condition: boolean | null
           brakes_in_good_condition: boolean | null
@@ -1132,6 +1152,7 @@ export type Database = {
           check_engine_light_off: boolean | null
           coolant_level_at_proper_level: boolean | null
           created_at: string | null
+          created_by: string | null
           did_you_need_to_open_new_tag: boolean | null
           drive_shaft_exhaust_frame_good_condition: boolean | null
           emergency_brake_works: boolean | null
@@ -1153,6 +1174,7 @@ export type Database = {
           lights_working: boolean | null
           mileage: number | null
           mirror_working: boolean | null
+          no_body_damage: boolean | null
           no_flat_tire: boolean | null
           no_visible_leaks_of_any_fluids: boolean | null
           notes: string | null
@@ -1176,7 +1198,6 @@ export type Database = {
           all_tire_pressure_within_5_psi_of_spec?: boolean | null
           battery_in_working_condition?: boolean | null
           blm_permit_present?: boolean | null
-          body_damage?: boolean | null
           brake_fluid_full?: boolean | null
           brakes_hold_in_good_condition?: boolean | null
           brakes_in_good_condition?: boolean | null
@@ -1185,6 +1206,7 @@ export type Database = {
           check_engine_light_off?: boolean | null
           coolant_level_at_proper_level?: boolean | null
           created_at?: string | null
+          created_by?: string | null
           did_you_need_to_open_new_tag?: boolean | null
           drive_shaft_exhaust_frame_good_condition?: boolean | null
           emergency_brake_works?: boolean | null
@@ -1206,6 +1228,7 @@ export type Database = {
           lights_working?: boolean | null
           mileage?: number | null
           mirror_working?: boolean | null
+          no_body_damage?: boolean | null
           no_flat_tire?: boolean | null
           no_visible_leaks_of_any_fluids?: boolean | null
           notes?: string | null
@@ -1229,7 +1252,6 @@ export type Database = {
           all_tire_pressure_within_5_psi_of_spec?: boolean | null
           battery_in_working_condition?: boolean | null
           blm_permit_present?: boolean | null
-          body_damage?: boolean | null
           brake_fluid_full?: boolean | null
           brakes_hold_in_good_condition?: boolean | null
           brakes_in_good_condition?: boolean | null
@@ -1238,6 +1260,7 @@ export type Database = {
           check_engine_light_off?: boolean | null
           coolant_level_at_proper_level?: boolean | null
           created_at?: string | null
+          created_by?: string | null
           did_you_need_to_open_new_tag?: boolean | null
           drive_shaft_exhaust_frame_good_condition?: boolean | null
           emergency_brake_works?: boolean | null
@@ -1259,6 +1282,7 @@ export type Database = {
           lights_working?: boolean | null
           mileage?: number | null
           mirror_working?: boolean | null
+          no_body_damage?: boolean | null
           no_flat_tire?: boolean | null
           no_visible_leaks_of_any_fluids?: boolean | null
           notes?: string | null
@@ -1278,6 +1302,13 @@ export type Database = {
           windshield_wipers_condition?: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vehicle_pretrip_truck_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vehicle_pretrip_truck_vehicle_id_fkey"
             columns: ["vehicle_id"]

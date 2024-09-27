@@ -5,6 +5,7 @@ import { FactoryForm, FieldConfig } from '@/components/factory-form';
 import React from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { insertIntoShuttlePretripForm } from '@/utils/supabase/queries';
+import { useToast } from '@/components/ui/use-toast';
 
 export const formSchema = z.object({
   milage: z.string(),
@@ -14,7 +15,7 @@ export const formSchema = z.object({
   annual_inspection_all_shuttles: z.boolean(),
   antifreeze_level_proper_level: z.boolean(),
   battery_working: z.boolean(),
-  body_damage: z.string(),
+  body_damage: z.string().optional(),
   brake_fluid_level: z.boolean(),
   buggy_on_roof_secured: z.boolean(),
   fire_extinguisher_present: z.boolean(),
@@ -29,7 +30,7 @@ export const formSchema = z.object({
   is_vehicle_clean: z.boolean(),
   light_indicators_work: z.boolean(),
   mirror_working: z.boolean(),
-  notes: z.string(),
+  notes: z.string().optional(),
   oil_proper_level: z.boolean(),
   power_steering_fluid_proper_level: z.boolean(),
   registration_valid: z.boolean(),
@@ -38,8 +39,6 @@ export const formSchema = z.object({
   visible_hoses_intact: z.boolean(),
   visible_leaks: z.boolean(),
   wind_shield_washer_fluid_full: z.boolean(),
-  created_by: z.string(),
-  vehicle_id: z.string(),
   engine_belts_intact: z.boolean(),
   seat_belts_intact: z.boolean()
 });
@@ -134,11 +133,11 @@ export const fields: FieldConfig[] = [
     ]
   },
   {
-    type: 'input',
+    type: 'textarea',
     name: 'body_damage',
     label: 'Body Damage',
     placeholder: 'Enter the body damage',
-    description: 'The body damage of the vehicle.'
+    description: '(IF ANY) The body damage of the vehicle.'
   },
   {
     type: 'radio',
@@ -192,7 +191,7 @@ export const fields: FieldConfig[] = [
     ]
   },
   {
-    type: 'select',
+    type: 'radio',
     name: 'fuel_level',
     label: 'Fuel Level',
     options: [
@@ -384,6 +383,7 @@ const ShuttlePretripForm = ({
   const [formData, setFormData] = React.useState<
     z.infer<typeof formSchema> | undefined
   >(undefined);
+  const { toast } = useToast();
 
   React.useEffect(() => {
     if (formData !== undefined) {
@@ -398,9 +398,23 @@ const ShuttlePretripForm = ({
         .then((res) => {
           // clear the form
           setFormData(undefined);
+          toast({
+            title: 'Form submitted',
+            description: 'The form has been submitted successfully',
+            variant: 'success',
+            duration: 5000
+          });
+          // reload the page
+          window.location.reload();
         })
         .catch((error) => {
           console.error('Error inserting into pretrip form', error);
+          toast({
+            title: 'Error',
+            description: 'There was an error submitting the form',
+            variant: 'destructive',
+            duration: 5000
+          });
         });
     }
   }, [formData]);

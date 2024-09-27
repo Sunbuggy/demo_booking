@@ -5,87 +5,38 @@ import { FactoryForm, FieldConfig } from '@/components/factory-form';
 import React from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { insertIntoForkliftPretripForm } from '@/utils/supabase/queries';
+import { useToast } from '@/components/ui/use-toast';
 
 const formSchema = z.object({
-  any_hydraulic_fluid_leaks: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  back_up_alarm_operational: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  battery: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  broken_or_loose_part: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  controls_and_levers_work: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  created_at: z.string(),
-  electrical_lines_intact: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  emergency_stop_and_brakes_work: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  extension_cylinders_intact: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  foot_controls_work: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
+  no_hydraulic_fluid_leaks: z.boolean(),
+  back_up_alarm_operational: z.boolean(),
+  battery_intact: z.boolean(),
+  no_broken_or_loose_part: z.boolean(),
+  controls_and_levers_work: z.boolean(),
+  electrical_lines_intact: z.boolean(),
+  emergency_stop_and_brakes_work: z.boolean(),
+  extension_cylinders_intact: z.boolean(),
+  foot_controls_work: z.boolean(),
   fuel_gas_level: z.enum(['full', 'half', 'quarter', 'three_quarters']),
-  motor_condition: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  notes: z.string(),
-  oil_level_correct: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  pivot_pins_intact: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  seat_belts_intact: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  tires_good_shape: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  vehicle_id: z.string(),
-  vert_mast_sliding_chains_parts_operational: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ]),
-  window_clean: z.union([
-    z.boolean(),
-    z.string().transform((val) => val === 'true')
-  ])
+  motor_condition_intact: z.boolean(),
+  notes: z.string().optional(),
+  oil_level_correct: z.boolean(),
+  pivot_pins_intact: z.boolean(),
+  seat_belts_intact: z.boolean(),
+  tires_good_shape: z.boolean(),
+  vert_mast_sliding_chains_parts_operational: z.boolean(),
+  window_clean: z.boolean()
 });
 
 export const fields: FieldConfig[] = [
   {
     type: 'radio',
-    name: 'any_hydraulic_fluid_leaks',
-    label: 'Any hydraulic fluid leaks?',
+    name: 'no_hydraulic_fluid_leaks',
+    label: 'No hydraulic fluid leaks?',
     description: 'Check for any hydraulic fluid leaks under the vehicle',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
@@ -95,30 +46,30 @@ export const fields: FieldConfig[] = [
     label: 'Back up alarm operational?',
     description: 'Check if the back up alarm is operational',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
   {
     type: 'radio',
-    name: 'battery',
+    name: 'battery_intact',
     label: 'Battery?',
     description: 'Check the battery',
     options: [
-      { value: 'true', label: 'Good' },
-      { value: 'false', label: 'Bad' }
+      { value: true, label: 'Good' },
+      { value: false, label: 'Bad' }
     ]
   },
 
   {
     type: 'radio',
-    name: 'broken_or_loose_part',
-    label: 'Any broken or loose parts?',
-    description: 'Check for any broken or loose parts on the vehicle',
+    name: 'no_broken_or_loose_part',
+    label: 'No broken or loose part?',
+    description: 'Check for no broken or loose parts on the vehicle',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
@@ -128,8 +79,8 @@ export const fields: FieldConfig[] = [
     label: 'Controls and levers work?',
     description: 'Check if the controls and levers are working properly',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
@@ -139,8 +90,8 @@ export const fields: FieldConfig[] = [
     label: 'Electrical lines intact?',
     description: 'Check if the electrical lines are intact',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
@@ -150,8 +101,8 @@ export const fields: FieldConfig[] = [
     label: 'Emergency stop and brakes work?',
     description: 'Check if the emergency stop and brakes are working properly',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
@@ -161,8 +112,8 @@ export const fields: FieldConfig[] = [
     label: 'Extension cylinders intact?',
     description: 'Check if the extension cylinders are intact',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
@@ -172,13 +123,13 @@ export const fields: FieldConfig[] = [
     label: 'Foot controls work?',
     description: 'Check if the foot controls are working properly',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
   {
-    type: 'select',
+    type: 'radio',
     name: 'fuel_gas_level',
     label: 'Fuel gas level',
     description: 'Check the fuel gas level',
@@ -192,12 +143,12 @@ export const fields: FieldConfig[] = [
 
   {
     type: 'radio',
-    name: 'motor_condition',
+    name: 'motor_condition_intact',
     label: 'Motor condition?',
     description: 'Check the motor condition',
     options: [
-      { value: 'true', label: 'Good' },
-      { value: 'false', label: 'Bad' }
+      { value: true, label: 'Good' },
+      { value: false, label: 'Bad' }
     ]
   },
 
@@ -214,8 +165,8 @@ export const fields: FieldConfig[] = [
     label: 'Oil level correct?',
     description: 'Check if the oil level is correct',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
@@ -225,8 +176,8 @@ export const fields: FieldConfig[] = [
     label: 'Pivot pins intact?',
     description: 'Check if the pivot pins are intact',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
@@ -236,8 +187,8 @@ export const fields: FieldConfig[] = [
     label: 'Seat belts intact?',
     description: 'Check if the seat belts are intact',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
@@ -247,8 +198,8 @@ export const fields: FieldConfig[] = [
     label: 'Tires in good shape?',
     description: 'Check if the tires are in good shape',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
@@ -258,8 +209,8 @@ export const fields: FieldConfig[] = [
     label: 'Vert mast sliding chains parts operational?',
     description: 'Check if the vert mast sliding chains parts are operational',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   },
 
@@ -269,8 +220,8 @@ export const fields: FieldConfig[] = [
     label: 'Window clean?',
     description: 'Check if the window is clean',
     options: [
-      { value: 'true', label: 'Yes' },
-      { value: 'false', label: 'No' }
+      { value: true, label: 'Yes' },
+      { value: false, label: 'No' }
     ]
   }
 ];
@@ -286,6 +237,8 @@ const ForkliftPretripForm = ({
     z.infer<typeof formSchema> | undefined
   >(undefined);
 
+  const { toast } = useToast();
+
   React.useEffect(() => {
     if (formData !== undefined) {
       const supabase = createClient();
@@ -299,9 +252,23 @@ const ForkliftPretripForm = ({
         .then((res) => {
           // clear the form
           setFormData(undefined);
+          toast({
+            title: 'Form submitted successfully',
+            variant: 'success',
+            duration: 5000,
+            description: 'The form has been submitted successfully'
+          });
+          // console.log(res);
+          window.location.reload();
         })
         .catch((error) => {
           console.error('Error inserting into pretrip form', error);
+          toast({
+            title: 'Error submitting form',
+            variant: 'destructive',
+            duration: 5000,
+            description: 'There was an error submitting the form'
+          });
         });
     }
   }, [formData]);

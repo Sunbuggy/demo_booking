@@ -33,7 +33,7 @@ export type FieldConfig = {
   label: string;
   placeholder?: string;
   description?: string;
-  options?: { value: string; label: string }[];
+  options?: { value: string | boolean; label: string }[];
   hidden?: boolean;
 };
 
@@ -64,11 +64,11 @@ const FieldComponent = ({
           disabled={allDisabled}
         >
           <SelectTrigger>
-            <SelectValue placeholder={fieldConfig.placeholder} />
+            <SelectValue placeholder={field.value} />
           </SelectTrigger>
           <SelectContent>
-            {fieldConfig.options?.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
+            {fieldConfig.options?.map((option, idx) => (
+              <SelectItem key={idx} value={String(option.value)}>
                 {option.label}
               </SelectItem>
             ))}
@@ -94,18 +94,22 @@ const FieldComponent = ({
     case 'radio':
       return (
         <RadioGroup
-          onValueChange={field.onChange}
-          value={field.value}
+          onValueChange={(value) =>
+            field.onChange(
+              value === 'true' ? true : value === 'false' ? false : value
+            )
+          }
+          value={String(field.value)}
           disabled={allDisabled}
         >
-          {fieldConfig.options?.map((option) => (
-            <div key={option.value} className="flex items-center space-x-2">
+          {fieldConfig.options?.map((option, idx) => (
+            <div key={idx} className="flex items-center space-x-2">
               <RadioGroupItem
-                value={option.value}
-                id={option.value}
+                value={String(option.value)}
+                id={String(option.value)}
                 disabled={allDisabled}
               />
-              <label htmlFor={option.value}>{option.label}</label>
+              <label htmlFor={String(option.value)}>{option.label}</label>
             </div>
           ))}
         </RadioGroup>
@@ -138,18 +142,14 @@ export function FactoryForm({
     resolver: zodResolver(formSchema),
     defaultValues: initialData || {}
   });
-  // Log initialData before useEffect
 
   useEffect(() => {
     if (initialData) {
       Object.keys(initialData[0]).forEach((key) => {
         form.setValue(key, initialData[0][key]);
       });
-      // Log form values after setting them
     }
   }, [initialData, form]);
-
-  // Log form values during rendering
 
   const visibleFields = fields.filter(
     (field) => !field.hidden || showAllFields

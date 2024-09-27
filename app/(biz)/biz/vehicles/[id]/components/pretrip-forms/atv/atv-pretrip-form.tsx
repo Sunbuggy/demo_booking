@@ -5,6 +5,7 @@ import { FactoryForm, FieldConfig } from '@/components/factory-form';
 import React from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { insertIntoAtvPretripForm } from '@/utils/supabase/queries';
+import { useToast } from '@/components/ui/use-toast';
 
 export const formSchema = z.object({
   axle_nuts_intact: z.boolean(),
@@ -13,17 +14,14 @@ export const formSchema = z.object({
   ca_reg_valid: z.boolean(),
   ca_sticker: z.boolean(),
   chain_intact: z.boolean(),
-  created_at: z.string(),
-  created_by: z.string(),
   gas_level: z.enum(['quarter', 'half', 'three_quarters', 'full']),
   good_oil_level: z.boolean(),
   lug_nuts_intact: z.boolean(),
-  notes: z.string(),
+  notes: z.string().optional(),
   nv_reg_valid: z.boolean(),
   nv_sticker: z.boolean(),
   tire_left_intact: z.boolean(),
-  tire_right_intact: z.boolean(),
-  vehicle_id: z.string()
+  tire_right_intact: z.boolean()
 });
 
 // all booleans are radio buttons, all enums are select dropdowns, numbers are inputs, and all strings are text inputs
@@ -179,6 +177,7 @@ const ATVPretripForm = ({
   const [formData, setFormData] = React.useState<
     z.infer<typeof formSchema> | undefined
   >(undefined);
+  const { toast } = useToast();
 
   React.useEffect(() => {
     if (formData !== undefined) {
@@ -193,9 +192,22 @@ const ATVPretripForm = ({
         .then((res) => {
           // clear the form
           setFormData(undefined);
+          toast({
+            title: 'Success',
+            description: 'Pretrip form submitted successfully',
+            variant: 'success',
+            duration: 5000
+          });
+          window.location.reload();
         })
         .catch((error) => {
           console.error('Error inserting into pretrip form', error);
+          toast({
+            title: 'Error',
+            description: 'There was an error submitting the form',
+            variant: 'destructive',
+            duration: 5000
+          });
         });
     }
   }, [formData]);
