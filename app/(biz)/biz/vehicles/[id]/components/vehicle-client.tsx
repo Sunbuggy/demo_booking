@@ -33,6 +33,8 @@ import BuggyPretripForm from './pretrip-forms/buggy/buggy-pretrip-form';
 import ForkliftPretripForm from './pretrip-forms/forklift/forklift-pretrip-form';
 import ForkliftPretripHistory from './pretrip-forms/forklift/forklift-pretrip-history';
 import ResponsiveImageUpload from './responsive-image-upload-form';
+import LocationHistory from './vehicle-location-history';
+import { VehicleLocation } from '../page';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -41,6 +43,7 @@ interface VehicleClientComponentProps {
   profilePic?: string;
   vehicleTags: VehicleTagType[];
   user: User;
+  vehicleLocations: VehicleLocation[];
 }
 
 const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
@@ -49,7 +52,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   profilePic,
   images,
   vehicleTags,
-  user
+  user,
+  vehicleLocations
 }) => {
   const vehicleInfo = initialVehicleInfo;
   const supabase = createClient();
@@ -59,6 +63,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const [isUpdateUploadDialogOpen, setIsUpdateUploadDialogOpen] =
     React.useState(false);
   const [isUploadImagesDialogOpen, setIsUploadImagesDialogOpen] =
+    React.useState(false);
+  const [isLocationManagementDialogOpen, setIsLocationManagementDialogOpen] =
     React.useState(false);
   const [isPretripFormOpen, setIsPretripFormOpen] = React.useState(false);
 
@@ -333,6 +339,29 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       </div>
                     )}
                   </>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="location-management">
+                <AccordionTrigger>Location Management</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col gap-5">
+                    <div>
+                      <Button
+                        onClick={() => setIsLocationManagementDialogOpen(true)}
+                      >
+                        Location History
+                      </Button>
+                      <DialogFactory
+                        title={'Location History'}
+                        setIsDialogOpen={setIsLocationManagementDialogOpen}
+                        isDialogOpen={isLocationManagementDialogOpen}
+                        description="Manage the current and future location for the vehicle."
+                        children={
+                          <LocationHistory vehicleLocation={vehicleLocations} />
+                        }
+                      />
+                    </div>
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

@@ -1,10 +1,18 @@
 import React from 'react';
-import { fetchVehicleInfo, getUser } from '@/utils/supabase/queries';
+import {
+  fetchVehicleInfo,
+  fetchVehicleLocations,
+  getUser
+} from '@/utils/supabase/queries';
 import { VehiclePics } from '../admin/tables/components/row-actions';
 import { createClient } from '@/utils/supabase/server';
 import { fetchObjects } from '@/utils/biz/pics/get';
 import { VehicleTagType, VehicleType } from '../admin/page';
 import VehicleClientComponent from './components/vehicle-client';
+import { Database } from '@/types_db';
+
+export type VehicleLocation =
+  Database['public']['Tables']['vehicle_locations']['Row'];
 
 const bucket = 'sb-fleet';
 async function getVehicleData(id: string) {
@@ -67,6 +75,10 @@ export default async function VehiclePage({
     params.id
   );
 
+  const vehicleLocations = (await fetchVehicleLocations(
+    supabase,
+    params.id
+  )) as VehicleLocation[];
   return (
     <>
       {user ? (
@@ -77,6 +89,7 @@ export default async function VehiclePage({
           images={normalImages}
           vehicleTags={vehicleTags}
           user={user}
+          vehicleLocations={vehicleLocations}
         />
       ) : (
         <div>No User</div>

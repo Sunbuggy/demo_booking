@@ -674,6 +674,76 @@ export type Database = {
           },
         ]
       }
+      vehicle_inventory_location: {
+        Row: {
+          bay: string | null
+          created_at: string
+          id: string
+          level: string | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          bay?: string | null
+          created_at?: string
+          id?: string
+          level?: string | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          bay?: string | null
+          created_at?: string
+          id?: string
+          level?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_inventory_location_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_locations: {
+        Row: {
+          city: string | null
+          created_at: string
+          future_date: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          city?: string | null
+          created_at: string
+          future_date?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          future_date?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_locations_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_pretrip_atv: {
         Row: {
           axle_nuts_intact: boolean | null

@@ -1021,3 +1021,46 @@ export const insertIntoTruckPretripForm = cache(
     return data;
   }
 );
+
+// Get all vehicle locations
+export const fetchAllVehicleLocations = cache(
+  async (supabase: SupabaseClient) => {
+    const { data, error } = await supabase.from('vehicle_locations').select();
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// Get vehicle locations by vehicle_id
+export const fetchVehicleLocations = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicle_locations')
+      .select()
+      .eq('vehicle_id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+// Insert into vehicle locations
+export const recordVehicleLocation = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle_location: Database['public']['Tables']['vehicle_locations']['Insert']
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicle_locations')
+      .insert([vehicle_location]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
