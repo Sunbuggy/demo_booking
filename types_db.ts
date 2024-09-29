@@ -720,6 +720,7 @@ export type Database = {
         Row: {
           bay: string | null
           created_at: string
+          created_by: string | null
           id: string
           level: string | null
           vehicle_id: string | null
@@ -727,6 +728,7 @@ export type Database = {
         Insert: {
           bay?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
           level?: string | null
           vehicle_id?: string | null
@@ -734,11 +736,19 @@ export type Database = {
         Update: {
           bay?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
           level?: string | null
           vehicle_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vehicle_inventory_location_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vehicle_inventory_location_vehicle_id_fkey"
             columns: ["vehicle_id"]

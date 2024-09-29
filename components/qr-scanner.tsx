@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import {
   fetchVehicleLocations,
   getVehicleIdFromName,
+  insertIntoVehicleInventoryLocation,
   recordVehicleLocation
 } from '@/utils/supabase/queries';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,9 +13,17 @@ import Link from 'next/link';
 import { Button } from './ui/button';
 import { useToast } from './ui/use-toast';
 import { UserType } from '@/app/(biz)/biz/users/types';
+import { DrawerClose } from './ui/drawer';
 
 export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
   const supabase = createClient();
+  const [normalMode, setNormalMode] = React.useState(true);
+  const [inventoryMode, setInventoryMode] = React.useState(false);
+  const [selectedForInventory, setSelectedForInventory] = React.useState<{
+    [key: string]: boolean;
+  }>({});
+  const [bay, setBay] = React.useState('');
+  const [level, setLevel] = React.useState('');
   const [result, setResult] = React.useState('');
   const [closeCamera, setCloseCamera] = React.useState(false);
   const [scannedUrls, setScannedUrls] = React.useState<string[]>([]);
@@ -34,7 +43,6 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
       //   close the camera after scanning if in single mode
     }
   });
-
   // useEffect to get the current device location
   React.useEffect(() => {
     // if User rejects the location access then disallow the scanning
@@ -64,14 +72,12 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
     )
       .then((res) => res.json())
       .then((data) => {
-        console.log('fetchedData', data);
         setCity(data.city);
       });
-    console.log('currentLocation', currentLocation);
   }, [currentLocation]);
 
   React.useEffect(() => {
-    if (!scannedUrls.includes(result)) {
+    if (!scannedUrls.includes(result) && result !== '') {
       setScannedUrls([...scannedUrls, result]);
     }
     if (result && result.includes('/fleet/')) {
@@ -91,7 +97,6 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
             vehicle_id: veh_id,
             created_by: user?.id ?? 'unknown'
           };
-          console.log('Vehicle Location', vehicleLocation);
           // Make sure it doesnt exist in the arrays...
           if (
             !scannedVehicleIds.find((v) => v.id === veh_id) &&
@@ -113,10 +118,10 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
                       )
                   );
                   // calculate the distance between the last record and the current record
-                  if (distance < 0.00005) {
+                  if (distance < 0.0005) {
                     toast({
                       title: 'Vehicle Location Not Updated',
-                      description: `Vehicle location not updated for ${true_veh_name} as it is less than 5 meters`,
+                      description: `Vehicle location not updated for ${true_veh_name} as it is less than 50 meters`,
                       duration: 500,
                       variant: 'default'
                     });
@@ -124,7 +129,6 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
                   } else {
                     recordVehicleLocation(supabase, vehicleLocation)
                       .then((res) => {
-                        console.log('Vehicle Location Updated', res);
                         toast({
                           title: 'Vehicle Location Updated',
                           description: `Vehicle location updated for ${true_veh_name}`,
@@ -145,7 +149,6 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
                 } else {
                   recordVehicleLocation(supabase, vehicleLocation)
                     .then((res) => {
-                      console.log('Vehicle Location Created', res);
                       toast({
                         title: 'First Location Created',
                         description: `First Vehicle location Created for ${true_veh_name}`,
@@ -191,65 +194,196 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
         });
     }
   }, [result]);
+  // Handle checkbox change
+  const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, checked } = event.target;
+    setSelectedForInventory((prevState) => ({
+      ...prevState,
+      [id]: checked
+    }));
+  };
 
+  // Handle submit button click
+  const handleSubmit = () => {
+    const checkedVehicleIds = Object.keys(selectedForInventory).filter(
+      (id) => selectedForInventory[id]
+    );
+
+    checkedVehicleIds.forEach((id) => {
+      const inventory_location = {
+        bay,
+        level,
+        created_at: new Date().toISOString(),
+        created_by: user?.id ?? 'unknown',
+        vehicle_id: id
+      };
+      insertIntoVehicleInventoryLocation(supabase, inventory_location)
+        .then((res) => {
+          toast({
+            title: 'Vehicle Inventory Location Updated',
+            description: `Vehicle Inventory location updated `,
+            duration: 500,
+            variant: 'success'
+          });
+        })
+        .catch((err) => {
+          console.error(err);
+          toast({
+            title: 'error',
+            description: 'Error Occured Please Contact Devs',
+            duration: 5000,
+            variant: 'destructive'
+          });
+        });
+    });
+
+    // Remove the selected vehicles from the scannedVehicleIds
+    setScannedVehicleIds((prevScannedVehicleIds) =>
+      prevScannedVehicleIds.filter((v) => !checkedVehicleIds.includes(v.id))
+    );
+
+    // Clear the selectedForInventory state
+    setSelectedForInventory({});
+  };
   return (
     <div>
+      <h1 className="text-xl font-bold text-center m-5">
+        Mode: {inventoryMode ? 'Inventory' : 'Normal'}
+      </h1>
       <div className="flex justify-center">
         <div className="w-[150px] h-[150px]  ">
           <video ref={ref} />
         </div>
       </div>
-      {(scannedUrls.length > 0 || scannedVehicleIds.length > 0) && (
-        <Tabs defaultValue="new" className="w-[400px] mb-5">
-          <TabsList className="w-full justify-center">
-            <TabsTrigger value="new">New</TabsTrigger>
-            <TabsTrigger value="legacy">Legacy</TabsTrigger>
-          </TabsList>
-          <TabsContent value="new">
-            <div className="w-[400px] ml-5">
-              {scannedVehicleIds.length > 0 && (
-                <div className="flex flex-col gap-4">
-                  <h4 className="text-xl font">Scanned Vehicles:</h4>
-                  <div className=" grid grid-cols-4 gap-4">
-                    {scannedVehicleIds.map((v, i) => (
-                      <span key={i}>
-                        <Link
-                          className="green_button"
-                          href={`/biz/vehicles/${v.id}`}
-                          target="_blank"
-                        >
-                          {v.name}
-                        </Link>
-                      </span>
-                    ))}
+      {/* Radio  for inventory Mode, and normal mode */}
+      <div className="flex gap-2 items-center m-5">
+        <input
+          type="radio"
+          id="normal"
+          name="mode"
+          value="normal"
+          checked={normalMode}
+          onChange={() => {
+            setNormalMode(true);
+            setInventoryMode(false);
+          }}
+        />
+        <label htmlFor="normal">Normal</label>
+        <input
+          type="radio"
+          id="inventory"
+          name="mode"
+          value="inventory"
+          checked={inventoryMode}
+          onChange={() => {
+            setNormalMode(false);
+            setInventoryMode(true);
+          }}
+        />
+        <label htmlFor="inventory">Inventory</label>
+      </div>
+      {!inventoryMode &&
+        (scannedUrls.length > 0 || scannedVehicleIds.length > 0) && (
+          <Tabs defaultValue="new" className="w-[400px] mb-5">
+            <TabsList className="w-full justify-center">
+              <TabsTrigger value="new">New</TabsTrigger>
+              <TabsTrigger value="legacy">Legacy</TabsTrigger>
+            </TabsList>
+            <TabsContent value="new">
+              <div className="w-[400px] ml-5">
+                {scannedVehicleIds.length > 0 && (
+                  <div className="flex flex-col gap-4">
+                    <h4 className="text-xl font">Scanned Vehicles:</h4>
+                    <div className=" grid grid-cols-4 gap-4">
+                      {scannedVehicleIds.map((v, i) => (
+                        <span key={i}>
+                          <DrawerClose asChild>
+                            <Link
+                              className="green_button"
+                              href={`/biz/vehicles/${v.id}`}
+                            >
+                              {v.name}
+                            </Link>
+                          </DrawerClose>
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            </TabsContent>
+            <TabsContent value="legacy">
+              <div className="w-[400px] ml-5">
+                {scannedUrls.length > 0 && (
+                  <div>
+                    <h1>Scanned Urls</h1>
+                    <ul className="flex flex-col gap-6">
+                      {scannedUrls.map((url, i) => (
+                        <li key={i}>
+                          <Link
+                            className=" underline text-pink-500"
+                            href={`https://${url}`}
+                            target="_blank"
+                          >
+                            {url}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
+      {inventoryMode && (
+        <div className="grid grid-cols-4 gap-4 ml-5">
+          {scannedVehicleIds.map((v, i) => (
+            <span key={i} className="flex gap-2 items-center">
+              <input
+                type="checkbox"
+                id={v.id}
+                name={v.name}
+                value={v.id as string}
+                onChange={handleCheckboxChange}
+                checked={!!selectedForInventory[v.id]} // Ensure boolean value
+              />
+              <label htmlFor={v.id}>{v.name}</label>
+            </span>
+          ))}
+        </div>
+      )}
+      {inventoryMode && scannedVehicleIds.length > 0 && (
+        <div className="w-full flex flex-col justify-center items-center my-5 gap-2 border rounded-lg p-3">
+          <h1 className="text-sm font-bold">Add Selected Fleet to Inventory</h1>
+
+          <div className="flex flex-col justify-center items-end my-5 gap-2">
+            <div className="flex gap-2 items-end">
+              <label htmlFor="bay">Bay</label>
+              <input
+                type="text"
+                placeholder="Bay"
+                className="border p-2 rounded-md"
+                value={bay}
+                onChange={(e) => setBay(e.target.value)}
+              />
             </div>
-          </TabsContent>
-          <TabsContent value="legacy">
-            <div className="w-[400px] ml-5">
-              {scannedUrls.length > 0 && (
-                <div>
-                  <h1>Scanned Urls</h1>
-                  <ul className="flex flex-col gap-6">
-                    {scannedUrls.map((url, i) => (
-                      <li key={i}>
-                        <Link
-                          className=" underline text-pink-500"
-                          href={`https://${url}`}
-                          target="_blank"
-                        >
-                          {url}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            <div className="flex gap-2 items-end">
+              <label htmlFor="level">Level</label>
+              <input
+                type="text"
+                placeholder="Level"
+                className="border p-2 rounded-md"
+                value={level}
+                onChange={(e) => setLevel(e.target.value)}
+              />
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+
+          <Button variant={'positive'} onClick={handleSubmit}>
+            +Add
+          </Button>
+        </div>
       )}
       {/* Camera toggle Button */}
       <div className="flex justify-center">
