@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   fetchVehicleInfo,
+  fetchVehicleInventoryLocation,
   fetchVehicleLocations,
   getUser
 } from '@/utils/supabase/queries';
@@ -13,6 +14,8 @@ import { Database } from '@/types_db';
 
 export type VehicleLocation =
   Database['public']['Tables']['vehicle_locations']['Row'];
+export type InventoryLocation =
+  Database['public']['Tables']['vehicle_inventory_location']['Row'];
 
 const bucket = 'sb-fleet';
 async function getVehicleData(id: string) {
@@ -79,6 +82,10 @@ export default async function VehiclePage({
     supabase,
     params.id
   )) as VehicleLocation[];
+  const inventoryLocations = (await fetchVehicleInventoryLocation(
+    supabase,
+    params.id
+  )) as InventoryLocation[];
   return (
     <>
       {user ? (
@@ -90,6 +97,7 @@ export default async function VehiclePage({
           vehicleTags={vehicleTags}
           user={user}
           vehicleLocations={vehicleLocations}
+          inventoryLocations={inventoryLocations}
         />
       ) : (
         <div>No User</div>

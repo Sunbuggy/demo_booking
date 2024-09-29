@@ -14,6 +14,7 @@ import { Button } from './ui/button';
 import { useToast } from './ui/use-toast';
 import { UserType } from '@/app/(biz)/biz/users/types';
 import { DrawerClose } from './ui/drawer';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
   const supabase = createClient();
@@ -290,24 +291,27 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
               <TabsTrigger value="legacy">Legacy</TabsTrigger>
             </TabsList>
             <TabsContent value="new">
-              <div className="w-[400px] ml-5">
+              <div className="w-[400px]">
                 {scannedVehicleIds.length > 0 && (
                   <div className="flex flex-col gap-4">
-                    <h4 className="text-xl font">Scanned Vehicles:</h4>
-                    <div className=" grid grid-cols-4 gap-4">
-                      {scannedVehicleIds.map((v, i) => (
-                        <span key={i}>
-                          <DrawerClose asChild>
-                            <Link
-                              className="green_button"
-                              href={`/biz/vehicles/${v.id}`}
-                            >
-                              {v.name}
-                            </Link>
-                          </DrawerClose>
-                        </span>
-                      ))}
-                    </div>
+                    <h4 className="text-xl font ml-2">Scanned Vehicles:</h4>
+
+                    <ScrollArea className="h-[200px] ml-2  rounded-md border p-4">
+                      <div className=" grid grid-cols-4 gap-4">
+                        {scannedVehicleIds.map((v, i) => (
+                          <span key={i}>
+                            <DrawerClose asChild>
+                              <Link
+                                className="green_button"
+                                href={`/biz/vehicles/${v.id}`}
+                              >
+                                {v.name}
+                              </Link>
+                            </DrawerClose>
+                          </span>
+                        ))}
+                      </div>
+                    </ScrollArea>
                   </div>
                 )}
               </div>
@@ -315,7 +319,7 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
             <TabsContent value="legacy">
               <div className="w-[400px] ml-5">
                 {scannedUrls.length > 0 && (
-                  <div>
+                  <ScrollArea className="h-[200px] rounded-md border p-4">
                     <h1>Scanned Urls</h1>
                     <ul className="flex flex-col gap-6">
                       {scannedUrls.map((url, i) => (
@@ -330,31 +334,33 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
                         </li>
                       ))}
                     </ul>
-                  </div>
+                  </ScrollArea>
                 )}
               </div>
             </TabsContent>
           </Tabs>
         )}
       {inventoryMode && (
-        <div className="grid grid-cols-4 gap-4 ml-5">
-          {scannedVehicleIds.map((v, i) => (
-            <span key={i} className="flex gap-2 items-center">
-              <input
-                type="checkbox"
-                id={v.id}
-                name={v.name}
-                value={v.id as string}
-                onChange={handleCheckboxChange}
-                checked={!!selectedForInventory[v.id]} // Ensure boolean value
-              />
-              <label htmlFor={v.id}>{v.name}</label>
-            </span>
-          ))}
-        </div>
+        <ScrollArea className="h-[120px]  rounded-md border p-4 w-full">
+          <div className="grid grid-cols-4 gap-4 ml-5">
+            {scannedVehicleIds.map((v, i) => (
+              <span key={i} className="flex gap-2 items-center">
+                <input
+                  type="checkbox"
+                  id={v.id}
+                  name={v.name}
+                  value={v.id as string}
+                  onChange={handleCheckboxChange}
+                  checked={!!selectedForInventory[v.id]} // Ensure boolean value
+                />
+                <label htmlFor={v.id}>{v.name}</label>
+              </span>
+            ))}
+          </div>
+        </ScrollArea>
       )}
       {inventoryMode && scannedVehicleIds.length > 0 && (
-        <div className="w-full flex flex-col justify-center items-center my-5 gap-2 border rounded-lg p-3">
+        <div className="w-full flex flex-col justify-center items-center my-3 gap-1 border rounded-lg p-3 text-sm">
           <h1 className="text-sm font-bold">Add Selected Fleet to Inventory</h1>
 
           <div className="flex flex-col justify-center items-end my-5 gap-2">

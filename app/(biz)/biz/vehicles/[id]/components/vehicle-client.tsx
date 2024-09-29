@@ -34,8 +34,9 @@ import ForkliftPretripForm from './pretrip-forms/forklift/forklift-pretrip-form'
 import ForkliftPretripHistory from './pretrip-forms/forklift/forklift-pretrip-history';
 import ResponsiveImageUpload from './responsive-image-upload-form';
 import LocationHistory from './vehicle-location-history';
-import { VehicleLocation } from '../page';
+import { InventoryLocation, VehicleLocation } from '../page';
 import PretripFormManager from './pretrip-forms/pretrip-form-manager';
+import InventoryHistory from './vehicle-location-inventory-history';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -45,6 +46,7 @@ interface VehicleClientComponentProps {
   vehicleTags: VehicleTagType[];
   user: User;
   vehicleLocations: VehicleLocation[];
+  inventoryLocations: InventoryLocation[];
 }
 
 const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
@@ -54,7 +56,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   images,
   vehicleTags,
   user,
-  vehicleLocations
+  vehicleLocations,
+  inventoryLocations
 }) => {
   const vehicleInfo = initialVehicleInfo;
   const supabase = createClient();
@@ -67,6 +70,10 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     React.useState(false);
   const [isLocationManagementDialogOpen, setIsLocationManagementDialogOpen] =
     React.useState(false);
+  const [
+    isInventoryLocationManagementDialogOpen,
+    setIsInventoryLocationManagementDialogOpen
+  ] = React.useState(false);
   const [isPretripFormOpen, setIsPretripFormOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -252,22 +259,40 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 <AccordionTrigger>Location Management</AccordionTrigger>
                 <AccordionContent>
                   <div className="flex flex-col gap-5">
-                    <div>
-                      <Button
-                        onClick={() => setIsLocationManagementDialogOpen(true)}
-                      >
-                        Location History
-                      </Button>
-                      <DialogFactory
-                        title={'Location History'}
-                        setIsDialogOpen={setIsLocationManagementDialogOpen}
-                        isDialogOpen={isLocationManagementDialogOpen}
-                        description="Manage the current and future location for the vehicle."
-                        children={
-                          <LocationHistory vehicleLocation={vehicleLocations} />
-                        }
-                      />
-                    </div>
+                    <Button
+                      onClick={() => setIsLocationManagementDialogOpen(true)}
+                    >
+                      Location History
+                    </Button>
+                    <DialogFactory
+                      title={'Location History'}
+                      setIsDialogOpen={setIsLocationManagementDialogOpen}
+                      isDialogOpen={isLocationManagementDialogOpen}
+                      description="Manage the current and future location for the vehicle."
+                      children={
+                        <LocationHistory vehicleLocation={vehicleLocations} />
+                      }
+                    />
+                    <Button
+                      onClick={() =>
+                        setIsInventoryLocationManagementDialogOpen(true)
+                      }
+                    >
+                      Inventory Location History
+                    </Button>
+                    <DialogFactory
+                      title={'Inventory Location History'}
+                      setIsDialogOpen={
+                        setIsInventoryLocationManagementDialogOpen
+                      }
+                      isDialogOpen={isInventoryLocationManagementDialogOpen}
+                      description="Manage the current and future location for the vehicle."
+                      children={
+                        <InventoryHistory
+                          inventoryLocations={inventoryLocations}
+                        />
+                      }
+                    />
                   </div>
                 </AccordionContent>
               </AccordionItem>
