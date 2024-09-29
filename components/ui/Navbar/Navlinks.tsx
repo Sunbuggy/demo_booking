@@ -96,7 +96,7 @@ export default function Navlinks({ user }: NavlinksProps) {
           </SheetContent>
         </Sheet> */}
         <ReusableDrawer
-          children={<BarcodeScanner />}
+          children={<BarcodeScanner user={user} />}
           description="Scan a QR Code"
           title="QR Scanner"
           trigger={

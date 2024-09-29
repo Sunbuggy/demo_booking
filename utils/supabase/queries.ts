@@ -1064,3 +1064,34 @@ export const recordVehicleLocation = cache(
     return data;
   }
 );
+// insert into vehicle_inventory_location
+export const insertIntoVehicleInventoryLocation = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle_inventory_location: Database['public']['Tables']['vehicle_inventory_location']['Insert']
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicle_inventory_location')
+      .insert([vehicle_inventory_location]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// fetch vehicle inventory location
+export const fetchVehicleInventoryLocation = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicle_inventory_location')
+      .select()
+      .eq('vehicle_id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);

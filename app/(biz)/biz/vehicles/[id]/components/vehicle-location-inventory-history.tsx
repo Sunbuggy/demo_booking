@@ -1,13 +1,20 @@
 'use client';
 import React from 'react';
-import { VehicleLocation } from '../page';
 import { createClient } from '@/utils/supabase/client';
 import { getUserDetailsById } from '@/utils/supabase/queries';
-
-const LocationHistory = ({
-  vehicleLocation
+import { InventoryLocation } from '../page';
+// (property) Insert: {
+//     bay?: string | null;
+//     created_at?: string;
+//     created_by?: string | null;
+//     id?: string;
+//     level?: string | null;
+//     vehicle_id?: string | null;
+// }
+const InventoryHistory = ({
+  inventoryLocations
 }: {
-  vehicleLocation: VehicleLocation[];
+  inventoryLocations: InventoryLocation[];
 }) => {
   const supabase = createClient();
   const [userDetails, setUserDetails] = React.useState<
@@ -15,7 +22,7 @@ const LocationHistory = ({
   >([]);
 
   // Function to fetch user details and update state
-  const fetchUserDetails = async (location: VehicleLocation) => {
+  const fetchUserDetails = async (location: InventoryLocation) => {
     const data = await getUserDetailsById(
       supabase,
       location.created_by as string
@@ -33,12 +40,12 @@ const LocationHistory = ({
 
   // Get all users from the database
   React.useEffect(() => {
-    if (vehicleLocation.length > 0) {
-      vehicleLocation.forEach((location) => {
+    if (inventoryLocations.length > 0) {
+      inventoryLocations.forEach((location) => {
         fetchUserDetails(location);
       });
     }
-  }, [vehicleLocation]);
+  }, [inventoryLocations]);
   return (
     <div>
       {/* Create Table to display this data, use tailwind css for styling */}
@@ -47,12 +54,12 @@ const LocationHistory = ({
           <tr className="bg-gray-800 bg-opacity-50 text-white">
             <th className="px-4 py-2">Created At</th>
             <th className="px-4 py-2">User</th>
-            <th className="px-4 py-2">City</th>
-            <th className="px-4 py-2">Map</th>
+            <th className="px-4 py-2">Bay</th>
+            <th className="px-4 py-2">Level</th>
           </tr>
         </thead>
         <tbody>
-          {vehicleLocation.map((location, index) => {
+          {inventoryLocations.map((location, index) => {
             const user = userDetails.find(
               (user) => user.id === location.created_by
             );
@@ -73,17 +80,8 @@ const LocationHistory = ({
                   })}
                 </td>
                 <td className="border px-4 py-2">{user?.name}</td>
-                <td className="border px-4 py-2">{location.city}</td>
-                <td className="border px-4 py-2">
-                  <a
-                    href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline"
-                  >
-                    View on Map
-                  </a>
-                </td>
+                <td className="border px-4 py-2">{location.bay}</td>
+                <td className="border px-4 py-2">{location.level}</td>
               </tr>
             );
           })}
@@ -93,4 +91,4 @@ const LocationHistory = ({
   );
 };
 
-export default LocationHistory;
+export default InventoryHistory;

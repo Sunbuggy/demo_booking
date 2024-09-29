@@ -28,7 +28,9 @@ export function ReusableDrawer({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button variant="outline">{trigger}</Button>
+        <Button variant="ghost" size={'icon'}>
+          {trigger}
+        </Button>
       </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader className="text-left">
