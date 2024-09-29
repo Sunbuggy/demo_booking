@@ -11,8 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { useToast } from './ui/use-toast';
+import { UserType } from '@/app/(biz)/biz/users/types';
 
-export const BarcodeScanner = () => {
+export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
   const supabase = createClient();
   const [result, setResult] = React.useState('');
   const [closeCamera, setCloseCamera] = React.useState(false);
@@ -87,7 +88,8 @@ export const BarcodeScanner = () => {
             created_at: new Date().toISOString(),
             latitude: currentLocation.latitude,
             longitude: currentLocation.longitude,
-            vehicle_id: veh_id
+            vehicle_id: veh_id,
+            created_by: user?.id ?? 'unknown'
           };
           console.log('Vehicle Location', vehicleLocation);
           // Make sure it doesnt exist in the arrays...

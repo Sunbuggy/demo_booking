@@ -674,6 +674,48 @@ export type Database = {
           },
         ]
       }
+      vehicle_future_location: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          future_date: string | null
+          future_location: string | null
+          id: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          future_date?: string | null
+          future_location?: string | null
+          id?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          future_date?: string | null
+          future_location?: string | null
+          id?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_future_location_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_future_location_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_inventory_location: {
         Row: {
           bay: string | null
@@ -710,7 +752,7 @@ export type Database = {
         Row: {
           city: string | null
           created_at: string
-          future_date: string | null
+          created_by: string | null
           id: string
           latitude: number | null
           longitude: number | null
@@ -719,7 +761,7 @@ export type Database = {
         Insert: {
           city?: string | null
           created_at: string
-          future_date?: string | null
+          created_by?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -728,13 +770,20 @@ export type Database = {
         Update: {
           city?: string | null
           created_at?: string
-          future_date?: string | null
+          created_by?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
           vehicle_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vehicle_locations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vehicle_locations_vehicle_id_fkey"
             columns: ["vehicle_id"]
