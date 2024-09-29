@@ -77,9 +77,9 @@ const HourCardTitle = ({
                   },
                   0
                 );
-                return `${count}-${key}${count > 1 ? 's' : ''}`;
+                return ` ${count}-${key}${count > 1 ? ' ' : ' '}`;
               })
-              .join(', ')
+             .join(', ')
           }
           )
         </span>
