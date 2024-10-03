@@ -65,7 +65,7 @@ const LocationCard = ({
                       Number(reservation[key as keyof typeof reservation]) > 0
                   );
                 })
-                .map((key) => {
+                .map((key, idx, filteredList) => {
                   const count = data[id][locationKey].reduce(
                     (acc, reservation) => {
                       return (
@@ -75,11 +75,13 @@ const LocationCard = ({
                     },
                     0
                   );
+                  const full_name=` ${count}-${key}`
                   return (
-                    <span key={key}>
-                      {count}-{key}
-                      {count > 1 ? 's' : ''}
-                    </span>
+                    <span key={idx}>
+                  <span className="italic font-thin text-orange-500" key={key}>
+                    {full_name} {idx !== filteredList.length - 1 && ', '} 
+                  </span>
+                </span>
                   );
                 })
             }

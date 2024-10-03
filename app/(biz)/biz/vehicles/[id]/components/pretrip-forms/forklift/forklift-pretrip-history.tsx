@@ -2,20 +2,20 @@ import React from 'react';
 import { Database } from '@/types_db';
 import { fetchPretripFormHistory } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
-import { fields, formSchema } from './shuttle-pretrip-form';
+import { fields, formSchema } from './forklift-pretrip-form';
 import { FactoryForm } from '@/components/factory-form';
 import { Button } from '@/components/ui/button';
-import DialogFactory from '../../../admin/tables/components/dialog-factory';
+import DialogFactory from '@/components/dialog-factory';
 
-const ShuttlePretripHistory = ({
+const ForkliftPretripHistory = ({
   veh_id,
   vehicle_name
 }: {
   veh_id: string;
   vehicle_name: string;
 }) => {
-  const [shuttlePretripHistory, setShuttlePretripHistory] = React.useState<
-    Database['public']['Tables']['vehicle_pretrip_shuttle']['Row'][]
+  const [forkliftPretripHistory, setForkliftPretripHistory] = React.useState<
+    Database['public']['Tables']['vehicle_pretrip_forklift']['Row'][]
   >([]);
   const [openPretripFormHistory, setOpenPretripFormHistory] = React.useState<{
     [key: string]: boolean;
@@ -34,9 +34,9 @@ const ShuttlePretripHistory = ({
       await fetchPretripFormHistory(
         supabase,
         veh_id,
-        'vehicle_pretrip_shuttle'
+        'vehicle_pretrip_forklift'
       ).then((data) => {
-        setShuttlePretripHistory(data);
+        setForkliftPretripHistory(data);
       });
     }
     fetchHistory();
@@ -55,7 +55,7 @@ const ShuttlePretripHistory = ({
 
   return (
     <>
-      {shuttlePretripHistory.map((pretripHistory, index) => {
+      {forkliftPretripHistory.map((pretripHistory, index) => {
         // change all boolean values to string inside pretripHistory
         Object.keys(pretripHistory).forEach((key) => {
           const typedKey = key as keyof typeof pretripHistory;
@@ -80,7 +80,7 @@ const ShuttlePretripHistory = ({
               className="border border-gray-300"
               onClick={() => handleOpenPretripFormHistory(pretripHistory.id)}
             >
-              {pretripHistory.created_at.split('T')[0]}
+              {pretripHistory.created_at?.split('T')[0]}
             </Button>
             <DialogFactory
               children={
@@ -109,4 +109,4 @@ const ShuttlePretripHistory = ({
   );
 };
 
-export default ShuttlePretripHistory;
+export default ForkliftPretripHistory;

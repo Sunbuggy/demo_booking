@@ -16,15 +16,27 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import ImageGrid from './image-grid';
-import DialogFactory from '../../admin/tables/components/dialog-factory';
+import DialogFactory from '@/components/dialog-factory';
 import TagManagement from './tag-management';
 import { User } from '@supabase/supabase-js';
 import { createId } from '@paralleldrive/cuid2';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import ShuttlePretripForm from './pretrip-forms/shuttle-pretrip-form';
+import ShuttlePretripForm from './pretrip-forms/shuttle/shuttle-pretrip-form';
+import ShuttlePretripHistory from './pretrip-forms/shuttle/shuttle-pretrip-history';
+import TruckPretripHistory from './pretrip-forms/truck/truck-pretrip-history';
+import TruckPretripForm from './pretrip-forms/truck/truck-pretrip-form';
+import ATVPretripHistory from './pretrip-forms/atv/atv-pretrip-history';
+import ATVPretripForm from './pretrip-forms/atv/atv-pretrip-form';
+import BuggyPretripHistory from './pretrip-forms/buggy/buggy-pretrip-history';
+import BuggyPretripForm from './pretrip-forms/buggy/buggy-pretrip-form';
+import ForkliftPretripForm from './pretrip-forms/forklift/forklift-pretrip-form';
+import ForkliftPretripHistory from './pretrip-forms/forklift/forklift-pretrip-history';
 import ResponsiveImageUpload from './responsive-image-upload-form';
-import ShuttlePretripHistory from './pretrip-forms/shuttle-pretrip-history';
+import LocationHistory from './vehicle-location-history';
+import { InventoryLocation, VehicleLocation } from '../page';
+import PretripFormManager from './pretrip-forms/pretrip-form-manager';
+import InventoryHistory from './vehicle-location-inventory-history';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -33,6 +45,8 @@ interface VehicleClientComponentProps {
   profilePic?: string;
   vehicleTags: VehicleTagType[];
   user: User;
+  vehicleLocations: VehicleLocation[];
+  inventoryLocations: InventoryLocation[];
 }
 
 const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
@@ -41,7 +55,9 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   profilePic,
   images,
   vehicleTags,
-  user
+  user,
+  vehicleLocations,
+  inventoryLocations
 }) => {
   const vehicleInfo = initialVehicleInfo;
   const supabase = createClient();
@@ -52,6 +68,12 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     React.useState(false);
   const [isUploadImagesDialogOpen, setIsUploadImagesDialogOpen] =
     React.useState(false);
+  const [isLocationManagementDialogOpen, setIsLocationManagementDialogOpen] =
+    React.useState(false);
+  const [
+    isInventoryLocationManagementDialogOpen,
+    setIsInventoryLocationManagementDialogOpen
+  ] = React.useState(false);
   const [isPretripFormOpen, setIsPretripFormOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -225,38 +247,53 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               <AccordionItem value="pre-trip-form">
                 <AccordionTrigger>Pretrip Form</AccordionTrigger>
                 <AccordionContent>
-                  <>
+                  <PretripFormManager
+                    setIsPretripFormOpen={setIsPretripFormOpen}
+                    isPretripFormOpen={isPretripFormOpen}
+                    vehicleInfo={vehicleInfo}
+                    user={user}
+                  />
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="location-management">
+                <AccordionTrigger>Location Management</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col gap-5">
                     <Button
-                      className="mb-5"
-                      onClick={() => setIsPretripFormOpen(true)}
+                      onClick={() => setIsLocationManagementDialogOpen(true)}
                     >
-                      View Pretrip Form History
+                      Location History
                     </Button>
                     <DialogFactory
-                      title={'Pretrip Form History'}
-                      setIsDialogOpen={setIsPretripFormOpen}
-                      isDialogOpen={isPretripFormOpen}
-                      description="History of pretrip forms for the vehicle."
+                      title={'Location History'}
+                      setIsDialogOpen={setIsLocationManagementDialogOpen}
+                      isDialogOpen={isLocationManagementDialogOpen}
+                      description="Manage the current and future location for the vehicle."
                       children={
-                        vehicleInfo.type === 'shuttle' && (
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
-                            <ShuttlePretripHistory
-                              veh_id={vehicleInfo.id}
-                              vehicle_name={vehicleInfo.name}
-                            />
-                          </div>
-                        )
+                        <LocationHistory vehicleLocation={vehicleLocations} />
                       }
                     />
-                    {vehicleInfo.type === 'shuttle' && (
-                      <div>
-                        <ShuttlePretripForm
-                          user_id={user.id}
-                          vehicle_id={vehicleInfo.id}
+                    <Button
+                      onClick={() =>
+                        setIsInventoryLocationManagementDialogOpen(true)
+                      }
+                    >
+                      Inventory Location History
+                    </Button>
+                    <DialogFactory
+                      title={'Inventory Location History'}
+                      setIsDialogOpen={
+                        setIsInventoryLocationManagementDialogOpen
+                      }
+                      isDialogOpen={isInventoryLocationManagementDialogOpen}
+                      description="Manage the current and future location for the vehicle."
+                      children={
+                        <InventoryHistory
+                          inventoryLocations={inventoryLocations}
                         />
-                      </div>
-                    )}
-                  </>
+                      }
+                    />
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

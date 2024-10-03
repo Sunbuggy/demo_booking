@@ -131,7 +131,7 @@ const fields: FieldConfig[] = [
   }
 ];
 
-const EditVehicle = ({ id, cols }: { id: string; cols?: number }) => {
+const EditVehicle = ({ id }: { id: string }) => {
   const [formData, setFormData] = React.useState<
     z.infer<typeof formSchema> | undefined
   >(undefined);
@@ -148,7 +148,7 @@ const EditVehicle = ({ id, cols }: { id: string; cols?: number }) => {
         .then((res) => {
           toast({
             title: 'Success',
-            description: 'User has been updated',
+            description: 'User has  updated the value',
             duration: 2000,
             variant: 'success'
           });
@@ -156,7 +156,7 @@ const EditVehicle = ({ id, cols }: { id: string; cols?: number }) => {
         .catch((err) => {
           toast({
             title: 'Error',
-            description: 'Error deleting user',
+            description: 'Error updating values',
             duration: 2000,
             variant: 'destructive'
           });
@@ -175,7 +175,7 @@ const EditVehicle = ({ id, cols }: { id: string; cols?: number }) => {
         const data = await fetchVehicleInfo(supabase, id);
         setInitialData(data);
       } catch (error) {
-        console.error('Failed to load user data', error);
+        console.error('Failed to load data', error);
       } finally {
       }
     };

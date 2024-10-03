@@ -6,8 +6,9 @@ import {
   getUserDetails
 } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
-import QRHistoryScanner from '@/components/ui/QrScanner/QrHistory';
 // import RoleForm from '@/components/ui/AccountForms/RoleForm';
+import ScannerPage from '@/components/ui/QrScanner/QrFunction';
+
 type TimeEntry = {
   id: any;
   date: any;
@@ -57,6 +58,7 @@ export default async function Account() {
           </div>
         </div>
         <div className="p-4">
+          <ScannerPage user={user ? user[0] : null}/>
           <NameForm
             userName={userName ?? ''}
             user_role={role || 100}

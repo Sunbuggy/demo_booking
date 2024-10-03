@@ -26,7 +26,7 @@ export const columns: ColumnDef<VehicleType, any>[] = [
       return (
         <Link
           href={`/biz/vehicles/${row.original.id}`}
-          className="w-[80px] underline text-pink-500 "
+          className={`w-[80px] underline ${row.original.vehicle_status === 'broken' ? 'text-red-600' : row.original.vehicle_status === 'maintenance' ? 'text-amber-500' : 'text-green-500'} `}
         >
           {name}
         </Link>

@@ -1,84 +1,82 @@
-'use client'
-import { useEffect, useState } from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { getUserDetails } from '@/utils/supabase/queries';
+import { UserType } from '@/app/(biz)/biz/users/types';
+import { useToast } from '@/components/ui/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import Link from 'next/link';
 
-const QRHistoryList = () => {
-  const [scanResults, setScanResults] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [userId, setUserId] = useState<string | null>(null);
+interface QrHistoryRecord {
+  id: number;
+  link: string;
+  scanned_at: string;
+  location: string;
+}
 
+export const QrScanHistory = ({ user }: { user: UserType | null }) => {
   const supabase = createClient();
+  const [scannedLinks, setScannedLinks] = useState<QrHistoryRecord[]>([]);
+  const { toast } = useToast();
 
-  // Fetch user details and previous QR code scans
-  useEffect(() => {
-    const fetchUserAndHistory = async () => {
-      const user = await getUserDetails(supabase);
-      if (!user || user.length === 0) {
-        setError('User not authenticated.');
-        setLoading(false);
-        return;
-      }
-      const userId = user[0].id;
-      setUserId(userId);
+  const fetchUserScanHistory = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('qr_history')
+      .select('id, link, scanned_at, location') // Make sure location is included if it exists
+      .eq('user', user.id)
+      .order('scanned_at', { ascending: false });
 
-      const qrHistory = await fetchUserQrHistory(supabase, userId);
-      if (qrHistory && qrHistory.length > 0) {
-        const scannedLinks = qrHistory.map((entry: any) => entry.link);
-        setScanResults(scannedLinks);
-      }
-
-      setLoading(false);
-    };
-
-    fetchUserAndHistory();
-  }, [supabase]);
-
-  // Fetch user's QR code history
-  const fetchUserQrHistory = async (supabase: any, userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('qr_history')
-        .select('link')
-        .eq('user', userId);
-
-      if (error) {
-        console.error('Error fetching QR history:', error);
-        return [];
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error fetching user QR history:', error);
-      return [];
+    if (error) {
+      console.error('Error fetching scan history:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not fetch QR scan history.',
+        variant: 'destructive',
+      });
+    } else {
+      // Ensure that location exists or provide a default value
+      const formattedData = data.map((record: any) => ({
+        id: record.id,
+        link: record.link ?? '',
+        scanned_at: record.scanned_at ?? '',
+        location: record.location ?? 'Unknown location', // Default location value if not present
+      }));
+      setScannedLinks(formattedData);
     }
   };
 
+  useEffect(() => {
+    if (user) {
+      fetchUserScanHistory();
+    }
+  }, [user]);
+
   return (
-    <div className="qr-history">
-      {error && <p className="error">{error}</p>}
-      
-      <div>
-        <h2>Scanned QR Codes:</h2>
-        {loading ? (
-          <p>Loading your scan history...</p>
-        ) : scanResults.length > 0 ? (
-          <ul>
-            {scanResults.map((result, index) => (
-              <li key={index}>
-                <a href={result.startsWith('http') ? result : `http://${result}`} target="_blank" rel="noopener noreferrer">
-                  {result}
-                </a>
-              </li>
+    <div className="p-5">
+      <h1 className="text-xl font-bold text-center mb-5">Your QR Scan History</h1>
+      {scannedLinks.length > 0 ? (
+        <ScrollArea className="h-[300px] rounded-md border p-4">
+          <div className="grid grid-cols-1 gap-4">
+            {scannedLinks.map((linkRecord) => (
+              <div key={linkRecord.id} className="flex flex-col gap-2 border-b pb-2">
+                <Link
+                  className="underline text-blue-500"
+                  href={linkRecord.link}
+                  target="_blank"
+                >
+                  {linkRecord.link}
+                </Link>
+                <span>Scanned at: {new Date(linkRecord.scanned_at).toLocaleString()}</span>
+                <span>Location: {linkRecord.location}</span>
+              </div>
             ))}
-          </ul>
-        ) : (
-          <p>No QR codes detected yet.</p>
-        )}
-      </div>
+          </div>
+        </ScrollArea>
+      ) : (
+        <p className="text-center text-gray-500">No QR codes scanned yet.</p>
+      )}
     </div>
   );
 };
-
-export default QRHistoryList;

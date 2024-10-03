@@ -946,13 +946,148 @@ export const fetchPretripFormHistory = cache(
   }
 );
 
-export const insertIntoPretripForm = cache(
+export const insertIntoShuttlePretripForm = cache(
   async (
     supabase: SupabaseClient,
     pretrip: Database['public']['Tables']['vehicle_pretrip_shuttle']['Insert'],
     veh_table: string
   ) => {
     const { data, error } = await supabase.from(veh_table).insert([pretrip]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const insertIntoBuggyPretripForm = cache(
+  async (
+    supabase: SupabaseClient,
+    pretrip: Database['public']['Tables']['vehicle_pretrip_buggy']['Insert'],
+    veh_table: string
+  ) => {
+    const { data, error } = await supabase.from(veh_table).insert([pretrip]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// atv
+export const insertIntoAtvPretripForm = cache(
+  async (
+    supabase: SupabaseClient,
+    pretrip: Database['public']['Tables']['vehicle_pretrip_atv']['Insert'],
+    veh_table: string
+  ) => {
+    const { data, error } = await supabase.from(veh_table).insert([pretrip]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+// forklift
+export const insertIntoForkliftPretripForm = cache(
+  async (
+    supabase: SupabaseClient,
+    pretrip: Database['public']['Tables']['vehicle_pretrip_forklift']['Insert'],
+    veh_table: string
+  ) => {
+    const { data, error } = await supabase.from(veh_table).insert([pretrip]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+// truck
+export const insertIntoTruckPretripForm = cache(
+  async (
+    supabase: SupabaseClient,
+    pretrip: Database['public']['Tables']['vehicle_pretrip_truck']['Insert'],
+    veh_table: string
+  ) => {
+    const { data, error } = await supabase.from(veh_table).insert([pretrip]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// Get all vehicle locations
+export const fetchAllVehicleLocations = cache(
+  async (supabase: SupabaseClient) => {
+    const { data, error } = await supabase.from('vehicle_locations').select();
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// Get vehicle locations by vehicle_id
+export const fetchVehicleLocations = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicle_locations')
+      .select()
+      .eq('vehicle_id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+// Insert into vehicle locations
+export const recordVehicleLocation = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle_location: Database['public']['Tables']['vehicle_locations']['Insert']
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicle_locations')
+      .insert([vehicle_location]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+// insert into vehicle_inventory_location
+export const insertIntoVehicleInventoryLocation = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle_inventory_location: Database['public']['Tables']['vehicle_inventory_location']['Insert']
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicle_inventory_location')
+      .insert([vehicle_inventory_location]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// fetch vehicle inventory location
+export const fetchVehicleInventoryLocation = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicle_inventory_location')
+      .select()
+      .eq('vehicle_id', vehicle_id);
     if (error) {
       console.error(error);
       return [];

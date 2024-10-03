@@ -4,44 +4,43 @@ import { z } from 'zod';
 import { FactoryForm, FieldConfig } from '@/components/factory-form';
 import React from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { insertIntoPretripForm } from '@/utils/supabase/queries';
+import { insertIntoShuttlePretripForm } from '@/utils/supabase/queries';
+import { useToast } from '@/components/ui/use-toast';
 
 export const formSchema = z.object({
-  milage: z.string().optional(),
-  ac_working: z.boolean().optional(),
-  all_light_bulbs_intact: z.boolean().optional(),
-  all_tire_pressure_within_5_psi_of_spec: z.boolean().optional(),
-  annual_inspection_all_shuttles: z.boolean().optional(),
-  antifreeze_level_proper_level: z.boolean().optional(),
-  battery_working: z.boolean().optional(),
+  milage: z.string(),
+  ac_working: z.boolean(),
+  all_light_bulbs_intact: z.boolean(),
+  all_tire_pressure_within_5_psi_of_spec: z.boolean(),
+  annual_inspection_all_shuttles: z.boolean(),
+  antifreeze_level_proper_level: z.boolean(),
+  battery_working: z.boolean(),
   body_damage: z.string().optional(),
-  brake_fluid_level: z.boolean().optional(),
-  buggy_on_roof_secured: z.boolean().optional(),
-  fire_extinguisher_present: z.boolean().optional(),
-  first_aid_kit_mounted: z.boolean().optional(),
-  first_aid_kit_stocked: z.boolean().optional(),
-  fuel_level: z.string().optional(),
-  heater_working: z.boolean().optional(),
-  ice_chest_in_shuttle: z.boolean().optional(),
-  insurance_valid: z.boolean().optional(),
-  is_check_engine_on: z.boolean().optional(),
-  is_horn_working: z.boolean().optional(),
-  is_vehicle_clean: z.boolean().optional(),
-  light_indicators_work: z.boolean().optional(),
-  mirror_working: z.boolean().optional(),
+  brake_fluid_level: z.boolean(),
+  buggy_on_roof_secured: z.boolean(),
+  fire_extinguisher_present: z.boolean(),
+  first_aid_kit_mounted: z.boolean(),
+  first_aid_kit_stocked: z.boolean(),
+  fuel_level: z.enum(['quarter', 'half', 'three_quarters', 'full']),
+  heater_working: z.boolean(),
+  ice_chest_in_shuttle: z.boolean(),
+  insurance_valid: z.boolean(),
+  is_check_engine_on: z.boolean(),
+  is_horn_working: z.boolean(),
+  is_vehicle_clean: z.boolean(),
+  light_indicators_work: z.boolean(),
+  mirror_working: z.boolean(),
   notes: z.string().optional(),
-  oil_proper_level: z.boolean().optional(),
-  power_steering_fluid_proper_level: z.boolean().optional(),
-  registration_valid: z.boolean().optional(),
-  shuttles_plugged_in_winter: z.boolean().optional(),
-  triangles_present: z.boolean().optional(),
-  visible_hoses_intact: z.boolean().optional(),
-  visible_leaks: z.boolean().optional(),
-  wind_shield_washer_fluid_full: z.boolean().optional(),
-  created_by: z.string().optional(),
-  vehicle_id: z.string().optional(),
-  engine_belts_intact: z.boolean().optional(),
-  seat_belts_intact: z.boolean().optional()
+  oil_proper_level: z.boolean(),
+  power_steering_fluid_proper_level: z.boolean(),
+  registration_valid: z.boolean(),
+  shuttles_plugged_in_winter: z.boolean(),
+  triangles_present: z.boolean(),
+  visible_hoses_intact: z.boolean(),
+  visible_leaks: z.boolean(),
+  wind_shield_washer_fluid_full: z.boolean(),
+  engine_belts_intact: z.boolean(),
+  seat_belts_intact: z.boolean()
 });
 
 // all booleans are radio buttons, all enums are select dropdowns, numbers are inputs, and all strings are text inputs
@@ -134,11 +133,11 @@ export const fields: FieldConfig[] = [
     ]
   },
   {
-    type: 'input',
+    type: 'textarea',
     name: 'body_damage',
     label: 'Body Damage',
     placeholder: 'Enter the body damage',
-    description: 'The body damage of the vehicle.'
+    description: '(IF ANY) The body damage of the vehicle.'
   },
   {
     type: 'radio',
@@ -192,7 +191,7 @@ export const fields: FieldConfig[] = [
     ]
   },
   {
-    type: 'select',
+    type: 'radio',
     name: 'fuel_level',
     label: 'Fuel Level',
     options: [
@@ -384,6 +383,7 @@ const ShuttlePretripForm = ({
   const [formData, setFormData] = React.useState<
     z.infer<typeof formSchema> | undefined
   >(undefined);
+  const { toast } = useToast();
 
   React.useEffect(() => {
     if (formData !== undefined) {
@@ -394,13 +394,27 @@ const ShuttlePretripForm = ({
         created_at: new Date().toISOString(),
         created_by: user_id
       };
-      insertIntoPretripForm(supabase, data, 'vehicle_pretrip_shuttle')
+      insertIntoShuttlePretripForm(supabase, data, 'vehicle_pretrip_shuttle')
         .then((res) => {
           // clear the form
           setFormData(undefined);
+          toast({
+            title: 'Form submitted',
+            description: 'The form has been submitted successfully',
+            variant: 'success',
+            duration: 5000
+          });
+          // reload the page
+          window.location.reload();
         })
         .catch((error) => {
           console.error('Error inserting into pretrip form', error);
+          toast({
+            title: 'Error',
+            description: 'There was an error submitting the form',
+            variant: 'destructive',
+            duration: 5000
+          });
         });
     }
   }, [formData]);

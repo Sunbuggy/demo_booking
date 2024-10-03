@@ -66,15 +66,15 @@ const BookingCard = async ({
             .filter(
               (key) => Number(reservation[key as keyof typeof reservation]) > 0
             )
-            .map((key, idx) => {
+            .map((key, idx, filteredList) => {
               const count = Number(
                 reservation[key as keyof typeof reservation]
               );
+              const full_name=`${count}-${key}`
               return (
                 <div key={idx}>
                   <span className="italic font-thin text-orange-500" key={key}>
-                    {count}-{key}
-                    {count > 1 ? 's' : ''}
+                    {full_name} {idx !== filteredList.length - 1 && ', '} 
                   </span>
                 </div>
               );
