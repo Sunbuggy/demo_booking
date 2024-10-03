@@ -45,32 +45,35 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
     }
   });
 
-  // Function to save the scanned /fleet/ URL to Supabase (qr_history table)
-  const saveScannedUrlToHistory = async (link: string, location: string) => {
-    if (!user || !link.includes('/fleet/')) return;
+// Function to save the scanned /fleet/ URL to Supabase (qr_history table)
+const saveScannedUrlToHistory = async (link: string, location: string) => {
+  if (!user || !link.includes('/fleet/')) return;
 
-    const { data, error } = await supabase
-      .from('qr_history')
-      .insert([
-        {
-          user: user.id,
-          link,
-          scanned_at: new Date().toISOString(),
-          location,
-        },
-      ]);
+  const { data, error } = await supabase
+    .from('qr_history')
+    .insert([
+      {
+        user: user.id,
+        link,
+        scanned_at: new Date().toISOString(),
+        location,
+        latitude: currentLocation.latitude, 
+        longitude: currentLocation.longitude, 
+      },
+    ]);
 
-    if (error) {
-      console.error('Error saving QR scan:', error);
-      toast({
-        title: 'Error',
-        description: 'Could not save QR scan to history.',
-        variant: 'destructive',
-      });
-    } else {
-      console.log('QR scan saved:', data);
-    }
-  };
+  if (error) {
+    console.error('Error saving QR scan:', error);
+    toast({
+      title: 'Error',
+      description: 'Could not save QR scan to history.',
+      variant: 'destructive',
+    });
+  } else {
+    console.log('QR scan saved:', data);
+  }
+};
+
 
   // useEffect to get the current device location
   React.useEffect(() => {
