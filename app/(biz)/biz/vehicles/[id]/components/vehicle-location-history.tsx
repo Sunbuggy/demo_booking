@@ -1,8 +1,8 @@
 'use client';
 import React from 'react';
-import { VehicleLocation } from '../page';
 import { createClient } from '@/utils/supabase/client';
 import { getUserDetailsById } from '@/utils/supabase/queries';
+import { VehicleLocation } from '../../types';
 
 const LocationHistory = ({
   vehicleLocation

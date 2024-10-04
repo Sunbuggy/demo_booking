@@ -15,6 +15,8 @@ import { useToast } from './ui/use-toast';
 import { UserType } from '@/app/(biz)/biz/users/types';
 import { DrawerClose } from './ui/drawer';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import DialogFactory from './dialog-factory';
+import ManualInventory from '@/app/(biz)/biz/vehicles/admin/tables/components/manual-inventory';
 
 export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
   const supabase = createClient();
@@ -23,6 +25,8 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
   const [selectedForInventory, setSelectedForInventory] = React.useState<{
     [key: string]: boolean;
   }>({});
+  const [isManualInventoryDialogOpen, setIsManualInventoryDialogOpen] =
+    React.useState(false);
   const [bay, setBay] = React.useState('');
   const [level, setLevel] = React.useState('');
   const [result, setResult] = React.useState('');
@@ -45,35 +49,32 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
     }
   });
 
-// Function to save the scanned /fleet/ URL to Supabase (qr_history table)
-const saveScannedUrlToHistory = async (link: string, location: string) => {
-  if (!user || !link.includes('/fleet/')) return;
+  // Function to save the scanned /fleet/ URL to Supabase (qr_history table)
+  const saveScannedUrlToHistory = async (link: string, location: string) => {
+    if (!user || !link.includes('/fleet/')) return;
 
-  const { data, error } = await supabase
-    .from('qr_history')
-    .insert([
+    const { data, error } = await supabase.from('qr_history').insert([
       {
         user: user.id,
         link,
         scanned_at: new Date().toISOString(),
         location,
-        latitude: currentLocation.latitude, 
-        longitude: currentLocation.longitude, 
-      },
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude
+      }
     ]);
 
-  if (error) {
-    console.error('Error saving QR scan:', error);
-    toast({
-      title: 'Error',
-      description: 'Could not save QR scan to history.',
-      variant: 'destructive',
-    });
-  } else {
-    console.log('QR scan saved:', data);
-  }
-};
-
+    if (error) {
+      console.error('Error saving QR scan:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not save QR scan to history.',
+        variant: 'destructive'
+      });
+    } else {
+      console.log('QR scan saved:', data);
+    }
+  };
 
   // useEffect to get the current device location
   React.useEffect(() => {
@@ -118,7 +119,7 @@ const saveScannedUrlToHistory = async (link: string, location: string) => {
       const true_veh_name = isNaN(parseInt(veh_name))
         ? veh_name
         : `sb${veh_name}`;
-      
+
       // Save the scanned /fleet/ URL to the qr_history table
       saveScannedUrlToHistory(result, city);
 
@@ -283,81 +284,140 @@ const saveScannedUrlToHistory = async (link: string, location: string) => {
   };
 
   return (
-    <div>
-      <h1 className="text-xl font-bold text-center m-5">
-        Mode: {inventoryMode ? 'Inventory' : 'Normal'}
-      </h1>
-      <Tabs defaultValue="normal" className="p-5">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger
-            value="normal"
-            onClick={() => {
-              setInventoryMode(false);
-              setNormalMode(true);
-            }}
-          >
-            Normal
-          </TabsTrigger>
-          <TabsTrigger
-            value="inventory"
-            onClick={() => {
-              setInventoryMode(true);
-              setNormalMode(false);
-            }}
-          >
-            Inventory
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="normal">
-          <div className="grid w-full justify-items-center">
-            <video ref={ref} />
-          </div>
-
-          <ScrollArea className="h-[300px] rounded-md border p-4">
-            <div className="grid grid-cols-1 gap-4">
-              {scannedVehicleIds.map((veh) => (
-                <div key={veh.id} className="flex flex-col gap-2 border-b pb-2">
-                  <Link
-                    className="underline text-blue-500"
-                    href={`/fleet/${veh.name}`}
-                    target="_blank"
-                  >
-                    {veh.name}
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-
-          {scannedVehicleIds.length > 0 && (
-            <Button onClick={() => setCloseCamera(!closeCamera)} className="w-full my-5">
-              {closeCamera ? 'Open Camera' : 'Close Camera'}
+    <div className="h-[70vh]">
+      <div className="flex flex-col items-center gap-2 mb-5">
+        <h1 className="text-xl font-bold text-center">
+          Mode: {inventoryMode ? 'Inventory' : 'Normal'}
+        </h1>
+        {inventoryMode && (
+          <div>
+            <Button onClick={() => setIsManualInventoryDialogOpen(true)}>
+              +Manual Inventory
             </Button>
-          )}
-        </TabsContent>
-        <TabsContent value="inventory">
-          <div className="grid w-full justify-items-center">
-            <video ref={ref} />
+            <DialogFactory
+              children={<ManualInventory user_id={user?.id || ''} />}
+              isDialogOpen={isManualInventoryDialogOpen}
+              setIsDialogOpen={setIsManualInventoryDialogOpen}
+              title="Add Inventory Manually"
+            />
           </div>
+        )}
+      </div>
 
-          <div className="p-5">
-            <h1 className="text-xl text-center font-semibold mb-3">
-              Select Vehicles for Inventory
+      <div className="flex justify-center">
+        <div className="w-[150px] h-[150px]  ">
+          <video ref={ref} />
+        </div>
+      </div>
+      {/* Radio  for inventory Mode, and normal mode */}
+      <div className="flex gap-2 items-center m-5">
+        <input
+          type="radio"
+          id="normal"
+          name="mode"
+          value="normal"
+          checked={normalMode}
+          onChange={() => {
+            setNormalMode(true);
+            setInventoryMode(false);
+          }}
+        />
+        <label htmlFor="normal">Normal</label>
+        <input
+          type="radio"
+          id="inventory"
+          name="mode"
+          value="inventory"
+          checked={inventoryMode}
+          onChange={() => {
+            setNormalMode(false);
+            setInventoryMode(true);
+          }}
+        />
+        <label htmlFor="inventory">Inventory</label>
+      </div>
+      {!inventoryMode &&
+        (scannedUrls.length > 0 || scannedVehicleIds.length > 0) && (
+          <Tabs defaultValue="new" className="w-[400px] mb-5">
+            <TabsList className="w-full justify-center">
+              <TabsTrigger value="new">New</TabsTrigger>
+              <TabsTrigger value="legacy">Legacy</TabsTrigger>
+            </TabsList>
+            <TabsContent value="new">
+              <div className="w-[400px]">
+                {scannedVehicleIds.length > 0 && (
+                  <div className="flex flex-col gap-4">
+                    <h4 className="text-xl font ml-2">Scanned Vehicles:</h4>
+
+                    <ScrollArea className="h-[200px] ml-2  rounded-md border p-4">
+                      <div className=" grid grid-cols-4 gap-4">
+                        {scannedVehicleIds.map((v, i) => (
+                          <span key={i}>
+                            <DrawerClose asChild>
+                              <Link
+                                className="green_button"
+                                href={`/biz/vehicles/${v.id}`}
+                              >
+                                {v.name}
+                              </Link>
+                            </DrawerClose>
+                          </span>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            <TabsContent value="legacy">
+              <div className="w-[400px] ml-5">
+                {scannedUrls.length > 0 && (
+                  <ScrollArea className="h-[200px] rounded-md border p-4">
+                    <h1>Scanned Urls</h1>
+                    <ul className="flex flex-col gap-6">
+                      {scannedUrls.map((url, i) => (
+                        <li key={i}>
+                          <Link
+                            className=" underline text-pink-500"
+                            href={`https://${url}`}
+                            target="_blank"
+                          >
+                            {url}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </ScrollArea>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
+      {inventoryMode && scannedVehicleIds.length > 0 && (
+        <ScrollArea className="h-[120px]  rounded-md border p-4 w-full">
+          <div className="grid grid-cols-4 gap-4 ml-5">
+            {scannedVehicleIds.map((v, i) => (
+              <span key={i} className="flex gap-2 items-center">
+                <input
+                  type="checkbox"
+                  id={v.id}
+                  name={v.name}
+                  value={v.id as string}
+                  onChange={handleCheckboxChange}
+                  checked={!!selectedForInventory[v.id]} // Ensure boolean value
+                />
+                <label htmlFor={v.id}>{v.name}</label>
+              </span>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
+      {inventoryMode && scannedVehicleIds.length > 0 && (
+        <div>
+          <div className="w-full flex flex-col justify-center items-center my-3 gap-1 border rounded-lg p-3 text-sm">
+            <h1 className="text-sm font-bold">
+              Add Selected Fleet to Inventory
             </h1>
-            <div className="flex flex-col items-start">
-              {scannedVehicleIds.map((veh) => (
-                <div key={veh.id} className="flex items-center mb-2">
-                  <input
-                    id={veh.id}
-                    type="checkbox"
-                    checked={selectedForInventory[veh.id] || false}
-                    onChange={handleCheckboxChange}
-                    className="mr-2"
-                  />
-                  <label htmlFor={veh.id}>{veh.name}</label>
-                </div>
-              ))}
-            </div>
 
             <div className="flex flex-col my-5">
               <label className="mb-2">Bay</label>
@@ -381,13 +441,20 @@ const saveScannedUrlToHistory = async (link: string, location: string) => {
             </Button>
           </div>
 
-          {scannedVehicleIds.length > 0 && (
-            <Button onClick={() => setCloseCamera(!closeCamera)} className="w-full my-5">
-              {closeCamera ? 'Open Camera' : 'Close Camera'}
-            </Button>
-          )}
-        </TabsContent>
-      </Tabs>
+          <Button variant={'positive'} onClick={handleSubmit}>
+            +Add
+          </Button>
+        </div>
+      )}
+      {/* Camera toggle Button */}
+      <div className="flex justify-center m-5">
+        <Button
+          variant={'destructive'}
+          onClick={() => setCloseCamera(!closeCamera)}
+        >
+          {closeCamera ? 'Open Camera' : 'Close Camera'}
+        </Button>
+      </div>
     </div>
   );
 };
