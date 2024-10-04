@@ -21,7 +21,7 @@
 -- flight_num – Specific flight number for each route
  
  
--- ticket_details: Contains information about the ticket details
+-- tickets: Contains information about the ticket details
 -- p_date – Ticket purchase date
 -- customer_id – ID of the customer
 -- aircraft_id – ID of each aircraft in a brand
@@ -43,9 +43,9 @@
 
 -- 1. Write a query to create route details table using suitable data types for the fields, such as route_id, flight_num, origin_airport, destination_airport, aircraft_id, and distance_miles. Implement the check constraint for the flight number and unique constraint for the route_id fields. Also, make sure that the distance miles field is greater than 0.
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'route_details')
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'routes')
 BEGIN
-    CREATE TABLE route_details (
+    CREATE TABLE routes (
         route_id INT PRIMARY KEY,
         flight_num INT CHECK (flight_num > 0),
         origin_airport VARCHAR(50),
@@ -57,12 +57,55 @@ BEGIN
 END
 GO
 
+
+-- Add primary key constraints
+ALTER TABLE Customers
+ADD CONSTRAINT pk_customers_customer_id PRIMARY KEY (customer_id);
+
+ALTER TABLE routes
+ADD CONSTRAINT pk_routes_route_id PRIMARY KEY (route_id);
+
+ALTER TABLE routes
+ADD CONSTRAINT pk_routes_aircraft_id PRIMARY KEY (aircraft_id);
+
+
+
+-- Add foreign key constraints to the passengers table
+ALTER TABLE passengers
+ADD CONSTRAINT fk_passengers_customer
+FOREIGN KEY (customer_id) REFERENCES Customers(customer_id);
+
+ALTER TABLE passengers
+ADD CONSTRAINT fk_passengers_route
+FOREIGN KEY (route_id) REFERENCES routes(route_id);
+
+ALTER TABLE passengers
+ADD CONSTRAINT fk_passengers_aircraft
+FOREIGN KEY (aircraft_id) REFERENCES routes(aircraft_id);
+
+-- Add foreign key constraints to the tickets table
+ALTER TABLE tickets
+ADD CONSTRAINT fk_tickets_customer
+FOREIGN KEY (customer_id) REFERENCES Customers(customer_id);
+
+ALTER TABLE tickets
+ADD CONSTRAINT fk_tickets_aircraft
+FOREIGN KEY (aircraft_id) REFERENCES routes(aircraft_id);
+
+-- Add foreign key constraints to the routes table
+ALTER TABLE routes
+ADD CONSTRAINT fk_routes_aircraft
+FOREIGN KEY (aircraft_id) REFERENCES routes(aircraft_id);
+
+
+
+
 -- Write a query to display all the passengers (customers) who have travelled in routes 01 to 25. Take data  from the passengers table.
 
 SELECT * FROM passengers WHERE route_id BETWEEN 1 AND 25;
 
 
--- Write a query to identify the number of passengers and total revenue in business class from the ticket_details table.
+-- Write a query to identify the number of passengers and total revenue in business class from the tickets table.
 
 SELECT COUNT(customer_id) AS total_passengers, SUM(price_per_ticket) AS total_revenue
 FROM tickets
@@ -74,7 +117,7 @@ WHERE class_id = 'Business';
 -- Write a query to display the full name of the customer by extracting the first name and last name from the customer table.
 
 SELECT first_name + ' ' + last_name AS full_name FROM customers;
--- Write a query to extract the customers who have registered and booked a ticket. Use data from the customer and ticket_details tables.
+-- Write a query to extract the customers who have registered and booked a ticket. Use data from the customer and tickets tables.
 
 SELECT c.first_name, c.last_name
 FROM customers c
@@ -82,7 +125,7 @@ JOIN ticket t
 ON c.customer_id = t.customer_id;
 
 
--- Write a query to identify the customer’s first name and last name based on their customer ID and brand (Emirates) from the ticket_details table.
+-- Write a query to identify the customer’s first name and last name based on their customer ID and brand (Emirates) from the tickets table.
 
 SELECT c.first_name, c.last_name
 FROM customers c
@@ -99,7 +142,7 @@ WHERE class_id = 'Economy Plus'
 GROUP BY customer_id;
 
 
--- Write a query to identify whether the revenue has crossed 10000 using the IF clause on the ticket_details table.
+-- Write a query to identify whether the revenue has crossed 10000 using the IF clause on the tickets table.
 
 SELECT CASE 
          WHEN SUM(price_per_ticket) > 10000 THEN 'Revenue crossed 10000'
@@ -120,7 +163,7 @@ BEGIN
     EXEC sp_addrolemember 'db_datawriter', 'new_user';
 END;
 
--- Write a query to find the maximum ticket price for each class using window functions on the ticket_details table.
+-- Write a query to find the maximum ticket price for each class using window functions on the tickets table.
 
 
 SELECT class_id, MAX(price_per_ticket) OVER (PARTITION BY class_id) AS max_ticket_price 
