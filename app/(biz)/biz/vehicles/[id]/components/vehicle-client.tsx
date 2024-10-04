@@ -22,21 +22,12 @@ import { User } from '@supabase/supabase-js';
 import { createId } from '@paralleldrive/cuid2';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
-import ShuttlePretripForm from './pretrip-forms/shuttle/shuttle-pretrip-form';
-import ShuttlePretripHistory from './pretrip-forms/shuttle/shuttle-pretrip-history';
-import TruckPretripHistory from './pretrip-forms/truck/truck-pretrip-history';
-import TruckPretripForm from './pretrip-forms/truck/truck-pretrip-form';
-import ATVPretripHistory from './pretrip-forms/atv/atv-pretrip-history';
-import ATVPretripForm from './pretrip-forms/atv/atv-pretrip-form';
-import BuggyPretripHistory from './pretrip-forms/buggy/buggy-pretrip-history';
-import BuggyPretripForm from './pretrip-forms/buggy/buggy-pretrip-form';
-import ForkliftPretripForm from './pretrip-forms/forklift/forklift-pretrip-form';
-import ForkliftPretripHistory from './pretrip-forms/forklift/forklift-pretrip-history';
+
 import ResponsiveImageUpload from './responsive-image-upload-form';
 import LocationHistory from './vehicle-location-history';
-import { InventoryLocation, VehicleLocation } from '../page';
 import PretripFormManager from './pretrip-forms/pretrip-form-manager';
 import InventoryHistory from './vehicle-location-inventory-history';
+import { InventoryLocation, VehicleLocation } from '../../types';
 
 interface VehicleClientComponentProps {
   id: string;

@@ -18,6 +18,9 @@ import QrCodeScanner from '../QrScanner/QrCodeScanner';
 import { usePathname } from 'next/navigation';
 import { BarcodeScanner } from '@/components/qr-scanner';
 import { ReusableDrawer } from '../reusable-drawer';
+import DialogFactory from '@/components/dialog-factory';
+import React from 'react';
+import { Button } from '../button';
 
 interface NavlinksProps {
   user: UserType | null;
@@ -25,6 +28,8 @@ interface NavlinksProps {
 
 export default function Navlinks({ user }: NavlinksProps) {
   const path = usePathname();
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
   return (
     <div className="flex justify-between">
       {/* Left Side: Logo with Sheet Drawer */}
@@ -95,7 +100,7 @@ export default function Navlinks({ user }: NavlinksProps) {
             <BarcodeScanner />
           </SheetContent>
         </Sheet> */}
-        <ReusableDrawer
+        {/* <ReusableDrawer
           children={<BarcodeScanner user={user} />}
           description="Scan a QR Code"
           title="QR Scanner"
@@ -117,6 +122,33 @@ export default function Navlinks({ user }: NavlinksProps) {
               </svg>
             </a>
           }
+        /> */}
+        <Button
+          variant={'ghost'}
+          size={'icon'}
+          onClick={() => setIsDialogOpen(true)}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth="1.8"
+            stroke="orange"
+            className="w-9 h-9"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+            />
+          </svg>
+        </Button>
+        <DialogFactory
+          children={<BarcodeScanner user={user} />}
+          isDialogOpen={isDialogOpen}
+          setIsDialogOpen={setIsDialogOpen}
+          title="QR Scanner"
+          description="Scan a QR Code"
         />
 
         {/* Conditional Rendering for User */}

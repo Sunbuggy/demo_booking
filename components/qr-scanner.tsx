@@ -15,6 +15,8 @@ import { useToast } from './ui/use-toast';
 import { UserType } from '@/app/(biz)/biz/users/types';
 import { DrawerClose } from './ui/drawer';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import DialogFactory from './dialog-factory';
+import ManualInventory from '@/app/(biz)/biz/vehicles/admin/tables/components/manual-inventory';
 
 export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
   const supabase = createClient();
@@ -23,6 +25,8 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
   const [selectedForInventory, setSelectedForInventory] = React.useState<{
     [key: string]: boolean;
   }>({});
+  const [isManualInventoryDialogOpen, setIsManualInventoryDialogOpen] =
+    React.useState(false);
   const [bay, setBay] = React.useState('');
   const [level, setLevel] = React.useState('');
   const [result, setResult] = React.useState('');
@@ -247,10 +251,26 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
     setSelectedForInventory({});
   };
   return (
-    <div>
-      <h1 className="text-xl font-bold text-center m-5">
-        Mode: {inventoryMode ? 'Inventory' : 'Normal'}
-      </h1>
+    <div className="h-[70vh]">
+      <div className="flex flex-col items-center gap-2 mb-5">
+        <h1 className="text-xl font-bold text-center">
+          Mode: {inventoryMode ? 'Inventory' : 'Normal'}
+        </h1>
+        {inventoryMode && (
+          <div>
+            <Button onClick={() => setIsManualInventoryDialogOpen(true)}>
+              +Manual Inventory
+            </Button>
+            <DialogFactory
+              children={<ManualInventory user_id={user?.id || ''} />}
+              isDialogOpen={isManualInventoryDialogOpen}
+              setIsDialogOpen={setIsManualInventoryDialogOpen}
+              title="Add Inventory Manually"
+            />
+          </div>
+        )}
+      </div>
+
       <div className="flex justify-center">
         <div className="w-[150px] h-[150px]  ">
           <video ref={ref} />
@@ -340,7 +360,7 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
             </TabsContent>
           </Tabs>
         )}
-      {inventoryMode && (
+      {inventoryMode && scannedVehicleIds.length > 0 && (
         <ScrollArea className="h-[120px]  rounded-md border p-4 w-full">
           <div className="grid grid-cols-4 gap-4 ml-5">
             {scannedVehicleIds.map((v, i) => (
@@ -392,7 +412,7 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
         </div>
       )}
       {/* Camera toggle Button */}
-      <div className="flex justify-center">
+      <div className="flex justify-center m-5">
         <Button
           variant={'destructive'}
           onClick={() => setCloseCamera(!closeCamera)}

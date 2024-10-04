@@ -2,7 +2,7 @@
 import React from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { getUserDetailsById } from '@/utils/supabase/queries';
-import { InventoryLocation } from '../page';
+import { InventoryLocation } from '../../types';
 // (property) Insert: {
 //     bay?: string | null;
 //     created_at?: string;

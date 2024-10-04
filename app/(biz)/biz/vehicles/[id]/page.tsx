@@ -10,12 +10,7 @@ import { createClient } from '@/utils/supabase/server';
 import { fetchObjects } from '@/utils/biz/pics/get';
 import { VehicleTagType, VehicleType } from '../admin/page';
 import VehicleClientComponent from './components/vehicle-client';
-import { Database } from '@/types_db';
-
-export type VehicleLocation =
-  Database['public']['Tables']['vehicle_locations']['Row'];
-export type InventoryLocation =
-  Database['public']['Tables']['vehicle_inventory_location']['Row'];
+import { InventoryLocation, VehicleLocation } from '../types';
 
 const bucket = 'sb-fleet';
 async function getVehicleData(id: string) {
