@@ -58,13 +58,19 @@ END
 GO
 
 
--- Add primary key constraints
+-- Add primary key constraints and make columns non-nullable
+ALTER TABLE Customers
+ALTER COLUMN customer_id INT NOT NULL;
 ALTER TABLE Customers
 ADD CONSTRAINT pk_customers_customer_id PRIMARY KEY (customer_id);
 
 ALTER TABLE routes
+ALTER COLUMN route_id INT NOT NULL;
+ALTER TABLE routes
 ADD CONSTRAINT pk_routes_route_id PRIMARY KEY (route_id);
 
+ALTER TABLE routes
+ALTER COLUMN aircraft_id INT NOT NULL;
 ALTER TABLE routes
 ADD CONSTRAINT pk_routes_aircraft_id PRIMARY KEY (aircraft_id);
 
