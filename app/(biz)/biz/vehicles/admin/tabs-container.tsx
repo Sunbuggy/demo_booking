@@ -5,19 +5,30 @@ import { User } from '@supabase/supabase-js';
 import { VehicleType } from './page';
 import VehicleStatus from './tables/components/vehicle-status';
 
-const VehiclesTabContainer = ({
+import { createClient } from '@/utils/supabase/server';
+import LocationHistory from '../[id]/components/vehicle-location-history';
+import { fetchAllVehicleLocations } from '@/utils/supabase/queries';
+import { VehicleLocation } from '../types';
+
+const VehiclesTabContainer = async ({
   vehicles,
   loggedInUser
 }: {
   vehicles: VehicleType[];
   loggedInUser: User | null | undefined;
 }) => {
+  const supabase = createClient();
   const userFullName = String(loggedInUser?.user_metadata.full_name);
+  const allVehicleLocations = (await fetchAllVehicleLocations(
+    supabase
+  )) as VehicleLocation[];
+
   return (
     <Tabs defaultValue="vehicles" className="w-[400px] md:w-full">
       <TabsList>
         <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
         <TabsTrigger value="vehicle_status">Vehicles Status</TabsTrigger>
+        <TabsTrigger value="location_stream">Location Stream</TabsTrigger>
       </TabsList>
       <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
         <div className="flex items-center justify-between space-y-2"></div>
@@ -32,6 +43,9 @@ const VehiclesTabContainer = ({
         </TabsContent>
         <TabsContent value="vehicle_status">
           <VehicleStatus vehicles={vehicles} />
+        </TabsContent>
+        <TabsContent value="location_stream">
+          <LocationHistory vehicleLocation={allVehicleLocations} />
         </TabsContent>
       </div>
     </Tabs>
