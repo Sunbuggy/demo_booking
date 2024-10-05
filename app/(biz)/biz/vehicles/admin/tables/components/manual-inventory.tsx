@@ -3,42 +3,22 @@ import React from 'react';
 import { VehiclesType, type InventoryLocationInsert } from '../../../types';
 import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/utils/supabase/client';
-import { fetchVehicles } from '@/utils/supabase/queries';
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList
-} from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '@/components/ui/popover';
-import { cn } from '@/utils/cn';
+  fetchVehicles,
+  insertIntoVehicleInventoryLocation
+} from '@/utils/supabase/queries';
 import { DialogClose } from '@/components/ui/dialog';
-// (property) InventoryLocation: {
-//     bay: string | null;
-//     created_at?: string;
-//     created_by?: string | null;
-//     level: string | null;
-//     vehicle_id: string | null;
-// }
+
 const ManualInventory = ({ user_id }: { user_id: string }) => {
   const [inventoryLocations, setInventoryLocations] = React.useState<
     InventoryLocationInsert[]
   >([]);
   const [vehiclesList, setVehiclesList] = React.useState<VehiclesType[]>([]);
   const [formFields, setFormFields] = React.useState([
-    { bay: '', level: '', selectedVehicle: '' }
+    { bay: '', level: '', vehicle_id: '' }
   ]);
   const { toast } = useToast();
   const supabase = createClient();
-  const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
     async function fetchVehs() {
@@ -55,15 +35,40 @@ const ManualInventory = ({ user_id }: { user_id: string }) => {
   }, []);
 
   const addFormField = () => {
-    setFormFields([...formFields, { bay: '', level: '', selectedVehicle: '' }]);
+    setFormFields([...formFields, { bay: '', level: '', vehicle_id: '' }]);
   };
 
-  const handleSelect = (index: number, selectedVehicle: string) => {
+  const handleSelect = (index: number, vehicle_id: string) => {
     const updatedFormFields = formFields.map((field, i) =>
-      i === index ? { ...field, selectedVehicle } : field
+      i === index ? { ...field, vehicle_id } : field
     );
     setFormFields(updatedFormFields);
   };
+
+  React.useEffect(() => {
+    if (inventoryLocations.length > 0) {
+      inventoryLocations.forEach((location) => {
+        insertIntoVehicleInventoryLocation(supabase, location)
+          .then((data) => {
+            toast({
+              title: 'Success',
+              description: 'Inventory Location inserted successfully',
+              variant: 'success',
+              duration: 3000
+            });
+          })
+          .catch((error) => {
+            console.error('Error inserting into inventory location', error);
+            toast({
+              title: 'Error',
+              description: 'Error inserting into inventory location',
+              variant: 'destructive',
+              duration: 6000
+            });
+          });
+      });
+    }
+  }, [inventoryLocations]);
 
   const handleSubmit = () => {
     if (user_id.length === 0) {
@@ -80,69 +85,33 @@ const ManualInventory = ({ user_id }: { user_id: string }) => {
       level: field.level,
       created_at: new Date().toISOString(),
       created_by: user_id,
-      selectedVehicle: field.selectedVehicle
+      vehicle_id: field.vehicle_id
     }));
 
-    console.log('new Recs', newRecords);
+    // console.log('new Recs', newRecords);
 
-    // setInventoryLocations([...inventoryLocations, ...newRecords]);
+    setInventoryLocations([...inventoryLocations, ...newRecords]);
   };
   return (
     <div className="space-y-4">
       {formFields.map((field, index) => (
         <div key={index} className="flex space-x-4">
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={open}
-                className="w-[200px] justify-between"
-              >
-                {field.selectedVehicle
-                  ? vehiclesList.find(
-                      (veh) => veh.name === field.selectedVehicle
-                    )?.name
-                  : 'Select fleet...'}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0">
-              <Command>
-                <CommandInput placeholder="Search fleet..." />
-                <CommandList>
-                  <CommandEmpty>No fleet found.</CommandEmpty>
-                  <CommandGroup>
-                    {vehiclesList.map((veh) => (
-                      <CommandItem
-                        key={veh.id}
-                        value={veh.name}
-                        onSelect={(currentValue) => {
-                          handleSelect(
-                            index,
-                            currentValue === field.selectedVehicle
-                              ? ''
-                              : currentValue
-                          );
-                          setOpen(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            'mr-2 h-4 w-4',
-                            field.selectedVehicle === veh.name
-                              ? 'opacity-100'
-                              : 'opacity-0'
-                          )}
-                        />
-                        {veh.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+          <select
+            value={field.vehicle_id}
+            onChange={(e) => {
+              handleSelect(index, e.target.value);
+            }}
+            className="w-full p-2 border border-gray-300 rounded-md"
+          >
+            <option value="">Fleet List</option>
+            {vehiclesList
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.name}
+                </option>
+              ))}
+          </select>
           <input
             type="text"
             placeholder="Bay"
