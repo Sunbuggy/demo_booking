@@ -63,7 +63,7 @@ const LocationHistory = ({
                 className="bg-gray-700 bg-opacity-50 text-white hover:bg-gray-600 hover:bg-opacity-50 text-xs"
               >
                 <td className="border px-4 py-2">
-                  {new Date(location.created_at).toLocaleString('en-GB', {
+                  {new Date(location.created_at).toLocaleString('en-US', {
                     day: '2-digit',
                     month: '2-digit',
                     year: 'numeric',

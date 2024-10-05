@@ -39,13 +39,84 @@
 -- Aircraft_id – ID of each aircraft in a brand
 -- Distance_miles – Distance between departure and arrival location
 
+-- 0. Write a query to create tables for the above entities using suitable data types for the fields. Implement the primary keys for each table and make sure to create the necessary constraints for the fields such as not null, unique, and foreign key constraints.
+
+-- Create the Customers table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'customers')
+BEGIN
+    CREATE TABLE customers (
+        customer_id INT PRIMARY KEY,
+        first_name VARCHAR(50) NOT NULL,
+        last_name VARCHAR(50) NOT NULL,
+        date_of_birth DATE,
+        gender CHAR(1)
+    );
+END
+GO
+
+-- Create the routes table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'routes')
+BEGIN
+    CREATE TABLE routes (
+        route_id INT PRIMARY KEY,
+        flight_num INT,
+        origin_airport VARCHAR(50),
+        destination_airport VARCHAR(50),
+        aircraft_id INT,
+        distance_miles INT,
+    );
+END
+GO
+
+-- Create the passengers table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'passengers')
+BEGIN
+    CREATE TABLE passengers (
+        aircraft_id INT,
+        route_id INT,
+        customer_id INT,
+        depart VARCHAR(50),
+        arrival VARCHAR(50),
+        seat_num INT,
+        class_id VARCHAR(50),
+        travel_date DATE,
+        flight_num INT,
+        PRIMARY KEY (aircraft_id, route_id, customer_id),
+        FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+        FOREIGN KEY (route_id) REFERENCES routes(route_id),
+    );
+END
+
+-- Create the tickets table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'tickets')
+BEGIN
+    CREATE TABLE tickets (
+        p_date DATE,
+        customer_id INT,
+        aircraft_id INT,
+        class_id VARCHAR(50),
+        no_of_tickets INT,
+        a_code VARCHAR(50),
+        price_per_ticket DECIMAL(10, 2),
+        brand VARCHAR(50),
+        PRIMARY KEY (p_date, customer_id, aircraft_id),
+        FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+    );
+END
+
+
+
+
+
 
 
 -- 1. Write a query to create route details table using suitable data types for the fields, such as route_id, flight_num, origin_airport, destination_airport, aircraft_id, and distance_miles. Implement the check constraint for the flight number and unique constraint for the route_id fields. Also, make sure that the distance miles field is greater than 0.
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'routes')
+
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'route_details')
 BEGIN
-    CREATE TABLE routes (
+    CREATE TABLE route_details (
         route_id INT PRIMARY KEY,
         flight_num INT CHECK (flight_num > 0),
         origin_airport VARCHAR(50),
@@ -58,21 +129,6 @@ END
 GO
 
 
--- Add primary key constraints and make columns non-nullable
-ALTER TABLE Customers
-ALTER COLUMN customer_id INT NOT NULL;
-ALTER TABLE Customers
-ADD CONSTRAINT pk_customers_customer_id PRIMARY KEY (customer_id);
-
-ALTER TABLE routes
-ALTER COLUMN route_id INT NOT NULL;
-ALTER TABLE routes
-ADD CONSTRAINT pk_routes_route_id PRIMARY KEY (route_id);
-
-ALTER TABLE routes
-ALTER COLUMN aircraft_id INT NOT NULL;
-ALTER TABLE routes
-ADD CONSTRAINT pk_routes_aircraft_id PRIMARY KEY (aircraft_id);
 
 
 
@@ -103,7 +159,10 @@ ALTER TABLE routes
 ADD CONSTRAINT fk_routes_aircraft
 FOREIGN KEY (aircraft_id) REFERENCES routes(aircraft_id);
 
-
+-- Add foreign key constraints to the route_details table
+ALTER TABLE route_details
+ADD CONSTRAINT fk_route_details_routes
+FOREIGN KEY (route_id) REFERENCES routes(route_id);
 
 
 -- Write a query to display all the passengers (customers) who have travelled in routes 01 to 25. Take data  from the passengers table.

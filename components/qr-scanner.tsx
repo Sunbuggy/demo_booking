@@ -285,135 +285,133 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
 
   return (
     <div className="h-[70vh]">
-      <div className="flex flex-col items-center gap-2 mb-5">
-        <h1 className="text-xl font-bold text-center">
-          Mode: {inventoryMode ? 'Inventory' : 'Normal'}
-        </h1>
-        {inventoryMode && (
-          <div>
-            <Button onClick={() => setIsManualInventoryDialogOpen(true)}>
-              +Manual Inventory
-            </Button>
-            <DialogFactory
-              children={<ManualInventory user_id={user?.id || ''} />}
-              isDialogOpen={isManualInventoryDialogOpen}
-              setIsDialogOpen={setIsManualInventoryDialogOpen}
-              title="Add Inventory Manually"
-            />
+      <div className="flex w-full gap-4">
+        <div>
+          <div className="flex flex-col items-center gap-2 mb-5">
+            <h1 className="text-xl font-bold text-center">
+              Mode:
+              {/* Create select to select mode */}
+              <select
+                className="border rounded-md p-1 m-2 text-sm"
+                onChange={(e) => {
+                  if (e.target.value === 'normal') {
+                    setNormalMode(true);
+                    setInventoryMode(false);
+                  } else {
+                    setNormalMode(false);
+                    setInventoryMode(true);
+                  }
+                }}
+              >
+                <option value="normal">Main</option>
+                <option value="inventory">Inventory</option>
+              </select>
+            </h1>
           </div>
-        )}
-      </div>
 
-      <div className="flex justify-center">
-        <div className="w-[150px] h-[150px]  ">
-          <video ref={ref} />
+          <div className="flex justify-center">
+            <div className="w-[150px] h-[150px]  ">
+              <video ref={ref} />
+            </div>
+          </div>
+        </div>
+        <div>
+          {normalMode &&
+            (scannedUrls.length > 0 || scannedVehicleIds.length > 0) && (
+              <Tabs defaultValue="new" className="w-[200px] mb-5">
+                <TabsList className="w-full ">
+                  <TabsTrigger value="new">New</TabsTrigger>
+                  <TabsTrigger value="legacy">Legacy</TabsTrigger>
+                </TabsList>
+                <TabsContent value="new">
+                  <div className="w-[200px]">
+                    {scannedVehicleIds.length > 0 && (
+                      <ScrollArea className="h-[215px] ml-2  rounded-md border p-4">
+                        <div className="flex flex-col gap-2 items-center">
+                          <h4 className="text-xl font mb-3">
+                            Scanned Vehicles:
+                          </h4>
+                          {scannedVehicleIds.map((v, i) => (
+                            <span key={i}>
+                              <DrawerClose asChild>
+                                <Link
+                                  className="green_button"
+                                  href={`/biz/vehicles/${v.id}`}
+                                >
+                                  {v.name}
+                                </Link>
+                              </DrawerClose>
+                            </span>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </div>
+                </TabsContent>
+                <TabsContent value="legacy">
+                  <div className="w-[200px]">
+                    {scannedUrls.length > 0 && (
+                      <ScrollArea className="h-[200px] rounded-md border p-4">
+                        <h1 className="mb-2">On the old site:</h1>
+                        <ul className="flex flex-col gap-6">
+                          {scannedUrls.map((url, i) => (
+                            <li key={i}>
+                              <Link
+                                className=" underline text-pink-500"
+                                href={`https://${url}`}
+                                target="_blank"
+                              >
+                                Open
+                                {url.replace('sunbuggy.com/', '/')}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </ScrollArea>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            )}
+          {inventoryMode && scannedVehicleIds.length > 0 && (
+            <ScrollArea className="h-[215px]  rounded-md border p-4 w-full">
+              <div className="ml-5">
+                <h4>Scanned Items</h4>
+                {scannedVehicleIds.map((v, i) => (
+                  <span key={i} className="flex gap-2 items-center">
+                    <input
+                      type="checkbox"
+                      id={v.id}
+                      name={v.name}
+                      value={v.id as string}
+                      onChange={handleCheckboxChange}
+                      checked={!!selectedForInventory[v.id]} // Ensure boolean value
+                    />
+                    <label htmlFor={v.id}>{v.name}</label>
+                  </span>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
         </div>
       </div>
-      {/* Radio  for inventory Mode, and normal mode */}
-      <div className="flex gap-2 items-center m-5">
-        <input
-          type="radio"
-          id="normal"
-          name="mode"
-          value="normal"
-          checked={normalMode}
-          onChange={() => {
-            setNormalMode(true);
-            setInventoryMode(false);
-          }}
-        />
-        <label htmlFor="normal">Normal</label>
-        <input
-          type="radio"
-          id="inventory"
-          name="mode"
-          value="inventory"
-          checked={inventoryMode}
-          onChange={() => {
-            setNormalMode(false);
-            setInventoryMode(true);
-          }}
-        />
-        <label htmlFor="inventory">Inventory</label>
-      </div>
-      {!inventoryMode &&
-        (scannedUrls.length > 0 || scannedVehicleIds.length > 0) && (
-          <Tabs defaultValue="new" className="w-[400px] mb-5">
-            <TabsList className="w-full justify-center">
-              <TabsTrigger value="new">New</TabsTrigger>
-              <TabsTrigger value="legacy">Legacy</TabsTrigger>
-            </TabsList>
-            <TabsContent value="new">
-              <div className="w-[400px]">
-                {scannedVehicleIds.length > 0 && (
-                  <div className="flex flex-col gap-4">
-                    <h4 className="text-xl font ml-2">Scanned Vehicles:</h4>
 
-                    <ScrollArea className="h-[200px] ml-2  rounded-md border p-4">
-                      <div className=" grid grid-cols-4 gap-4">
-                        {scannedVehicleIds.map((v, i) => (
-                          <span key={i}>
-                            <DrawerClose asChild>
-                              <Link
-                                className="green_button"
-                                href={`/biz/vehicles/${v.id}`}
-                              >
-                                {v.name}
-                              </Link>
-                            </DrawerClose>
-                          </span>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            <TabsContent value="legacy">
-              <div className="w-[400px] ml-5">
-                {scannedUrls.length > 0 && (
-                  <ScrollArea className="h-[200px] rounded-md border p-4">
-                    <h1>Scanned Urls</h1>
-                    <ul className="flex flex-col gap-6">
-                      {scannedUrls.map((url, i) => (
-                        <li key={i}>
-                          <Link
-                            className=" underline text-pink-500"
-                            href={`https://${url}`}
-                            target="_blank"
-                          >
-                            {url}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </ScrollArea>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        )}
-      {inventoryMode && scannedVehicleIds.length > 0 && (
-        <ScrollArea className="h-[120px]  rounded-md border p-4 w-full">
-          <div className="grid grid-cols-4 gap-4 ml-5">
-            {scannedVehicleIds.map((v, i) => (
-              <span key={i} className="flex gap-2 items-center">
-                <input
-                  type="checkbox"
-                  id={v.id}
-                  name={v.name}
-                  value={v.id as string}
-                  onChange={handleCheckboxChange}
-                  checked={!!selectedForInventory[v.id]} // Ensure boolean value
-                />
-                <label htmlFor={v.id}>{v.name}</label>
-              </span>
-            ))}
-          </div>
-        </ScrollArea>
-      )}
-      {inventoryMode && scannedVehicleIds.length > 0 && (
+      {inventoryMode && (
         <div>
+          <Button onClick={() => setIsManualInventoryDialogOpen(true)}>
+            +Manual Inventory
+          </Button>
+          <DialogFactory
+            children={<ManualInventory user_id={user?.id || ''} />}
+            isDialogOpen={isManualInventoryDialogOpen}
+            setIsDialogOpen={setIsManualInventoryDialogOpen}
+            title="Add Inventory Manually"
+          />
+        </div>
+      )}
+
+      {inventoryMode && scannedVehicleIds.length > 0 && (
+        <div className="mb-14">
           <div className="w-full flex flex-col justify-center items-center my-3 gap-1 border rounded-lg p-3 text-sm">
             <h1 className="text-sm font-bold">
               Add Selected Fleet to Inventory
@@ -436,25 +434,25 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
               />
             </div>
 
-            <Button onClick={handleSubmit} className="w-full">
-              Submit Inventory Location
+            <Button
+              variant={'positive'}
+              className="w-full"
+              onClick={handleSubmit}
+            >
+              +Add
             </Button>
           </div>
-
-          <Button variant={'positive'} onClick={handleSubmit}>
-            +Add
-          </Button>
         </div>
       )}
       {/* Camera toggle Button */}
-      <div className="flex justify-center m-5">
+      {/* <div className="flex justify-center m-5">
         <Button
           variant={'destructive'}
           onClick={() => setCloseCamera(!closeCamera)}
         >
           {closeCamera ? 'Open Camera' : 'Close Camera'}
         </Button>
-      </div>
+      </div> */}
     </div>
   );
 };
