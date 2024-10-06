@@ -9,14 +9,12 @@ const TagForm = ({
   tag,
   user,
   status,
-  id,
-  vehicle_name
+  id
 }: {
   tag: VehicleTagType | null;
   user: User;
   status?: string;
   id?: string;
-  vehicle_name: string;
 }) => {
   if (tag === null) {
     return <NewTagForm user={user} id={id || ''} />;

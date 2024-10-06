@@ -14,19 +14,19 @@ import {
 } from '@/components/ui/sheet';
 import { UserNav } from '@/app/(biz)/biz/users/admin/tables/components/user-nav';
 import { UserType } from '@/app/(biz)/biz/users/types';
-import QrFunction from '../QrScanner/QrFunction';
 import { usePathname } from 'next/navigation';
-import { BarcodeScanner } from '@/components/qr-scanner';
-import { ReusableDrawer } from '../reusable-drawer';
+import { BarcodeScanner } from '@/components/qr-scanner/scanner';
 import DialogFactory from '@/components/dialog-factory';
 import React from 'react';
 import { Button } from '../button';
+import { User } from '@supabase/supabase-js';
 
 interface NavlinksProps {
   user: UserType | null;
+  usr: User | null | undefined;
 }
 
-export default function Navlinks({ user }: NavlinksProps) {
+export default function Navlinks({ user, usr }: NavlinksProps) {
   const path = usePathname();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
@@ -73,56 +73,6 @@ export default function Navlinks({ user }: NavlinksProps) {
 
       {/* Right Side: QR Scanner and User Nav */}
       <div className="flex justify-end items-center gap-4">
-        {/* <Sheet>
-          <SheetTrigger asChild>
-            <a>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth="1.8"
-                stroke="orange"
-                className="w-9 h-9"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                />
-              </svg>
-            </a>
-          </SheetTrigger>
-          <SheetContent side="right">
-            <SheetHeader>
-              <SheetTitle>QR Scanner</SheetTitle>
-              <SheetDescription>Scan a QR Code</SheetDescription>
-            </SheetHeader>
-            <BarcodeScanner />
-          </SheetContent>
-        </Sheet> */}
-        {/* <ReusableDrawer
-          children={<BarcodeScanner user={user} />}
-          description="Scan a QR Code"
-          title="QR Scanner"
-          trigger={
-            <a>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth="1.8"
-                stroke="orange"
-                className="w-9 h-9"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                />
-              </svg>
-            </a>
-          }
-        /> */}
         <Button
           variant={'ghost'}
           size={'icon'}
@@ -144,11 +94,12 @@ export default function Navlinks({ user }: NavlinksProps) {
           </svg>
         </Button>
         <DialogFactory
-          children={<BarcodeScanner user={user} />}
+          children={<BarcodeScanner user={usr} />}
           isDialogOpen={isDialogOpen}
           setIsDialogOpen={setIsDialogOpen}
           title="QR Scanner"
           description="Scan a QR Code"
+          disableCloseButton={true}
         />
 
         {/* Conditional Rendering for User */}

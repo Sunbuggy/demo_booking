@@ -8,20 +8,21 @@ import {
   insertIntoVehicleInventoryLocation,
   recordVehicleLocation
 } from '@/utils/supabase/queries';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import Link from 'next/link';
-import { Button } from './ui/button';
-import { useToast } from './ui/use-toast';
-import { UserType } from '@/app/(biz)/biz/users/types';
-import { DrawerClose } from './ui/drawer';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import DialogFactory from './dialog-factory';
 import ManualInventory from '@/app/(biz)/biz/vehicles/admin/tables/components/manual-inventory';
+import { useToast } from '../ui/use-toast';
+import { Button } from '../ui/button';
+import DialogFactory from '../dialog-factory';
+import NormalMode from './normal-mode';
+import InventoryModeScroll from './inventory-result-scroll';
+import InventoryForm from './inventory-form';
+import TaggingMode from './tagging-mode';
+import { User } from '@supabase/supabase-js';
 
-export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
+export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
   const supabase = createClient();
   const [normalMode, setNormalMode] = React.useState(true);
   const [inventoryMode, setInventoryMode] = React.useState(false);
+  const [taggingMode, setTaggingMode] = React.useState(false);
   const [selectedForInventory, setSelectedForInventory] = React.useState<{
     [key: string]: boolean;
   }>({});
@@ -41,6 +42,7 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
   const [scannedVehicleIds, setScannedVehicleIds] = React.useState<
     { name: string; id: string }[]
   >([]);
+
   const { ref } = useZxing({
     paused: closeCamera,
     onDecodeResult(result) {
@@ -294,17 +296,28 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
               <select
                 className="border rounded-md p-1 m-2 text-sm"
                 onChange={(e) => {
-                  if (e.target.value === 'normal') {
-                    setNormalMode(true);
-                    setInventoryMode(false);
-                  } else {
-                    setNormalMode(false);
-                    setInventoryMode(true);
+                  switch (e.target.value) {
+                    case 'normal':
+                      setNormalMode(true);
+                      setInventoryMode(false);
+                      setTaggingMode(false);
+                      break;
+                    case 'inventory':
+                      setNormalMode(false);
+                      setInventoryMode(true);
+                      setTaggingMode(false);
+                      break;
+                    case 'tagging':
+                      setNormalMode(false);
+                      setInventoryMode(false);
+                      setTaggingMode(true);
+                      break;
                   }
                 }}
               >
                 <option value="normal">Main</option>
                 <option value="inventory">Inventory</option>
+                <option value="tagging">Tagging</option>
               </select>
             </h1>
           </div>
@@ -318,80 +331,17 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
         <div>
           {normalMode &&
             (scannedUrls.length > 0 || scannedVehicleIds.length > 0) && (
-              <Tabs defaultValue="new" className="w-[200px] mb-5">
-                <TabsList className="w-full ">
-                  <TabsTrigger value="new">New</TabsTrigger>
-                  <TabsTrigger value="legacy">Legacy</TabsTrigger>
-                </TabsList>
-                <TabsContent value="new">
-                  <div className="w-[200px]">
-                    {scannedVehicleIds.length > 0 && (
-                      <ScrollArea className="h-[215px] ml-2  rounded-md border p-4">
-                        <div className="flex flex-col gap-2 items-center">
-                          <h4 className="text-xl font mb-3">
-                            Scanned Vehicles:
-                          </h4>
-                          {scannedVehicleIds.map((v, i) => (
-                            <span key={i}>
-                              <DrawerClose asChild>
-                                <Link
-                                  className="green_button"
-                                  href={`/biz/vehicles/${v.id}`}
-                                >
-                                  {v.name}
-                                </Link>
-                              </DrawerClose>
-                            </span>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    )}
-                  </div>
-                </TabsContent>
-                <TabsContent value="legacy">
-                  <div className="w-[200px]">
-                    {scannedUrls.length > 0 && (
-                      <ScrollArea className="h-[200px] rounded-md border p-4">
-                        <h1 className="mb-2">On the old site:</h1>
-                        <ul className="flex flex-col gap-6">
-                          {scannedUrls.map((url, i) => (
-                            <li key={i}>
-                              <Link
-                                className=" underline text-pink-500"
-                                href={`https://${url}`}
-                                target="_blank"
-                              >
-                                Open
-                                {url.replace('sunbuggy.com/', '/')}
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      </ScrollArea>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
+              <NormalMode
+                scannedVehicleIds={scannedVehicleIds}
+                scannedUrls={scannedUrls}
+              />
             )}
           {inventoryMode && scannedVehicleIds.length > 0 && (
-            <ScrollArea className="h-[215px]  rounded-md border p-4 w-full">
-              <div className="ml-5">
-                <h4>Scanned Items</h4>
-                {scannedVehicleIds.map((v, i) => (
-                  <span key={i} className="flex gap-2 items-center">
-                    <input
-                      type="checkbox"
-                      id={v.id}
-                      name={v.name}
-                      value={v.id as string}
-                      onChange={handleCheckboxChange}
-                      checked={!!selectedForInventory[v.id]} // Ensure boolean value
-                    />
-                    <label htmlFor={v.id}>{v.name}</label>
-                  </span>
-                ))}
-              </div>
-            </ScrollArea>
+            <InventoryModeScroll
+              scannedVehicleIds={scannedVehicleIds}
+              handleCheckboxChange={handleCheckboxChange}
+              selectedForInventory={selectedForInventory}
+            />
           )}
         </div>
       </div>
@@ -402,6 +352,7 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
             +Manual Inventory
           </Button>
           <DialogFactory
+            disableCloseButton={true}
             children={<ManualInventory user_id={user?.id || ''} />}
             isDialogOpen={isManualInventoryDialogOpen}
             setIsDialogOpen={setIsManualInventoryDialogOpen}
@@ -411,48 +362,18 @@ export const BarcodeScanner = ({ user }: { user: UserType | null }) => {
       )}
 
       {inventoryMode && scannedVehicleIds.length > 0 && (
-        <div className="mb-14">
-          <div className="w-full flex flex-col justify-center items-center my-3 gap-1 border rounded-lg p-3 text-sm">
-            <h1 className="text-sm font-bold">
-              Add Selected Fleet to Inventory
-            </h1>
-
-            <div className="flex flex-col my-5">
-              <label className="mb-2">Bay</label>
-              <input
-                type="text"
-                value={bay}
-                onChange={(e) => setBay(e.target.value)}
-                className="input w-full"
-              />
-              <label className="mt-3 mb-2">Level</label>
-              <input
-                type="text"
-                value={level}
-                onChange={(e) => setLevel(e.target.value)}
-                className="input w-full"
-              />
-            </div>
-
-            <Button
-              variant={'positive'}
-              className="w-full"
-              onClick={handleSubmit}
-            >
-              +Add
-            </Button>
-          </div>
-        </div>
+        <InventoryForm
+          setBay={setBay}
+          setLevel={setLevel}
+          bay={bay}
+          level={level}
+          handleSubmit={handleSubmit}
+        />
       )}
-      {/* Camera toggle Button */}
-      {/* <div className="flex justify-center m-5">
-        <Button
-          variant={'destructive'}
-          onClick={() => setCloseCamera(!closeCamera)}
-        >
-          {closeCamera ? 'Open Camera' : 'Close Camera'}
-        </Button>
-      </div> */}
+
+      {taggingMode && scannedVehicleIds.length === 1 && user && (
+        <TaggingMode id={scannedVehicleIds[0].id} user={user} />
+      )}
     </div>
   );
 };

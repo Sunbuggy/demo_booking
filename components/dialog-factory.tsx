@@ -12,13 +12,15 @@ const DialogFactory = ({
   setIsDialogOpen,
   isDialogOpen,
   description = 'Put Description Here',
-  children
+  children,
+  disableCloseButton = false
 }: {
   title: string | React.ReactNode;
   setIsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isDialogOpen: boolean;
   children: React.ReactNode;
   description?: string;
+  disableCloseButton?: boolean;
 }) => {
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -29,7 +31,9 @@ const DialogFactory = ({
         {/* Add your edit vehicle form or content here */}
         <DialogDescription>{description}</DialogDescription>
         {children}
-        <DialogClose className="text-red-500">Close</DialogClose>
+        {!disableCloseButton && (
+          <DialogClose className="text-red-500">Close</DialogClose>
+        )}
       </DialogContent>
     </Dialog>
   );
