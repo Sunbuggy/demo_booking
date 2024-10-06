@@ -261,7 +261,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       isDialogOpen={isLocationManagementDialogOpen}
                       description="Manage the current and future location for the vehicle."
                       children={
-                        <LocationHistory vehicleLocation={vehicleLocations} />
+                        <LocationHistory vehicleLocations={vehicleLocations} />
                       }
                     />
                     <Button

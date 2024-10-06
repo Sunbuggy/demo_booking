@@ -123,3 +123,15 @@
 ::file-selector-button {
   display: none;
 }
+@keyframes rotate-180 {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+.rotate-180 {
+  animation: rotate-180 0.5s forwards;
+}

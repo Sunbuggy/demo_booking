@@ -1,117 +1,161 @@
 'use client';
+
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import {
   fetchVehicleNameFromId,
   getUserDetailsById
 } from '@/utils/supabase/queries';
 import { VehicleLocation } from '../../types';
+import Link from 'next/link';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious
+} from '@/components/ui/pagination';
+import { MapIcon, RefreshCcw } from 'lucide-react';
 
-const LocationHistory = ({
-  vehicleLocation
-}: {
-  vehicleLocation: VehicleLocation[];
-}) => {
-  const supabase = createClient();
-  const [userDetails, setUserDetails] = React.useState<
-    { id: string; name: string }[]
-  >([]);
-  const [vehicleDetails, setVehicleDetails] = React.useState<
-    { id: string; name: string }[]
-  >([]);
+const supabase = createClient();
+
+interface LocationHistoryProps {
+  vehicleLocations: VehicleLocation[];
+}
+
+export default function LocationHistory({
+  vehicleLocations
+}: LocationHistoryProps) {
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [isRotating, setIsRotating] = React.useState(false);
   const rowsPerPage = 10;
 
-  // Function to fetch user details and update state
-  const fetchUserDetails = async (location: VehicleLocation) => {
-    if (!location.created_by) {
-      return;
-    }
-    if (location.created_by && location.created_by?.length < 2) {
-      return;
-    }
+  const sortedLocations = React.useMemo(
+    () =>
+      [...vehicleLocations].sort((a, b) =>
+        (a?.created_at ?? '') < (b?.created_at ?? '') ? 1 : -1
+      ),
+    [vehicleLocations]
+  );
 
-    const data = await getUserDetailsById(
-      supabase,
-      location.created_by as string
-    );
-    if (data && data.length > 0) {
-      setUserDetails((prev) => [
-        ...prev,
-        {
-          id: location.created_by as string,
-          name: data[0].full_name ?? 'Unknown'
-        }
-      ]);
-    }
-  };
+  const totalPages = Math.ceil(sortedLocations.length / rowsPerPage);
+  const currentRows = sortedLocations.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
 
-  // Get all users from the database
-  React.useEffect(() => {
-    if (vehicleLocation.length > 0) {
-      vehicleLocation.forEach((location) => {
-        fetchUserDetails(location);
-        // if (location.vehicle_id) {
-        //   fetchVehicleNameFromId(supabase, location.vehicle_id).then((data) => {
-        //     setVehicleDetails((prev) => [
-        //       ...prev,
-        //       {
-        //         id: location.vehicle_id as string,
-        //         name: data[0].name ?? 'Unknown'
-        //       }
-        //     ]);
-        //   });
-        // }
-      });
-    }
-  }, [vehicleLocation]);
+  const uniqueUserIds = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          currentRows.map((row) => row.created_by).filter(Boolean) as string[]
+        )
+      ),
+    [currentRows]
+  );
 
-  // Handle page change
+  const uniqueVehicleIds = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          currentRows.map((row) => row.vehicle_id).filter(Boolean) as string[]
+        )
+      ),
+    [currentRows]
+  );
+
+  const { data: userDetails, refetch: refetchUserDetails } = useQuery({
+    queryKey: ['userDetails', uniqueUserIds],
+    queryFn: async () => {
+      const details = await Promise.all(
+        uniqueUserIds.map((id) => getUserDetailsById(supabase, id))
+      );
+      return details.flat().reduce(
+        (acc, user) => {
+          if (user) {
+            acc[user.id] = user.full_name ?? 'Unknown';
+          }
+          return acc;
+        },
+        {} as Record<string, string>
+      );
+    },
+    enabled: uniqueUserIds.length > 0
+  });
+
+  const { data: vehicleNames, refetch: refetchVehicleNames } = useQuery({
+    queryKey: ['vehicleNames', uniqueVehicleIds],
+    queryFn: async () => {
+      const names = await Promise.all(
+        uniqueVehicleIds.map((id) => fetchVehicleNameFromId(supabase, id))
+      );
+      const flatNames = names.flat().flat();
+      return flatNames;
+      //  flatNames: {
+      //   name: any;
+      //   id: any;
+      // }[];
+    },
+    enabled: uniqueVehicleIds.length > 0
+  });
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
-
-  // Calculate the rows to display
-  const sortedLocations = vehicleLocation.sort((a, b) =>
-    (a?.created_by ?? '') > (b?.created_by ?? '') ? 1 : -1
-  );
-  const indexOfLastRow = currentPage * rowsPerPage;
-  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = sortedLocations.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(sortedLocations.length / rowsPerPage);
-
+  const handleRefresh = () => {
+    setIsRotating(true);
+    refetchUserDetails();
+    refetchVehicleNames();
+    setTimeout(() => setIsRotating(false), 500); // Reset the animation class after the animation duration
+  };
   return (
-    <div>
-      {/* Create Table to display this data, use tailwind css for styling */}
-      <table className="table-auto w-full bg-white bg-opacity-10 backdrop-blur-lg rounded-lg shadow-lg">
-        <thead>
-          <tr className="bg-gray-800 bg-opacity-50 text-white">
-            <th className="px-4 py-2">Vehicle</th>
-            <th className="px-4 py-2">Created At</th>
-            <th className="px-4 py-2">User</th>
-            <th className="px-4 py-2">City</th>
-            <th className="px-4 py-2">Map</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="space-y-4">
+      <div className="w-full flex justify-center">
+        <button
+          onClick={handleRefresh}
+          className={` ${isRotating ? 'rotate-180' : ''}`}
+        >
+          <RefreshCcw size={16} />
+        </button>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Vehicle</TableHead>
+            <TableHead>Created At</TableHead>
+            <TableHead>User</TableHead>
+            <TableHead>City</TableHead>
+            <TableHead>Map</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {currentRows.map((location, index) => {
-            const user = userDetails.find(
-              (user) => user.id === location.created_by
-            );
-            const vehicle = vehicleDetails.find(
-              (vehicle) => vehicle.id === location.vehicle_id
-            );
-
             return (
-              <tr
-                key={index}
-                className="bg-gray-700 bg-opacity-50 text-white hover:bg-gray-600 hover:bg-opacity-50 text-xs"
-              >
-                <td className="border px-4 py-2">
-                  {/* {vehicle?.name} */}
-                  Coming Soon
-                </td>
-                <td className="border px-4 py-2">
+              <TableRow key={index}>
+                <TableCell>
+                  {vehicleNames && location.vehicle_id && (
+                    <Link
+                      href={`/biz/vehicles/${location.vehicle_id}`}
+                      className="text-primary hover:underline"
+                    >
+                      {vehicleNames.find(
+                        (vehicle) => vehicle.id === location.vehicle_id
+                      )?.name || 'Unknown'}
+                    </Link>
+                  )}
+                </TableCell>
+                <TableCell>
                   {new Date(location.created_at).toLocaleString('en-US', {
                     day: '2-digit',
                     month: '2-digit',
@@ -120,42 +164,63 @@ const LocationHistory = ({
                     minute: '2-digit',
                     hour12: true
                   })}
-                </td>
-                <td className="border px-4 py-2">{user?.name || 'unknown'}</td>
-                <td className="border px-4 py-2">{location.city}</td>
-                <td className="border px-4 py-2">
-                  <a
-                    href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline"
-                  >
-                    View on Map
-                  </a>
-                </td>
-              </tr>
+                </TableCell>
+                <TableCell>
+                  {(userDetails &&
+                    location.created_by &&
+                    userDetails[location.created_by]) ||
+                    'Unknown'}
+                </TableCell>
+                <TableCell>{location.city || 'Unknown'}</TableCell>
+                <TableCell>
+                  {location.latitude === 0 || location.longitude === 0 ? (
+                    <div>Unknown</div>
+                  ) : (
+                    <a
+                      href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-purple-600 hover:underline "
+                    >
+                      <MapIcon size={16} />
+                    </a>
+                  )}
+                </TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
-      {/* Pagination Controls */}
-      <div className="flex justify-center mt-4">
-        {Array.from({ length: totalPages }, (_, index) => (
-          <button
-            key={index}
-            onClick={() => handlePageChange(index + 1)}
-            className={`mx-1 px-3 py-1 rounded ${
-              currentPage === index + 1
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-300 text-gray-700'
-            }`}
-          >
-            {index + 1}
-          </button>
-        ))}
-      </div>
+        </TableBody>
+      </Table>
+
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              href="#"
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+            />
+          </PaginationItem>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <PaginationItem key={page}>
+              <PaginationLink
+                href="#"
+                onClick={() => handlePageChange(page)}
+                isActive={currentPage === page}
+              >
+                {page}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+          <PaginationItem>
+            <PaginationNext
+              href="#"
+              onClick={() =>
+                handlePageChange(Math.min(totalPages, currentPage + 1))
+              }
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
     </div>
   );
-};
-
-export default LocationHistory;
+}

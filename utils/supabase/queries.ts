@@ -770,6 +770,20 @@ export const getVehicleIdFromName = cache(
   }
 );
 
+export const fetchVehicleNameFromId = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('name, id')
+      .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
 export const createVehicleTag = cache(
   async (
     supabase: SupabaseClient,

@@ -45,7 +45,7 @@ const VehiclesTabContainer = async ({
           <VehicleStatus vehicles={vehicles} />
         </TabsContent>
         <TabsContent value="location_stream">
-          <LocationHistory vehicleLocation={allVehicleLocations} />
+          <LocationHistory vehicleLocations={allVehicleLocations} />
         </TabsContent>
       </div>
     </Tabs>

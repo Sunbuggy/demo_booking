@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import Footer from '@/components/ui/Footer';
 import Navbar from '@/components/ui/Navbar';
 import { Toaster } from '@/components/ui/Toasts/toaster';
-
+import Providers from './providers';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import 'styles/main.css';
@@ -35,8 +35,9 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         >
           <div className="flex flex-col gap-5 max-w-full">
             <Navbar />
-            {/* <NewNav /> */}
-            <main className="p-2 max-w-11/12 flex mx-auto"> {children}</main>
+            <main className="p-2 max-w-11/12 flex mx-auto">
+              <Providers>{children}</Providers>
+            </main>
             <Footer />
           </div>
         </ThemeProvider>
