@@ -28,6 +28,7 @@ import LocationHistory from './vehicle-location-history';
 import PretripFormManager from './pretrip-forms/pretrip-form-manager';
 import InventoryHistory from './vehicle-location-inventory-history';
 import { InventoryLocation, VehicleLocation } from '../../types';
+import LocationScheduling from './location-scheduling';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -66,6 +67,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     setIsInventoryLocationManagementDialogOpen
   ] = React.useState(false);
   const [isPretripFormOpen, setIsPretripFormOpen] = React.useState(false);
+  const [islocationSchedulingDialogOpen, setIsLocationSchedulingDialogOpen] =
+    React.useState(false);
 
   React.useEffect(() => {
     const channel = supabase
@@ -281,6 +284,23 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       children={
                         <InventoryHistory
                           inventoryLocations={inventoryLocations}
+                        />
+                      }
+                    />
+                    <Button
+                      onClick={() => setIsLocationSchedulingDialogOpen(true)}
+                    >
+                      Location Scheduling
+                    </Button>
+                    <DialogFactory
+                      title={'Location Scheduling'}
+                      setIsDialogOpen={setIsLocationSchedulingDialogOpen}
+                      isDialogOpen={islocationSchedulingDialogOpen}
+                      description="Manage the scheduling of future location for the vehicle."
+                      children={
+                        <LocationScheduling
+                          user_id={user.id}
+                          vehicle_id={vehicleInfo.id}
                         />
                       }
                     />

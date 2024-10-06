@@ -135,3 +135,11 @@
 .rotate-180 {
   animation: rotate-180 0.5s forwards;
 }
+
+.rbc-btn-group {
+  margin: 10px;
+}
+
+.rbc-today {
+  background-color: #5e2a00ad !important;
+}

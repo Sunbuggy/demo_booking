@@ -124,14 +124,7 @@ const ClosedTags = ({
                   {tagTitleFromNotes}
                 </Button>
                 <DialogFactory
-                  children={
-                    <TagForm
-                      user={user}
-                      tag={tag}
-                      status="closed"
-                      vehicle_name={vehicle_name}
-                    />
-                  }
+                  children={<TagForm user={user} tag={tag} status="closed" />}
                   title={tagTitle}
                   description={`ID: ${tag.id}`}
                   isDialogOpen={openTagDialogs[tag.id] || false}

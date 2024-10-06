@@ -119,6 +119,8 @@ export default function LocationHistory({
     refetchVehicleNames();
     setTimeout(() => setIsRotating(false), 500); // Reset the animation class after the animation duration
   };
+  if (currentRows.length === 0)
+    return <div>No Location History Found For This Vehicle</div>;
   return (
     <div className="space-y-4">
       <div className="w-full flex justify-center">

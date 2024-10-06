@@ -1,3 +1,9 @@
+Commands
+
+```bash
+git add . && git commit -m"<<<MESSAGE>>>" && git push && git checkout main && git merge feature/biz_vehicles && git push && git checkout feature/biz_vehicles
+```
+
 -Insert Picture for vehicle [done]
 -get bucket, key and put in db [done]
 -Assign Profile Pic for vehicle [done]
