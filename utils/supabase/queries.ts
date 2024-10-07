@@ -1125,3 +1125,17 @@ export const insertIntoVehicleFutureLocation = cache(
     return data;
   }
 );
+
+export const fetchVehicleFutureLocationForVehicle = cache(
+  async (supabase: SupabaseClient, vehicle_id: string) => {
+    const { data, error } = await supabase
+      .from('vehicle_future_location')
+      .select()
+      .eq('vehicle_id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data as Database['public']['Tables']['vehicle_future_location']['Row'][];
+  }
+);
