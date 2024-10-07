@@ -372,7 +372,9 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
       )}
 
       {taggingMode && scannedVehicleIds.length === 1 && user && (
-        <TaggingMode id={scannedVehicleIds[0].id} user={user} />
+        <div className="m-4">
+          <TaggingMode id={scannedVehicleIds[0].id} user={user} />
+        </div>
       )}
     </div>
   );
