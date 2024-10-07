@@ -43,8 +43,6 @@ const SchedulePopup = ({
       vehicle_id: vehicle_id,
       future_location: futureLocation
     };
-    console.log(location);
-    return;
 
     await insertIntoVehicleFutureLocation(supabase, { ...location })
       .then((data) => {
