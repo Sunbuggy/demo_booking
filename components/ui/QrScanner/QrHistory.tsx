@@ -18,6 +18,7 @@ interface QrHistoryRecord {
 export const QrScanHistory = ({ user }: { user: UserType | null }) => {
   const supabase = createClient();
   const [scannedLinks, setScannedLinks] = useState<QrHistoryRecord[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>(''); // State for the search term
   const { toast } = useToast();
 
   const fetchUserScanHistory = async () => {
@@ -49,7 +50,6 @@ export const QrScanHistory = ({ user }: { user: UserType | null }) => {
     }
   };
 
-
   useEffect(() => {
     if (user) {
       fetchUserScanHistory();
@@ -64,22 +64,51 @@ export const QrScanHistory = ({ user }: { user: UserType | null }) => {
     return link;
   };
 
+  // Function to format the date for display and search
+  const formatDateForSearch = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString(); // You can change this to different formats (e.g., only the date or date + time)
+  };
+
+  // Filter scanned links based on the search term
+  const filteredLinks = scannedLinks.filter((linkRecord) => {
+    const searchLower = searchTerm.toLowerCase();
+    const formattedDate = formatDateForSearch(linkRecord.scanned_at).toLowerCase();
+    return (
+      linkRecord.link.toLowerCase().includes(searchLower) ||
+      formattedDate.includes(searchLower) ||
+      linkRecord.location.toLowerCase().includes(searchLower)
+    );
+  });
+
   return (
     <div className="p-5">
       <h1 className="text-xl font-bold text-center mb-5">Your Scan History</h1>
-      {scannedLinks.length > 0 ? (
+      
+      {/* Search input */}
+      <div className="mb-5 text-center">
+        <input
+          type="text"
+          className="border p-2 rounded-md w-full max-w-md"
+          placeholder="Search by link, date, or location..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      {filteredLinks.length > 0 ? (
         <ScrollArea className="h-[300px] rounded-md border p-4">
           <div className="grid grid-cols-1 gap-4">
-            {scannedLinks.map((linkRecord) => (
+            {filteredLinks.map((linkRecord) => (
               <div key={linkRecord.id} className="flex flex-col gap-2 border-b pb-2">
                 <Link
                   className="underline text-blue-500"
-                  href={formatLink(linkRecord.link)} // Use the formatted link
+                  href={formatLink(linkRecord.link)} 
                   target="_blank"
                 >
                   {linkRecord.link}
                 </Link>
-                <span>Scanned at: {new Date(linkRecord.scanned_at).toLocaleString()}</span>
+                <span>Scanned at: {formatDateForSearch(linkRecord.scanned_at)}</span>
                 <span>Location: {linkRecord.location}</span>
                 {linkRecord.latitude && linkRecord.longitude && (
                   <span>
@@ -91,7 +120,7 @@ export const QrScanHistory = ({ user }: { user: UserType | null }) => {
           </div>
         </ScrollArea>
       ) : (
-        <p className="text-center text-gray-500">Your scan history is empty.</p>
+        <p className="text-center text-gray-500">No results found.</p>
       )}
     </div>
   );

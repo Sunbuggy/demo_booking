@@ -5,7 +5,6 @@ import { UserType } from '@/app/(biz)/biz/users/types';
 const ScanHistoryPage = ({ user }: { user: UserType | null }) => {
   return (
     <div>
-      {/* Pass the user directly, no need to access user[0] */}
       <QrScanHistory user={user} />
     </div>
   );
