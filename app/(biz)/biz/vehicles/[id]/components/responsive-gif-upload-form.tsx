@@ -53,7 +53,7 @@ export default function ResponsiveGifUpload({
     formData.append('bucket', 'sb-fleet');
     formData.append('mode', single ? 'single' : 'multiple');
     formData.append('key', url_key);
-    formData.append('contentType', 'image/gif'); // Ensure content type is set.
+    formData.append('contentType', 'image/gif'); 
   
     selectedFiles.forEach((file) => {
       formData.append('files', file);

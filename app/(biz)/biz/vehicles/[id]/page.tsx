@@ -6,6 +6,7 @@ import {
   getUser
 } from '@/utils/supabase/queries';
 import { VehiclePics } from '../admin/tables/components/row-actions';
+import { VehicleGifs } from '../admin/tables/components/row-actions-gif';
 import { createClient } from '@/utils/supabase/server';
 import { fetchObjects } from '@/utils/biz/pics/get';
 import { VehicleTagType, VehicleType } from '../admin/page';
@@ -39,9 +40,18 @@ async function getVehicleData(id: string) {
 
     const normalImages = normalPicsResponse?.objects as VehiclePics[];
 
+    const normalGifsResponse = await fetchObjects(
+      bucket,
+      false,
+      `badges/${id}`
+    );
+
+    const normalBadges = normalGifsResponse?.objects as VehicleGifs[];
+
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: normalImages || [],
+      normalBadges: normalBadges || [],
       vehicleTags
     };
   } catch (error) {
@@ -49,6 +59,7 @@ async function getVehicleData(id: string) {
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: [],
+      normalBadges:[],
       vehicleTags: []
     };
   }
@@ -69,7 +80,7 @@ export default async function VehiclePage({
     `profile_pic/${params.id}`
   );
   const profilePic = String(profilePicResponse?.url);
-  const { vehicleInfo, normalImages, vehicleTags } = await getVehicleData(
+  const { vehicleInfo, normalImages, normalBadges,vehicleTags } = await getVehicleData(
     params.id
   );
 
@@ -89,6 +100,7 @@ export default async function VehiclePage({
           initialVehicleInfo={vehicleInfo}
           profilePic={profilePic}
           images={normalImages}
+          gif={normalBadges}
           vehicleTags={vehicleTags}
           user={user}
           vehicleLocations={vehicleLocations}

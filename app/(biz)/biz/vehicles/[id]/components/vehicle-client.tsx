@@ -8,6 +8,7 @@ import ImageView from './image-view';
 import Link from 'next/link';
 import { ArrowBigLeftIcon } from 'lucide-react';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
+import { VehicleGifs } from '../../admin/tables/components/row-actions-gif';
 import {
   Accordion,
   AccordionContent,
@@ -35,6 +36,7 @@ interface VehicleClientComponentProps {
   id: string;
   initialVehicleInfo: VehicleType;
   images: VehiclePics[];
+  gif: VehicleGifs[];
   profilePic?: string;
   vehicleTags: VehicleTagType[];
   user: User;
@@ -47,6 +49,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   initialVehicleInfo,
   profilePic,
   images,
+  gif,
   vehicleTags,
   user,
   vehicleLocations,
@@ -235,7 +238,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         }
                       />
                     </div>
-                    <ImageGrid images={images} width={200} height={120} />
+                    <ImageGrid images={images} width={200} height={120} gifs={[]} />
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -255,13 +258,13 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         children={
                           <div>
                             <ResponsiveGifUpload
-                              url_key={`vehicles/${id}/${createId()}`}
+                              url_key={`badges/${id}/${createId()}`}
                             />
                           </div>
                         }
                       />
                     </div>
-                    <ImageGrid images={images} width={200} height={120} />
+                    <ImageGrid gifs={gif} width={200} height={120} images={[]}  />
                   </div>
                 </AccordionContent>
               </AccordionItem>
