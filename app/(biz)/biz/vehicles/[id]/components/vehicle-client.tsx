@@ -24,6 +24,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
 import ResponsiveImageUpload from './responsive-image-upload-form';
+import ResponsiveGifUpload from './responsive-gif-upload-form';
 import LocationHistory from './vehicle-location-history';
 import PretripFormManager from './pretrip-forms/pretrip-form-manager';
 import InventoryHistory from './vehicle-location-inventory-history';
@@ -59,6 +60,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const [isUpdateUploadDialogOpen, setIsUpdateUploadDialogOpen] =
     React.useState(false);
   const [isUploadImagesDialogOpen, setIsUploadImagesDialogOpen] =
+    React.useState(false);
+    const [isUploadGifsDialogOpen, setIsUploadGifsDialogOpen] =
     React.useState(false);
   const [isLocationManagementDialogOpen, setIsLocationManagementDialogOpen] =
     React.useState(false);
@@ -123,6 +126,15 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     <div>
       <p>
         Upload More Images for{' '}
+        <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
+      </p>
+    </div>
+  );
+
+  const uploadMoreGifsTitle = (
+    <div>
+      <p>
+        Upload More badges for{' '}
         <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
       </p>
     </div>
@@ -217,6 +229,32 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         children={
                           <div>
                             <ResponsiveImageUpload
+                              url_key={`vehicles/${id}/${createId()}`}
+                            />
+                          </div>
+                        }
+                      />
+                    </div>
+                    <ImageGrid images={images} width={200} height={120} />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="show-badges">
+                <AccordionTrigger>Show Badge</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col gap-5">
+                    <div>
+                      <Button onClick={() => setIsUploadGifsDialogOpen(true)}>
+                        Upload More badges
+                      </Button>
+                      <DialogFactory
+                        title={uploadMoreGifsTitle}
+                        setIsDialogOpen={setIsUploadGifsDialogOpen}
+                        isDialogOpen={isUploadGifsDialogOpen}
+                        description="Upload one or multiple images for the vehicle."
+                        children={
+                          <div>
+                            <ResponsiveGifUpload
                               url_key={`vehicles/${id}/${createId()}`}
                             />
                           </div>
