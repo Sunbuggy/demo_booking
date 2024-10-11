@@ -24,9 +24,16 @@ import { User } from '@supabase/supabase-js';
 interface NavlinksProps {
   user: UserType | null;
   usr: User | null | undefined;
+  status?: string | null | undefined;
+  clockInTimeStamp?: string;
 }
 
-export default function Navlinks({ user, usr }: NavlinksProps) {
+export default function Navlinks({
+  user,
+  usr,
+  status,
+  clockInTimeStamp
+}: NavlinksProps) {
   const path = usePathname();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
@@ -109,6 +116,9 @@ export default function Navlinks({ user, usr }: NavlinksProps) {
             userInitials={user.full_name[0]}
             userImage={user.avatar_url}
             userName={user.full_name}
+            status={status}
+            user_id={user.id}
+            clockInTimeStamp={clockInTimeStamp}
           />
         ) : (
           path &&

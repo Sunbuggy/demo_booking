@@ -16,35 +16,122 @@ import {
   TimeSheetRequestType
 } from '../ClockinForm';
 import TimeAdjustment from './time-adjustments';
-const HistoryTimeClockEvents = ({
-  timeClockEventHistoryDateRange,
-  setTimeClockEventHistoryDateRange,
-  timeClockHistoryData,
-  timeSheetRequest,
-  setTimeSheetRequest,
-  setSubmitTimeSheet,
-  historyTimeSheet,
-  setGetTimesheets,
-  setHistoryDateRange,
-  historyDateRange
-}: {
-  timeClockEventHistoryDateRange: DateRange | undefined;
-  setTimeClockEventHistoryDateRange: React.Dispatch<
-    React.SetStateAction<DateRange | undefined>
-  >;
-  timeClockHistoryData: TimeClockEventsType[];
-  timeSheetRequest: TimeSheetRequestType;
-  setTimeSheetRequest: React.Dispatch<
-    React.SetStateAction<TimeSheetRequestType>
-  >;
-  setSubmitTimeSheet: React.Dispatch<React.SetStateAction<boolean>>;
-  historyTimeSheet: TimeSheet[];
-  setGetTimesheets: React.Dispatch<React.SetStateAction<boolean>>;
-  setHistoryDateRange: React.Dispatch<
-    React.SetStateAction<DateRange | undefined>
-  >;
-  historyDateRange: DateRange | undefined;
-}) => {
+import { createClient } from '@/utils/supabase/client';
+import {
+  createTimeSheetRequest,
+  fetchEmployeeTimeClockEntryData,
+  fetchTimeSheetRequests
+} from '@/utils/supabase/queries';
+import { useToast } from '../../use-toast';
+import { addDays } from 'date-fns';
+import HistoryTable from './history-table';
+const HistoryTimeClockEvents = ({ user_id }: { user_id: string }) => {
+  const supabase = createClient();
+  const { toast } = useToast();
+  const [getTimesheets, setGetTimesheets] = React.useState(false);
+
+  const [submitTimeSheet, setSubmitTimeSheet] = React.useState(false);
+  const [historyTimeSheets, setHistoryTimeSheets] = React.useState<TimeSheet[]>(
+    []
+  );
+  const [timeClockEventHistoryDateRange, setTimeClockEventHistoryDateRange] =
+    React.useState<DateRange | undefined>({
+      // From day of last week to today
+      from: addDays(new Date(), -7),
+      to: new Date()
+    });
+
+  const [timeClockHistoryData, setTimeClockHistoryData] = React.useState<
+    TimeClockEventsType[]
+  >([]);
+  const [timeSheetRequest, setTimeSheetRequest] =
+    React.useState<TimeSheetRequestType>({
+      clockInTime: null,
+      clockOutTime: null,
+      reason: ''
+    });
+
+  const [historyDateRange, setHistoryDateRange] = React.useState<
+    DateRange | undefined
+  >({
+    // Initial date range should be from last week to this week
+    from: addDays(new Date(), -7),
+    to: new Date()
+  });
+
+  // TimeSheet Request effect
+  React.useEffect(() => {
+    if (submitTimeSheet) {
+      if (timeSheetRequest.clockInTime && timeSheetRequest.clockOutTime) {
+        createTimeSheetRequest(
+          createClient(),
+          user_id,
+          timeSheetRequest.clockInTime,
+          timeSheetRequest.clockOutTime,
+          timeSheetRequest.reason
+        )
+          .then((data) => {
+            toast({
+              title: 'Success',
+              description: 'Your time adjustment request has been submitted.',
+              duration: 4000,
+              variant: 'success'
+            });
+          })
+          .catch((error) => {
+            toast({
+              title: 'Error',
+              description:
+                'An error occurred while submitting your time adjustment request.',
+              duration: 4000,
+              variant: 'destructive'
+            });
+          });
+      }
+      setSubmitTimeSheet(false);
+    }
+  }, [submitTimeSheet]);
+
+  // Fetch timesheets
+  React.useEffect(() => {
+    if (getTimesheets) {
+      fetchTimeSheetRequests(
+        createClient(),
+        user_id,
+        historyDateRange?.from?.toISOString() || '',
+        historyDateRange?.to?.toISOString() || ''
+      )
+        .then((data) => {
+          const timeSheets = data as TimeSheet[];
+          setHistoryTimeSheets(timeSheets);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+      setGetTimesheets(false);
+    }
+  }, [getTimesheets]);
+
+  // Fetch time clock history data
+  React.useEffect(() => {
+    if (
+      timeClockEventHistoryDateRange?.from !== undefined &&
+      timeClockEventHistoryDateRange?.to !== undefined
+    ) {
+      fetchEmployeeTimeClockEntryData(
+        supabase,
+        user_id,
+        timeClockEventHistoryDateRange.from.toISOString() || '',
+        timeClockEventHistoryDateRange.to.toISOString() || ''
+      )
+        .then((data) => {
+          setTimeClockHistoryData(data as unknown as TimeClockEventsType[]);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    }
+  }, [timeClockEventHistoryDateRange]);
   return (
     <div className="m-4">
       <Dialog>
@@ -64,54 +151,10 @@ const HistoryTimeClockEvents = ({
               setHistoryDateRange={setTimeClockEventHistoryDateRange}
             />
           </DialogHeader>
-          {timeClockHistoryData.length > 0 && (
-              <table className="border">
-                <thead>
-                  <tr>
-                    <th className="border p-2">Date</th>
-                    <th className="border p-2">Clock In</th>
-                    <th className="border p-2">Clock Out</th>
-                    <th className="border p-2">Duration (hr)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {timeClockHistoryData
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                    .map((timeClockEvent) => (
-                      <tr key={timeClockEvent?.id}>
-                        <td className="border p-2">
-                          {new Date(timeClockEvent.date).toLocaleDateString()}
-                        </td>
-                        <td className="border p-2">
-                          {new Date(timeClockEvent.clock_in?.clock_in_time ?? "").toLocaleTimeString()}
-                        </td>
-                        <td className="border p-2">
-                          {isNaN(new Date(timeClockEvent.clock_out?.clock_out_time ?? "").getTime())
-                            ? "None"
-                            : new Date(timeClockEvent.clock_out?.clock_out_time ?? "").toLocaleTimeString()}
-                        </td>
-                        <td className="border p-2">
-                          {isNaN(
-                            (new Date(timeClockEvent.clock_out?.clock_out_time ?? "").getTime() -
-                              new Date(timeClockEvent.clock_in?.clock_in_time ?? "").getTime()) /
-                              3600000
-                          )
-                            ? "None"
-                            : (
-                                (new Date(timeClockEvent.clock_out?.clock_out_time ?? "").getTime() -
-                                  new Date(timeClockEvent.clock_in?.clock_in_time ?? "").getTime()) /
-                                3600000
-                              ).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-
-              </table>
-          )}
+          <HistoryTable timeClockHistoryData={timeClockHistoryData} />
 
           <TimeAdjustment
-            historyTimeSheet={historyTimeSheet}
+            historyTimeSheet={historyTimeSheets}
             setGetTimesheets={setGetTimesheets}
             setHistoryDateRange={setHistoryDateRange}
             setSubmitTimeSheet={setSubmitTimeSheet}

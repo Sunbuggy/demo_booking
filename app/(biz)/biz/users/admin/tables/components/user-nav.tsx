@@ -16,17 +16,24 @@ import { getRedirectMethod } from '@/utils/auth-helpers/settings';
 import { handleRequest } from '@/utils/auth-helpers/client';
 import ThemeButton from '@/components/ui/mode-toggle';
 import { PowerCircleIcon, Unplug } from 'lucide-react';
+import ClockinButton from '@/components/ui/AccountForms/clockin-dialogs/clockin-button';
 
 export function UserNav({
   email,
   userInitials,
   userImage,
-  userName
+  userName,
+  status,
+  user_id,
+  clockInTimeStamp
 }: {
   email: string | undefined;
   userInitials: string;
   userImage: string;
   userName: string;
+  status?: string | null | undefined;
+  user_id: string;
+  clockInTimeStamp?: string;
 }) {
   const router = getRedirectMethod() === 'client' ? useRouter() : null;
   const path = usePathname();
@@ -60,6 +67,16 @@ export function UserNav({
             Profile <ImNewTab />
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          {status && (
+            <ClockinButton
+              clockInTimeStamp={clockInTimeStamp}
+              status={status}
+              user_id={user_id}
+            />
+          )}
+        </DropdownMenuItem>
+
         <form
           className="flex justify-end"
           onSubmit={(e) => handleRequest(e, SignOut, router)}

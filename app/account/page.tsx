@@ -9,7 +9,7 @@ import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 // import RoleForm from '@/components/ui/AccountForms/RoleForm';
 import ScannerPage from '@/components/ui/QrScanner/QrFunction';
 
-type TimeEntry = {
+export type TimeEntry = {
   id: any;
   date: any;
   clock_in: {
@@ -58,7 +58,7 @@ export default async function Account() {
           </div>
         </div>
         <div className="p-4">
-          <ScannerPage user={user ? user[0] : null}/>
+          <ScannerPage user={user ? user[0] : null} />
           <NameForm
             userName={userName ?? ''}
             user_role={role || 100}
