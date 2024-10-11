@@ -85,7 +85,7 @@
   }
 }
 .maincard {
-  @apply w-full rounded-lg border border-zinc-200 bg-white text-zinc-950 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50;
+  @apply w-full rounded-lg border border-zinc-200 bg-white/75 text-zinc-950 shadow-sm dark:border-zinc-800 dark:bg-black/75 dark:text-zinc-50;
 }
 .LocationCardStyle {
   @apply flex flex-col rounded-md p-1 shadow-none gap-1 dark:border-yellow-100;
