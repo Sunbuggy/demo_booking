@@ -40,12 +40,13 @@ const UsersTabsContainer = ({
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <UserNav
+            {/* <UserNav
               email={userEmail}
               userInitials={userInitials}
               userImage={String(userImage)}
               userName={String(userFullName)}
-            />
+
+            /> */}
           </div>
         </div>
         <TabsContent value="employees">
