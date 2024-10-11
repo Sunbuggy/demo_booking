@@ -6,11 +6,52 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion';
+import { fetchAllVehicleLocations } from '@/utils/supabase/queries';
+import { createClient } from '@/utils/supabase/server';
+import { VehicleLocation } from '../../../types';
 
-const VehicleStatus = ({ vehicles }: { vehicles: VehicleType[] }) => {
-  // from the vehicles array first group by type then count how many are in each group and return group name and count using typescript
+type VehicleWithLocation = VehicleType & { location: string };
 
+const VehicleStatus = async ({
+  vehicles
+}: {
+  vehicles: VehicleWithLocation[];
+}) => {
   //   Look at vehicle_status of each vehicle then inside my groupsAndCounts object add another key value pair where the key is the vehicle_status and the value is the count of vehicles with that status
+  const supabase = createClient();
+  const vehicleLocations = (await fetchAllVehicleLocations(supabase)
+    .then((data) => data)
+    .catch((error) => {
+      console.error('Error fetching vehicle locations:', error);
+      return [];
+    })) as VehicleLocation[];
+  // remove all values where longitude or latitude or city are null or zero or undefined,
+  const filteredVehicleLocations = vehicleLocations.filter(
+    (location) =>
+      location.longitude &&
+      location.latitude &&
+      location.city &&
+      location.city !== '0' &&
+      location.city !== null
+  );
+
+  // sort the filteredVehicleLocations by created_at in descending order and get only unique values by vehicle_id
+  const latestVehicleLocations = filteredVehicleLocations
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+    .filter(
+      (location, index, self) =>
+        index === self.findIndex((t) => t.vehicle_id === location.vehicle_id)
+    );
+  // in the vehicles array add a new key called location and assign the value of the location object from latestVehicleLocations where vehicle_id matches the vehicle_id of the vehicle but if no match assign unknown
+  vehicles.forEach((vehicle) => {
+    const location = latestVehicleLocations.find(
+      (location) => location.vehicle_id === vehicle.id
+    );
+    vehicle.location = location?.city || 'Unknown';
+  });
 
   const modifiedGroupsAndCounts = vehicles.reduce(
     (acc, vehicle) => {
@@ -119,12 +160,8 @@ const VehicleStatus = ({ vehicles }: { vehicles: VehicleType[] }) => {
         <AccordionItem value="Buggy_breakdown">
           <AccordionTrigger>
             {/* Get total, count and broken and running just like above */}
-            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 gap-3">
+            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 gap-3 w-full">
               <h2 className="text-lg font-semibold">Buggy Breakdown</h2>
-              <div>
-                <span className="text-green-500">running</span>/
-                <span className="text-red-500">broken</span>
-              </div>
             </div>
           </AccordionTrigger>
           <AccordionContent>
@@ -183,6 +220,142 @@ const VehicleStatus = ({ vehicles }: { vehicles: VehicleType[] }) => {
                     );
                   }
                 )}
+              </tbody>
+            </table>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      {/* Same accordion but broken down with vehicle.type */}
+      <Accordion type="single" collapsible>
+        <AccordionItem value="Vehicle_Location_Type">
+          <AccordionTrigger>
+            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 gap-3 w-full">
+              <h2 className="text-lg font-semibold">
+                Vehicle Location by Type
+              </h2>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
+                    Vehicle Type
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
+                    Location
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
+                    Count
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                {Object.entries(
+                  vehicles.reduce(
+                    (acc, vehicle) => {
+                      if (!acc[vehicle.type]) {
+                        acc[vehicle.type] = {};
+                      }
+                      if (!acc[vehicle.type][vehicle.location]) {
+                        acc[vehicle.type][vehicle.location] = 1;
+                      } else {
+                        acc[vehicle.type][vehicle.location] += 1;
+                      }
+                      return acc;
+                    },
+                    {} as Record<string, Record<string, number>>
+                  )
+                ).map(([type, locations]) => (
+                  <React.Fragment key={type}>
+                    {Object.entries(locations).map(
+                      ([location, count], index) => (
+                        <tr key={location}>
+                          {index === 0 && (
+                            <td
+                              className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100"
+                              rowSpan={Object.keys(locations).length}
+                            >
+                              {type}
+                            </td>
+                          )}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {location}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {count}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+      {/* Accordion that shows VehicleType Location, Count. */}
+      <Accordion type="single" collapsible>
+        <AccordionItem value="Vehicle_Location">
+          <AccordionTrigger>
+            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 gap-3 w-full">
+              <h2 className="text-lg font-semibold">
+                Vehicle Location Overview
+              </h2>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
+                    Location
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  >
+                    Count
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                {Object.entries(
+                  vehicles.reduce(
+                    (acc, vehicle) => {
+                      if (!acc[vehicle.location]) {
+                        acc[vehicle.location] = 1;
+                      } else {
+                        acc[vehicle.location] += 1;
+                      }
+                      return acc;
+                    },
+                    {} as Record<string, number>
+                  )
+                ).map(([location, count]) => (
+                  <tr key={location}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {location}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {count}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </AccordionContent>
