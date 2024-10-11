@@ -143,3 +143,11 @@
 .rbc-today {
   background-color: #5e2a00ad !important;
 }
+
+body {
+  background-image: url("public/SunBuggy-SteelBannana.jpg");
+  background-repeat: no-repeat;
+  background-position: right top;
+  background-attachment: fixed;
+  background-size: 100%;
+}
