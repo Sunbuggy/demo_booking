@@ -30,7 +30,7 @@ const VehiclesTabContainer = async ({
         <TabsTrigger value="vehicle_status">Vehicles Status</TabsTrigger>
         <TabsTrigger value="location_stream">Location Stream</TabsTrigger>
       </TabsList>
-      <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex bg-black/75">
+      <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex ">
         <div className="flex items-center justify-between space-y-2"></div>
         <TabsContent value="vehicles">
           <div>
