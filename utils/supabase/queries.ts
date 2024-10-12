@@ -1156,3 +1156,57 @@ export const upsertUserBackgroundPreference = cache(
     return data;
   }
 );
+
+// Check the vehicle_future_location table then if today is the future date or if it has passed copy the future_location to the city column of the  vehicle_location table along with created_at and created_by with the same names for the same vehicle_id vehicles. Then clear the vehicle_future_location table for that vehicle_id
+
+export const checkVehicleFutureLocation = async (supabase: SupabaseClient) => {
+  const { data: futureLocations, error: futureLocationError } = await supabase
+    .from('vehicle_future_location')
+    .select();
+  if (futureLocationError) {
+    console.error(futureLocationError);
+    return [];
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+
+  for (const futureLocation of futureLocations) {
+    const futureDate = futureLocation.future_date;
+    const vehicle_id = futureLocation.vehicle_id;
+
+    if (today > futureDate) {
+      const { data, error } = await supabase
+        .from('vehicle_future_location')
+        .delete()
+        .eq('vehicle_id', vehicle_id);
+      if (error) {
+        console.error(error);
+        continue;
+      }
+    }
+
+    if (today === futureDate) {
+      const { data, error } = await supabase
+        .from('vehicle_locations')
+        .update({
+          city: futureLocation.future_location,
+          created_at: futureLocation.created_at,
+          created_by: futureLocation.created_by
+        })
+        .eq('vehicle_id', vehicle_id);
+      if (error) {
+        console.error(error);
+        continue;
+      }
+
+      const { data: clearData, error: clearError } = await supabase
+        .from('vehicle_future_location')
+        .delete()
+        .eq('vehicle_id', vehicle_id);
+      if (clearError) {
+        console.error(clearError);
+        continue;
+      }
+    }
+  }
+};
