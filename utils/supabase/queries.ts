@@ -1139,3 +1139,20 @@ export const fetchVehicleFutureLocationForVehicle = cache(
     return data as Database['public']['Tables']['vehicle_future_location']['Row'][];
   }
 );
+
+export const upsertUserBackgroundPreference = cache(
+  async (
+    supabase: SupabaseClient,
+    user_id: string,
+    background_image: string
+  ) => {
+    const { data, error } = await supabase
+      .from('users')
+      .upsert({ id: user_id, background_image });
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);

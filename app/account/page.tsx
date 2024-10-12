@@ -6,8 +6,8 @@ import {
   getUserDetails
 } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
-// import RoleForm from '@/components/ui/AccountForms/RoleForm';
 import ScannerPage from '@/components/ui/QrScanner/QrFunction';
+import BackgroundPicker from './components/background-picker';
 
 export type TimeEntry = {
   id: any;
@@ -72,8 +72,8 @@ export default async function Account() {
               clockInTimeStamp={clockInTimeStamp}
             />
           )}
-          {/* {Number(role) > 900 ? <RoleForm role={String(role) ?? ''} /> : ''} */}
         </div>
+        <BackgroundPicker />
       </section>
     );
   }
