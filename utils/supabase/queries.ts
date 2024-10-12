@@ -1174,7 +1174,7 @@ export const checkVehicleFutureLocation = async (supabase: SupabaseClient) => {
     const futureDate = futureLocation.future_date;
     const vehicle_id = futureLocation.vehicle_id;
 
-    if (today > futureDate) {
+    if (new Date(today) > new Date(futureDate)) {
       const { data, error } = await supabase
         .from('vehicle_future_location')
         .delete()
