@@ -10,7 +10,7 @@ import { fetchAllVehicleLocations } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/server';
 import { VehicleLocation } from '../../../types';
 
-type VehicleWithLocation = VehicleType & { location: string };
+type VehicleWithLocation = VehicleType & { location?: string };
 
 const VehicleStatus = async ({
   vehicles
@@ -267,10 +267,10 @@ const VehicleStatus = async ({
                       if (!acc[vehicle.type]) {
                         acc[vehicle.type] = {};
                       }
-                      if (!acc[vehicle.type][vehicle.location]) {
-                        acc[vehicle.type][vehicle.location] = 1;
+                      if (!acc[vehicle.type][vehicle.location || '']) {
+                        acc[vehicle.type][vehicle.location || ''] = 1;
                       } else {
-                        acc[vehicle.type][vehicle.location] += 1;
+                        acc[vehicle.type][vehicle.location || ''] += 1;
                       }
                       return acc;
                     },
@@ -337,10 +337,10 @@ const VehicleStatus = async ({
                 {Object.entries(
                   vehicles.reduce(
                     (acc, vehicle) => {
-                      if (!acc[vehicle.location]) {
-                        acc[vehicle.location] = 1;
+                      if (!acc[vehicle.location || '']) {
+                        acc[vehicle.location || ''] = 1;
                       } else {
-                        acc[vehicle.location] += 1;
+                        acc[vehicle.location || ''] += 1;
                       }
                       return acc;
                     },

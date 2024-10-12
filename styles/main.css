@@ -2,45 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    /* Name: custom color palette
-       Author: Ilias Ism
-       URL: https://gradient.page */
-
-    /* CSS: .bg-gradient { background: var(--gradient) } */
-    --gradient: linear-gradient(to top left, #ff8008, #ffc837);
-
-    --background: 31 65% 4.16%;
-    --foreground: 31 10% 97.6%;
-
-    --muted: 31 50% 15.600000000000001%;
-    --muted-foreground: 31 10% 55.2%;
-
-    --popover: 31 45% 6.76%;
-    --popover-foreground: 31 10% 97.6%;
-
-    --card: 31 45% 6.76%;
-    --card-foreground: 31 10% 97.6%;
-
-    --border: 31 50% 15.600000000000001%;
-    --input: 31 50% 15.600000000000001%;
-
-    --primary: 31 100% 52%;
-    --primary-foreground: 31 10% 5.2%;
-
-    --secondary: 31 50% 15.600000000000001%;
-    --secondary-foreground: 31 10% 97.6%;
-
-    --accent: 31 50% 15.600000000000001%;
-    --accent-foreground: 31 10% 97.6%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 31 10% 97.6%;
-
-    --ring: 31 100% 52%;
-  }
-}
 .red_button {
   @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-red-500  text-zinc-50 hover:bg-red-500/90 dark:bg-red-900 dark:text-zinc-50 dark:hover:bg-red-900/90 h-10 px-4 py-2;
 }
@@ -85,7 +46,7 @@
   }
 }
 .maincard {
-  @apply w-full rounded-lg border border-zinc-200 bg-white/75 text-zinc-950 shadow-sm dark:border-zinc-800 dark:bg-black/75 dark:text-zinc-50;
+  @apply w-full rounded-lg border border-zinc-200 bg-white/75 text-zinc-950 shadow-sm dark:border-zinc-800  dark:text-zinc-50;
 }
 .LocationCardStyle {
   @apply flex flex-col rounded-md p-1 shadow-none gap-1 dark:border-yellow-100;
