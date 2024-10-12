@@ -34,6 +34,61 @@ interface LocationHistoryProps {
   vehicleLocations: VehicleLocation[];
 }
 
+function isNearVegasShop(lat: number, lon: number): boolean {
+  const shopCoordinates = [{ lat: 36.278439, lon: -115.020068 }];
+
+  return shopCoordinates.some((coord) => {
+    const distance = getDistanceFromLatLonInMiles(
+      lat,
+      lon,
+      coord.lat,
+      coord.lon
+    );
+    return distance <= 2;
+  });
+}
+
+function isNearNellis(lat: number, lon: number): boolean {
+  const nellisCoordinates = [
+    { lat: 36.288471, lon: -114.970005 },
+    { lat: 36.316064, lon: -114.944085 }
+  ];
+
+  return nellisCoordinates.some((coord) => {
+    const distance = getDistanceFromLatLonInMiles(
+      lat,
+      lon,
+      coord.lat,
+      coord.lon
+    );
+    return distance <= 2;
+  });
+}
+
+function getDistanceFromLatLonInMiles(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 3958.8; // Radius of the Earth in miles
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) *
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c; // Distance in miles
+  return distance;
+}
+
+function deg2rad(deg: number): number {
+  return deg * (Math.PI / 180);
+}
+
 export default function LocationHistory({
   vehicleLocations
 }: LocationHistoryProps) {
@@ -174,7 +229,13 @@ export default function LocationHistory({
                     userDetails[location.created_by]) ||
                     'Unknown'}
                 </TableCell>
-                <TableCell>{location.city || 'Unknown'}</TableCell>
+                <TableCell>
+                  {isNearNellis(location.latitude, location.longitude)
+                    ? 'Nellis'
+                    : isNearVegasShop(location.latitude, location.longitude)
+                      ? 'Vegas Shop'
+                      : location.city || 'Unknown'}
+                </TableCell>
                 <TableCell>
                   {location.latitude === 0 || location.longitude === 0 ? (
                     <div>Unknown</div>
