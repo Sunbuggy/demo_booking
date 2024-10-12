@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/Toasts/toaster';
 import Providers from './providers';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
-import 'styles/main.css';
+import '@/app/globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toster } from '@/components/ui/toaster';
 

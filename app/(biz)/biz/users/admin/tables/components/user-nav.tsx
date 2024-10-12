@@ -67,15 +67,17 @@ export function UserNav({
             Profile <ImNewTab />
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          {status && (
+        {status && (
+          <div className="m-5">
             <ClockinButton
               clockInTimeStamp={clockInTimeStamp}
               status={status}
               user_id={user_id}
             />
-          )}
-        </DropdownMenuItem>
+          </div>
+          // <DropdownMenuItem asChild>
+          // </DropdownMenuItem>
+        )}
 
         <form
           className="flex justify-end"

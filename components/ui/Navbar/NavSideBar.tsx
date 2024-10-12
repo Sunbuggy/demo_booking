@@ -15,7 +15,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       <SheetClose asChild>
         <Link
           href="/"
-          className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
+          className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
         >
           Home Page
         </Link>
@@ -28,7 +28,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
           <SheetClose asChild>
             <Link
               href={`/biz/${date}`}
-              className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
+              className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
             >
               Board View
             </Link>
@@ -38,7 +38,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
             <Link
               href="https://www.sunbuggy.biz/"
               target="_blank"
-              className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
+              className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
             >
               Old Biz
             </Link>
@@ -53,7 +53,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
           <SheetClose asChild>
             <Link
               href={`/biz/users/admin`}
-              className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
+              className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
             >
               User Admin
             </Link>
@@ -61,7 +61,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
           <SheetClose asChild>
             <Link
               href={`/biz/vehicles/admin`}
-              className="border-2 p-2 rounded-md white_button transition duration-150 ease-in-out"
+              className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
             >
               Vehicle Admin
             </Link>

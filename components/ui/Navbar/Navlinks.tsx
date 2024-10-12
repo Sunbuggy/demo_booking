@@ -63,7 +63,7 @@ export default function Navlinks({
               </div>
             </button>
           </SheetTrigger>
-          <SheetContent side="left">
+          <SheetContent side="left" className=" dark:bg-background">
             <SheetHeader>
               <SheetTitle>Menu</SheetTitle>
               <SheetDescription></SheetDescription>

@@ -322,48 +322,45 @@ const ClockinButton = ({
   }
   return (
     <div>
-      {' '}
       <div
-        className={
-          status === 'clocked_in'
-            ? 'text-green-500'
-            : status === 'clocked_out'
-              ? 'text-red-500'
-              : status === 'on_break'
-                ? 'text-amber-500'
-                : ''
-        }
+        className={`
+        ${status === 'clocked_in' ? 'text-green-500' : ''}
+        ${status === 'clocked_out' ? 'text-red-500' : ''}
+        ${status === 'on_break' ? 'text-amber-500' : ''}
+      `}
       >
         {status === 'clocked_in' && (
-          <div className="flex gap-3">
-            <p> Clocked In For:</p>
-            <span className="text-purple-500">
-              {calculateTimeElapsedSinceClockIn()}
-            </span>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <InfoCircledIcon />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    Clocked in since
-                    <span className="m-1 text-purple-500">
-                      {clockInTime?.toLocaleTimeString()},
-                    </span>
-                    <span className="m-1 text-purple-500">
-                      {clockInTime?.toLocaleDateString()}
-                    </span>
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          <div>
+            <div className="flex gap-2 mb-5">
+              <p> Clocked In For:</p>
+              <span className="text-purple-500 ">
+                {calculateTimeElapsedSinceClockIn()}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <InfoCircledIcon />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        Clocked in since
+                        <span className="m-1 text-purple-500">
+                          {clockInTime?.toLocaleTimeString()},
+                        </span>
+                        <span className="m-1 text-purple-500">
+                          {clockInTime?.toLocaleDateString()}
+                        </span>
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </span>
+            </div>
           </div>
         )}
         {status === 'clocked_out' && 'Clocked Out'}
         {status === 'on_break' && `On Break for: ${timeSinceBreak}`}
       </div>
-      <div className="flex justify-end">
+      <div className="flex justify-center">
         {status === 'clocked_out' && (
           <Popover>
             <PopoverTrigger className="green_button"> Clock In</PopoverTrigger>
