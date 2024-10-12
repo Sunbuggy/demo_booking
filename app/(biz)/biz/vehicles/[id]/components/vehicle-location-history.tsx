@@ -143,6 +143,7 @@ export default function LocationHistory({
         </TableHeader>
         <TableBody>
           {currentRows.map((location, index) => {
+            if (!location.latitude || !location.longitude) return null;
             return (
               <TableRow key={index}>
                 <TableCell>
