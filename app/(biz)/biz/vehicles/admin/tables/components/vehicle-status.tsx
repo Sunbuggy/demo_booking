@@ -31,6 +31,74 @@ const VehicleStatus = async ({
       console.error('Error fetching vehicle locations:', error);
       return [];
     })) as VehicleLocation[];
+
+  function isNearVegasShop(lat: number, lon: number): boolean {
+    const shopCoordinates = [{ lat: 36.278439, lon: -115.020068 }];
+
+    return shopCoordinates.some((coord) => {
+      const distance = getDistanceFromLatLonInMiles(
+        lat,
+        lon,
+        coord.lat,
+        coord.lon
+      );
+      return distance <= 2;
+    });
+  }
+
+  function isNearNellis(lat: number, lon: number): boolean {
+    const nellisCoordinates = [
+      { lat: 36.288471, lon: -114.970005 },
+      { lat: 36.316064, lon: -114.944085 }
+    ];
+
+    return nellisCoordinates.some((coord) => {
+      const distance = getDistanceFromLatLonInMiles(
+        lat,
+        lon,
+        coord.lat,
+        coord.lon
+      );
+      return distance <= 2;
+    });
+  }
+
+  function getDistanceFromLatLonInMiles(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number {
+    const R = 3958.8; // Radius of the Earth in miles
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) *
+        Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in miles
+    return distance;
+  }
+
+  function deg2rad(deg: number): number {
+    return deg * (Math.PI / 180);
+  }
+
+  // In vehicleLocations Change location.city to 'Vegas Shop' if isNearVegasShop is true and location.city to 'Nellis' if isNearNellis is true
+
+  vehicleLocations.forEach((location) => {
+    if (location.latitude !== null && location.longitude !== null) {
+      if (isNearVegasShop(location.latitude, location.longitude)) {
+        location.city = 'Vegas Shop';
+      } else if (isNearNellis(location.latitude, location.longitude)) {
+        location.city = 'Nellis';
+      }
+    }
+  });
+
   // remove all values where longitude or latitude or city are null or zero or undefined,
   const filteredVehicleLocations = vehicleLocations.filter(
     (location) =>
