@@ -357,12 +357,13 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
               </select>
             </h1>
           </div>
-          {locationSet ? (
-            <div className="flex justify-center">
-              <div className="w-[150px] h-[150px]">
-                <video ref={ref} />
-              </div>
+          <div className="flex justify-center">
+            <div className="w-[150px] h-[150px]">
+              <video ref={ref} />
             </div>
+          </div>
+          {locationSet ? (
+            <></>
           ) : (
             <div>
               <h1 className="text-center text-red-500">
