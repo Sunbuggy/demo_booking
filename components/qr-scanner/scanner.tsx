@@ -17,6 +17,13 @@ import InventoryModeScroll from './inventory-result-scroll';
 import InventoryForm from './inventory-form';
 import TaggingMode from './tagging-mode';
 import { User } from '@supabase/supabase-js';
+import { MapPin } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from '@/components/ui/tooltip';
 
 export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
   const supabase = createClient();
@@ -34,6 +41,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
   const [closeCamera, setCloseCamera] = React.useState(false);
   const [scannedUrls, setScannedUrls] = React.useState<string[]>([]);
   const [city, setCity] = React.useState<string>('');
+  const [locationSet, setLocationSet] = React.useState(false);
   const { toast } = useToast();
   const [currentLocation, setCurrentLocation] = React.useState<{
     latitude: number;
@@ -95,6 +103,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude
         });
+        setLocationSet(true);
       },
       (error) => {
         console.error(error);
@@ -296,6 +305,27 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
       <div className="flex w-full gap-4">
         <div>
           <div className="flex flex-col items-center gap-2 mb-5">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <MapPin
+                    size={24}
+                    className={`${locationSet ? 'text-green-500' : 'text-red-500'}`}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>
+                  {locationSet
+                    ? 'Location Set'
+                    : ' Allow  location access to scan the QR code'}
+                  <br />
+                  {/* Show Current Location */}
+                  {'Latitude: ' + currentLocation.latitude}
+                  <br />
+                  {'Longitude: ' + currentLocation.longitude}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             <h1 className="text-xl font-bold text-center">
               Mode:
               {/* Create select to select mode */}
@@ -327,12 +357,19 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
               </select>
             </h1>
           </div>
-
-          <div className="flex justify-center">
-            <div className="w-[150px] h-[150px]  ">
-              <video ref={ref} />
+          {locationSet ? (
+            <div className="flex justify-center">
+              <div className="w-[150px] h-[150px]">
+                <video ref={ref} />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div>
+              <h1 className="text-center text-red-500">
+                PLEASE ALLOW LOCATION ACCESS!!
+              </h1>
+            </div>
+          )}
         </div>
         <div>
           {normalMode &&
