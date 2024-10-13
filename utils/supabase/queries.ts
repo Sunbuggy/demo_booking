@@ -1044,7 +1044,7 @@ export const fetchAllVehicleLocations = cache(
       console.error(error);
       return [];
     }
-    return data;
+    return data as Database['public']['Tables']['vehicle_locations']['Row'][];
   }
 );
 

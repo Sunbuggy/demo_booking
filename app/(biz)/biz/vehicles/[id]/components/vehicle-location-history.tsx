@@ -27,11 +27,16 @@ import {
   PaginationPrevious
 } from '@/components/ui/pagination';
 import { MapIcon, RefreshCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import DialogFactory from '@/components/dialog-factory';
+import AssignLocationHistory from './assign-location-form';
 
 const supabase = createClient();
 
 interface LocationHistoryProps {
   vehicleLocations: VehicleLocation[];
+  locCreator?: boolean;
+  user_id?: string;
 }
 
 function isNearVegasShop(lat: number, lon: number): boolean {
@@ -90,11 +95,15 @@ function deg2rad(deg: number): number {
 }
 
 export default function LocationHistory({
-  vehicleLocations
+  vehicleLocations,
+  locCreator,
+  user_id
 }: LocationHistoryProps) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [isRotating, setIsRotating] = React.useState(false);
   const rowsPerPage = 10;
+  const [isLocationCreatorDialogOpen, setIsLocationCreatorDialogOpen] =
+    React.useState(false);
 
   const sortedLocations = React.useMemo(
     () =>
@@ -186,6 +195,27 @@ export default function LocationHistory({
           <RefreshCcw size={16} />
         </button>
       </div>
+      {locCreator && (
+        <div className="w-full flex ">
+          <Button onClick={() => setIsLocationCreatorDialogOpen(true)}>
+            Assign New Location Location
+          </Button>
+
+          <DialogFactory
+            title="Assign Location"
+            description="Assign Location"
+            isDialogOpen={isLocationCreatorDialogOpen}
+            setIsDialogOpen={setIsLocationCreatorDialogOpen}
+            children={
+              <AssignLocationHistory
+                vehicle_id={vehicleLocations[0].vehicle_id || ''}
+                user_id={user_id || ''}
+              />
+            }
+          />
+        </div>
+      )}
+
       <Table>
         <TableHeader>
           <TableRow>

@@ -64,7 +64,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     React.useState(false);
   const [isUploadImagesDialogOpen, setIsUploadImagesDialogOpen] =
     React.useState(false);
-    const [isUploadGifsDialogOpen, setIsUploadGifsDialogOpen] =
+  const [isUploadGifsDialogOpen, setIsUploadGifsDialogOpen] =
     React.useState(false);
   const [isLocationManagementDialogOpen, setIsLocationManagementDialogOpen] =
     React.useState(false);
@@ -76,6 +76,37 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const [islocationSchedulingDialogOpen, setIsLocationSchedulingDialogOpen] =
     React.useState(false);
 
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('realtime vehicle locator')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle_locations'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'groups'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router]);
   React.useEffect(() => {
     const channel = supabase
       .channel('realtime vehicle tags and vehicle')
@@ -238,7 +269,12 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         }
                       />
                     </div>
-                    <ImageGrid images={images} width={200} height={120} gifs={[]} />
+                    <ImageGrid
+                      images={images}
+                      width={200}
+                      height={120}
+                      gifs={[]}
+                    />
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -264,7 +300,12 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         }
                       />
                     </div>
-                    <ImageGrid gifs={gif} width={200} height={120} images={[]}  />
+                    <ImageGrid
+                      gifs={gif}
+                      width={200}
+                      height={120}
+                      images={[]}
+                    />
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -305,7 +346,11 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       isDialogOpen={isLocationManagementDialogOpen}
                       description="Manage the current and future location for the vehicle."
                       children={
-                        <LocationHistory vehicleLocations={vehicleLocations} />
+                        <LocationHistory
+                          vehicleLocations={vehicleLocations}
+                          locCreator={true}
+                          user_id={user.id}
+                        />
                       }
                     />
                     <Button
