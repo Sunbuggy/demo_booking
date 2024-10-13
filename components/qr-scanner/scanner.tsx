@@ -86,15 +86,21 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
       setCloseCamera(true);
     }
 
-    navigator.geolocation.getCurrentPosition((position) => {
-      if (!position) return;
-      if (position.coords.latitude === 0 && position.coords.longitude === 0)
-        return;
-      setCurrentLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude
-      });
-    });
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (!position) return;
+        if (position.coords.latitude === 0 && position.coords.longitude === 0)
+          return;
+        setCurrentLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+      },
+      (error) => {
+        console.error(error);
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
 
     // Get the city name from the lat and long
   }, []);
