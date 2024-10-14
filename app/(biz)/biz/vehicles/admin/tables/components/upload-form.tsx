@@ -12,7 +12,8 @@ const UploadForm = ({
   setFile,
   setFiles,
   uploading,
-  multiple = false
+  multiple = false,
+  acceptFormat = 'image/png, image/jpeg'
 }: {
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   inputFile: React.RefObject<HTMLInputElement>;
@@ -20,6 +21,7 @@ const UploadForm = ({
   setFiles?: (value: React.SetStateAction<File[]>) => void;
   uploading: boolean;
   multiple?: boolean;
+  acceptFormat?: string;
 }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
@@ -53,7 +55,7 @@ const UploadForm = ({
         ref={inputFile}
         className="w-[120px] hover:cursor-pointer"
         onChange={handleFileChange}
-        accept="image/png, image/jpeg"
+        accept={acceptFormat}
         multiple={multiple}
       />
 

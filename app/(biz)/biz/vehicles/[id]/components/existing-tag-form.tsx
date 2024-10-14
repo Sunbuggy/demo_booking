@@ -42,9 +42,6 @@ const ExistingTagForm = ({
   const [updatedBy, setUpdatedBy] = React.useState<string | null>(null);
   const [images, setImages] = React.useState<VehiclePics[]>([]);
   const router = useRouter();
-  const [files, setFiles] = React.useState<File[]>([]);
-  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
-  const inputFile = React.useRef<HTMLInputElement>(null);
   const [formValues, setFormValues] = React.useState<VehicleTagType>({
     tag_status: tag?.tag_status || 'open',
     notes: tag?.notes || '',
