@@ -14,7 +14,7 @@ import {
   PopoverTrigger
 } from '../../popover';
 import { Button } from '../../button';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { useToast } from '../../use-toast';
 import {
@@ -24,15 +24,17 @@ import {
   insertIntoClockIn,
   insertIntoClockOut
 } from '@/utils/supabase/queries';
-
+import ToggleShowRev from './tottle-show-rev';
 const ClockinButton = ({
   clockInTimeStamp,
   user_id,
-  status
+  status,
+  user_level
 }: {
   clockInTimeStamp: string | undefined;
   user_id: string;
   status: string;
+  user_level?: number;
 }) => {
   const [clock_in, setClockIn] = React.useState(false);
   const [location, setLocation] = React.useState({ latitude: 0, longitude: 0 });
@@ -52,7 +54,16 @@ const ClockinButton = ({
   );
   const supabase = createClient();
   const router = useRouter();
+
   const { toast } = useToast();
+  // if route contains dcos, display cost
+  // get path from router
+  const path = usePathname();
+  // pathname consists of /biz/date where date is in the format of yyyy-mm-dd checked with regex
+  const dateFormatRegex = /\d{4}-\d{2}-\d{2}/;
+  const isCorrectPath = path.match(
+    new RegExp(`^/biz/${dateFormatRegex.source}$`)
+  );
 
   // Update the real time every second
   React.useEffect(() => {
@@ -321,12 +332,12 @@ const ClockinButton = ({
     }
   }
   return (
-    <div>
+    <div className="flex flex-col gap-4 items-center">
       <div
         className={`
         ${status === 'clocked_in' ? 'text-green-500' : ''}
         ${status === 'clocked_out' ? 'text-red-500' : ''}
-        ${status === 'on_break' ? 'text-amber-500' : ''}
+        ${status === 'on_break' ? 'text-amber-500' : ''} text-sm
       `}
       >
         {status === 'clocked_in' && (
@@ -413,6 +424,9 @@ const ClockinButton = ({
             End Break
           </Button>
         )}
+      </div>
+      <div>
+        {isCorrectPath && user_level && user_level > 899 && <ToggleShowRev />}
       </div>
     </div>
   );

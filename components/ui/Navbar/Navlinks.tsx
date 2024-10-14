@@ -119,6 +119,7 @@ export default function Navlinks({
             status={status}
             user_id={user.id}
             clockInTimeStamp={clockInTimeStamp}
+            user_level={user.user_level}
           />
         ) : (
           path &&

@@ -8,7 +8,7 @@ const RedirectButton = ({
   name,
   redirect_path
 }: {
-  name: string;
+  name: string | React.ReactNode;
   redirect_path: string;
 }) => {
   const path = usePathname();
@@ -43,7 +43,7 @@ const RedirectButton = ({
   }
 
   return (
-    <Button variant="ghost" size="sm" onClick={clickAction}>
+    <Button variant="ghost" size="icon" onClick={clickAction}>
       {name}
     </Button>
   );

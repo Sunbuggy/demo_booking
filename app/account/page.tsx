@@ -7,7 +7,7 @@ import {
 } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 import ScannerPage from '@/components/ui/QrScanner/QrFunction';
-import BackgroundPicker from './components/background-picker';
+import BackgroundPickerButton from './components/background-picker-button';
 
 export type TimeEntry = {
   id: any;
@@ -73,7 +73,7 @@ export default async function Account() {
             />
           )}
         </div>
-        <BackgroundPicker />
+        <BackgroundPickerButton user={user ? user[0] : null} />
       </section>
     );
   }

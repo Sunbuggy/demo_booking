@@ -25,7 +25,8 @@ export function UserNav({
   userName,
   status,
   user_id,
-  clockInTimeStamp
+  clockInTimeStamp,
+  user_level
 }: {
   email: string | undefined;
   userInitials: string;
@@ -34,6 +35,7 @@ export function UserNav({
   status?: string | null | undefined;
   user_id: string;
   clockInTimeStamp?: string;
+  user_level?: number;
 }) {
   const router = getRedirectMethod() === 'client' ? useRouter() : null;
   const path = usePathname();
@@ -73,6 +75,7 @@ export function UserNav({
               clockInTimeStamp={clockInTimeStamp}
               status={status}
               user_id={user_id}
+              user_level={user_level}
             />
           </div>
           // <DropdownMenuItem asChild>
