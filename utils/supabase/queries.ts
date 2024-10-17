@@ -1239,3 +1239,37 @@ export const setUserBgImage = cache(
     return data;
   }
 );
+
+// bg properties: bg_size, bg_repeat, bg_position.
+export const setUserBgProperties = cache(
+  async (
+    supabase: SupabaseClient,
+    user_id: string,
+    bg_size: string,
+    bg_repeat: string,
+    bg_position: string
+  ) => {
+    const { data, error } = await supabase
+      .from('users')
+      .upsert({ id: user_id, bg_size, bg_repeat, bg_position });
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const getUserBgProperties = cache(
+  async (supabase: SupabaseClient, user_id: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('bg_size, bg_repeat, bg_position')
+      .eq('id', user_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);

@@ -24,7 +24,7 @@ import {
   insertIntoClockIn,
   insertIntoClockOut
 } from '@/utils/supabase/queries';
-import ToggleShowRev from './tottle-show-rev';
+import ToggleShowRev from './toggle-show-rev';
 const ClockinButton = ({
   clockInTimeStamp,
   user_id,

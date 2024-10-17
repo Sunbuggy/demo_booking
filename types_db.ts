@@ -216,15 +216,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "customers_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       departments: {
         Row: {
@@ -431,32 +423,33 @@ export type Database = {
       }
       qr_history: {
         Row: {
-          id: number
+          id: string
+          latitude: number | null
           link: string | null
+          location: string | null
+          longitude: number | null
           scanned_at: string | null
           user: string | null
         }
         Insert: {
-          id?: number
+          id?: string
+          latitude?: number | null
           link?: string | null
+          location?: string | null
+          longitude?: number | null
           scanned_at?: string | null
           user?: string | null
         }
         Update: {
-          id?: number
+          id?: string
+          latitude?: number | null
           link?: string | null
+          location?: string | null
+          longitude?: number | null
           scanned_at?: string | null
           user?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "qr_history_user_fkey"
-            columns: ["user"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       shuttle_assignment: {
         Row: {
@@ -633,6 +626,10 @@ export type Database = {
       users: {
         Row: {
           avatar_url: string | null
+          bg_image: string | null
+          bg_position: string | null
+          bg_repeat: string | null
+          bg_size: string | null
           email: string | null
           full_name: string | null
           id: string
@@ -644,6 +641,10 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bg_image?: string | null
+          bg_position?: string | null
+          bg_repeat?: string | null
+          bg_size?: string | null
           email?: string | null
           full_name?: string | null
           id: string
@@ -655,6 +656,10 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bg_image?: string | null
+          bg_position?: string | null
+          bg_repeat?: string | null
+          bg_size?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
@@ -664,15 +669,7 @@ export type Database = {
             | null
           user_level?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "users_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       vehicle_future_location: {
         Row: {
@@ -1706,4 +1703,19 @@ export type Enums<
   ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof PublicSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
