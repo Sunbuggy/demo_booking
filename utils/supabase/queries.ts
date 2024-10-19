@@ -1,3 +1,4 @@
+import { VehicleType } from '@/app/(biz)/biz/vehicles/admin/page';
 import { Database } from '@/types_db';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { cache } from 'react';
@@ -659,7 +660,7 @@ export const fetchVehicles = cache(async (supabase: SupabaseClient) => {
     console.error(error);
     return [];
   }
-  return data;
+  return data as VehicleType[];
 });
 
 export const removeVehicle = cache(

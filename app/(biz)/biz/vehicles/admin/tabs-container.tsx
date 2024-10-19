@@ -9,6 +9,7 @@ import { createClient } from '@/utils/supabase/server';
 import LocationHistory from '../[id]/components/vehicle-location-history';
 import { fetchAllVehicleLocations } from '@/utils/supabase/queries';
 import { VehicleLocation } from '../types';
+import VehiclesOverview from './tables/components/vehicles-overview';
 
 const VehiclesTabContainer = async ({
   vehicles,
@@ -42,7 +43,8 @@ const VehiclesTabContainer = async ({
           <VehiclesTab vehicles={vehicles} />
         </TabsContent>
         <TabsContent value="vehicle_status">
-          <VehicleStatus vehicles={vehicles} />
+          {/* <VehicleStatus vehicles={vehicles} /> */}
+          <VehiclesOverview />
         </TabsContent>
         <TabsContent value="location_stream">
           <LocationHistory vehicleLocations={allVehicleLocations} />
