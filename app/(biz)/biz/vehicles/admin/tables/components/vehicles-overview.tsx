@@ -26,6 +26,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { useState } from 'react';
+import MapComponent from './mapcomponent';
 
 type VehicleLocation = Database['public']['Tables']['vehicle_locations']['Row'];
 
@@ -399,6 +400,7 @@ export default function VehiclesOverview() {
           </TableBody>
         </Table>
       </div>
+      <MapComponent vehicles={filteredVehicles} />
     </div>
   );
 }
