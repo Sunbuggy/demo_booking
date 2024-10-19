@@ -38,52 +38,92 @@ interface LocationHistoryProps {
   locCreator?: boolean;
   user_id?: string;
 }
-
-function isNearVegasShop(lat: number, lon: number): boolean {
-  const shopCoordinates = [{ lat: 36.278439, lon: -115.020068 }];
-
-  return shopCoordinates.some((coord) => {
-    const distance = getDistanceFromLatLonInMiles(
-      lat,
-      lon,
-      coord.lat,
-      coord.lon
-    );
-    return distance <= 2;
-  });
-}
-
-function isNearPismoShop(lat: number, lon: number): boolean {
-  const shopCoordinates = [{ lat: 35.105821, lon: -120.63038 }];
-
-  return shopCoordinates.some((coord) => {
-    const distance = getDistanceFromLatLonInMiles(
-      lat,
-      lon,
-      coord.lat,
-      coord.lon
-    );
-    return distance <= 2;
-  });
-}
-
-function isNearNellis(lat: number, lon: number): boolean {
-  const nellisCoordinates = [
+const locationCoordinates = {
+  vegasShop: { lat: 36.278439, lon: -115.020068 },
+  pismoShop: { lat: 35.105821, lon: -120.63038 },
+  nellis: [
     { lat: 36.288471, lon: -114.970005 },
     { lat: 36.316064, lon: -114.944085 }
-  ];
+  ],
+  pismoBeach: { lat: 35.090735, lon: -120.629598 }, //0.25 from here
+  silverlakeShop: { lat: 43.675239, lon: -86.472552 },
+  silverlakeDunes: { lat: 43.686365, lon: -86.508345 }
+};
+const pismoBeachCoordinates = [
+  { lat: 35.093107, lon: -120.630094 },
+  { lat: 35.093195, lon: -120.628131 },
+  { lat: 35.086662, lon: -120.627954 },
+  { lat: 35.086777, lon: -120.630302 }
+];
 
-  return nellisCoordinates.some((coord) => {
-    const distance = getDistanceFromLatLonInMiles(
-      lat,
-      lon,
-      coord.lat,
-      coord.lon
-    );
-    return distance <= 2;
-  });
+const pismoDunesCoordinates = [
+  { lat: 35.078224, lon: -120.630382 },
+  { lat: 35.078631, lon: -120.623262 },
+  { lat: 35.036037, lon: -120.621555 },
+  { lat: 35.036288, lon: -120.633892 }
+];
+
+function isPointInPolygon(
+  lat: number,
+  lon: number,
+  coordinates: { lat: number; lon: number }[]
+): boolean {
+  let inside = false;
+  for (let i = 0, j = coordinates.length - 1; i < coordinates.length; j = i++) {
+    const xi = coordinates[i].lat,
+      yi = coordinates[i].lon;
+    const xj = coordinates[j].lat,
+      yj = coordinates[j].lon;
+
+    const intersect =
+      yi > lon !== yj > lon && lat < ((xj - xi) * (lon - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
 }
 
+function isBetweenCoordinates(
+  lat: number,
+  lon: number,
+  coordinates: { lat: number; lon: number }[]
+): boolean {
+  return isPointInPolygon(lat, lon, coordinates);
+}
+
+function isNearLocation(
+  lat: number,
+  lon: number,
+  location: keyof typeof locationCoordinates,
+  setDistance: number = 2
+): boolean {
+  const coordinates = locationCoordinates[location];
+  if (Array.isArray(coordinates)) {
+    return coordinates.some(
+      (coord) =>
+        getDistanceFromLatLonInMiles(lat, lon, coord.lat, coord.lon) <=
+        setDistance
+    );
+  }
+  return (
+    getDistanceFromLatLonInMiles(lat, lon, coordinates.lat, coordinates.lon) <=
+    setDistance
+  );
+}
+
+function getLocationType(lat: number, lon: number): string {
+  if (isNearLocation(lat, lon, 'vegasShop')) return 'Vegas Shop';
+  if (isNearLocation(lat, lon, 'pismoShop', 0.5)) return 'Pismo Shop';
+  if (isNearLocation(lat, lon, 'nellis')) return 'Vegas Nellis';
+  if (isBetweenCoordinates(lat, lon, pismoBeachCoordinates))
+    return 'Pismo Beach';
+  if (isBetweenCoordinates(lat, lon, pismoDunesCoordinates))
+    return 'Pismo Dunes';
+  if (isNearLocation(lat, lon, 'silverlakeShop')) return 'Silver Lake Shop';
+  if (isNearLocation(lat, lon, 'silverlakeDunes', 0.25))
+    return 'Silver Lake Dunes';
+
+  return 'Unknown';
+}
 function getDistanceFromLatLonInMiles(
   lat1: number,
   lon1: number,
@@ -274,13 +314,7 @@ export default function LocationHistory({
                     'Unknown'}
                 </TableCell>
                 <TableCell>
-                  {isNearPismoShop(location.latitude, location.longitude)
-                    ? 'Pismo Shop'
-                    : isNearNellis(location.latitude, location.longitude)
-                      ? 'Nellis'
-                      : isNearVegasShop(location.latitude, location.longitude)
-                        ? 'Vegas Shop'
-                        : location.city || 'Unknown'}
+                  {getLocationType(location.latitude, location.longitude)}
                 </TableCell>
                 <TableCell>
                   {location.latitude === 0 || location.longitude === 0 ? (
