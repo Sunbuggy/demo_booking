@@ -53,6 +53,20 @@ function isNearVegasShop(lat: number, lon: number): boolean {
   });
 }
 
+function isNearPismoShop(lat: number, lon: number): boolean {
+  const shopCoordinates = [{ lat: 35.105821, lon: -120.63038 }];
+
+  return shopCoordinates.some((coord) => {
+    const distance = getDistanceFromLatLonInMiles(
+      lat,
+      lon,
+      coord.lat,
+      coord.lon
+    );
+    return distance <= 2;
+  });
+}
+
 function isNearNellis(lat: number, lon: number): boolean {
   const nellisCoordinates = [
     { lat: 36.288471, lon: -114.970005 },
@@ -260,11 +274,13 @@ export default function LocationHistory({
                     'Unknown'}
                 </TableCell>
                 <TableCell>
-                  {isNearNellis(location.latitude, location.longitude)
-                    ? 'Nellis'
-                    : isNearVegasShop(location.latitude, location.longitude)
-                      ? 'Vegas Shop'
-                      : location.city || 'Unknown'}
+                  {isNearPismoShop(location.latitude, location.longitude)
+                    ? 'Pismo Shop'
+                    : isNearNellis(location.latitude, location.longitude)
+                      ? 'Nellis'
+                      : isNearVegasShop(location.latitude, location.longitude)
+                        ? 'Vegas Shop'
+                        : location.city || 'Unknown'}
                 </TableCell>
                 <TableCell>
                   {location.latitude === 0 || location.longitude === 0 ? (
