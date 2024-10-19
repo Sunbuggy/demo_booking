@@ -48,7 +48,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
     longitude: number;
   }>({ latitude: 0, longitude: 0 });
   const [scannedVehicleIds, setScannedVehicleIds] = React.useState<
-    { name: string; id: string }[]
+    { name: string; id: string; status: string }[]
   >([]);
 
   const { ref } = useZxing({
@@ -58,6 +58,125 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
       //   close the camera after scanning if in single mode
     }
   });
+
+  const locationCoordinates = {
+    vegasShop: { lat: 36.278439, lon: -115.020068 },
+    pismoShop: { lat: 35.105821, lon: -120.63038 },
+    nellis: [
+      { lat: 36.288471, lon: -114.970005 },
+      { lat: 36.316064, lon: -114.944085 }
+    ],
+    pismoBeach: { lat: 35.090735, lon: -120.629598 }, //0.25 from here
+    silverlakeShop: { lat: 43.675239, lon: -86.472552 },
+    silverlakeDunes: { lat: 43.686365, lon: -86.508345 }
+  };
+
+  const pismoBeachCoordinates = [
+    { lat: 35.093107, lon: -120.630094 },
+    { lat: 35.093195, lon: -120.628131 },
+    { lat: 35.086662, lon: -120.627954 },
+    { lat: 35.086777, lon: -120.630302 }
+  ];
+
+  const pismoDunesCoordinates = [
+    { lat: 35.078224, lon: -120.630382 },
+    { lat: 35.078631, lon: -120.623262 },
+    { lat: 35.036037, lon: -120.621555 },
+    { lat: 35.036288, lon: -120.633892 }
+  ];
+
+  function deg2rad(deg: number): number {
+    return deg * (Math.PI / 180);
+  }
+
+  function getDistanceFromLatLonInMiles(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number {
+    const R = 3958.8;
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) *
+        Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+  function isPointInPolygon(
+    lat: number,
+    lon: number,
+    coordinates: { lat: number; lon: number }[]
+  ): boolean {
+    let inside = false;
+    for (
+      let i = 0, j = coordinates.length - 1;
+      i < coordinates.length;
+      j = i++
+    ) {
+      const xi = coordinates[i].lat,
+        yi = coordinates[i].lon;
+      const xj = coordinates[j].lat,
+        yj = coordinates[j].lon;
+
+      const intersect =
+        yi > lon !== yj > lon &&
+        lat < ((xj - xi) * (lon - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function isBetweenCoordinates(
+    lat: number,
+    lon: number,
+    coordinates: { lat: number; lon: number }[]
+  ): boolean {
+    return isPointInPolygon(lat, lon, coordinates);
+  }
+
+  function isNearLocation(
+    lat: number,
+    lon: number,
+    location: keyof typeof locationCoordinates,
+    setDistance: number = 2
+  ): boolean {
+    const coordinates = locationCoordinates[location];
+    if (Array.isArray(coordinates)) {
+      return coordinates.some(
+        (coord) =>
+          getDistanceFromLatLonInMiles(lat, lon, coord.lat, coord.lon) <=
+          setDistance
+      );
+    }
+    return (
+      getDistanceFromLatLonInMiles(
+        lat,
+        lon,
+        coordinates.lat,
+        coordinates.lon
+      ) <= setDistance
+    );
+  }
+
+  function getLocationType(lat: number, lon: number): string {
+    if (isNearLocation(lat, lon, 'vegasShop')) return 'Vegas Shop';
+    if (isNearLocation(lat, lon, 'pismoShop', 0.5)) return 'Pismo Shop';
+    if (isNearLocation(lat, lon, 'nellis')) return 'Vegas Nellis';
+    if (isBetweenCoordinates(lat, lon, pismoBeachCoordinates))
+      return 'Pismo Beach';
+    if (isBetweenCoordinates(lat, lon, pismoDunesCoordinates))
+      return 'Pismo Dunes';
+    if (isNearLocation(lat, lon, 'silverlakeShop')) return 'Silver Lake Shop';
+    if (isNearLocation(lat, lon, 'silverlakeDunes', 0.25))
+      return 'Silver Lake Dunes';
+
+    return 'Unknown';
+  }
 
   // Function to save the scanned /fleet/ URL to Supabase (qr_history table)
   const saveScannedUrlToHistory = async (link: string, location: string) => {
@@ -117,13 +236,23 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
   React.useEffect(() => {
     if (currentLocation.latitude === 0 && currentLocation.longitude === 0)
       return;
-    fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}&localityLanguage=en`
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        setCity(data.city);
-      });
+    // Get the city name from the lat and long using getLocationType if unknown then use the api
+    const preDefinedLocation = getLocationType(
+      currentLocation.latitude,
+      currentLocation.longitude
+    );
+    // if predifined location is unknown then use the api to get the city name
+    if (preDefinedLocation === 'Unknown') {
+      fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}&localityLanguage=en`
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          setCity(data.city);
+        });
+    } else {
+      setCity(preDefinedLocation);
+    }
   }, [currentLocation]);
 
   React.useEffect(() => {
@@ -142,7 +271,9 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
 
       getVehicleIdFromName(supabase, true_veh_name)
         .then((res) => {
+          console.log('res', res);
           const veh_id = res[0].id as string;
+          const veh_status = res[0].vehicle_status as string;
           const vehicleLocation = {
             city: city,
             created_at: new Date().toISOString(),
@@ -233,7 +364,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
 
             setScannedVehicleIds([
               ...scannedVehicleIds,
-              { name: true_veh_name, id: veh_id }
+              { name: true_veh_name, id: veh_id, status: veh_status }
             ]);
           }
         })

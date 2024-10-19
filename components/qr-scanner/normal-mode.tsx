@@ -11,9 +11,11 @@ const NormalMode = ({
   scannedVehicleIds: {
     name: string;
     id: string;
+    status: string;
   }[];
   scannedUrls: string[];
 }) => {
+  console.log(scannedVehicleIds);
   return (
     <Tabs defaultValue="new" className="w-[200px] mb-5">
       <TabsList className="w-full ">
@@ -30,7 +32,15 @@ const NormalMode = ({
                   <span key={i}>
                     <DrawerClose asChild>
                       <Link
-                        className="green_button"
+                        className={
+                          v.status === 'broken'
+                            ? 'red_button'
+                            : v.status === 'maintenance'
+                              ? 'amber_button'
+                              : v.status === 'fine'
+                                ? `green_button`
+                                : ''
+                        }
                         href={`/biz/vehicles/${v.id}`}
                       >
                         {v.name}

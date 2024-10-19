@@ -761,7 +761,7 @@ export const getVehicleIdFromName = cache(
   async (supabase: SupabaseClient, vehicle_name: string) => {
     const { data, error } = await supabase
       .from('vehicles')
-      .select('id')
+      .select('id, vehicle_status')
       .eq('name', vehicle_name);
     if (error) {
       console.error(error);

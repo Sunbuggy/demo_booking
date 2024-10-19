@@ -9,6 +9,7 @@ const InventoryModeScroll = ({
   scannedVehicleIds: {
     name: string;
     id: string;
+    status: string;
   }[];
 
   handleCheckboxChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -30,7 +31,20 @@ const InventoryModeScroll = ({
               onChange={handleCheckboxChange}
               checked={!!selectedForInventory[v.id]} // Ensure boolean value
             />
-            <label htmlFor={v.id}>{v.name}</label>
+            <label
+              className={
+                v.status === 'broken'
+                  ? 'text-red-500'
+                  : v.status === 'maintenance'
+                    ? 'text-amber-500'
+                    : v.status === 'fine'
+                      ? `text-green-500`
+                      : ''
+              }
+              htmlFor={v.id}
+            >
+              {v.name}
+            </label>
           </span>
         ))}
       </div>
