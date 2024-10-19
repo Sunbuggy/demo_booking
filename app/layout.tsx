@@ -10,8 +10,6 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toster } from '@/components/ui/toaster';
 import { createClient } from '@/utils/supabase/server';
 import { getUserBgImage, getUserBgProperties } from '@/utils/supabase/queries';
-import { ThemeName, themes } from './account/components/themes';
-import ThemeSelector from './account/components/theme-selector';
 
 const title = 'Sunbuggy Fun Rentals';
 const description =
