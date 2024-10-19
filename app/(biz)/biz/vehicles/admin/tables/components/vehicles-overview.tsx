@@ -29,14 +29,31 @@ import { useState } from 'react';
 
 type VehicleLocation = Database['public']['Tables']['vehicle_locations']['Row'];
 
-const shopCoordinates = {
-  vegas: { lat: 36.278439, lon: -115.020068 },
-  pismo: { lat: 35.105821, lon: -120.63038 },
+const locationCoordinates = {
+  vegasShop: { lat: 36.278439, lon: -115.020068 },
+  pismoShop: { lat: 35.105821, lon: -120.63038 },
   nellis: [
     { lat: 36.288471, lon: -114.970005 },
     { lat: 36.316064, lon: -114.944085 }
-  ]
+  ],
+  pismoBeach: { lat: 35.090735, lon: -120.629598 }, //0.25 from here
+  silverlakeShop: { lat: 43.675239, lon: -86.472552 },
+  silverlakeDunes: { lat: 43.686365, lon: -86.508345 }
 };
+
+const pismoBeachCoordinates = [
+  { lat: 35.093107, lon: -120.630094 },
+  { lat: 35.093195, lon: -120.628131 },
+  { lat: 35.086662, lon: -120.627954 },
+  { lat: 35.086777, lon: -120.630302 }
+];
+
+const pismoDunesCoordinates = [
+  { lat: 35.078224, lon: -120.630382 },
+  { lat: 35.078631, lon: -120.623262 },
+  { lat: 35.036037, lon: -120.621555 },
+  { lat: 35.036288, lon: -120.633892 }
+];
 
 function deg2rad(deg: number): number {
   return deg * (Math.PI / 180);
@@ -60,14 +77,40 @@ function getDistanceFromLatLonInMiles(
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
+function isPointInPolygon(
+  lat: number,
+  lon: number,
+  coordinates: { lat: number; lon: number }[]
+): boolean {
+  let inside = false;
+  for (let i = 0, j = coordinates.length - 1; i < coordinates.length; j = i++) {
+    const xi = coordinates[i].lat,
+      yi = coordinates[i].lon;
+    const xj = coordinates[j].lat,
+      yj = coordinates[j].lon;
+
+    const intersect =
+      yi > lon !== yj > lon && lat < ((xj - xi) * (lon - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function isBetweenCoordinates(
+  lat: number,
+  lon: number,
+  coordinates: { lat: number; lon: number }[]
+): boolean {
+  return isPointInPolygon(lat, lon, coordinates);
+}
 
 function isNearLocation(
   lat: number,
   lon: number,
-  location: keyof typeof shopCoordinates,
+  location: keyof typeof locationCoordinates,
   setDistance: number = 2
 ): boolean {
-  const coordinates = shopCoordinates[location];
+  const coordinates = locationCoordinates[location];
   if (Array.isArray(coordinates)) {
     return coordinates.some(
       (coord) =>
@@ -82,9 +125,17 @@ function isNearLocation(
 }
 
 function getLocationType(lat: number, lon: number): string {
-  if (isNearLocation(lat, lon, 'vegas')) return 'Vegas Shop';
-  if (isNearLocation(lat, lon, 'pismo')) return 'Pismo Shop';
+  if (isNearLocation(lat, lon, 'vegasShop')) return 'Vegas Shop';
+  if (isNearLocation(lat, lon, 'pismoShop', 0.5)) return 'Pismo Shop';
   if (isNearLocation(lat, lon, 'nellis')) return 'Vegas Nellis';
+  if (isBetweenCoordinates(lat, lon, pismoBeachCoordinates))
+    return 'Pismo Beach';
+  if (isBetweenCoordinates(lat, lon, pismoDunesCoordinates))
+    return 'Pismo Dunes';
+  if (isNearLocation(lat, lon, 'silverlakeShop')) return 'Silver Lake Shop';
+  if (isNearLocation(lat, lon, 'silverlakeDunes', 0.25))
+    return 'Silver Lake Dunes';
+
   return 'Unknown';
 }
 
