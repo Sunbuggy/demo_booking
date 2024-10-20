@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { RiArrowLeftWideFill, RiArrowRightWideFill } from 'react-icons/ri';
 import dayjs from 'dayjs';
 import { createClient } from '@/utils/supabase/server';
-import AddToHomeScreen from '@/components/add-to-home-screen/add-to-home-screen';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,13 +47,19 @@ const BizPage = async ({
       <div className="min-h-screen flex flex-col gap-5">
         {role && role > 299 && (
           <div className="flex gap-2 justify-center items-center">
-            <Link href={`/biz/${yesterday}`} passHref>
+            <Link
+              href={`/biz/${yesterday}${dcos == true ? '/dcos=true' : ''}`}
+              passHref
+            >
               <RiArrowLeftWideFill />
             </Link>
             <Link href="/biz/calendar" passHref>
               <Button>{date}</Button>
             </Link>
-            <Link href={`/biz/${tomorrow}`} passHref>
+            <Link
+              href={`/biz/${tomorrow}${dcos == true ? '/dcos=true' : ''}`}
+              passHref
+            >
               <RiArrowRightWideFill />
             </Link>
           </div>
@@ -96,7 +101,6 @@ const BizPage = async ({
             Loading ...
           </div>
         )}
-        <AddToHomeScreen />
       </div>
     );
   }

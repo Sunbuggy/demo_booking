@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { VehicleType } from '../../page';
+import Link from 'next/link';
 
 const icon = new L.Icon({
   iconUrl:
@@ -46,7 +47,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ vehicles }) => {
               icon={icon}
             >
               <Popup>
-                {vehicle.type} - {vehicle.city}
+                <Link href={`/biz/vehicles/${vehicle.id}`} target="_blank">
+                  {vehicle.type} - {vehicle.name}
+                </Link>
               </Popup>
             </Marker>
           )

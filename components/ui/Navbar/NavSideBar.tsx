@@ -43,6 +43,14 @@ export default function NavSideBar({ user }: NavSideBarProps) {
               Old Biz
             </Link>
           </SheetClose>
+          <SheetClose asChild>
+            <Link
+              href={`/biz/vehicles/admin`}
+              className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
+            >
+              Vehicle Admin
+            </Link>
+          </SheetClose>
         </div>
       )}
       {user && user.user_level > 899 && (
@@ -56,14 +64,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
               className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
             >
               User Admin
-            </Link>
-          </SheetClose>
-          <SheetClose asChild>
-            <Link
-              href={`/biz/vehicles/admin`}
-              className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
-            >
-              Vehicle Admin
             </Link>
           </SheetClose>
         </div>
