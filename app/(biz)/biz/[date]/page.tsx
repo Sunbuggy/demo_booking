@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { RiArrowLeftWideFill, RiArrowRightWideFill } from 'react-icons/ri';
 import dayjs from 'dayjs';
 import { createClient } from '@/utils/supabase/server';
+import AddToHomeScreen from '@/components/add-to-home-screen/add-to-home-screen';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +96,7 @@ const BizPage = async ({
             Loading ...
           </div>
         )}
+        <AddToHomeScreen />
       </div>
     );
   }
