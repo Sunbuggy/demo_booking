@@ -3,7 +3,7 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Sunbuggy PWA',
-    short_name: 'Sunbuggy Now',
+    short_name: 'Sunbuggy',
     description: 'A Progressive Web App built by Sunbuggy',
     start_url: '/',
     display: 'standalone',
