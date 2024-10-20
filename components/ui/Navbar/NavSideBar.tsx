@@ -30,7 +30,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
               href={`/biz/${date}`}
               className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
             >
-              Board View
+              Today
             </Link>
           </SheetClose>
 
