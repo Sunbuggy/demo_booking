@@ -24,6 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@/components/ui/tooltip';
+import useSound from 'use-sound';
 
 export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
   const supabase = createClient();
@@ -36,6 +37,8 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
   const [isManualInventoryDialogOpen, setIsManualInventoryDialogOpen] =
     React.useState(false);
   const [bay, setBay] = React.useState('');
+  const [pingSound] = useSound('/audios/ping.mp3');
+  const [errSound] = useSound('/audios/err.mp3');
   const [level, setLevel] = React.useState('');
   const [result, setResult] = React.useState('');
   const [closeCamera, setCloseCamera] = React.useState(false);
@@ -58,6 +61,211 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
       //   close the camera after scanning if in single mode
     }
   });
+
+  // useEffect to get the current device location
+  React.useEffect(() => {
+    // if User rejects the location access then disallow the scanning
+    if (!navigator.geolocation) {
+      alert('Please allow location access to scan the QR code');
+      setCloseCamera(true);
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (!position) return;
+        if (position.coords.latitude === 0 && position.coords.longitude === 0)
+          return;
+        setCurrentLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+        setLocationSet(true);
+      },
+      (error) => {
+        console.error(error);
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+
+    // Get the city name from the lat and long
+  }, []);
+
+  React.useEffect(() => {
+    if (currentLocation.latitude === 0 || currentLocation.longitude === 0) {
+      errSound();
+      toast({
+        title: 'Location Not Set',
+        description: 'Location not set please allow location access',
+        duration: 7000,
+        variant: 'destructive'
+      });
+
+      return;
+    }
+    // Get the city name from the lat and long using getLocationType if unknown then use the api
+    const preDefinedLocation = getLocationType(
+      currentLocation.latitude,
+      currentLocation.longitude
+    );
+    // if predifined location is unknown then use the api to get the city name
+    if (preDefinedLocation === 'Unknown') {
+      fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}&localityLanguage=en`
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          setCity(data.city);
+        });
+    } else {
+      setCity(preDefinedLocation);
+    }
+  }, [currentLocation]);
+
+  React.useEffect(() => {
+    if (result && result.includes('/fleet/')) {
+      // if the scanned url is already scanned then dont scan it again
+      if (scannedUrls.includes(result)) {
+        errSound();
+        toast({
+          title: 'Already Scanned',
+          description: `Already Scanned ${result}`,
+          duration: 3000,
+          variant: 'destructive'
+        });
+        return;
+      }
+      if (!scannedUrls.includes(result)) {
+        setScannedUrls([...scannedUrls, result]);
+        toast({
+          title: 'Scanned',
+          description: `Scanned ${result}`,
+          duration: 500,
+          variant: 'success'
+        });
+        pingSound();
+      }
+      const veh_name = result.split('/fleet/')[1].toLowerCase();
+      //   if veh_name is just a number then add sb infront of it if it has a letter then just use it
+      const true_veh_name = isNaN(parseInt(veh_name))
+        ? veh_name
+        : `sb${veh_name}`;
+
+      // Save the scanned /fleet/ URL to the qr_history table
+      saveScannedUrlToHistory(result, city);
+
+      getVehicleIdFromName(supabase, true_veh_name)
+        .then((res) => {
+          const veh_id = res[0].id as string;
+          const veh_status = res[0].vehicle_status as string;
+          const vehicleLocation = {
+            city: city,
+            created_at: new Date().toISOString(),
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude,
+            vehicle_id: veh_id,
+            created_by: user?.id ?? 'unknown'
+          };
+
+          if (
+            !scannedVehicleIds.find((v) => v.id === veh_id) &&
+            !scannedUrls.includes(result)
+          ) {
+            // before inserting the record check if the last created_at if the latitude and longitude is less than 5meters then dont insert
+            fetchVehicleLocations(supabase, veh_id)
+              .then((res) => {
+                if (res.length > 0) {
+                  const lastLocation = res[res.length - 1];
+                  const distance = Math.sqrt(
+                    Math.pow(
+                      lastLocation.latitude - currentLocation.latitude,
+                      2
+                    ) +
+                      Math.pow(
+                        lastLocation.longitude - currentLocation.longitude,
+                        2
+                      )
+                  );
+                  // calculate the distance between the last record and the current record
+                  if (distance < 0.0005) {
+                    toast({
+                      title: 'Vehicle Location Not Updated',
+                      description: `Vehicle location not updated for ${true_veh_name} as it is less than 50 meters`,
+                      duration: 500,
+                      variant: 'default'
+                    });
+                    return;
+                  } else {
+                    recordVehicleLocation(supabase, vehicleLocation)
+                      .then((res) => {
+                        toast({
+                          title: 'Vehicle Location Updated',
+                          description: `Vehicle location updated for ${true_veh_name}`,
+                          duration: 500,
+                          variant: 'success'
+                        });
+                      })
+                      .catch((err) => {
+                        console.error(err);
+                        toast({
+                          title: 'error',
+                          description: 'Error Occured Please Contact Devs',
+                          duration: 5000,
+                          variant: 'destructive'
+                        });
+                      });
+                  }
+                } else {
+                  recordVehicleLocation(supabase, vehicleLocation)
+                    .then((res) => {
+                      toast({
+                        title: 'First Location Created',
+                        description: `First Vehicle location Created for ${true_veh_name}`,
+                        duration: 5000,
+                        variant: 'success'
+                      });
+                    })
+                    .catch((err) => {
+                      console.error(err);
+                      toast({
+                        title: 'error',
+                        description: 'Error Occured Please Contact Devs',
+                        duration: 5000,
+                        variant: 'destructive'
+                      });
+                    });
+                }
+              })
+              .catch((err) => {
+                console.error(err);
+                toast({
+                  title: 'error',
+                  description: 'Error Occured Please Contact Devs',
+                  duration: 5000,
+                  variant: 'destructive'
+                });
+              });
+
+            setScannedVehicleIds([
+              ...scannedVehicleIds,
+              { name: true_veh_name, id: veh_id, status: veh_status }
+            ]);
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          toast({
+            title: 'error',
+            description: 'Error Occured Please Contact Devs',
+            duration: 5000,
+            variant: 'destructive'
+          });
+        });
+    }
+    if (!result.includes('/fleet/')) {
+      setScannedUrls([]);
+      errSound();
+    }
+  }, [result]);
 
   const locationCoordinates = {
     vegasShop: { lat: 36.278439, lon: -115.020068 },
@@ -200,185 +408,8 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
         description: 'Could not save QR scan to history.',
         variant: 'destructive'
       });
-    } else {
-      console.log('QR scan saved:', data);
     }
   };
-
-  // useEffect to get the current device location
-  React.useEffect(() => {
-    // if User rejects the location access then disallow the scanning
-    if (!navigator.geolocation) {
-      alert('Please allow location access to scan the QR code');
-      setCloseCamera(true);
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (!position) return;
-        if (position.coords.latitude === 0 && position.coords.longitude === 0)
-          return;
-        setCurrentLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-        setLocationSet(true);
-      },
-      (error) => {
-        console.error(error);
-      },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-    );
-
-    // Get the city name from the lat and long
-  }, []);
-
-  React.useEffect(() => {
-    if (currentLocation.latitude === 0 && currentLocation.longitude === 0)
-      return;
-    // Get the city name from the lat and long using getLocationType if unknown then use the api
-    const preDefinedLocation = getLocationType(
-      currentLocation.latitude,
-      currentLocation.longitude
-    );
-    // if predifined location is unknown then use the api to get the city name
-    if (preDefinedLocation === 'Unknown') {
-      fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}&localityLanguage=en`
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          setCity(data.city);
-        });
-    } else {
-      setCity(preDefinedLocation);
-    }
-  }, [currentLocation]);
-
-  React.useEffect(() => {
-    if (!scannedUrls.includes(result) && result !== '') {
-      setScannedUrls([...scannedUrls, result]);
-    }
-    if (result && result.includes('/fleet/')) {
-      const veh_name = result.split('/fleet/')[1].toLowerCase();
-      //   if veh_name is just a number then add sb infront of it if it has a letter then just use it
-      const true_veh_name = isNaN(parseInt(veh_name))
-        ? veh_name
-        : `sb${veh_name}`;
-
-      // Save the scanned /fleet/ URL to the qr_history table
-      saveScannedUrlToHistory(result, city);
-
-      getVehicleIdFromName(supabase, true_veh_name)
-        .then((res) => {
-          console.log('res', res);
-          const veh_id = res[0].id as string;
-          const veh_status = res[0].vehicle_status as string;
-          const vehicleLocation = {
-            city: city,
-            created_at: new Date().toISOString(),
-            latitude: currentLocation.latitude,
-            longitude: currentLocation.longitude,
-            vehicle_id: veh_id,
-            created_by: user?.id ?? 'unknown'
-          };
-
-          if (
-            !scannedVehicleIds.find((v) => v.id === veh_id) &&
-            !scannedUrls.includes(result)
-          ) {
-            // before inserting the record check if the last created_at if the latitude and longitude is less than 5meters then dont insert
-            fetchVehicleLocations(supabase, veh_id)
-              .then((res) => {
-                if (res.length > 0) {
-                  const lastLocation = res[res.length - 1];
-                  const distance = Math.sqrt(
-                    Math.pow(
-                      lastLocation.latitude - currentLocation.latitude,
-                      2
-                    ) +
-                      Math.pow(
-                        lastLocation.longitude - currentLocation.longitude,
-                        2
-                      )
-                  );
-                  // calculate the distance between the last record and the current record
-                  if (distance < 0.0005) {
-                    toast({
-                      title: 'Vehicle Location Not Updated',
-                      description: `Vehicle location not updated for ${true_veh_name} as it is less than 50 meters`,
-                      duration: 500,
-                      variant: 'default'
-                    });
-                    return;
-                  } else {
-                    recordVehicleLocation(supabase, vehicleLocation)
-                      .then((res) => {
-                        toast({
-                          title: 'Vehicle Location Updated',
-                          description: `Vehicle location updated for ${true_veh_name}`,
-                          duration: 500,
-                          variant: 'success'
-                        });
-                      })
-                      .catch((err) => {
-                        console.error(err);
-                        toast({
-                          title: 'error',
-                          description: 'Error Occured Please Contact Devs',
-                          duration: 5000,
-                          variant: 'destructive'
-                        });
-                      });
-                  }
-                } else {
-                  recordVehicleLocation(supabase, vehicleLocation)
-                    .then((res) => {
-                      toast({
-                        title: 'First Location Created',
-                        description: `First Vehicle location Created for ${true_veh_name}`,
-                        duration: 5000,
-                        variant: 'success'
-                      });
-                    })
-                    .catch((err) => {
-                      console.error(err);
-                      toast({
-                        title: 'error',
-                        description: 'Error Occured Please Contact Devs',
-                        duration: 5000,
-                        variant: 'destructive'
-                      });
-                    });
-                }
-              })
-              .catch((err) => {
-                console.error(err);
-                toast({
-                  title: 'error',
-                  description: 'Error Occured Please Contact Devs',
-                  duration: 5000,
-                  variant: 'destructive'
-                });
-              });
-
-            setScannedVehicleIds([
-              ...scannedVehicleIds,
-              { name: true_veh_name, id: veh_id, status: veh_status }
-            ]);
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-          toast({
-            title: 'error',
-            description: 'Error Occured Please Contact Devs',
-            duration: 5000,
-            variant: 'destructive'
-          });
-        });
-    }
-  }, [result]);
 
   const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { id, checked } = event.target;

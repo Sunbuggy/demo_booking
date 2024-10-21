@@ -15,7 +15,6 @@ const NormalMode = ({
   }[];
   scannedUrls: string[];
 }) => {
-  console.log(scannedVehicleIds);
   return (
     <Tabs defaultValue="new" className="w-[200px] mb-5">
       <TabsList className="w-full ">
@@ -26,25 +25,28 @@ const NormalMode = ({
         <div className="w-[200px]">
           {scannedVehicleIds.length > 0 && (
             <ScrollArea className="h-[215px] ml-2  rounded-md border p-4">
-              <div className="flex flex-col gap-2 items-center">
-                <h4 className="text-xl font mb-3">Scanned Vehicles:</h4>
+              <h4 className="text-xl font mb-3">Scanned Vehicles:</h4>
+              <div className="grid grid-cols-3">
                 {scannedVehicleIds.map((v, i) => (
                   <span key={i}>
                     <DrawerClose asChild>
-                      <Link
-                        className={
-                          v.status === 'broken'
-                            ? 'red_button'
-                            : v.status === 'maintenance'
-                              ? 'amber_button'
-                              : v.status === 'fine'
-                                ? `green_button`
-                                : ''
-                        }
-                        href={`/biz/vehicles/${v.id}`}
-                      >
-                        {v.name}
-                      </Link>
+                      <div className="relative">
+                        <Link
+                          className="normal_button_small"
+                          href={`/biz/vehicles/${v.id}`}
+                        >
+                          {v.name}
+                        </Link>
+                        {v.status === 'broken' && (
+                          <span className="absolute top-0 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                        )}
+                        {v.status === 'maintenance' && (
+                          <span className="absolute top-0 right-1 w-2 h-2 bg-amber-500 rounded-full"></span>
+                        )}
+                        {v.status === 'fine' && (
+                          <span className="absolute top-0 right-1 w-2 h-2 bg-green-500 rounded-full"></span>
+                        )}
+                      </div>
                     </DrawerClose>
                   </span>
                 ))}
