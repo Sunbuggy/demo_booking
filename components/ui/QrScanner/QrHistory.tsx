@@ -7,6 +7,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import Input from '../Input';
 import Card from '@/components/ui/Card';
+import { useRouter } from 'next/navigation'; // For navigation
+import { getVehicleIdFromName } from '@/utils/supabase/queries'; // Import the query function
 
 interface QrHistoryRecord {
   id: number;
@@ -22,6 +24,7 @@ export const QrScanHistory = ({ user }: { user: UserType | null }) => {
   const [scannedLinks, setScannedLinks] = useState<QrHistoryRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const { toast } = useToast();
+  const router = useRouter(); // For redirecting
 
   const fetchUserScanHistory = async () => {
     if (!user) return;
@@ -58,11 +61,61 @@ export const QrScanHistory = ({ user }: { user: UserType | null }) => {
     }
   }, [user]);
 
-  const formatLink = (link: string) => {
-    if (!/^https?:\/\//i.test(link)) {
-      return `https://${link}`;
+  const handleLinkClick = async (link: string) => {
+    const fleetPrefix = 'sunbuggy.com/fleet/';
+    if (link.startsWith(fleetPrefix)) {
+      const fleetIdentifier = link.substring(fleetPrefix.length);
+  
+      // Convert fleetIdentifier to lowercase
+      let vehicleName = fleetIdentifier.toLowerCase();
+  
+      // If it's a number, prepend 'sb' to the name
+      if (!isNaN(Number(fleetIdentifier))) {
+        vehicleName = `sb${fleetIdentifier.toLowerCase()}`; // Lowercase here as well
+      }
+
+      try {
+        // Query the vehicle by name using the utility function
+        const vehicleData = await getVehicleIdFromName(supabase, vehicleName);
+        console.log('Vehicle data:', vehicleData); // Debugging output
+
+        // Ensure vehicleData is not empty
+        if (!vehicleData || vehicleData.length === 0) {
+          console.log(`No vehicle found for: ${vehicleName}`); // Debugging output
+          toast({
+            title: 'Error',
+            description: `No vehicle found for ${vehicleName}`,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // Retrieve vehicle ID and redirect
+        const vehicleId = vehicleData[0]?.id; // Handle possible null/undefined
+        if (!vehicleId) {
+          console.log('Vehicle ID not found'); // Debugging output
+          toast({
+            title: 'Error',
+            description: `Vehicle ID not found for ${vehicleName}`,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // Redirect to the vehicle details page
+        router.push(`/biz/vehicles/${vehicleId}`);
+      } catch (error) {
+        console.error('Vehicle search error:', error);
+        toast({
+          title: 'Error',
+          description: `An error occurred while fetching the vehicle data for ${vehicleName}`,
+          variant: 'destructive',
+        });
+      }
+    } else {
+      // If it's not a fleet link, open it normally
+      window.open(link.startsWith('http') ? link : `https://${link}`, '_blank');
     }
-    return link;
   };
 
   // Function to format the date for display and search
@@ -101,13 +154,12 @@ export const QrScanHistory = ({ user }: { user: UserType | null }) => {
           <div className="grid grid-cols-1 gap-4">
             {filteredLinks.map((linkRecord) => (
               <div key={linkRecord.id} className="flex flex-col gap-2 border-b pb-2">
-                <Link
-                  className="underline text-orange-500"
-                  href={formatLink(linkRecord.link)} 
-                  target="_blank"
+                <a
+                  className="underline text-orange-500 cursor-pointer"
+                  onClick={() => handleLinkClick(linkRecord.link)}  // Handle fleet links and external links
                 >
                   {linkRecord.link}
-                </Link>
+                </a>
                 <span>Scanned at: {formatDateForSearch(linkRecord.scanned_at)}</span>
                 <span>Location: {linkRecord.location}</span>
                 {linkRecord.latitude && linkRecord.longitude && (
