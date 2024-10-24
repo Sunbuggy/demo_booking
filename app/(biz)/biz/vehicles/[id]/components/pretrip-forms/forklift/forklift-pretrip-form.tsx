@@ -4,8 +4,12 @@ import { z } from 'zod';
 import { FactoryForm, FieldConfig } from '@/components/factory-form';
 import React from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { insertIntoForkliftPretripForm } from '@/utils/supabase/queries';
+import {
+  createVehicleTag,
+  insertIntoForkliftPretripForm
+} from '@/utils/supabase/queries';
 import { useToast } from '@/components/ui/use-toast';
+import { Database } from '@/types_db';
 
 export const formSchema = z.object({
   no_hydraulic_fluid_leaks: z.boolean(),
@@ -248,6 +252,44 @@ const ForkliftPretripForm = ({
         created_at: new Date().toISOString(),
         created_by: user_id
       };
+      // gather all the results and if there is any 'no' answer then grab all the 'no' answers and console.log them
+      const noAnswers = Object.keys(data).filter(
+        (key) => data[key as keyof typeof data] === false
+      );
+      if (noAnswers.length > 0) {
+        console.log('No answers:', noAnswers);
+        noAnswers.forEach((answer) => {
+          const vehicleTag: Database['public']['Tables']['vehicle_tag']['Insert'] =
+            {
+              vehicle_id: vehicle_id,
+              created_at: new Date().toISOString(),
+              created_by: user_id,
+              notes: `Pretrip form failed, ${answer}`,
+              tag_type: 'maintenance',
+              tag_status: 'open'
+            };
+          createVehicleTag(supabase, vehicleTag)
+            .then((res) => {
+              toast({
+                title: 'Vehicle tag created',
+                description:
+                  'A vehicle tag has been created for the failed pretrip form',
+                variant: 'success',
+                duration: 2000
+              });
+            })
+            .catch((error) => {
+              console.error('Error creating vehicle tag', error);
+              toast({
+                title: 'Error creating vehicle tag',
+                description: 'There was an error creating the vehicle tag',
+                variant: 'destructive',
+                duration: 2000
+              });
+            });
+        });
+      }
+
       insertIntoForkliftPretripForm(supabase, data, 'vehicle_pretrip_forklift')
         .then((res) => {
           // clear the form

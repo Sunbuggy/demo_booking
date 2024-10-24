@@ -115,7 +115,13 @@ const ExistingTagForm = ({
           });
         });
     }
-    checkAndChangeVehicleStatus(supabase, tag?.vehicle_id || '');
+    checkAndChangeVehicleStatus(supabase, tag?.vehicle_id || '')
+      .then((res) => {
+        window.location.reload();
+      })
+      .catch((err) => {
+        console.error(err);
+      });
   };
   const new_created_by_id = tag?.created_by as string;
   const new_updated_by_id = tag?.updated_by as string;
