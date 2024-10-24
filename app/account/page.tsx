@@ -8,6 +8,7 @@ import {
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 import ScannerPage from '@/components/ui/QrScanner/QrFunction';
 import BackgroundPickerButton from './components/background-picker-button';
+import { GuestHistory } from './components/scanned/GuestHistory';
 
 export type TimeEntry = {
   id: any;
