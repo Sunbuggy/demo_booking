@@ -5,6 +5,7 @@ import { FactoryForm, FieldConfig } from '@/components/factory-form';
 import React from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
+  changeVehicleStatusToMaintenance,
   createVehicleTag,
   insertIntoShuttlePretripForm
 } from '@/utils/supabase/queries';
@@ -416,6 +417,18 @@ const ShuttlePretripForm = ({
             };
           createVehicleTag(supabase, vehicleTag)
             .then((res) => {
+              if (vehicle_id) {
+                changeVehicleStatusToMaintenance(supabase, vehicle_id).then(
+                  (res) => {
+                    toast({
+                      title: 'Vehicle status changed',
+                      description: 'Vehicle status changed to maintenance',
+                      variant: 'success',
+                      duration: 2000
+                    });
+                  }
+                );
+              }
               toast({
                 title: 'Vehicle tag created',
                 description:
