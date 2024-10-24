@@ -58,7 +58,8 @@ export default async function Account() {
           </div>
         </div>
         <div className="p-4">
-          <ScannerPage user={user ? user[0] : null} />
+          {/* <ScannerPage user={user ? user[0] : null} /> */}
+<GuestHistory user={null}/>
           <NameForm
             userName={userName ?? ''}
             user_role={role || 100}

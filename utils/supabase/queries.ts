@@ -916,6 +916,7 @@ export const insertIntoQrHistorys = cache(
     return data;
   }
 );
+
 export const fetchQrHistoryInfo = cache(
   async (supabase: SupabaseClient, qr_history_id: string) => {
     const { data, error } = await supabase
@@ -929,6 +930,22 @@ export const fetchQrHistoryInfo = cache(
     return data;
   }
 );
+
+export const fetchUserScanHistory = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    const { data, error } = await supabase
+      .from('qr_history')
+      .select('id, link, scanned_at, location, latitude, longitude')
+      .eq('user', userId)
+      .order('scanned_at', { ascending: false });
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
 export const updateQrHistory = cache(
   async (
     supabase: SupabaseClient,

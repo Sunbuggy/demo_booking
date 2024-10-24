@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/client';
 import { UserType } from '@/app/(biz)/biz/users/types';
 import { useToast } from '@/components/ui/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import Input from '../Input';
+import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
 import { fetchUserScanHistory, getVehicleIdFromName } from '@/utils/supabase/queries';
 
@@ -17,7 +17,7 @@ interface QrHistoryRecord {
   longitude: any;
 }
 
-export const QrScanHistory = ({ user }: { user: UserType | null }) => {
+export const GuestHistory = ({ user }: { user: UserType | null }) => {
   const supabase = createClient();
   const [scannedLinks, setScannedLinks] = useState<QrHistoryRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -99,7 +99,7 @@ export const QrScanHistory = ({ user }: { user: UserType | null }) => {
         }
 
         // Fetch the list of GIFs in the folder
-        const res = await fetch('/api/fleet-badges', {
+        const res = await fetch('/api/s3/upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ vehicleId }),
