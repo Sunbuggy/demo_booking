@@ -8,6 +8,7 @@ import {
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 import ScannerPage from '@/components/ui/QrScanner/QrFunction';
 import BackgroundPicker from './components/background-picker';
+import { GuestHistory } from './components/scanned/GuestHistory';
 
 export type TimeEntry = {
   id: any;
@@ -58,7 +59,8 @@ export default async function Account() {
           </div>
         </div>
         <div className="p-4">
-          <ScannerPage user={user ? user[0] : null} />
+          {/* <ScannerPage user={user ? user[0] : null} /> */}
+<GuestHistory user={null}/>
           <NameForm
             userName={userName ?? ''}
             user_role={role || 100}
