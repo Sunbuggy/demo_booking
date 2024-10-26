@@ -91,34 +91,38 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
   }, []);
 
   React.useEffect(() => {
-    if (currentLocation.latitude === 0 || currentLocation.longitude === 0) {
-      errSound();
-      toast({
-        title: 'Location Not Set',
-        description: 'Location not set please allow location access',
-        duration: 7000,
-        variant: 'destructive'
-      });
-
-      return;
-    }
-    // Get the city name from the lat and long using getLocationType if unknown then use the api
-    const preDefinedLocation = getLocationType(
-      currentLocation.latitude,
-      currentLocation.longitude
-    );
-    // if predifined location is unknown then use the api to get the city name
-    if (preDefinedLocation === 'Unknown') {
-      fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}&localityLanguage=en`
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          setCity(data.city);
+    const timer = setTimeout(() => {
+      if (currentLocation.latitude === 0 || currentLocation.longitude === 0) {
+        errSound();
+        toast({
+          title: 'Location Not Set',
+          description: 'Location not set please allow location access',
+          duration: 7000,
+          variant: 'destructive'
         });
-    } else {
-      setCity(preDefinedLocation);
-    }
+
+        return;
+      }
+      // Get the city name from the lat and long using getLocationType if unknown then use the api
+      const preDefinedLocation = getLocationType(
+        currentLocation.latitude,
+        currentLocation.longitude
+      );
+      // if predifined location is unknown then use the api to get the city name
+      if (preDefinedLocation === 'Unknown') {
+        fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}&localityLanguage=en`
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            setCity(data.city);
+          });
+      } else {
+        setCity(preDefinedLocation);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
   }, [currentLocation]);
 
   React.useEffect(() => {
