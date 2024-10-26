@@ -80,6 +80,20 @@ export const getUserDetailsById = cache(
   }
 );
 
+export const getUserById = cache(
+  async (supabase: SupabaseClient, id: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
 export const getAllUsers = cache(async (supabase: SupabaseClient) => {
   const { data, error } = await supabase.from('users').select();
   if (error) {

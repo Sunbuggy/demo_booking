@@ -30,6 +30,44 @@ export type Database = {
         }
         Relationships: []
       }
+      adventures: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          imageUrl: string | null
+          title: string | null
+          videoUrl: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          imageUrl?: string | null
+          title?: string | null
+          videoUrl?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          imageUrl?: string | null
+          title?: string | null
+          videoUrl?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventures_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking: {
         Row: {
           booked_by: string
@@ -631,6 +669,7 @@ export type Database = {
           bg_repeat: string | null
           bg_size: string | null
           email: string | null
+          emp_id: string | null
           full_name: string | null
           id: string
           phone: string | null
@@ -646,6 +685,7 @@ export type Database = {
           bg_repeat?: string | null
           bg_size?: string | null
           email?: string | null
+          emp_id?: string | null
           full_name?: string | null
           id: string
           phone?: string | null
@@ -661,6 +701,7 @@ export type Database = {
           bg_repeat?: string | null
           bg_size?: string | null
           email?: string | null
+          emp_id?: string | null
           full_name?: string | null
           id?: string
           phone?: string | null

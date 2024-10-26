@@ -27,6 +27,7 @@ import { DialogTrigger } from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import HistoryTimeClockEvents from './time-clock/time-history';
+import Link from 'next/link';
 
 export interface TimeSinceClockIn {
   data: number;
@@ -65,7 +66,17 @@ export const columns: ColumnDef<UserType, any>[] = [
     ),
     cell: ({ row }) => {
       const name = row.getValue('full_name') as string;
-      return <div className="w-[180px] ">{name}</div>;
+
+      return (
+        <div className="w-[180px] ">
+          <Link
+            href={`/biz/users/${row.original.id}`}
+            className="underline text-blue-500"
+          >
+            {name}
+          </Link>
+        </div>
+      );
     },
     enableSorting: true,
     enableHiding: false
