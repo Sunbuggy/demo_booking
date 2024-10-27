@@ -32,10 +32,9 @@ const HourCardTitle = ({
                 }, 0)
               );
             }, 0)
-          }-PPL:
+          }-People
         </span>
         <span className="text-orange-500">
-          V-
           {
             // map through the data and get the total count of vehicles by  adding up every location found and return the sum
             Object.keys(data[hr]).reduce((acc, locationKey) => {
@@ -46,7 +45,7 @@ const HourCardTitle = ({
                 }, 0)
               );
             }, 0)
-          }
+          }-Vehicles
         </span>
         {' '}
         <span className="text-base font-light italic text-orange-500">
