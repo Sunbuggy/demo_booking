@@ -142,7 +142,7 @@ export function FactoryForm({
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {}
+    defaultValues: initialData || data || {}
   });
 
   useEffect(() => {

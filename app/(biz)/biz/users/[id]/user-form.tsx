@@ -1,25 +1,25 @@
 'use client';
 import { FactoryForm, FieldConfig } from '@/components/factory-form';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { Database } from '@/types_db';
+import { createClient } from '@/utils/supabase/client';
+import { updateUser, upsertEmployeeDetails } from '@/utils/supabase/queries';
 import React from 'react';
 import { z } from 'zod';
-
+type EmpDetails = Database['public']['Tables']['employee_details']['Row'][];
 type User = Database['public']['Tables']['users']['Row'];
 
 export const formSchema = z.object({
-  avatar_url: z.string().nullable(),
-  bg_image: z.string().nullable(),
-  bg_position: z.string().nullable(),
-  bg_repeat: z.string().nullable(),
-  bg_size: z.string().nullable(),
   email: z.string().nullable(),
   full_name: z.string().nullable(),
   id: z.string(),
   phone: z.string().nullable(),
-  time_entry_status: z.string().nullable(),
   user_level: z.number().nullable(),
-  emp_id: z.string().nullable()
+  emp_id: z.string().nullable(),
+  payroll_company: z.string().nullable(),
+  primary_position: z.string().nullable(),
+  primary_work_location: z.string().nullable()
 });
 
 export const fields: FieldConfig[] = [
@@ -46,13 +46,6 @@ export const fields: FieldConfig[] = [
   },
   {
     type: 'input',
-    name: 'avatar_url',
-    label: 'Avatar URL',
-    placeholder: 'Avatar URL',
-    description: 'The avatar URL of the user.'
-  },
-  {
-    type: 'input',
     name: 'user_level',
     label: 'User Level',
     placeholder: 'User Level',
@@ -60,21 +53,67 @@ export const fields: FieldConfig[] = [
   },
   {
     type: 'input',
-    name: 'time_entry_status',
-    label: 'Time Entry Status',
-    placeholder: 'Time Entry Status',
-    description: 'The time entry status of the user.'
+    name: 'emp_id',
+    label: 'Emp ID',
+    placeholder: 'Emp ID',
+    description: 'The emp ID of the user.'
   },
   {
-    type: 'input',
-    name: 'emp_id',
-    label: 'Employee ID',
-    placeholder: 'Employee ID',
-    description: 'The employee ID of the user.'
+    type: 'select',
+    name: 'payroll_company',
+    label: 'Payroll Company',
+    placeholder: 'Payroll Company',
+    description: 'The payroll company of the user.',
+    options: [
+      { label: 'NV-ModernHR', value: 'NV-ModernHR' },
+      { label: 'NV-BBSI', value: 'NV-BBSI' },
+      { label: 'MI-BBSI', value: 'MI-BBSI' },
+      { label: 'CA-ModernHR', value: 'CA-ModernHR' }
+    ]
+  },
+  {
+    type: 'select',
+    name: 'primary_position',
+    label: 'Primary Position',
+    placeholder: 'Primary Position',
+    description: 'The primary position of the user.',
+    options: [
+      { label: 'JR-DUNIE', value: 'JR-DUNIE' },
+      { label: 'SR-DUNIE', value: 'SR-DUNIE' },
+      { label: 'ShuttleDriver', value: 'ShuttleDriver' },
+      { label: 'CSR', value: 'CSR' },
+      { label: 'ADMIN', value: 'ADMIN' },
+      { label: 'DEV', value: 'DEV' },
+      { label: 'BUGGY-TECH', value: 'BUGGY-TECH' },
+      { label: 'ATV-TECH', value: 'ATV-TECH' },
+      { label: 'FLEET-TECH', value: 'FLEET-TECH' },
+      { label: 'FABRICATOR', value: 'FABRICATOR' },
+      { label: 'LABOR', value: 'LABOR' }
+    ]
+  },
+  {
+    type: 'select',
+    name: 'primary_work_location',
+    label: 'Primary Work Location',
+    placeholder: 'Primary Work Location',
+    description: 'The primary work location of the user.',
+    options: [
+      { label: 'NV', value: 'NV' },
+      { label: 'MI', value: 'MI' },
+      { label: 'CA', value: 'CA' },
+      { label: 'FL', value: 'FL' }
+    ]
   }
 ];
 
-const UserForm = ({ user }: { user: User }) => {
+const UserForm = ({
+  user,
+  empDetails
+}: {
+  user: User;
+  empDetails: EmpDetails;
+}) => {
+  const supabase = createClient();
   const [formData, setFormData] = React.useState<
     z.infer<typeof formSchema> | undefined
   >(undefined);
@@ -84,11 +123,54 @@ const UserForm = ({ user }: { user: User }) => {
   const { toast } = useToast();
 
   React.useEffect(() => {
-    setInitialData(user);
+    const usr = {
+      ...user,
+      ...empDetails[0]
+    };
+    console.log(usr);
+    setInitialData(usr);
   }, []);
   React.useEffect(() => {
     if (formData) {
-      console.log(formData);
+      const user_id = user.id;
+      const full_name = formData.full_name;
+      const email = formData.email;
+      const phone = formData.phone;
+      const user_level = formData.user_level;
+      const emp_id = formData.emp_id;
+      const payroll_company = formData.payroll_company;
+      const primary_position = formData.primary_position;
+      const primary_work_location = formData.primary_work_location;
+      const userTableData = {
+        full_name,
+        email,
+        phone,
+        user_level
+      };
+      const empDetailsTableData = {
+        emp_id,
+        payroll_company,
+        primary_position,
+        primary_work_location,
+        user_id
+      };
+      updateUser(supabase, userTableData, user_id).then(() => {
+        toast({
+          title: 'User updated',
+          description: 'User updated successfully',
+          variant: 'success',
+          duration: 5000
+        });
+        upsertEmployeeDetails(supabase, empDetailsTableData).then(() => {
+          toast({
+            title: 'Employee Details updated',
+            description: 'Employee Details updated successfully',
+            variant: 'success',
+            duration: 5000
+          });
+          window.location.reload();
+        });
+      });
     }
   }, [formData]);
 
@@ -97,13 +179,19 @@ const UserForm = ({ user }: { user: User }) => {
   };
   if (user)
     return (
-      <FactoryForm
-        fields={fields}
-        formSchema={formSchema}
-        onSubmit={onSubmit}
-        hideFilterBoxField={true}
-        data={initialData}
-      />
+      <>
+        {initialData ? (
+          <FactoryForm
+            fields={fields}
+            formSchema={formSchema}
+            onSubmit={onSubmit}
+            data={initialData}
+            hideFilterBoxField={true}
+          />
+        ) : (
+          <Skeleton className="w-[400] h-[728]" />
+        )}
+      </>
     );
 };
 

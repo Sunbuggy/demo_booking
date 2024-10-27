@@ -7,14 +7,15 @@ import { UserType } from '../../../types';
 import React, { useState } from 'react';
 import {
   calculateTimeSinceClockIn,
-  changeUserRole
+  changeUserRole,
+  checkIfUserHasLevel
 } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import ClockOut from './time-clock/clock-out';
 import ClockIn from './time-clock/clock-in';
 import AdjustTime from './time-clock/adjust-time';
-import TimeSheetAdjustment from './time-clock/time-sheet';
+// import TimeSheetAdjustment from './time-clock/time-sheet';
 import {
   Dialog,
   DialogClose,
@@ -66,15 +67,42 @@ export const columns: ColumnDef<UserType, any>[] = [
     ),
     cell: ({ row }) => {
       const name = row.getValue('full_name') as string;
+      const supabase = createClient();
+      const [signedInUserId, setSignedInUserId] = useState<string | undefined>(
+        undefined
+      );
+      const [adminAuthorized, setAdminAuthorized] = useState<boolean>(false);
+      React.useEffect(() => {
+        supabase.auth.getUser().then((user) => {
+          const user_id = user.data.user?.id;
+          setSignedInUserId(user_id);
+        });
+      }, []);
+      React.useEffect(() => {
+        if (signedInUserId)
+          checkIfUserHasLevel(supabase, signedInUserId, 900)
+            .then((res) => {
+              if ((res = true)) {
+                setAdminAuthorized(true);
+              }
+            })
+            .catch((err) => {
+              console.error(err);
+            });
+      }, [signedInUserId]);
 
       return (
         <div className="w-[180px] ">
-          <Link
-            href={`/biz/users/${row.original.id}`}
-            className="underline text-blue-500"
-          >
-            {name}
-          </Link>
+          {adminAuthorized ? (
+            <Link
+              href={`/biz/users/${row.original.id}`}
+              className="underline text-blue-500"
+            >
+              {name}
+            </Link>
+          ) : (
+            <h2>{name}</h2>
+          )}
         </div>
       );
     },

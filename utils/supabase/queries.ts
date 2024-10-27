@@ -1305,3 +1305,65 @@ export const getUserBgProperties = cache(
     return data;
   }
 );
+
+export const getEmployeeDetails = cache(
+  async (supabase: SupabaseClient, user_id: string) => {
+    const { data, error } = await supabase
+      .from('employee_details')
+      .select()
+      .eq('user_id', user_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data as Database['public']['Tables']['employee_details']['Row'][];
+  }
+);
+
+export const upsertEmployeeDetails = cache(
+  async (
+    supabase: SupabaseClient,
+    employee_details: Database['public']['Tables']['employee_details']['Insert']
+  ) => {
+    const { data, error } = await supabase
+      .from('employee_details')
+      .upsert(employee_details);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+export const updateUser = cache(
+  async (
+    supabase: SupabaseClient,
+    user: Database['public']['Tables']['users']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase
+      .from('users')
+      .update(user)
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const checkIfUserHasLevel = cache(
+  async (supabase: SupabaseClient, user_id: string, user_level: number) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', user_id)
+      .gte('user_level', user_level);
+    if (error) {
+      console.error(error);
+      return false;
+    }
+    return data.length > 0;
+  }
+);

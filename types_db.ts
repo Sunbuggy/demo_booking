@@ -271,6 +271,41 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_details: {
+        Row: {
+          emp_id: string | null
+          id: string
+          payroll_company: string | null
+          primary_position: string | null
+          primary_work_location: string | null
+          user_id: string | null
+        }
+        Insert: {
+          emp_id?: string | null
+          id?: string
+          payroll_company?: string | null
+          primary_position?: string | null
+          primary_work_location?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          emp_id?: string | null
+          id?: string
+          payroll_company?: string | null
+          primary_position?: string | null
+          primary_work_location?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_details_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_vehicles: {
         Row: {
           group_id: string
@@ -669,7 +704,6 @@ export type Database = {
           bg_repeat: string | null
           bg_size: string | null
           email: string | null
-          emp_id: string | null
           full_name: string | null
           id: string
           phone: string | null
@@ -685,7 +719,6 @@ export type Database = {
           bg_repeat?: string | null
           bg_size?: string | null
           email?: string | null
-          emp_id?: string | null
           full_name?: string | null
           id: string
           phone?: string | null
@@ -701,7 +734,6 @@ export type Database = {
           bg_repeat?: string | null
           bg_size?: string | null
           email?: string | null
-          emp_id?: string | null
           full_name?: string | null
           id?: string
           phone?: string | null
