@@ -12,17 +12,18 @@ type EmpDetails = Database['public']['Tables']['employee_details']['Row'][];
 type User = Database['public']['Tables']['users']['Row'];
 
 export const formSchema = z.object({
-  email: z.string().nullable(),
-  full_name: z.string().nullable(),
-  id: z.string(),
-  phone: z.string().nullable(),
-  user_level: z.coerce.number({
-    required_error: 'User Level is required'
-  }),
-  emp_id: z.string().nullable(),
-  payroll_company: z.string().nullable(),
-  primary_position: z.string().nullable(),
-  primary_work_location: z.string().nullable()
+  email: z.string().nullable().optional(),
+  full_name: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  user_level: z.coerce
+    .number({
+      required_error: 'User Level is required'
+    })
+    .optional(),
+  emp_id: z.string().nullable().optional(),
+  payroll_company: z.string().nullable().optional(),
+  primary_position: z.string().nullable().optional(),
+  primary_work_location: z.string().nullable().optional()
 });
 
 export const fields: FieldConfig[] = [
