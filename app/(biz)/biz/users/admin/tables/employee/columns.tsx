@@ -119,11 +119,28 @@ export const columns: ColumnDef<UserType, any>[] = [
       const [makeEmployee, setMakeEmployee] = useState(false);
       const [makeManager, setMakeManager] = useState(false);
       const [makeAdmin, setMakeAdmin] = useState(false);
+      const [makeCustomer, setMakeCustomer] = useState(false);
       const supabase = createClient();
       const { toast } = useToast();
       const router = useRouter();
 
       React.useEffect(() => {
+        // make customer 100
+        if (makeCustomer) {
+          changeUserRole(supabase, row.original.id, 100)
+            .then((res) => {
+              toast({
+                title: 'Success',
+                description: 'User has been made a customer',
+                duration: 2000,
+                variant: 'success'
+              });
+            })
+            .catch((err) => {
+              console.error(err);
+            });
+        }
+
         // Make Employee
         if (makeEmployee) {
           changeUserRole(supabase, row.original.id, 300)
@@ -181,7 +198,8 @@ export const columns: ColumnDef<UserType, any>[] = [
         setMakeEmployee(false);
         setMakeManager(false);
         setMakeAdmin(false);
-      }, [makeEmployee, makeManager, makeAdmin]);
+        setMakeCustomer(false);
+      }, [makeEmployee, makeManager, makeAdmin, makeCustomer]);
 
       return (
         <div className="w-[40px]">
@@ -207,12 +225,23 @@ export const columns: ColumnDef<UserType, any>[] = [
                     Current Level: {row.original.user_level}
                   </span>
                   <br />
+                  Customers &gt; 100,
+                  <br />
                   Employees &gt; 299,
                   <br /> Managers &gt; 650,
                   <br /> admins = 900
                 </DialogDescription>
               </DialogHeader>
               <div className="flex gap-4 items-center">
+                <DialogClose asChild>
+                  <Button
+                    onClick={() => {
+                      setMakeCustomer(true);
+                    }}
+                  >
+                    Customer
+                  </Button>
+                </DialogClose>
                 <DialogClose asChild>
                   <Button
                     onClick={() => {

@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/client';
 import { updateUser, upsertEmployeeDetails } from '@/utils/supabase/queries';
 import React from 'react';
 import { z } from 'zod';
+import UserImage from './components/user-image';
 type EmpDetails = Database['public']['Tables']['employee_details']['Row'][];
 type User = Database['public']['Tables']['users']['Row'];
 
@@ -15,7 +16,9 @@ export const formSchema = z.object({
   full_name: z.string().nullable(),
   id: z.string(),
   phone: z.string().nullable(),
-  user_level: z.number().nullable(),
+  user_level: z.coerce.number({
+    required_error: 'User Level is required'
+  }),
   emp_id: z.string().nullable(),
   payroll_company: z.string().nullable(),
   primary_position: z.string().nullable(),
@@ -127,7 +130,6 @@ const UserForm = ({
       ...user,
       ...empDetails[0]
     };
-    console.log(usr);
     setInitialData(usr);
   }, []);
   React.useEffect(() => {

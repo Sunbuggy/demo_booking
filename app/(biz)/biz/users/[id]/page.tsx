@@ -6,7 +6,9 @@ import {
 import { createClient } from '@/utils/supabase/server';
 import React from 'react';
 import UserForm from './user-form';
-
+import UserImage from './components/user-image';
+import { fetchObjects } from '@/utils/biz/pics/get';
+const bucket = 'users';
 const UserPage = async ({ params }: { params: { id: string } }) => {
   const supabase = createClient();
   const user = await getUserById(supabase, params.id);
@@ -19,9 +21,19 @@ const UserPage = async ({ params }: { params: { id: string } }) => {
     signedInUserId || '',
     900
   );
-
+  const profilePicResponse = await fetchObjects(
+    bucket,
+    true,
+    `profile_pic/${params.id}`
+  );
+  const profilePic = String(profilePicResponse?.url);
   if (isUserAdmin)
-    return <>{<UserForm user={user[0]} empDetails={empDetails} />}</>;
+    return (
+      <>
+        <UserImage profilePic={profilePic} user_id={user[0].id} />
+        <UserForm user={user[0]} empDetails={empDetails} />
+      </>
+    );
 };
 
 export default UserPage;
