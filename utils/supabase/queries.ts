@@ -1367,3 +1367,16 @@ export const checkIfUserHasLevel = cache(
     return data.length > 0;
   }
 );
+export const getQrHistoryByUser = cache(
+  async (supabase: SupabaseClient, user_id: string) => {
+    const { data, error } = await supabase
+      .from('qr_history')
+      .select()
+      .eq('user', user_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);

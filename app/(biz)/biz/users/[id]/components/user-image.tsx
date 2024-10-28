@@ -12,30 +12,31 @@ const UserImage = ({
   profilePic: string;
   user_id: string;
 }) => {
-  const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
+  const [isUpdateUploadDialogOpen, setIsUpdateUploadDialogOpen] =
     React.useState(false);
-  console.log(profilePic);
   return (
     <div>
       <ImageView width={400} height={300} src={profilePic} />
-      {profilePic.length < 1 && (
+      {profilePic && (
         <div className="flex justify-center">
           <Button
             variant={'link'}
-            onClick={() => setIsNewUploadDialogOpen(true)}
+            onClick={() => setIsUpdateUploadDialogOpen(true)}
           >
-            Upload Profile Pic
+            Update Profile Pic
           </Button>
           <DialogFactory
-            title={'Upload Profile Picture For User'}
-            setIsDialogOpen={setIsNewUploadDialogOpen}
-            isDialogOpen={isNewUploadDialogOpen}
-            description="Upload a profile picture for this user"
+            title={'Update Profile Picture'}
+            setIsDialogOpen={setIsUpdateUploadDialogOpen}
+            isDialogOpen={isUpdateUploadDialogOpen}
+            description="Update the profile picture for the vehicle. Please just upload a single image."
             children={
               <div>
                 <ResponsiveImageUpload
-                  url_key={`users/profile-pics/${user_id}`}
+                  url_key={`profile_pic/${user_id}`}
+                  updatePic={true}
                   single={true}
+                  bucket={'users'}
                 />
               </div>
             }

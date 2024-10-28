@@ -1586,6 +1586,7 @@ export type Database = {
           model: string
           name: string
           notes: string | null
+          pet_name: string | null
           profile_pic_bucket: string | null
           profile_pic_key: string | null
           seats: number
@@ -1603,6 +1604,7 @@ export type Database = {
           model?: string
           name: string
           notes?: string | null
+          pet_name?: string | null
           profile_pic_bucket?: string | null
           profile_pic_key?: string | null
           seats?: number
@@ -1620,6 +1622,7 @@ export type Database = {
           model?: string
           name?: string
           notes?: string | null
+          pet_name?: string | null
           profile_pic_bucket?: string | null
           profile_pic_key?: string | null
           seats?: number

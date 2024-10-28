@@ -34,16 +34,24 @@ const formSchema = z.object({
   notes: z.string().optional(),
   vin: z.string().optional(),
   licenseplate: z.string().optional(),
-  state: z.string().optional()
+  state: z.string().optional(),
+  pet_name: z.string().optional()
 });
 
 const fields: FieldConfig[] = [
   {
     type: 'input',
     name: 'name',
+    label: 'Internal',
+    placeholder: 'Enter the internal name',
+    description: 'The internal name of the vehicle.'
+  },
+  {
+    type: 'input',
+    name: 'pet_name',
     label: 'Name',
-    placeholder: 'Enter the name',
-    description: 'The name of the vehicle.'
+    placeholder: 'Enter the  name',
+    description: 'The  name of the vehicle.'
   },
   {
     type: 'select',

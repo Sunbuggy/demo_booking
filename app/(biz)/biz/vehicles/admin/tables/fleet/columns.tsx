@@ -19,7 +19,7 @@ export const columns: ColumnDef<VehicleType, any>[] = [
   {
     accessorKey: 'name',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Name" />
+      <DataTableColumnHeader column={column} title="Internal" />
     ),
     cell: ({ row }) => {
       const name = row.getValue('name') as string;
@@ -84,6 +84,18 @@ export const columns: ColumnDef<VehicleType, any>[] = [
     cell: ({ row }) => {
       const seats = row.getValue('seats') as string;
       return <div className="w-[80px] ">{seats}</div>;
+    },
+    enableSorting: true
+  },
+  // Petname column
+  {
+    accessorKey: 'pet_name',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Name" />
+    ),
+    cell: ({ row }) => {
+      const petname = row.getValue('pet_name') as string;
+      return <div className="w-[80px] ">{petname}</div>;
     },
     enableSorting: true
   },
