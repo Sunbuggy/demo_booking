@@ -4,9 +4,11 @@ import { createClient } from '@/utils/supabase/client';
 import { UserType } from '@/app/(biz)/biz/users/types';
 import { useToast } from '@/components/ui/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import Link from 'next/link';
 import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
-import { fetchUserScanHistory, getVehicleIdFromName } from '@/utils/supabase/queries';
+import { useRouter } from 'next/navigation'; // For navigation
+import { getVehicleIdFromName } from '@/utils/supabase/queries'; // Import the query function
 
 interface QrHistoryRecord {
   id: number;
@@ -21,23 +23,26 @@ export const GuestHistory = ({ user }: { user: UserType | null }) => {
   const supabase = createClient();
   const [scannedLinks, setScannedLinks] = useState<QrHistoryRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [gifUrls, setGifUrls] = useState<string[]>([]); // State to store the list of GIFs
   const { toast } = useToast();
+  const router = useRouter(); // For redirecting
 
-  const loadUserScanHistory = async () => {
+  const fetchUserScanHistory = async () => {
     if (!user) return;
 
-    try {
-      const data = await fetchUserScanHistory(supabase, user.id); // Using the new utility function
-      
-      if (data.length === 0) {
-        toast({
-          title: 'No History',
-          description: 'No scan history found.',
-          variant: 'default',
-        });
-      }
+    const { data, error } = await supabase
+      .from('qr_history')
+      .select('id, link, scanned_at, location, latitude, longitude')
+      .eq('user', user.id)
+      .order('scanned_at', { ascending: false });
 
+    if (error) {
+      console.error('Error fetching scan history:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not fetch QR scan history.',
+        variant: 'destructive',
+      });
+    } else {
       const formattedData = data.map((record: any) => ({
         id: record.id,
         link: record.link ?? '',
@@ -47,19 +52,12 @@ export const GuestHistory = ({ user }: { user: UserType | null }) => {
         longitude: record.longitude ?? null,
       }));
       setScannedLinks(formattedData);
-    } catch (error) {
-      console.error('Error fetching scan history:', error);
-      toast({
-        title: 'Error',
-        description: 'Could not fetch QR scan history.',
-        variant: 'destructive',
-      });
     }
   };
 
   useEffect(() => {
     if (user) {
-      loadUserScanHistory();
+      fetchUserScanHistory();
     }
   }, [user]);
 
@@ -73,13 +71,17 @@ export const GuestHistory = ({ user }: { user: UserType | null }) => {
   
       // If it's a number, prepend 'sb' to the name
       if (!isNaN(Number(fleetIdentifier))) {
-        vehicleName = `sb${fleetIdentifier.toLowerCase()}`;
+        vehicleName = `sb${fleetIdentifier.toLowerCase()}`; // Lowercase here as well
       }
 
       try {
+        // Query the vehicle by name using the utility function
         const vehicleData = await getVehicleIdFromName(supabase, vehicleName);
+        console.log('Vehicle data:', vehicleData); // Debugging output
 
+        // Ensure vehicleData is not empty
         if (!vehicleData || vehicleData.length === 0) {
+          console.log(`No vehicle found for: ${vehicleName}`); // Debugging output
           toast({
             title: 'Error',
             description: `No vehicle found for ${vehicleName}`,
@@ -88,8 +90,10 @@ export const GuestHistory = ({ user }: { user: UserType | null }) => {
           return;
         }
 
-        const vehicleId = vehicleData[0]?.id;
+        // Retrieve vehicle ID and redirect
+        const vehicleId = vehicleData[0]?.id; // Handle possible null/undefined
         if (!vehicleId) {
+          console.log('Vehicle ID not found'); // Debugging output
           toast({
             title: 'Error',
             description: `Vehicle ID not found for ${vehicleName}`,
@@ -98,24 +102,8 @@ export const GuestHistory = ({ user }: { user: UserType | null }) => {
           return;
         }
 
-        // Fetch the list of GIFs in the folder
-        const res = await fetch('/api/s3/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ vehicleId }),
-        });
-
-        const result = await res.json();
-
-        if (result.success) {
-          setGifUrls(result.gifs); // Set the GIFs in state
-        } else {
-          toast({
-            title: 'Error',
-            description: result.message,
-            variant: 'destructive',
-          });
-        }
+        // Redirect to the vehicle details page
+        router.push(`/biz/vehicles/${vehicleId}`);
       } catch (error) {
         console.error('Vehicle search error:', error);
         toast({
@@ -124,14 +112,19 @@ export const GuestHistory = ({ user }: { user: UserType | null }) => {
           variant: 'destructive',
         });
       }
+    } else {
+      // If it's not a fleet link, open it normally
+      window.open(link.startsWith('http') ? link : `https://${link}`, '_blank');
     }
   };
 
+  // Function to format the date for display and search
   const formatDateForSearch = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleString();
+    return date.toLocaleString(); // search term
   };
 
+  // Filter scanned links based on the search term
   const filteredLinks = scannedLinks.filter((linkRecord) => {
     const searchLower = searchTerm.toLowerCase();
     const formattedDate = formatDateForSearch(linkRecord.scanned_at).toLowerCase();
@@ -144,6 +137,7 @@ export const GuestHistory = ({ user }: { user: UserType | null }) => {
 
   return (
     <Card title="Your Scan History" description="Search and view your scan history">
+      {/* Search input */}
       <div className="mb-5 text-center">
         <Input
           type="text"
@@ -154,6 +148,7 @@ export const GuestHistory = ({ user }: { user: UserType | null }) => {
         />
       </div>
 
+      {/* Qr History list */}
       {filteredLinks.length > 0 ? (
         <ScrollArea className="h-[300px] rounded-md border p-4">
           <div className="grid grid-cols-1 gap-4">
@@ -161,7 +156,7 @@ export const GuestHistory = ({ user }: { user: UserType | null }) => {
               <div key={linkRecord.id} className="flex flex-col gap-2 border-b pb-2">
                 <a
                   className="underline text-orange-500 cursor-pointer"
-                  onClick={() => handleLinkClick(linkRecord.link)} 
+                  onClick={() => handleLinkClick(linkRecord.link)}  // Handle fleet links and external links
                 >
                   {linkRecord.link}
                 </a>
@@ -178,18 +173,6 @@ export const GuestHistory = ({ user }: { user: UserType | null }) => {
         </ScrollArea>
       ) : (
         <p className="text-center text-gray-500">No results found.</p>
-      )}
-
-      {/* Display the GIFs */}
-      {gifUrls.length > 0 && (
-        <div className="mt-4">
-          <h3 className="text-xl mb-2">Vehicle Badges</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {gifUrls.map((gifUrl, index) => (
-              <img key={index} src={gifUrl} alt={`Vehicle badge ${index + 1}`} className="w-full h-auto" />
-            ))}
-          </div>
-        </div>
       )}
     </Card>
   );
