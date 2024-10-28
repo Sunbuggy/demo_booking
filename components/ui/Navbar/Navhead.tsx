@@ -40,6 +40,7 @@ function Navhead() {
           <DropdownMenuLabel className="text-center w-full">
             Choose a Location
           </DropdownMenuLabel>
+          {/* OBJECTIVE for employees the drop down location chooser should go to the internal pages -fareharbor dashboards - for Pismo and Silver Lake for customers go to public versions sunbuggy.com/pismo and /silverlake */}
           <DropdownMenuSeparator />
           <DropdownMenuRadioGroup 
             value={position || ''} 
@@ -48,10 +49,10 @@ function Navhead() {
             <Link href="/">
               <DropdownMenuRadioItem value="lasvegas">Las Vegas</DropdownMenuRadioItem>
             </Link>
-            <Link href="https://www.sunbuggy.com/sunbuggy_pismo.php">
+            <Link href="https://fareharbor.com/sunbuggypismobeach/dashboard" target='PismoWindow'>
             <DropdownMenuRadioItem value="pismo">Pismo</DropdownMenuRadioItem>
             </Link>
-            <Link href="https://www.sunbuggy.com/silverlake/">
+            <Link href="https://fareharbor.com/sunbuggysilverlakedunes/dashboard" target="SilverLakeWindow">
             <DropdownMenuRadioItem value="silverlake">Silverlake</DropdownMenuRadioItem>
             </Link>            
           </DropdownMenuRadioGroup>

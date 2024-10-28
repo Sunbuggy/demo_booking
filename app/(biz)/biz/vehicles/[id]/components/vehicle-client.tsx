@@ -310,7 +310,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="tag-management">
-                <AccordionTrigger>Tag Management</AccordionTrigger>
+                <AccordionTrigger>Tag Management</AccordionTrigger> 
+                {/* OBJECTIVE cannot close multiple tags without reloading page between each tag... */}
                 <AccordionContent>
                   <TagManagement
                     tags={vehicleTags}

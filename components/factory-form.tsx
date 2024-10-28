@@ -124,6 +124,7 @@ type FactoryFormProps = {
   formSchema: z.ZodObject<any>;
   onSubmit: (data: any) => void;
   initialData?: Record<string, any>;
+  data?: Record<string, any>;
   hideFilterBoxField?: boolean;
   allDisabled?: boolean;
 };
@@ -133,6 +134,7 @@ export function FactoryForm({
   formSchema,
   onSubmit,
   initialData,
+  data,
   hideFilterBoxField,
   allDisabled
 }: FactoryFormProps) {
@@ -140,7 +142,7 @@ export function FactoryForm({
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {}
+    defaultValues: initialData || data || {}
   });
 
   useEffect(() => {
@@ -150,6 +152,14 @@ export function FactoryForm({
       });
     }
   }, [initialData, form]);
+
+  useEffect(() => {
+    if (data) {
+      Object.keys(data).forEach((key) => {
+        form.setValue(key, data[key]);
+      });
+    }
+  }, [data, form]);
 
   const visibleFields = fields.filter(
     (field) => !field.hidden || showAllFields

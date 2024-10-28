@@ -7,14 +7,15 @@ import { UserType } from '../../../types';
 import React, { useState } from 'react';
 import {
   calculateTimeSinceClockIn,
-  changeUserRole
+  changeUserRole,
+  checkIfUserHasLevel
 } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import ClockOut from './time-clock/clock-out';
 import ClockIn from './time-clock/clock-in';
 import AdjustTime from './time-clock/adjust-time';
-import TimeSheetAdjustment from './time-clock/time-sheet';
+// import TimeSheetAdjustment from './time-clock/time-sheet';
 import {
   Dialog,
   DialogClose,
@@ -27,6 +28,7 @@ import { DialogTrigger } from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import HistoryTimeClockEvents from './time-clock/time-history';
+import Link from 'next/link';
 
 export interface TimeSinceClockIn {
   data: number;
@@ -65,7 +67,44 @@ export const columns: ColumnDef<UserType, any>[] = [
     ),
     cell: ({ row }) => {
       const name = row.getValue('full_name') as string;
-      return <div className="w-[180px] ">{name}</div>;
+      const supabase = createClient();
+      const [signedInUserId, setSignedInUserId] = useState<string | undefined>(
+        undefined
+      );
+      const [adminAuthorized, setAdminAuthorized] = useState<boolean>(false);
+      React.useEffect(() => {
+        supabase.auth.getUser().then((user) => {
+          const user_id = user.data.user?.id;
+          setSignedInUserId(user_id);
+        });
+      }, []);
+      React.useEffect(() => {
+        if (signedInUserId)
+          checkIfUserHasLevel(supabase, signedInUserId, 900)
+            .then((res) => {
+              if ((res = true)) {
+                setAdminAuthorized(true);
+              }
+            })
+            .catch((err) => {
+              console.error(err);
+            });
+      }, [signedInUserId]);
+
+      return (
+        <div className="w-[180px] ">
+          {adminAuthorized ? (
+            <Link
+              href={`/biz/users/${row.original.id}`}
+              className="underline text-blue-500"
+            >
+              {name}
+            </Link>
+          ) : (
+            <h2>{name}</h2>
+          )}
+        </div>
+      );
     },
     enableSorting: true,
     enableHiding: false
@@ -80,11 +119,28 @@ export const columns: ColumnDef<UserType, any>[] = [
       const [makeEmployee, setMakeEmployee] = useState(false);
       const [makeManager, setMakeManager] = useState(false);
       const [makeAdmin, setMakeAdmin] = useState(false);
+      const [makeCustomer, setMakeCustomer] = useState(false);
       const supabase = createClient();
       const { toast } = useToast();
       const router = useRouter();
 
       React.useEffect(() => {
+        // make customer 100
+        if (makeCustomer) {
+          changeUserRole(supabase, row.original.id, 100)
+            .then((res) => {
+              toast({
+                title: 'Success',
+                description: 'User has been made a customer',
+                duration: 2000,
+                variant: 'success'
+              });
+            })
+            .catch((err) => {
+              console.error(err);
+            });
+        }
+
         // Make Employee
         if (makeEmployee) {
           changeUserRole(supabase, row.original.id, 300)
@@ -142,7 +198,8 @@ export const columns: ColumnDef<UserType, any>[] = [
         setMakeEmployee(false);
         setMakeManager(false);
         setMakeAdmin(false);
-      }, [makeEmployee, makeManager, makeAdmin]);
+        setMakeCustomer(false);
+      }, [makeEmployee, makeManager, makeAdmin, makeCustomer]);
 
       return (
         <div className="w-[40px]">
@@ -168,12 +225,23 @@ export const columns: ColumnDef<UserType, any>[] = [
                     Current Level: {row.original.user_level}
                   </span>
                   <br />
+                  Customers &gt; 100,
+                  <br />
                   Employees &gt; 299,
                   <br /> Managers &gt; 650,
                   <br /> admins = 900
                 </DialogDescription>
               </DialogHeader>
               <div className="flex gap-4 items-center">
+                <DialogClose asChild>
+                  <Button
+                    onClick={() => {
+                      setMakeCustomer(true);
+                    }}
+                  >
+                    Customer
+                  </Button>
+                </DialogClose>
                 <DialogClose asChild>
                   <Button
                     onClick={() => {

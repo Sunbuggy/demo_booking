@@ -30,6 +30,44 @@ export type Database = {
         }
         Relationships: []
       }
+      adventures: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          imageUrl: string | null
+          title: string | null
+          videoUrl: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          imageUrl?: string | null
+          title?: string | null
+          videoUrl?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          imageUrl?: string | null
+          title?: string | null
+          videoUrl?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventures_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking: {
         Row: {
           booked_by: string
@@ -232,6 +270,41 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      employee_details: {
+        Row: {
+          emp_id: string | null
+          id: string
+          payroll_company: string | null
+          primary_position: string | null
+          primary_work_location: string | null
+          user_id: string | null
+        }
+        Insert: {
+          emp_id?: string | null
+          id?: string
+          payroll_company?: string | null
+          primary_position?: string | null
+          primary_work_location?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          emp_id?: string | null
+          id?: string
+          payroll_company?: string | null
+          primary_position?: string | null
+          primary_work_location?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_details_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       group_vehicles: {
         Row: {

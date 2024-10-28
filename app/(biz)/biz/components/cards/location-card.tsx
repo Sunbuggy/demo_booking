@@ -41,18 +41,17 @@ const LocationCard = ({
               data[id][locationKey].reduce((acc, reservation) => {
                 return acc + countPeople(reservation);
               }, 0)
-            }-PPL:
+            }-People
             {' '}
           </span>
           <span className="text-orange-500">
             {' '}
-            V-
             {
               // map throuugh the location and get the total count of vehicles
               data[id][locationKey].reduce((acc, reservation) => {
                 return acc + getVehicleCount(reservation);
               }, 0)
-            }
+            }-Vehicles
           </span>
           <span className="text-xs font-light italic text-orange-500">
             (

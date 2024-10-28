@@ -1,8 +1,10 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { ScrollArea } from '../ui/scroll-area';
-import { DrawerClose } from '../ui/drawer';
 import Link from 'next/link';
+import { DialogClose } from '../ui/dialog';
+import { Button } from '../ui/button';
+import { useRouter } from 'next/navigation';
 
 const NormalMode = ({
   scannedVehicleIds,
@@ -15,6 +17,13 @@ const NormalMode = ({
   }[];
   scannedUrls: string[];
 }) => {
+  const router = useRouter();
+  const [isDialogOpen, setIsDialogOpen] = React.useState(true);
+  const handleClick = (vehicleId: string) => {
+    setIsDialogOpen(false); // Close the dialog
+    router.push(`/biz/vehicles/${vehicleId}`); // Navigate to the new page
+  };
+
   return (
     <Tabs defaultValue="new" className="w-[200px] mb-5">
       <TabsList className="w-full ">
@@ -29,25 +38,23 @@ const NormalMode = ({
               <div className="grid grid-cols-3">
                 {scannedVehicleIds.map((v, i) => (
                   <span key={i}>
-                    <DrawerClose asChild>
-                      <div className="relative">
-                        <Link
-                          className="normal_button_small"
-                          href={`/biz/vehicles/${v.id}`}
-                        >
-                          {v.name}
-                        </Link>
+                    <DialogClose asChild>
+                      <Button
+                        className="normal_button_small relative"
+                        onClick={() => handleClick(v.id)}
+                      >
+                        {v.name}
                         {v.status === 'broken' && (
-                          <span className="absolute top-0 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                          <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
                         )}
                         {v.status === 'maintenance' && (
-                          <span className="absolute top-0 right-1 w-2 h-2 bg-amber-500 rounded-full"></span>
+                          <span className="absolute top-0 right-0 w-2 h-2 bg-amber-500 rounded-full"></span>
                         )}
                         {v.status === 'fine' && (
-                          <span className="absolute top-0 right-1 w-2 h-2 bg-green-500 rounded-full"></span>
+                          <span className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full"></span>
                         )}
-                      </div>
-                    </DrawerClose>
+                      </Button>
+                    </DialogClose>
                   </span>
                 ))}
               </div>
