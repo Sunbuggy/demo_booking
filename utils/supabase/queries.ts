@@ -935,7 +935,7 @@ export const fetchQrHistoryInfo = cache(
   async (supabase: SupabaseClient, qr_history_id: string) => {
     const { data, error } = await supabase
       .from('qr_history')
-      .select()
+      .select('id, vehicle_id, scanned_at, location, latitude, longitude')
       .eq('id', qr_history_id);
     if (error) {
       console.error(error);
@@ -949,7 +949,7 @@ export const fetchUserScanHistory = cache(
   async (supabase: SupabaseClient, userId: string) => {
     const { data, error } = await supabase
       .from('qr_history')
-      .select('id, link, scanned_at, location, latitude, longitude')
+      .select('id, vehicle_id, scanned_at, location, latitude, longitude')
       .eq('user', userId)
       .order('scanned_at', { ascending: false });
     if (error) {
