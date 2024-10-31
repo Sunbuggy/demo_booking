@@ -23,7 +23,7 @@ export type UserDetails = {
   avatar_url: string | null;
   full_name: string | null;
   id: string;
-  user_level?: number | null; // Add user_level to the type definition
+  user_level?: number | null; 
   email?: string | null;
 };
 
