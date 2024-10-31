@@ -381,18 +381,21 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
 
 // Function to save the scanned 
 const saveScannedUrlToHistory = async (
-location: string, vehicle_id?: string, veh_id?: string) => {
-  if (!user ) return;
+  scannedUrl: string,
+  location: string,
+  vehicle_id?: string 
+) => {
+  if (!user) return; // Check if user is logged in
 
   const { data, error } = await supabase.from('qr_history').insert([
     {
       user: user.id,
       scanned_at: new Date().toISOString(),
-      location,
+      location: location, 
       latitude: currentLocation.latitude,
       longitude: currentLocation.longitude,
-      vehicle_id: vehicle_id || null 
-    }
+      vehicle_id: vehicle_id ?? null, 
+    },
   ]);
 
   if (error) {
@@ -400,7 +403,7 @@ location: string, vehicle_id?: string, veh_id?: string) => {
     toast({
       title: 'Error',
       description: 'Could not save QR scan to history.',
-      variant: 'destructive'
+      variant: 'destructive',
     });
   }
 };
