@@ -48,13 +48,13 @@ const ImageView: React.FC<ImageViewProps> = ({ src, width, height }) => {
         <Skeleton className="min-w-[385px] min-h-[201px] md:h-[448px]" />
       )}
       {isLoaded && (
-        <div className="flex justify-center">
+        <div className="flex justify-center bg-black">
           <Image
             height={height}
             width={width}
             src={src}
             fallback="/placeholder.webp"
-            className="transition-opacity opacity-0 duration-[2s]"
+            className="transition-opacity opacity-0 duration-[2s] object-contain"
             onLoad={(image) => {
               const imgElement =
                 image.currentTarget.querySelector('img.ant-image-img');

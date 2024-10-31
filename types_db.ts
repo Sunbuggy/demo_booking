@@ -503,6 +503,7 @@ export type Database = {
           longitude: number | null
           scanned_at: string | null
           user: string | null
+          vehicle_id: string | null
         }
         Insert: {
           id?: string
@@ -512,6 +513,7 @@ export type Database = {
           longitude?: number | null
           scanned_at?: string | null
           user?: string | null
+          vehicle_id?: string | null
         }
         Update: {
           id?: string
@@ -521,8 +523,17 @@ export type Database = {
           longitude?: number | null
           scanned_at?: string | null
           user?: string | null
+          vehicle_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "qr_history_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shuttle_assignment: {
         Row: {

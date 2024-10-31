@@ -1377,6 +1377,6 @@ export const getQrHistoryByUser = cache(
       console.error(error);
       return [];
     }
-    return data;
+    return data as Database['public']['Tables']['qr_history']['Row'][];
   }
 );
