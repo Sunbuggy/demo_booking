@@ -24,6 +24,8 @@ import { VehiclePics } from '../../admin/tables/components/row-actions';
 import { Button } from '@/components/ui/button';
 import DialogFactory from '@/components/dialog-factory';
 import ResponsiveImageUpload from './responsive-image-upload-form';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 const ExistingTagForm = ({
   tag,
@@ -57,6 +59,13 @@ const ExistingTagForm = ({
     tag_type: tag?.tag_type || null
   });
 
+  const handleSwitchChange = (checked: boolean) => {
+    setFormValues({
+      ...formValues,
+      tag_status: checked ? 'open' : 'closed'
+    });
+  };
+
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     //
@@ -76,7 +85,7 @@ const ExistingTagForm = ({
             title: 'Success',
             description: 'Tag closed successfully',
             variant: 'success',
-            duration: 2000
+            duration: 5000
           });
         })
         .catch((err) => {
@@ -85,7 +94,7 @@ const ExistingTagForm = ({
             title: 'Error',
             description: 'Error closing tag',
             variant: 'destructive',
-            duration: 2000
+            duration: 5000
           });
         });
       // create a new variable that is formValues minus the old_notes
@@ -102,7 +111,7 @@ const ExistingTagForm = ({
             title: 'Success',
             description: 'Tag updated successfully',
             variant: 'success',
-            duration: 2000
+            duration: 5000
           });
         })
         .catch((err) => {
@@ -111,7 +120,7 @@ const ExistingTagForm = ({
             title: 'Error',
             description: 'Error updating tag',
             variant: 'destructive',
-            duration: 2000
+            duration: 5000
           });
         });
     }
@@ -219,29 +228,24 @@ const ExistingTagForm = ({
         )}
       </div>
       <form className="space-y-6" onSubmit={onSubmit}>
-        <div className="flex gap-2 items-baseline">
-          <label
+        <div className="flex items-center justify-between">
+          <Label
             htmlFor="tag-status"
-            className="block text-sm font-medium text-gray-400"
+            className="text-sm font-medium text-muted-foreground"
           >
             Tag Status
-          </label>
-          <select
-            id="tag-status"
-            name="tag-status"
-            value={formValues.tag_status}
-            onChange={(e) =>
-              setFormValues({
-                ...formValues,
-                tag_status: e.target.value as 'open' | 'closed'
-              })
-            }
-            className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-            disabled={status === 'closed'}
-          >
-            <option value="open">Open</option>
-            <option value="closed">Closed</option>
-          </select>
+          </Label>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="tag-status"
+              checked={formValues.tag_status === 'open'}
+              onCheckedChange={handleSwitchChange}
+              disabled={status === 'closed'}
+            />
+            <span className="text-sm text-muted-foreground">
+              {formValues.tag_status ? 'Open' : 'Closed'}
+            </span>
+          </div>
         </div>
         <div className="flex gap-2 items-baseline">
           <label

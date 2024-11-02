@@ -16,7 +16,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
 
   const navLinks = [
     { href: '/', label: 'Home Page', minLevel: 0 },
-    { href: `/biz/${date}`, label: 'Today', minLevel: 300 },
+    // { href: `/biz/${date}`, label: 'NV', minLevel: 300 },
     {
       href: 'https://www.sunbuggy.biz/',
       label: 'Old Biz',
@@ -27,7 +27,29 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 }
   ];
 
+  const dashboardLinks = [
+    { href: `/biz/${date}`, label: 'NV', minLevel: 300, external: true },
+    { href: `/location/pismo`, label: 'CA', minLevel: 300 },
+    { href: `/location/silverlake`, label: 'MI', minLevel: 300 }
+  ];
+
   const renderNavLink = (link: (typeof navLinks)[0]) => {
+    if (pathname === link.href) return null; // Don't render the link for the current page
+
+    return (
+      <SheetClose key={link.href} asChild>
+        <Link
+          href={link.href}
+          className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
+          {...(link.external ? { target: '_blank' } : {})}
+        >
+          {link.label}
+        </Link>
+      </SheetClose>
+    );
+  };
+
+  const renderNavLinkDashboard = (link: (typeof dashboardLinks)[0]) => {
     if (pathname === link.href) return null; // Don't render the link for the current page
 
     return (
@@ -61,6 +83,9 @@ export default function NavSideBar({ user }: NavSideBarProps) {
             <React.Fragment key={link.href}>
               <span className="menulinks">INTERNAL</span>
               {renderNavLink(link)}
+              {dashboardLinks.map((dashboardLink) =>
+                renderNavLinkDashboard(dashboardLink)
+              )}
             </React.Fragment>
           );
         }

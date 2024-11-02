@@ -9,45 +9,28 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 
 type LocationKey = 'lasvegas' | 'pismo' | 'silverlake';
 
 const Navhead = () => {
   const [position, setPosition] = useState<LocationKey | null>(null);
-  const [userLevel, setUserLevel] = useState<number | null>(null);
-
-  // Fetch user level from API on mount
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch('/api/userData');
-        const data = await response.json();
-        setUserLevel(data.userLevel);
-      } catch (error) {
-        console.error('Error fetching user level:', error);
-      }
-    };
-
-    fetchUserData();
-  }, []);
 
   const locations: Record<LocationKey, string> = {
     lasvegas: 'Las Vegas',
     pismo: 'Pismo',
-    silverlake: 'Silverlake',
+    silverlake: 'Silverlake'
   };
 
   // Define dropdown links based on user level
   const dropdownLinks = [
     { value: 'lasvegas' as LocationKey, link: '/' },
-    userLevel && userLevel > 300
-      ? { value: 'pismo' as LocationKey, link: 'https://www.sunbuggy.com/Pismo_/makereservation24.php' }
-      : { value: 'pismo' as LocationKey, link: 'https://fareharbor.com/sunbuggypismobeach/dashboard' },
-    userLevel && userLevel > 300
-      ? { value: 'silverlake' as LocationKey, link: 'https://fareharbor.com/embeds/book/sunbuggysilverlakedunes/items/?full-items=yes&back=https://www.sunbuggy.com/silverlake/&g4=yes' }
-      : { value: 'silverlake' as LocationKey, link: 'https://fareharbor.com/sunbuggysilverlakedunes/dashboard' },
+    // { value: 'pismo' as LocationKey, link: 'https://fareharbor.com/sunbuggypismobeach/dashboard' },
+    { value: 'pismo' as LocationKey, link: '/location/pismo' },
+    { value: 'silverlake' as LocationKey, link: '/location/silverlake' }
+
+    // { value: 'silverlake' as LocationKey, link: 'https://fareharbor.com/sunbuggysilverlakedunes/dashboard' },
   ];
 
   return (
