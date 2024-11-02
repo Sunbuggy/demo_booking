@@ -27,6 +27,8 @@ import {
 } from '@/components/ui/select';
 import { useState } from 'react';
 import MapComponent from './mapcomponent';
+import DialogFactory from '@/components/dialog-factory';
+import VehiclesLister from './vehicles-lister';
 
 type VehicleLocation = Database['public']['Tables']['vehicle_locations']['Row'];
 
@@ -140,47 +142,109 @@ function getLocationType(lat: number, lon: number): string {
   return 'Unknown';
 }
 
-function groupVehicles(
-  vehicles: VehicleType[]
-): Record<string, { operational: number; broken: number }> {
+function groupVehicles(vehicles: VehicleType[]): Record<
+  string,
+  {
+    operational: number;
+    broken: number;
+    operationalIds: string[];
+    brokenIds: string[];
+  }
+> {
   return vehicles.reduce(
     (acc, vehicle) => {
-      if (!acc[vehicle.type]) acc[vehicle.type] = { operational: 0, broken: 0 };
+      if (!acc[vehicle.type]) {
+        acc[vehicle.type] = {
+          operational: 0,
+          broken: 0,
+          operationalIds: [],
+          brokenIds: []
+        };
+      }
       if (vehicle.vehicle_status === 'broken') {
         acc[vehicle.type].broken++;
+        acc[vehicle.type].brokenIds.push(vehicle.id);
       } else {
         acc[vehicle.type].operational++;
+        acc[vehicle.type].operationalIds.push(vehicle.id);
       }
       return acc;
     },
-    {} as Record<string, { operational: number; broken: number }>
+    {} as Record<
+      string,
+      {
+        operational: number;
+        broken: number;
+        operationalIds: string[];
+        brokenIds: string[];
+      }
+    >
   );
 }
 
 function groupVehiclesBySeatCount(
   vehicles: VehicleType[],
   vehicleType: string
-): Record<string, { operational: number; broken: number }> {
+): Record<
+  string,
+  {
+    operational: number;
+    broken: number;
+    operationalIds: string[];
+    brokenIds: string[];
+  }
+> {
   return vehicles
     .filter((v) => v.type === vehicleType)
     .reduce(
       (acc, vehicle) => {
-        if (!acc[vehicle.seats])
-          acc[vehicle.seats] = { operational: 0, broken: 0 };
+        if (!acc[vehicle.seats]) {
+          acc[vehicle.seats] = {
+            operational: 0,
+            broken: 0,
+            operationalIds: [],
+            brokenIds: []
+          };
+        }
         if (vehicle.vehicle_status === 'broken') {
           acc[vehicle.seats].broken++;
+          acc[vehicle.seats].brokenIds.push(vehicle.id);
         } else {
           acc[vehicle.seats].operational++;
+          acc[vehicle.seats].operationalIds.push(vehicle.id);
         }
         return acc;
       },
-      {} as Record<string, { operational: number; broken: number }>
+      {} as Record<
+        string,
+        {
+          operational: number;
+          broken: number;
+          operationalIds: string[];
+          brokenIds: string[];
+        }
+      >
     );
 }
 
 export default function VehiclesOverview() {
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
+
+  const [selectedOverViewList, setSelectedOverViewList] = useState<string[]>(
+    []
+  );
+  const [openOverviewDialog, setOpenOverviewDialog] = useState<
+    'total' | 'operational' | 'broken' | null
+  >(null);
   const supabase = createClient();
+
+  const handleOverviewDialogOpen = (
+    list: string[],
+    type: 'total' | 'operational' | 'broken'
+  ) => {
+    setSelectedOverViewList(list);
+    setOpenOverviewDialog(type);
+  };
 
   const { data: vehicles, error: vehiclesError } = useQuery<
     VehicleType[],
@@ -316,22 +380,73 @@ export default function VehiclesOverview() {
             </TableCell>
           </TableRow>
           {Object.entries(vehicleTypes).map(
-            ([type, { operational, broken }]) => (
-              <TableRow key={type}>
-                <TableCell className="capitalize">{type}s</TableCell>
-                <TableCell>{operational + broken}</TableCell>
-                <TableCell>
-                  <span className="text-green-500 font-bold">
-                    {operational}
-                  </span>
-                  {' / '}
-                  <span className="text-red-500 font-bold">{broken}</span>
-                </TableCell>
-              </TableRow>
-            )
+            ([type, { operational, broken, operationalIds, brokenIds }]) => {
+              const totalIds = operationalIds.concat(brokenIds);
+              return (
+                <TableRow key={type}>
+                  <TableCell className="capitalize">{type}s</TableCell>
+                  <TableCell>
+                    <span
+                      className="cursor-pointer underline hover:text-blue-500"
+                      onClick={() =>
+                        handleOverviewDialogOpen(totalIds, 'total')
+                      }
+                    >
+                      {operational + broken}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className="cursor-pointer text-green-500 font-bold underline hover:text-green-700"
+                      onClick={() =>
+                        handleOverviewDialogOpen(operationalIds, 'operational')
+                      }
+                    >
+                      {operational}
+                    </span>
+                    {' / '}
+                    <span
+                      className="cursor-pointer text-red-500 font-bold underline hover:text-red-700"
+                      onClick={() =>
+                        handleOverviewDialogOpen(brokenIds, 'broken')
+                      }
+                    >
+                      {broken}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              );
+            }
           )}
         </TableBody>
       </Table>
+      {openOverviewDialog === 'total' && (
+        <DialogFactory
+          title={'Total Vehicles Overview'}
+          setIsDialogOpen={() => setOpenOverviewDialog(null)}
+          isDialogOpen={openOverviewDialog === 'total'}
+          description="Overview of all vehicles."
+          children={<VehiclesLister list={selectedOverViewList} />}
+        />
+      )}
+      {openOverviewDialog === 'operational' && (
+        <DialogFactory
+          title={'Operational Vehicles Overview'}
+          setIsDialogOpen={() => setOpenOverviewDialog(null)}
+          isDialogOpen={openOverviewDialog === 'operational'}
+          description="Overview of operational vehicles."
+          children={<VehiclesLister list={selectedOverViewList} />}
+        />
+      )}
+      {openOverviewDialog === 'broken' && (
+        <DialogFactory
+          title={'Broken Vehicles Overview'}
+          setIsDialogOpen={() => setOpenOverviewDialog(null)}
+          isDialogOpen={openOverviewDialog === 'broken'}
+          description="Overview of broken vehicles."
+          children={<VehiclesLister list={selectedOverViewList} />}
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Table>
@@ -350,19 +465,46 @@ export default function VehiclesOverview() {
           </TableHeader>
           <TableBody>
             {Object.entries(buggiesBySeatCount).map(
-              ([seats, { operational, broken }]) => (
-                <TableRow key={seats}>
-                  <TableCell>{seats}</TableCell>
-                  <TableCell>{operational + broken}</TableCell>
-                  <TableCell>
-                    <span className="text-green-500 font-bold">
-                      {operational}
-                    </span>
-                    {' / '}
-                    <span className="text-red-500 font-bold">{broken}</span>
-                  </TableCell>
-                </TableRow>
-              )
+              ([seats, { operational, broken, brokenIds, operationalIds }]) => {
+                const totalIds = operationalIds.concat(brokenIds);
+                return (
+                  <TableRow key={seats}>
+                    <TableCell>{seats}</TableCell>
+                    <TableCell>
+                      <span
+                        className="cursor-pointer underline hover:text-blue-500"
+                        onClick={() =>
+                          handleOverviewDialogOpen(totalIds, 'total')
+                        }
+                      >
+                        {operational + broken}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className="cursor-pointer text-green-500 font-bold underline hover:text-green-700"
+                        onClick={() =>
+                          handleOverviewDialogOpen(
+                            operationalIds,
+                            'operational'
+                          )
+                        }
+                      >
+                        {operational}
+                      </span>
+                      {' / '}
+                      <span
+                        className="cursor-pointer text-red-500 font-bold underline hover:text-red-700"
+                        onClick={() =>
+                          handleOverviewDialogOpen(brokenIds, 'broken')
+                        }
+                      >
+                        {broken}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              }
             )}
           </TableBody>
         </Table>
@@ -383,19 +525,46 @@ export default function VehiclesOverview() {
           </TableHeader>
           <TableBody>
             {Object.entries(atvsBySeatCount).map(
-              ([seats, { operational, broken }]) => (
-                <TableRow key={seats}>
-                  <TableCell>{seats}</TableCell>
-                  <TableCell>{operational + broken}</TableCell>
-                  <TableCell>
-                    <span className="text-green-500 font-bold">
-                      {operational}
-                    </span>
-                    {' / '}
-                    <span className="text-red-500 font-bold">{broken}</span>
-                  </TableCell>
-                </TableRow>
-              )
+              ([seats, { operational, broken, brokenIds, operationalIds }]) => {
+                const totalIds = operationalIds.concat(brokenIds);
+                return (
+                  <TableRow key={seats}>
+                    <TableCell>{seats}</TableCell>
+                    <TableCell>
+                      <span
+                        className="cursor-pointer underline hover:text-blue-500"
+                        onClick={() =>
+                          handleOverviewDialogOpen(totalIds, 'total')
+                        }
+                      >
+                        {operational + broken}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className="cursor-pointer text-green-500 font-bold underline hover:text-green-700"
+                        onClick={() =>
+                          handleOverviewDialogOpen(
+                            operationalIds,
+                            'operational'
+                          )
+                        }
+                      >
+                        {operational}
+                      </span>
+                      {' / '}
+                      <span
+                        className="cursor-pointer text-red-500 font-bold underline hover:text-red-700"
+                        onClick={() =>
+                          handleOverviewDialogOpen(brokenIds, 'broken')
+                        }
+                      >
+                        {broken}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              }
             )}
           </TableBody>
         </Table>

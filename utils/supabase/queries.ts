@@ -677,6 +677,20 @@ export const fetchVehicles = cache(async (supabase: SupabaseClient) => {
   return data as VehicleType[];
 });
 
+export const fetchVehiclesFromListOfIds = cache(
+  async (supabase: SupabaseClient, vehicleIds: string[]) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select()
+      .in('id', vehicleIds);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data as VehicleType[];
+  }
+);
+
 export const removeVehicle = cache(
   async (supabase: SupabaseClient, vehicle_id: string) => {
     const { data, error } = await supabase
