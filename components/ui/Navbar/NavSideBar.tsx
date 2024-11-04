@@ -27,7 +27,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
 
   const navLinks: NavLink[] = [
     { href: '/', label: 'Home Page', minLevel: 0 },
-    // { href: `/biz/${date}`, label: 'NV', minLevel: 300 },
     {
       href: 'https://www.sunbuggy.biz/',
       label: 'Old Biz',
@@ -43,12 +42,14 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     {
       href: `https://fareharbor.com/sunbuggypismobeach/dashboard`,
       label: 'CA',
-      minLevel: 300
+      minLevel: 300,
+      external: true
     },
     {
       href: `https://fareharbor.com/sunbuggysilverlakedunes/dashboard`,
       label: 'MI',
-      minLevel: 300
+      minLevel: 300,
+      external: true
     }
   ];
 
@@ -82,25 +83,38 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     title: string,
     minLevel: number
   ) => {
-    if (!user || user.user_level < minLevel) return null;
+    if (!user) return null;
+
+    if (user?.user_level < minLevel) return null;
+    const filteredLinks = links.filter(
+      (link) => link.minLevel <= user?.user_level
+    );
+    if (filteredLinks.length === 0) return null;
 
     return (
       <React.Fragment key={title}>
         <span className="menulinks">{title}</span>
-        {links.map(renderNavLink)}
+        {filteredLinks.map(renderNavLink)}
       </React.Fragment>
     );
   };
 
+  const publicLinks = navLinks.filter((link) => link.minLevel === 0);
+  const internalLinks = [
+    ...dashboardLinks,
+    ...navLinks.filter((link) => link.minLevel === 300)
+  ];
+  const adminLinks = navLinks.filter((link) => link.minLevel === 900);
+
   return (
     <div className="flex flex-col gap-3">
-      {renderNavLink(navLinks[0])} {/* Home Page */}
-      {renderLinkGroup(dashboardLinks, 'INTERNAL', 300)}
-      {renderLinkGroup(
-        navLinks.filter((link) => link.minLevel === 900),
-        'ADMIN',
-        900
-      )}
+      {renderLinkGroup(publicLinks, 'PUBLIC', 0)}
+      {user &&
+        user.user_level >= 300 &&
+        renderLinkGroup(internalLinks, 'INTERNAL', 300)}
+      {user &&
+        user.user_level >= 900 &&
+        renderLinkGroup(adminLinks, 'ADMIN', 900)}
     </div>
   );
 }
