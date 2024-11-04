@@ -40,7 +40,7 @@ const NormalMode = ({
                   <span key={i}>
                     <DialogClose asChild>
                       <Button
-                        className="normal_button_small relative"
+                        className="normal_button_circular relative"
                         onClick={() => handleClick(v.id)}
                       >
                         {v.name}

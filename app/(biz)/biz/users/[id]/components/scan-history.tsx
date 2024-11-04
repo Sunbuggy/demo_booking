@@ -152,11 +152,11 @@ const ScanHistory = ({ scans }: { scans: VehicleType[] }) => {
         <AccordionItem value="scanned-list">
           <AccordionTrigger>Scanned List </AccordionTrigger>
           <AccordionContent>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {uniqueScans.map((vehicle) => (
                 <Link
                   href={`/biz/vehicles/${vehicle.id}`}
-                  className="normal_button_small relative"
+                  className="normal_button_circular relative"
                   key={vehicle.id}
                 >
                   {vehicle.pet_name || vehicle.name}

@@ -38,7 +38,7 @@ const VehiclesLister = ({ list }: { list: string[] | null }) => {
           {vehicles.map((vehicle, index) => (
             <span key={index}>
               <Button
-                className="normal_button_large  relative"
+                className="normal_button_circular relative"
                 onClick={() => handleClick(vehicle.id)}
               >
                 {vehicle.name}
