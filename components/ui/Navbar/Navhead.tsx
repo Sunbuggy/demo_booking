@@ -54,7 +54,7 @@ const Navhead = () => {
             onValueChange={(value) => setPosition(value as LocationKey)}
           >
             {dropdownLinks.map((link) => (
-              <Link href={link.link} key={link.value} target="_blank">
+              <Link href={link.link} key={link.value}>
                 <DropdownMenuRadioItem value={link.value}>
                   {locations[link.value as LocationKey]}
                 </DropdownMenuRadioItem>
