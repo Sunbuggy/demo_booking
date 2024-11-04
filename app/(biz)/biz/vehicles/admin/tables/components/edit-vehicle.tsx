@@ -35,7 +35,8 @@ const formSchema = z.object({
   vin: z.string().optional(),
   licenseplate: z.string().optional(),
   state: z.string().optional(),
-  pet_name: z.string().optional()
+  pet_name: z.string().optional(),
+  vehicle_status: z.enum(['fine', 'broken', 'maintenance', 'former']).optional()
 });
 
 const fields: FieldConfig[] = [
@@ -67,6 +68,18 @@ const fields: FieldConfig[] = [
       { value: 'trailer', label: 'Trailer' },
       { value: 'tram', label: 'Tram' },
       { value: 'forktruck', label: 'Forktruck' }
+    ]
+  },
+  {
+    type: 'select',
+    name: 'vehicle_status',
+    label: 'Status',
+    options: [
+      { value: 'fine', label: 'Fine' },
+      { value: 'broken', label: 'Broken' },
+      { value: 'maintenance', label: 'Maintenance' },
+      { value: 'former', label: 'Former' },
+      
     ]
   },
   {
@@ -137,6 +150,7 @@ const fields: FieldConfig[] = [
     description: 'The state of the vehicle.',
     hidden: true
   }
+
 ];
 
 const EditVehicle = ({ id }: { id: string }) => {

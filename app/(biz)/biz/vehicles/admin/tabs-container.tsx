@@ -10,6 +10,7 @@ import LocationHistory from '../[id]/components/vehicle-location-history';
 import { fetchAllVehicleLocations } from '@/utils/supabase/queries';
 import { VehicleLocation } from '../types';
 import VehiclesOverview from './tables/components/vehicles-overview';
+import { FilteredVehicles } from './tables/components/filter-vehicles';
 
 const VehiclesTabContainer = async ({
   vehicles,
@@ -40,7 +41,7 @@ const VehiclesTabContainer = async ({
             </h2>
             <p className="text-muted-foreground"></p>
           </div>
-          <VehiclesTab vehicles={vehicles} />
+          <FilteredVehicles vehicles={vehicles} />
         </TabsContent>
         <TabsContent value="vehicle_status">
           {/* <VehicleStatus vehicles={vehicles} /> */}

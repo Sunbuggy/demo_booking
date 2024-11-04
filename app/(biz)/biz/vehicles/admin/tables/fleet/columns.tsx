@@ -19,14 +19,14 @@ export const columns: ColumnDef<VehicleType, any>[] = [
   {
     accessorKey: 'name',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Internal" />
+      <DataTableColumnHeader column={column} title="Fleet #" />
     ),
     cell: ({ row }) => {
       const name = row.getValue('name') as string;
       return (
         <Link
           href={`/biz/vehicles/${row.original.id}`}
-          className={`w-[80px] underline ${row.original.vehicle_status === 'broken' ? 'text-red-600' : row.original.vehicle_status === 'maintenance' ? 'text-amber-500' : 'text-green-500'} `}
+          className={`w-[80px] underline ${row.original.vehicle_status === 'broken' ? 'text-red-600' : row.original.vehicle_status === 'maintenance' ? 'text-amber-500' : row.original.vehicle_status === 'former' ? 'text-gray-600' : 'text-green-500'} `}
         >
           {name}
         </Link>

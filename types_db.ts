@@ -498,7 +498,6 @@ export type Database = {
         Row: {
           id: string
           latitude: number | null
-          link: string | null
           location: string | null
           longitude: number | null
           scanned_at: string | null
@@ -508,7 +507,6 @@ export type Database = {
         Insert: {
           id?: string
           latitude?: number | null
-          link?: string | null
           location?: string | null
           longitude?: number | null
           scanned_at?: string | null
@@ -518,7 +516,6 @@ export type Database = {
         Update: {
           id?: string
           latitude?: number | null
-          link?: string | null
           location?: string | null
           longitude?: number | null
           scanned_at?: string | null
@@ -1690,7 +1687,7 @@ export type Database = {
       time_entry_status: "clocked_in" | "clocked_out" | "on_break"
       user_type: "employee" | "customer" | "partner"
       vehicle_fuel_level: "quarter" | "half" | "three_quarters" | "full"
-      vehicle_status: "broken" | "maintenance" | "fine"
+      vehicle_status: "broken" | "maintenance" | "fine" | "former"
       vehicle_tag_type: "maintenance" | "repair"
       vehicle_type:
         | "shuttle"
