@@ -236,6 +236,27 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
     <div className=" mx-auto  p-8 rounded-lg shadow-md w-full">
       <form className="space-y-6 w-full" onSubmit={onSubmit}>
         <div>
+          <Label htmlFor="tag-status" className="text-sm font-medium">
+            Maintenance or Repair?
+          </Label>
+          <RadioGroup
+            id="tag-status"
+            onValueChange={(value) =>
+              setTag({ ...tag, tag_type: value as unknown as VehicleTagType })
+            }
+            className="mt-2 space-y-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="maintenance" id="maintenance" />
+              <Label htmlFor="maintenance">Maintenance</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="repair" id="repair" />
+              <Label htmlFor="repair">Repair</Label>
+            </div>
+          </RadioGroup>
+        </div>
+        <div>
           <label
             htmlFor="notes"
             className="block text-sm font-medium text-gray-700"
@@ -257,27 +278,6 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
         </div>
         {/* tag status select */}
 
-        <div>
-          <Label htmlFor="tag-status" className="text-sm font-medium">
-            Maintenance or Repair?
-          </Label>
-          <RadioGroup
-            id="tag-status"
-            onValueChange={(value) =>
-              setTag({ ...tag, tag_type: value as unknown as VehicleTagType })
-            }
-            className="mt-2 space-y-2"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="maintenance" id="maintenance" />
-              <Label htmlFor="maintenance">Maintenance</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="repair" id="repair" />
-              <Label htmlFor="repair">Repair</Label>
-            </div>
-          </RadioGroup>
-        </div>
         <div>
           {/* Stage pics for uploading */}
           {!selectedFiles.length && (

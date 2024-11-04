@@ -3,8 +3,19 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { SheetClose } from '../sheet';
-import { UserType } from '@/app/(biz)/biz/users/types';
+import { SheetClose } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
+
+interface UserType {
+  user_level: number;
+}
+
+interface NavLink {
+  href: string;
+  label: string;
+  minLevel: number;
+  external?: boolean;
+}
 
 interface NavSideBarProps {
   user: UserType | null;
@@ -14,7 +25,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   const pathname = usePathname();
   const date = new Date().toLocaleDateString('en-CA');
 
-  const navLinks = [
+  const navLinks: NavLink[] = [
     { href: '/', label: 'Home Page', minLevel: 0 },
     // { href: `/biz/${date}`, label: 'NV', minLevel: 300 },
     {
@@ -27,21 +38,38 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 }
   ];
 
-  const dashboardLinks = [
-    { href: `/biz/${date}`, label: 'NV', minLevel: 300, external: true },
-    { href: `/location/pismo`, label: 'CA', minLevel: 300 },
-    { href: `/location/silverlake`, label: 'MI', minLevel: 300 }
+  const dashboardLinks: NavLink[] = [
+    { href: `/biz/${date}`, label: 'NV', minLevel: 300, external: false },
+    {
+      href: `https://fareharbor.com/sunbuggypismobeach/dashboard`,
+      label: 'CA',
+      minLevel: 300
+    },
+    {
+      href: `https://fareharbor.com/sunbuggysilverlakedunes/dashboard`,
+      label: 'MI',
+      minLevel: 300
+    }
   ];
 
-  const renderNavLink = (link: (typeof navLinks)[0]) => {
-    if (pathname === link.href) return null; // Don't render the link for the current page
+  const renderNavLink = (link: NavLink) => {
+    const isActive = pathname === link.href;
 
     return (
       <SheetClose key={link.href} asChild>
         <Link
           href={link.href}
-          className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
-          {...(link.external ? { target: '_blank' } : {})}
+          className={cn(
+            'white_button',
+            'border-2 rounded-md transition-colors',
+            isActive
+              ? 'bg-orange-500 text-white hover:bg-orange-600'
+              : 'hover:bg-zinc-800 dark:hover:bg-zinc-200',
+            isActive && 'shadow-md'
+          )}
+          {...(link.external
+            ? { target: '_blank', rel: 'noopener noreferrer' }
+            : {})}
         >
           {link.label}
         </Link>
@@ -49,63 +77,30 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     );
   };
 
-  const renderNavLinkDashboard = (link: (typeof dashboardLinks)[0]) => {
-    if (pathname === link.href) return null; // Don't render the link for the current page
+  const renderLinkGroup = (
+    links: NavLink[],
+    title: string,
+    minLevel: number
+  ) => {
+    if (!user || user.user_level < minLevel) return null;
 
     return (
-      <SheetClose key={link.href} asChild>
-        <Link
-          href={link.href}
-          className="border-2 bg-primary p-2 rounded-md white_button transition duration-150 ease-in-out"
-          {...(link.external ? { target: '_blank' } : {})}
-        >
-          {link.label}
-        </Link>
-      </SheetClose>
+      <React.Fragment key={title}>
+        <span className="menulinks">{title}</span>
+        {links.map(renderNavLink)}
+      </React.Fragment>
     );
   };
-
-  let hasRenderedInternal = false;
-  let hasRenderedAdmin = false;
 
   return (
     <div className="flex flex-col gap-3">
-      {navLinks.map((link) => {
-        if (!user || user.user_level < link.minLevel) return null;
-
-        if (
-          link.minLevel === 300 &&
-          user.user_level >= 300 &&
-          !hasRenderedInternal
-        ) {
-          hasRenderedInternal = true;
-          return (
-            <React.Fragment key={link.href}>
-              <span className="menulinks">INTERNAL</span>
-              {renderNavLink(link)}
-              {dashboardLinks.map((dashboardLink) =>
-                renderNavLinkDashboard(dashboardLink)
-              )}
-            </React.Fragment>
-          );
-        }
-
-        if (
-          link.minLevel === 900 &&
-          user.user_level >= 900 &&
-          !hasRenderedAdmin
-        ) {
-          hasRenderedAdmin = true;
-          return (
-            <React.Fragment key={link.href}>
-              <span className="menulinks">ADMIN</span>
-              {renderNavLink(link)}
-            </React.Fragment>
-          );
-        }
-
-        return renderNavLink(link);
-      })}
+      {renderNavLink(navLinks[0])} {/* Home Page */}
+      {renderLinkGroup(dashboardLinks, 'INTERNAL', 300)}
+      {renderLinkGroup(
+        navLinks.filter((link) => link.minLevel === 900),
+        'ADMIN',
+        900
+      )}
     </div>
   );
 }
