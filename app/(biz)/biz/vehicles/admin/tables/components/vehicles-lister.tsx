@@ -38,10 +38,18 @@ const VehiclesLister = ({ list }: { list: string[] | null }) => {
           {vehicles.map((vehicle, index) => (
             <span key={index}>
               <Button
-                className="normal_button_circular relative"
+                className="large_button_circular relative"
                 onClick={() => handleClick(vehicle.id)}
               >
-                {vehicle.name}
+                {vehicle.pet_name ? (
+                  <>
+                    {vehicle.pet_name}
+                    <br />
+                    {vehicle.name}
+                  </>
+                ) : (
+                  vehicle.name
+                )}{' '}
                 {vehicle.vehicle_status === 'broken' && (
                   <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
                 )}

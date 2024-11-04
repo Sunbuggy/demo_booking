@@ -23,7 +23,7 @@ export default function ResponsiveImageUpload({
   url_key,
   updatePic = false,
   single = false,
-  acceptedFormats = 'image/png, image/jpeg',
+  acceptedFormats = 'image/*',
   bucket = 'sb-fleet'
 }: ResponsiveImageUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -138,7 +138,7 @@ export default function ResponsiveImageUpload({
               className="sr-only"
               capture="environment"
               onChange={handleFileChange}
-              accept="image/png, image/jpeg"
+              accept="image/*"
             />
             <CameraIcon className="h-6 w-6 text-gray-400" />
             <span className="font-semibold">Take a picture</span>

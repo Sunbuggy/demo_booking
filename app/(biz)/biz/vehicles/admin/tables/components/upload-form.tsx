@@ -13,7 +13,7 @@ const UploadForm = ({
   setFiles,
   uploading,
   multiple = false,
-  acceptFormat = 'image/png, image/jpeg'
+  acceptFormat = 'image/*'
 }: {
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   inputFile: React.RefObject<HTMLInputElement>;

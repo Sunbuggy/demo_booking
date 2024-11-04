@@ -156,10 +156,18 @@ const ScanHistory = ({ scans }: { scans: VehicleType[] }) => {
               {uniqueScans.map((vehicle) => (
                 <Link
                   href={`/biz/vehicles/${vehicle.id}`}
-                  className="normal_button_circular relative"
+                  className="large_button_circular relative"
                   key={vehicle.id}
                 >
-                  {vehicle.pet_name || vehicle.name}
+                  {vehicle.pet_name ? (
+                    <>
+                      {vehicle.pet_name}
+                      <br />
+                      {vehicle.name}
+                    </>
+                  ) : (
+                    vehicle.name
+                  )}
                   {vehicle.vehicle_status === 'broken' && (
                     <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
                   )}

@@ -14,6 +14,7 @@ const NormalMode = ({
     name: string;
     id: string;
     status: string;
+    pet_name?: string;
   }[];
   scannedUrls: string[];
 }) => {
@@ -40,10 +41,18 @@ const NormalMode = ({
                   <span key={i}>
                     <DialogClose asChild>
                       <Button
-                        className="normal_button_circular relative"
+                        className="large_button_circular relative"
                         onClick={() => handleClick(v.id)}
                       >
-                        {v.name}
+                        {v.pet_name ? (
+                          <>
+                            {v.pet_name}
+                            <br />
+                            {v.name}
+                          </>
+                        ) : (
+                          v.name
+                        )}{' '}
                         {v.status === 'broken' && (
                           <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
                         )}

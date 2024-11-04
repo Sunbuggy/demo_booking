@@ -293,7 +293,7 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
                   multiple
                   ref={inputFile}
                   onChange={handleFileChange}
-                  accept="image/png, image/jpeg"
+                  accept="image/*"
                 />
                 Click Here To Upload Pics
               </Label>
@@ -307,7 +307,7 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
                   className="hidden"
                   capture="environment"
                   onChange={handleFileChange}
-                  accept="image/png, image/jpeg"
+                  accept="image/*"
                 />
                 {/*camera icon  */}
                 <CameraIcon size={24} />

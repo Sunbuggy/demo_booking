@@ -23,7 +23,7 @@ export type UserDetails = {
   avatar_url: string | null;
   full_name: string | null;
   id: string;
-  user_level?: number | null; 
+  user_level?: number | null;
   email?: string | null;
 };
 
@@ -789,7 +789,7 @@ export const getVehicleIdFromName = cache(
   async (supabase: SupabaseClient, vehicle_name: string) => {
     const { data, error } = await supabase
       .from('vehicles')
-      .select('id, vehicle_status')
+      .select('id, vehicle_status, pet_name')
       .eq('name', vehicle_name);
     if (error) {
       console.error(error);

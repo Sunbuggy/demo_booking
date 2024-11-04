@@ -51,7 +51,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
     longitude: number;
   }>({ latitude: 0, longitude: 0 });
   const [scannedVehicleIds, setScannedVehicleIds] = React.useState<
-    { name: string; id: string; status: string }[]
+    { name: string; id: string; status: string; pet_name: string }[]
   >([]);
 
   const { ref } = useZxing({
@@ -146,19 +146,22 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
         variant: 'success'
       });
       pingSound();
-  
+
       const veh_name = result.split('/fleet/')[1].toLowerCase();
-      const true_veh_name = isNaN(parseInt(veh_name)) ? veh_name : `sb${veh_name}`;
-  
+      const true_veh_name = isNaN(parseInt(veh_name))
+        ? veh_name
+        : `sb${veh_name}`;
+
       // Call getVehicleIdFromName to fetch vehicle_id and other data
       getVehicleIdFromName(supabase, true_veh_name)
         .then((res) => {
           const veh_id = res[0].id as string;
           const veh_status = res[0].vehicle_status as string;
-          
+          const pet_name = res[0].pet_name as string;
+
           // Update the history entry with the vehicle_id
           saveScannedUrlToHistory(result, city, veh_id);
-  
+
           const vehicleLocation = {
             city,
             created_at: new Date().toISOString(),
@@ -167,16 +170,25 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
             vehicle_id: veh_id,
             created_by: user?.id ?? 'unknown'
           };
-  
+
           // Check if the vehicle is already scanned and not repeated
-          if (!scannedVehicleIds.find((v) => v.id === veh_id) && !scannedUrls.includes(result)) {
+          if (
+            !scannedVehicleIds.find((v) => v.id === veh_id) &&
+            !scannedUrls.includes(result)
+          ) {
             fetchVehicleLocations(supabase, veh_id)
               .then((res) => {
                 if (res.length > 0) {
                   const lastLocation = res[res.length - 1];
                   const distance = Math.sqrt(
-                    Math.pow(lastLocation.latitude - currentLocation.latitude, 2) +
-                    Math.pow(lastLocation.longitude - currentLocation.longitude, 2)
+                    Math.pow(
+                      lastLocation.latitude - currentLocation.latitude,
+                      2
+                    ) +
+                      Math.pow(
+                        lastLocation.longitude - currentLocation.longitude,
+                        2
+                      )
                   );
                   if (distance < 0.0005) {
                     toast({
@@ -236,10 +248,15 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
                   variant: 'destructive'
                 });
               });
-  
+
             setScannedVehicleIds([
               ...scannedVehicleIds,
-              { name: true_veh_name, id: veh_id, status: veh_status }
+              {
+                name: true_veh_name,
+                id: veh_id,
+                status: veh_status,
+                pet_name: pet_name
+              }
             ]);
           }
         })
@@ -258,7 +275,6 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
       errSound();
     }
   }, [result]);
-  
 
   const locationCoordinates = {
     vegasShop: { lat: 36.278439, lon: -115.020068 },
@@ -379,35 +395,34 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
     return 'Unknown';
   }
 
-// Function to save the scanned 
-const saveScannedUrlToHistory = async (
-  scannedUrl: string,
-  location: string,
-  vehicle_id?: string 
-) => {
-  if (!user) return; // Check if user is logged in
+  // Function to save the scanned
+  const saveScannedUrlToHistory = async (
+    scannedUrl: string,
+    location: string,
+    vehicle_id?: string
+  ) => {
+    if (!user) return; // Check if user is logged in
 
-  const { data, error } = await supabase.from('qr_history').insert([
-    {
-      user: user.id,
-      scanned_at: new Date().toISOString(),
-      location: location, 
-      latitude: currentLocation.latitude,
-      longitude: currentLocation.longitude,
-      vehicle_id: vehicle_id ?? null, 
-    },
-  ]);
+    const { data, error } = await supabase.from('qr_history').insert([
+      {
+        user: user.id,
+        scanned_at: new Date().toISOString(),
+        location: location,
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        vehicle_id: vehicle_id ?? null
+      }
+    ]);
 
-  if (error) {
-    console.error('Error saving QR scan:', error);
-    toast({
-      title: 'Error',
-      description: 'Could not save QR scan to history.',
-      variant: 'destructive',
-    });
-  }
-};
-
+    if (error) {
+      console.error('Error saving QR scan:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not save QR scan to history.',
+        variant: 'destructive'
+      });
+    }
+  };
 
   const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { id, checked } = event.target;

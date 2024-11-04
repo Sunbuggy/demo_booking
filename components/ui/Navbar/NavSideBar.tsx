@@ -65,7 +65,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
             'border-2 rounded-md transition-colors',
             isActive
               ? 'bg-orange-500 text-white hover:bg-orange-600'
-              : 'hover:bg-zinc-800 dark:hover:bg-zinc-200',
+              : 'hover:bg-zinc-800 dark:hover:bg-zinc-500',
             isActive && 'shadow-md'
           )}
           {...(link.external
