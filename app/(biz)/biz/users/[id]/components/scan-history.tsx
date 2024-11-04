@@ -152,32 +152,43 @@ const ScanHistory = ({ scans }: { scans: VehicleType[] }) => {
         <AccordionItem value="scanned-list">
           <AccordionTrigger>Scanned List </AccordionTrigger>
           <AccordionContent>
-            <div className="grid grid-cols-5 gap-2">
-              {uniqueScans.map((vehicle) => (
-                <Link
-                  href={`/biz/vehicles/${vehicle.id}`}
-                  className="large_button_circular relative"
-                  key={vehicle.id}
-                >
-                  {vehicle.pet_name ? (
-                    <>
-                      {vehicle.pet_name}
-                      <br />
-                      {vehicle.name}
-                    </>
-                  ) : (
-                    vehicle.name
-                  )}
-                  {vehicle.vehicle_status === 'broken' && (
-                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-                  )}
-                  {vehicle.vehicle_status === 'maintenance' && (
-                    <span className="absolute top-0 right-0 w-2 h-2 bg-amber-500 rounded-full"></span>
-                  )}
-                  {vehicle.vehicle_status === 'fine' && (
-                    <span className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full"></span>
-                  )}
-                </Link>
+            <div className="flex flex-col gap-4">
+              {Array.from(
+                new Set(uniqueScans.map((vehicle) => vehicle.type))
+              ).map((type) => (
+                <div key={type}>
+                  <h3 className="text-xl font-bold m-5">{type}</h3>
+                  <div className="grid grid-cols-5 gap-2">
+                    {uniqueScans
+                      .filter((vehicle) => vehicle.type === type)
+                      .map((vehicle) => (
+                        <Link
+                          href={`/biz/vehicles/${vehicle.id}`}
+                          className="large_button_circular relative"
+                          key={vehicle.id}
+                        >
+                          {vehicle.pet_name ? (
+                            <>
+                              {vehicle.pet_name}
+                              <br />
+                              {vehicle.name}
+                            </>
+                          ) : (
+                            vehicle.name
+                          )}
+                          {vehicle.vehicle_status === 'broken' && (
+                            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                          )}
+                          {vehicle.vehicle_status === 'maintenance' && (
+                            <span className="absolute top-0 right-0 w-2 h-2 bg-amber-500 rounded-full"></span>
+                          )}
+                          {vehicle.vehicle_status === 'fine' && (
+                            <span className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full"></span>
+                          )}
+                        </Link>
+                      ))}
+                  </div>
+                </div>
               ))}
             </div>
           </AccordionContent>
