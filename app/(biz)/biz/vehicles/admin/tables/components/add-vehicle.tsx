@@ -48,9 +48,9 @@ const fields: FieldConfig[] = [
   {
     type: 'input',
     name: 'name',
-    label: 'Internal Name',
-    placeholder: 'Enter the internal name',
-    description: 'The internal name of the vehicle.'
+    label: 'Fleet Number',
+    placeholder: 'Enter the Fleet Number',
+    description: 'The Fleet Number of the vehicle.'
   },
   {
     type: 'input',
