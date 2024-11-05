@@ -12,13 +12,13 @@ interface VehicleGif {
 }
 
 interface ResponsiveGifUploadProps {
-  url_key: string;
+  vehicleId: string; // Updated to be more descriptive
   updateGif?: boolean;
   single?: boolean;
 }
 
 export default function ResponsiveGifUpload({
-  url_key,
+  vehicleId,
   updateGif = false,
   single = false
 }: ResponsiveGifUploadProps) {
@@ -30,35 +30,41 @@ export default function ResponsiveGifUpload({
     const files = e.target.files;
     if (files) {
       const fileArray = Array.from(files);
-      setSelectedFiles(fileArray);
+      if (single && fileArray.length > 1) {
+        // If single mode, only take the first file
+        setSelectedFiles([fileArray[0]]);
+      } else {
+        setSelectedFiles(fileArray);
+      }
     }
   };
 
   const removeFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-  
+
     if (selectedFiles.length === 0) {
       toast({
         title: 'Error',
-        description: 'Please select files to upload.',
+        description: 'Please select a GIF to upload.',
         variant: 'destructive'
       });
       return;
     }
-  
+
     const formData = new FormData();
     formData.append('bucket', 'sb-fleet');
     formData.append('mode', single ? 'single' : 'multiple');
-    formData.append('key', url_key);
+    formData.append('key', `badges/${vehicleId}.gif`); // Set path for GIF
     formData.append('contentType', 'image/gif'); 
-  
+
     selectedFiles.forEach((file) => {
       formData.append('files', file);
     });
-  
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
@@ -67,32 +73,32 @@ export default function ResponsiveGifUpload({
           body: formData
         }
       );
-  
+
       if (!response.ok) {
         const data = await response.json();
-        console.error('Failed to upload GIFs:', data.message);
-        throw new Error(data.message || 'Failed to upload GIFs');
+        console.error('Failed to upload GIF:', data.message);
+        throw new Error(data.message || 'Failed to upload GIF');
       }
-  
+
       const data = await response.json();
       toast({
         title: 'Success',
-        description: 'GIFs uploaded successfully',
+        description: 'GIF uploaded successfully',
         variant: 'success'
       });
       setSelectedFiles([]);
       if (formRef.current) formRef.current.reset();
       window.location.reload(); 
     } catch (error) {
-      console.error('Error uploading GIFs:', error);
+      console.error('Error uploading GIF:', error);
       toast({
         title: 'Error',
-        description: `Failed to upload GIFs. Please try again. Error: `,
+        description: `Failed to upload GIF. Please try again.`,
         variant: 'destructive'
       });
     }
   };
-  
+
   return (
     <form onSubmit={handleSubmit} ref={formRef} className="space-y-4">
       {selectedFiles.length === 0 && (
@@ -112,7 +118,7 @@ export default function ResponsiveGifUpload({
             />
             <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
             <span className="mt-2 block text-sm font-semibold">
-              Click to upload GIFs
+              Click to upload GIF
             </span>
           </Label>
           <Label

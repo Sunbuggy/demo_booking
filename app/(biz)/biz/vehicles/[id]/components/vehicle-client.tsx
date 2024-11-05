@@ -107,6 +107,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       supabase.removeChannel(channel);
     };
   }, [supabase, router]);
+  
   React.useEffect(() => {
     const channel = supabase
       .channel('realtime vehicle tags and vehicle')
@@ -295,6 +296,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                           <div>
                             <ResponsiveGifUpload
                               url_key={`badges/${id}/${createId()}`}
+                              vehicleId={id} 
                             />
                           </div>
                         }
@@ -311,7 +313,6 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               </AccordionItem>
               <AccordionItem value="tag-management">
                 <AccordionTrigger>Tag Management</AccordionTrigger> 
-                {/* OBJECTIVE cannot close multiple tags without reloading page between each tag... */}
                 <AccordionContent>
                   <TagManagement
                     tags={vehicleTags}

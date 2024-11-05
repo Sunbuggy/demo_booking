@@ -14,9 +14,11 @@ import VehicleClientComponent from './components/vehicle-client';
 import { InventoryLocation, VehicleLocation } from '../types';
 
 const bucket = 'sb-fleet';
+
 async function getVehicleData(id: string) {
   const supabase = createClient();
   const vehicleInfo = await fetchVehicleInfo(supabase, id);
+
   const fetchVehicleTagInfo = async () => {
     const { data, error } = await supabase
       .from('vehicle_tag')
@@ -40,13 +42,17 @@ async function getVehicleData(id: string) {
 
     const normalImages = normalPicsResponse?.objects as VehiclePics[];
 
+    // Fetch and format GIF data with `key` property
     const normalGifsResponse = await fetchObjects(
       bucket,
       false,
       `badges/${id}`
     );
 
-    const normalBadges = normalGifsResponse?.objects as VehicleGifs[];
+    const normalBadges = (normalGifsResponse?.objects || []).map((gif) => ({
+      ...gif,
+      key: `${id}-${gif.url}`,  // Assign a unique key for each GIF
+    })) as VehicleGifs[];
 
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
@@ -55,11 +61,11 @@ async function getVehicleData(id: string) {
       vehicleTags
     };
   } catch (error) {
-    console.error(`Error fetching objects for ${id} `, error);
+    console.error(`Error fetching objects for ${id}`, error);
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: [],
-      normalBadges:[],
+      normalBadges: [],
       vehicleTags: []
     };
   }
@@ -70,7 +76,6 @@ export default async function VehiclePage({
 }: {
   params: { id: string };
 }) {
-  // debug id going undefined
   const supabase = createClient();
   const user = await getUser(supabase);
 
@@ -80,7 +85,7 @@ export default async function VehiclePage({
     `profile_pic/${params.id}`
   );
   const profilePic = String(profilePicResponse?.url);
-  const { vehicleInfo, normalImages, normalBadges,vehicleTags } = await getVehicleData(
+  const { vehicleInfo, normalImages, normalBadges, vehicleTags } = await getVehicleData(
     params.id
   );
 
@@ -92,6 +97,7 @@ export default async function VehiclePage({
     supabase,
     params.id
   )) as InventoryLocation[];
+
   return (
     <>
       {user ? (
@@ -100,7 +106,7 @@ export default async function VehiclePage({
           initialVehicleInfo={vehicleInfo}
           profilePic={profilePic}
           images={normalImages}
-          gif={normalBadges}
+          gif={normalBadges}  
           vehicleTags={vehicleTags}
           user={user}
           vehicleLocations={vehicleLocations}
