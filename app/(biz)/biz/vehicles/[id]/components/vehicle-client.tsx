@@ -26,17 +26,20 @@ import { useRouter } from 'next/navigation';
 
 import ResponsiveImageUpload from './responsive-image-upload-form';
 import ResponsiveGifUpload from './responsive-gif-upload-form';
+import RegistrationUpload from './registration-upload-form'
 import LocationHistory from './vehicle-location-history';
 import PretripFormManager from './pretrip-forms/pretrip-form-manager';
 import InventoryHistory from './vehicle-location-inventory-history';
 import { InventoryLocation, VehicleLocation } from '../../types';
 import LocationScheduling from './location-scheduling';
+import { VehicleReg } from '../../admin/tables/components/row-action-reg';
 
 interface VehicleClientComponentProps {
   id: string;
   initialVehicleInfo: VehicleType;
   images: VehiclePics[];
   gif: VehicleGifs[];
+  registrationImages: VehicleReg[]; // Add registrationImages prop
   profilePic?: string;
   vehicleTags: VehicleTagType[];
   user: User;
@@ -44,12 +47,14 @@ interface VehicleClientComponentProps {
   inventoryLocations: InventoryLocation[];
 }
 
+// Destructure registrationImages in props
 const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   id,
   initialVehicleInfo,
   profilePic,
   images,
   gif,
+  registrationImages,
   vehicleTags,
   user,
   vehicleLocations,
@@ -65,6 +70,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const [isUploadImagesDialogOpen, setIsUploadImagesDialogOpen] =
     React.useState(false);
   const [isUploadGifsDialogOpen, setIsUploadGifsDialogOpen] =
+    React.useState(false);
+    const [isUploadRegDialogOpen, setIsUploadRegDialogOpen] =
     React.useState(false);
   const [isLocationManagementDialogOpen, setIsLocationManagementDialogOpen] =
     React.useState(false);
@@ -175,6 +182,15 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     </div>
   );
 
+  const uploadMoreRegistration = (
+    <div>
+      <p>
+        Upload More Registration for{' '}
+        <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
+      </p>
+    </div>
+  );
+  
   if (vehicleInfo)
     return (
       <div className="md:w-[800px] min-w-[360px] space-y-5 relative">
@@ -274,8 +290,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       images={images}
                       width={200}
                       height={120}
-                      gifs={[]}
-                    />
+                      gifs={[]} registrations={[]}                    />
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -295,8 +310,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         children={
                           <div>
                             <ResponsiveGifUpload
-                              url_key={`badges/${id}/${createId()}`}
-                              vehicleId={id} 
+                              url_key={`badges/${id}`}
                             />
                           </div>
                         }
@@ -306,8 +320,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       gifs={gif}
                       width={200}
                       height={120}
-                      images={[]}
-                    />
+                      images={[]} registrations={[]}                    />
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -395,16 +408,46 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                   </div>
                 </AccordionContent>
               </AccordionItem>
+              <AccordionItem value="show-registration">
+              <AccordionTrigger>Show Registration</AccordionTrigger>
+              <AccordionContent>
+                <div className="flex flex-col gap-5">
+                  <Button onClick={() => setIsUploadRegDialogOpen(true)}>
+                    Upload Registration
+                  </Button>
+                  <DialogFactory
+                    title={uploadMoreRegistration}
+                    setIsDialogOpen={setIsUploadRegDialogOpen}
+                    isDialogOpen={isUploadRegDialogOpen}
+                    description="Upload one or multiple images for the vehicle."
+                    children={
+                      <div>
+                        <RegistrationUpload url_key={`registrations/${id}`} />
+                      </div>
+                    }
+                  />
+                  <ImageGrid
+                    images={[]} 
+                    width={200}
+                    height={120}
+                    gifs={[]} 
+                    registrations={registrationImages} 
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
             </Accordion>
           </CardContent>
         </Card>
         <div
-          className={`absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === 'maintenance' ? 'bg-yellow-600' : vehicleInfo.vehicle_status === 'broken' ? 'bg-red-600' : 'bg-green-600'}`}
+          className={`absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === 'maintenance' ? 'bg-yellow-600' : vehicleInfo.vehicle_status === 'broken' ? 'bg-red-600': vehicleInfo.vehicle_status === 'former' ? 'bg-gray-600' : 'bg-green-600'}`}
         >
           {vehicleInfo.vehicle_status}
         </div>
       </div>
     );
 };
+
 
 export default VehicleClientComponent;

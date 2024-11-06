@@ -1,27 +1,26 @@
 import { Label } from '@/components/ui/label';
-import { CameraIcon, UploadIcon } from 'lucide-react';
+import { CameraIcon, UploadIcon, FileTextIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import React, { useState, FormEvent } from 'react';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
-interface VehicleGif {
-  url: string;
-  key: string;
-}
-
-interface ResponsiveGifUploadProps {
+interface RegistrationUploadProps {
   url_key: string;
-  updateGif?: boolean;
+  updatePic?: boolean;
   single?: boolean;
+  acceptedFormats?: string;
+  bucket?: string;
 }
 
-export default function ResponsiveGifUpload({
+export default function RegistrationUpload({
   url_key,
-  updateGif = false,
-  single = false
-}: ResponsiveGifUploadProps) {
+  updatePic = false,
+  single = false,
+  acceptedFormats = 'image/*,application/pdf',
+  bucket = 'sb-fleet'
+}: RegistrationUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const { toast } = useToast();
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -37,8 +36,19 @@ export default function ResponsiveGifUpload({
   const removeFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+  
+    // Check for required fields and selected files
+    if (!url_key || !bucket) {
+      toast({
+        title: 'Configuration Error',
+        description: 'Missing required URL key or bucket name.',
+        variant: 'destructive'
+      });
+      return;
+    }
   
     if (selectedFiles.length === 0) {
       toast({
@@ -49,50 +59,51 @@ export default function ResponsiveGifUpload({
       return;
     }
   
+    // Prepare the form data for upload
     const formData = new FormData();
-    formData.append('bucket', 'sb-fleet');
+    formData.append('bucket', bucket);
     formData.append('mode', single ? 'single' : 'multiple');
     formData.append('key', url_key);
-    formData.append('contentType', 'image/gif'); 
   
+    // Append each selected file to form data, including the contentType
     selectedFiles.forEach((file) => {
-      formData.append('files', file);
+      formData.append('files', file);  // Add the file itself
+      formData.append('contentType', file.type);  // Add contentType for each file
     });
   
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
         {
-          method: updateGif ? 'PUT' : 'POST',
+          method: updatePic ? 'PUT' : 'POST',
           body: formData
         }
       );
   
       if (!response.ok) {
-        const data = await response.json();
-        console.error('Failed to upload GIFs:', data.message);
-        throw new Error(data.message || 'Failed to upload GIFs');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Upload failed due to missing fields.');
       }
   
-      const data = await response.json();
       toast({
         title: 'Success',
-        description: 'GIFs uploaded successfully',
+        description: 'Files uploaded successfully!',
         variant: 'success'
       });
       setSelectedFiles([]);
       if (formRef.current) formRef.current.reset();
-      window.location.reload(); 
-    } catch (error) {
-      console.error('Error uploading GIFs:', error);
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Error uploading files:', error);
       toast({
-        title: 'Error',
-        description: `Failed to upload GIFs. Please try again. Error: `,
+        title: 'Upload Error',
+        description: error.message || 'Upload failed. Please try again.',
         variant: 'destructive'
       });
     }
   };
   
+
   return (
     <form onSubmit={handleSubmit} ref={formRef} className="space-y-4">
       {selectedFiles.length === 0 && (
@@ -108,11 +119,11 @@ export default function ResponsiveGifUpload({
               className="sr-only"
               multiple={!single}
               onChange={handleFileChange}
-              accept="image/gif"
+              accept={acceptedFormats}
             />
             <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
             <span className="mt-2 block text-sm font-semibold">
-              Click to upload GIFs
+              Click to upload Registration (Images or PDFs)
             </span>
           </Label>
           <Label
@@ -126,10 +137,10 @@ export default function ResponsiveGifUpload({
               className="sr-only"
               capture="environment"
               onChange={handleFileChange}
-              accept="image/gif"
+              accept="image/*"
             />
             <CameraIcon className="h-6 w-6 text-gray-400" />
-            <span className="font-semibold">Take a picture (GIF)</span>
+            <span className="font-semibold">Take a picture</span>
           </Label>
         </div>
       )}
@@ -138,25 +149,35 @@ export default function ResponsiveGifUpload({
           <div className="grid grid-cols-3 gap-4">
             {selectedFiles.map((file, index) => (
               <div key={index} className="relative group">
-                <img
-                  src={URL.createObjectURL(file)}
-                  alt={`Selected file ${index + 1}`}
-                  className="w-full h-32 object-cover rounded-md"
-                />
+                {file.type.startsWith('image/') ? (
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={`Selected file ${index + 1}`}
+                    className="w-full h-32 object-cover rounded-md"
+                  />
+                ) : (
+                  <div className="w-full h-32 flex items-center justify-center bg-gray-200 rounded-md">
+                    <FileTextIcon className="h-8 w-8 text-gray-500" />
+                    <span className="text-sm text-gray-500">{file.name}</span>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => removeFile(index)}
                   className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label={`Remove GIF ${index + 1}`}
+                  aria-label={`Remove file ${index + 1}`}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414 1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </button>
               </div>
@@ -164,8 +185,7 @@ export default function ResponsiveGifUpload({
           </div>
           <DialogClose asChild>
             <Button type="submit" className="w-full">
-              Upload {selectedFiles.length}{' '}
-              {selectedFiles.length === 1 ? 'GIF' : 'GIFs'}
+              Upload {selectedFiles.length} {selectedFiles.length === 1 ? 'file' : 'files'}
             </Button>
           </DialogClose>
         </div>

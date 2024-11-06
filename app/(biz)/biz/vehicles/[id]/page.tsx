@@ -14,7 +14,6 @@ import VehicleClientComponent from './components/vehicle-client';
 import { InventoryLocation, VehicleLocation } from '../types';
 
 const bucket = 'sb-fleet';
-
 async function getVehicleData(id: string) {
   const supabase = createClient();
   const vehicleInfo = await fetchVehicleInfo(supabase, id);
@@ -42,40 +41,46 @@ async function getVehicleData(id: string) {
 
     const normalImages = normalPicsResponse?.objects as VehiclePics[];
 
-    // Fetch and format GIF data with `key` property
     const normalGifsResponse = await fetchObjects(
       bucket,
       false,
       `badges/${id}`
     );
+    const normalBadges = normalGifsResponse?.objects as VehicleGifs[];
 
-    const normalBadges = (normalGifsResponse?.objects || []).map((gif) => ({
-      ...gif,
-      key: `${id}-${gif.url}`,  // Assign a unique key for each GIF
-    })) as VehicleGifs[];
+    const registrationPicsResponse = await fetchObjects(
+      bucket,
+      false,
+      `registrations/${id}`
+    );
+    const registrationImages = registrationPicsResponse?.objects as VehiclePics[];
 
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: normalImages || [],
       normalBadges: normalBadges || [],
-      vehicleTags
+      vehicleTags,
+      registrationImages: registrationImages || [] // Add registration images
     };
   } catch (error) {
-    console.error(`Error fetching objects for ${id}`, error);
+    console.error(`Error fetching objects for ${id} `, error);
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: [],
       normalBadges: [],
-      vehicleTags: []
+      vehicleTags: [],
+      registrationImages: [] 
     };
   }
 }
+
 
 export default async function VehiclePage({
   params
 }: {
   params: { id: string };
 }) {
+  // debug id going undefined
   const supabase = createClient();
   const user = await getUser(supabase);
 
@@ -85,7 +90,7 @@ export default async function VehiclePage({
     `profile_pic/${params.id}`
   );
   const profilePic = String(profilePicResponse?.url);
-  const { vehicleInfo, normalImages, normalBadges, vehicleTags } = await getVehicleData(
+  const { vehicleInfo, normalImages, normalBadges,vehicleTags, registrationImages } = await getVehicleData(
     params.id
   );
 
@@ -97,7 +102,6 @@ export default async function VehiclePage({
     supabase,
     params.id
   )) as InventoryLocation[];
-
   return (
     <>
       {user ? (
@@ -106,11 +110,12 @@ export default async function VehiclePage({
           initialVehicleInfo={vehicleInfo}
           profilePic={profilePic}
           images={normalImages}
-          gif={normalBadges}  
+          gif={normalBadges}
           vehicleTags={vehicleTags}
           user={user}
           vehicleLocations={vehicleLocations}
           inventoryLocations={inventoryLocations}
+          registrationImages={registrationImages} 
         />
       ) : (
         <div>No User</div>

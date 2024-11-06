@@ -344,7 +344,7 @@ const ExistingTagForm = ({
                 </Button>
               </div>
             )}
-            <ImageGrid images={images} width={100} height={75} gifs={[]} />
+            <ImageGrid images={images} width={100} height={75} gifs={[]} registrations={[]} />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
