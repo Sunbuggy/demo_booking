@@ -5,6 +5,7 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { VehicleTagType, VehicleType } from '../../admin/page';
 import EditVehicle from '../../admin/tables/components/edit-vehicle';
 import ImageView from './image-view';
+import PdfView from './pdf-view';
 import Link from 'next/link';
 import { ArrowBigLeftIcon } from 'lucide-react';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
@@ -17,6 +18,7 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import ImageGrid from './image-grid';
+import PdfGrid from './pdf-grid';
 import DialogFactory from '@/components/dialog-factory';
 import TagManagement from './tag-management';
 import { User } from '@supabase/supabase-js';

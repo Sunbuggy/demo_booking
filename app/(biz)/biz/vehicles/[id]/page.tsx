@@ -44,7 +44,7 @@ async function getVehicleData(id: string) {
     const normalGifsResponse = await fetchObjects(
       bucket,
       false,
-      `badges/`
+      `badges/${id}`
     );
     const normalBadges = normalGifsResponse?.objects as VehicleGifs[];
 
