@@ -44,7 +44,7 @@ async function getVehicleData(id: string) {
     const normalGifsResponse = await fetchObjects(
       bucket,
       false,
-      `badges/${id}`
+      `badges/`
     );
     const normalBadges = normalGifsResponse?.objects as VehicleGifs[];
 
@@ -60,7 +60,7 @@ async function getVehicleData(id: string) {
       normalImages: normalImages || [],
       normalBadges: normalBadges || [],
       vehicleTags,
-      registrationImages: registrationImages || [] // Add registration images
+      registrationImages: registrationImages || []
     };
   } catch (error) {
     console.error(`Error fetching objects for ${id} `, error);

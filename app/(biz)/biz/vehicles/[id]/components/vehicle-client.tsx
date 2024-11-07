@@ -290,10 +290,12 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       images={images}
                       width={200}
                       height={120}
-                      gifs={[]} registrations={[]}                    />
+                      gifs={[]} 
+                      registrations={[]}/>
                   </div>
                 </AccordionContent>
               </AccordionItem>
+
               <AccordionItem value="show-badges">
                 <AccordionTrigger>Show Badge</AccordionTrigger>
                 <AccordionContent>
@@ -311,6 +313,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                           <div>
                             <ResponsiveGifUpload
                               url_key={`badges/${id}`}
+                              // vehicleId={vehicleInfo.id}  
                             />
                           </div>
                         }
@@ -320,10 +323,11 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       gifs={gif}
                       width={200}
                       height={120}
-                      images={[]} registrations={[]}                    />
+                      images={[]} registrations={[]}/>
                   </div>
                 </AccordionContent>
               </AccordionItem>
+              
               <AccordionItem value="tag-management">
                 <AccordionTrigger>Tag Management</AccordionTrigger> 
                 <AccordionContent>
