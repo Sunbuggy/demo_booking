@@ -57,6 +57,12 @@ const pismoDunesCoordinates = [
   { lat: 35.036037, lon: -120.621555 },
   { lat: 35.036288, lon: -120.633892 }
 ];
+const vofCoordinates = [
+  { lat: 36.617272, lon: -114.48814 },
+  { lat: 36.620518, lon: -114.526353 },
+  { lat: 36.479769, lon: -114.583101 },
+  { lat: 36.479083, lon: -114.514348 }
+];
 
 function deg2rad(deg: number): number {
   return deg * (Math.PI / 180);
@@ -131,6 +137,8 @@ function getLocationType(lat: number, lon: number): string {
   if (isNearLocation(lat, lon, 'vegasShop')) return 'Vegas Shop';
   if (isNearLocation(lat, lon, 'pismoShop', 0.5)) return 'Pismo Shop';
   if (isNearLocation(lat, lon, 'nellis')) return 'Vegas Nellis';
+  if (isBetweenCoordinates(lat, lon, vofCoordinates))
+    return 'Vegas Valley of fire';
   if (isBetweenCoordinates(lat, lon, pismoBeachCoordinates))
     return 'Pismo Beach';
   if (isBetweenCoordinates(lat, lon, pismoDunesCoordinates))
@@ -336,12 +344,17 @@ export default function VehiclesOverview() {
               </SelectItem>
               <SelectItem value="vegas shop">Vegas Shop</SelectItem>
               <SelectItem value="vegas nellis">Vegas Nellis</SelectItem>
+              <SelectItem value="vegas valley of fire">
+                Vegas Valley of Fire
+              </SelectItem>
             </SelectGroup>
             <SelectGroup>
               <SelectItem value="pismo" className="font-bold text-lg">
                 Pismo
               </SelectItem>
               <SelectItem value="pismo shop">Pismo Shop</SelectItem>
+              <SelectItem value="pismo beach">Pismo Beach</SelectItem>
+              <SelectItem value="pismo dunes">Pismo Dunes</SelectItem>
             </SelectGroup>
             <SelectItem value="no location">No Location</SelectItem>
           </SelectContent>
