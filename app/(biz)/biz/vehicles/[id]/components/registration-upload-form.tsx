@@ -40,7 +40,6 @@ export default function RegistrationUpload({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
   
-    // Check for required fields and selected files
     if (!url_key || !bucket) {
       toast({
         title: 'Configuration Error',
@@ -59,16 +58,20 @@ export default function RegistrationUpload({
       return;
     }
   
-    // Prepare the form data for upload
     const formData = new FormData();
     formData.append('bucket', bucket);
     formData.append('mode', single ? 'single' : 'multiple');
     formData.append('key', url_key);
   
-    // Append each selected file to form data, including the contentType
+    // Rename PDF files to the current date
     selectedFiles.forEach((file) => {
-      formData.append('files', file);  // Add the file itself
-      formData.append('contentType', file.type);  // Add contentType for each file
+      let newFile = file;
+      if (file.type === 'application/pdf') {
+        const today = new Date().toISOString().split('T')[0]; 
+        newFile = new File([file], `${today}.pdf`, { type: file.type });
+      }
+      formData.append('files', newFile);
+      formData.append('contentType', newFile.type);
     });
   
     try {
@@ -82,7 +85,7 @@ export default function RegistrationUpload({
   
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Upload failed due to missing fields.');
+        throw new Error(errorData.message || 'Upload failed.');
       }
   
       toast({

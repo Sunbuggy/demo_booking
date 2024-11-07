@@ -18,6 +18,7 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion';
+import ScannerPage from '@/components/ui/QrScanner/QrFunction';
 
 const bucket = 'users';
 const UserPage = async ({ params }: { params: { id: string } }) => {
@@ -66,6 +67,12 @@ const UserPage = async ({ params }: { params: { id: string } }) => {
             <AccordionTrigger>User Scan History</AccordionTrigger>
             <AccordionContent>
               <ScanHistory scans={vehicleData} />
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="search-history">
+            <AccordionTrigger>Search Scan History</AccordionTrigger>
+            <AccordionContent>
+            <ScannerPage user={user ? user[0] : null} />
             </AccordionContent>
           </AccordionItem>
         </Accordion>

@@ -8,7 +8,7 @@ import {
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 import ScannerPage from '@/components/ui/QrScanner/QrFunction';
 import BackgroundPickerButton from './components/background-picker-button';
-import { GuestHistory } from './components/scanned/GuestHistory';
+import UserPage from '../(biz)/biz/users/[id]/page';
 
 export type TimeEntry = {
   id: any;
@@ -53,19 +53,11 @@ export default async function Account() {
             <h1 className="text-4xl font-extrabold dark:text-white sm:text-center sm:text-6xl">
               Account
             </h1>
-            <p className="max-w-2xl m-auto mt-5 text-xl dark:text-zinc-200 sm:text-center sm:text-2xl">
-              We partnered with Authorize.net for a simplified billing.
-            </p>
-          </div>
-        </div>
-        <div className="p-4">
-          <ScannerPage user={user ? user[0] : null} />
-{/* <GuestHistory user={null}/> */}
-          <NameForm
-            userName={userName ?? ''}
-            user_role={role || 100}
-            phone={phone}
-          />
+         <div className="p-4">
+         <UserPage params={{
+            id: userId
+           }}>
+          </UserPage>
           {role > 284 && (
             <ClockinForm
               user_role={role || 100}
@@ -74,6 +66,16 @@ export default async function Account() {
               clockInTimeStamp={clockInTimeStamp}
             />
           )}
+          </div>
+        </div>
+
+          {/* <ScannerPage user={user ? user[0] : null} /> */}
+          {/* <NameForm
+            userName={userName ?? ''}
+            user_role={role || 100}
+            phone={phone}
+          /> */}
+
         </div>
         <BackgroundPickerButton user={user ? user[0] : null} />
       </section>
