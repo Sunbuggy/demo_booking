@@ -320,7 +320,7 @@ export default function LocationHistory({
                   {(userDetails &&
                     location.created_by &&
                     userDetails[location.created_by]) ||
-                    'Unknown'}
+                    'Guest User'}
                 </TableCell>
                 <TableCell>
                   {getLocationType(location.latitude, location.longitude)}
