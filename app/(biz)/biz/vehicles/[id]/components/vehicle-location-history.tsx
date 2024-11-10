@@ -50,17 +50,17 @@ const locationCoordinates = {
   silverlakeDunes: { lat: 43.686365, lon: -86.508345 }
 };
 const pismoBeachCoordinates = [
-  { lat: 35.093107, lon: -120.630094 },
-  { lat: 35.093195, lon: -120.628131 },
-  { lat: 35.086662, lon: -120.627954 },
-  { lat: 35.086777, lon: -120.630302 }
+  { lat: 35.095288, lon: -120.63195 },
+  { lat: 35.095301, lon: -120.621078 },
+  { lat: 35.086092, lon: -120.63192 },
+  { lat: 35.086167, lon: -120.61671 }
 ];
 
 const pismoDunesCoordinates = [
-  { lat: 35.078224, lon: -120.630382 },
-  { lat: 35.078631, lon: -120.623262 },
-  { lat: 35.036037, lon: -120.621555 },
-  { lat: 35.036288, lon: -120.633892 }
+  { lat: 35.085717, lon: -120.632317 },
+  { lat: 35.091236, lon: -120.583693 },
+  { lat: 35.020388, lon: -120.590649 },
+  { lat: 35.022873, lon: -120.635966 }
 ];
 
 const vofCoordinates = [
