@@ -294,7 +294,12 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
     { lat: 35.086662, lon: -120.627954 },
     { lat: 35.086777, lon: -120.630302 }
   ];
-
+  const vofCoordinates = [
+    { lat: 36.617272, lon: -114.48814 },
+    { lat: 36.620518, lon: -114.526353 },
+    { lat: 36.479769, lon: -114.583101 },
+    { lat: 36.479083, lon: -114.514348 }
+  ];
   const pismoDunesCoordinates = [
     { lat: 35.078224, lon: -120.630382 },
     { lat: 35.078631, lon: -120.623262 },
@@ -391,6 +396,8 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
     if (isNearLocation(lat, lon, 'silverlakeShop')) return 'Silver Lake Shop';
     if (isNearLocation(lat, lon, 'silverlakeDunes', 0.25))
       return 'Silver Lake Dunes';
+    if (isBetweenCoordinates(lat, lon, vofCoordinates))
+      return 'Vegas Valley of fire';
 
     return 'Unknown';
   }

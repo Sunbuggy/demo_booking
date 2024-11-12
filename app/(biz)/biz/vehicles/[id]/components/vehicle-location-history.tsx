@@ -63,6 +63,13 @@ const pismoDunesCoordinates = [
   { lat: 35.036288, lon: -120.633892 }
 ];
 
+const vofCoordinates = [
+  { lat: 36.617272, lon: -114.48814 },
+  { lat: 36.620518, lon: -114.526353 },
+  { lat: 36.479769, lon: -114.583101 },
+  { lat: 36.479083, lon: -114.514348 }
+];
+
 function isPointInPolygon(
   lat: number,
   lon: number,
@@ -114,6 +121,8 @@ function getLocationType(lat: number, lon: number): string {
   if (isNearLocation(lat, lon, 'vegasShop')) return 'Vegas Shop';
   if (isNearLocation(lat, lon, 'pismoShop', 0.5)) return 'Pismo Shop';
   if (isNearLocation(lat, lon, 'nellis')) return 'Vegas Nellis';
+  if (isBetweenCoordinates(lat, lon, vofCoordinates))
+    return 'Vegas Valley of fire';
   if (isBetweenCoordinates(lat, lon, pismoBeachCoordinates))
     return 'Pismo Beach';
   if (isBetweenCoordinates(lat, lon, pismoDunesCoordinates))
@@ -311,7 +320,7 @@ export default function LocationHistory({
                   {(userDetails &&
                     location.created_by &&
                     userDetails[location.created_by]) ||
-                    'Unknown'}
+                    'Guest User'}
                 </TableCell>
                 <TableCell>
                   {getLocationType(location.latitude, location.longitude)}
