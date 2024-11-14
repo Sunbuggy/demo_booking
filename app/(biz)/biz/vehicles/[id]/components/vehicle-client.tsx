@@ -41,7 +41,7 @@ interface VehicleClientComponentProps {
   initialVehicleInfo: VehicleType;
   images: VehiclePics[];
   gif: VehicleGifs[];
-  registrationImages: VehicleReg[]; // Add registrationImages prop
+  registrationImages: VehicleReg[]; 
   profilePic?: string;
   vehicleTags: VehicleTagType[];
   user: User;
@@ -432,12 +432,10 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       </div>
                     }
                   />
-                  <ImageGrid
-                    images={[]} 
+                  <PdfGrid 
                     width={200}
                     height={120}
-                    gifs={[]} 
-                    registrations={registrationImages} 
+                    media={registrationImages} 
                   />
                 </div>
               </AccordionContent>

@@ -1,61 +1,110 @@
-import React, { useState, useEffect } from 'react';
-import { pdfjs, Document, Page } from 'react-pdf';
-import { Button } from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   DownloadOutlined,
   RotateLeftOutlined,
   RotateRightOutlined,
   ZoomInOutlined,
-  ZoomOutOutlined
+  ZoomOutOutlined,
+  UndoOutlined
 } from '@ant-design/icons';
+import PSPDFKit from 'pspdfkit';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+const onDownload = (pdfUrl: string) => {
+  fetch(pdfUrl)
+    .then((response) => response.blob())
+    .then((blob) => {
+      const url = URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'document.pdf';
+      document.body.appendChild(link);
+      link.click();
+      URL.revokeObjectURL(url);
+      link.remove();
+    });
+};
 
 interface PdfViewProps {
   src: string;
-  width: number;
   height: number;
+  width: number;
 }
 
 const PdfView: React.FC<PdfViewProps> = ({ src, width, height }) => {
-  const [numPages, setNumPages] = useState(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [scale, setScale] = useState(1.0);
-  const [rotation, setRotation] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [isClient, setIsClient] = useState(false); // Flag to detect client-side rendering
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
+  // Set `isClient` to true after component mounts on the client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient || typeof window === 'undefined') return; // Ensure client-side rendering
+
+    let instance: any = null;
+
+    const loadPdf = async () => {
+      try {
+        instance = await PSPDFKit.load({
+          container: containerRef.current!,
+          document: src,
+          baseUrl: `${window.location.origin}/`,
+          initialViewState: new PSPDFKit.ViewState({ zoom: zoomLevel })
+        });
+        setIsLoaded(true);
+      } catch (error) {
+        console.error("Failed to load PDF:", error);
+      }
+    };
+
+    loadPdf();
+
+    return () => {
+      if (instance) PSPDFKit.unload(containerRef.current!);
+    };
+  }, [isClient, src, zoomLevel]); // Depend on `isClient` to ensure client-only rendering
+
+  const handleZoomIn = () => setZoomLevel((prev) => Math.min(prev + 0.1, 3));
+  const handleZoomOut = () => setZoomLevel((prev) => Math.max(prev - 0.1, 0.5));
+  const handleRotateLeft = () => {
+    if (containerRef.current) {
+      containerRef.current.style.transform = `rotate(-90deg)`;
+    }
+  };
+  const handleRotateRight = () => {
+    if (containerRef.current) {
+      containerRef.current.style.transform = `rotate(90deg)`;
+    }
+  };
+  const handleReset = () => {
+    setZoomLevel(1);
+    if (containerRef.current) {
+      containerRef.current.style.transform = `rotate(0deg)`;
+    }
   };
 
-  const zoomIn = () => setScale((prevScale) => Math.min(prevScale + 0.1, 2));
-  const zoomOut = () => setScale((prevScale) => Math.max(prevScale - 0.1, 0.5));
-  const rotateLeft = () => setRotation((prevRotation) => prevRotation - 90);
-  const rotateRight = () => setRotation((prevRotation) => prevRotation + 90);
-
   return (
-    <div className="flex flex-col items-center">
-      <Document file={src} onLoadSuccess={onDocumentLoadSuccess}>
-        <Page
-          pageNumber={pageNumber}
-          width={width * scale}
-          height={height * scale}
-          rotate={rotation}
-        />
-      </Document>
-      <div className="flex gap-2 mt-2">
-        <Button onClick={() => setPageNumber((prev) => Math.max(prev - 1, 1))} disabled={pageNumber <= 1}>
-          Previous
-        </Button>
-        <Button onClick={() => setPageNumber((prev) => Math.min(prev + 1, numPages ?? 1))} disabled={pageNumber >= (numPages ?? 1)}>
-          Next
-        </Button>
-        <ZoomInOutlined onClick={zoomIn} />
-        <ZoomOutOutlined onClick={zoomOut} />
-        <RotateLeftOutlined onClick={rotateLeft} />
-        <RotateRightOutlined onClick={rotateRight} />
-        <DownloadOutlined onClick={() => window.open(src)} />
+    <div style={{ width, height }}>
+      {!isLoaded && (
+        <>
+temp
+        </>
+     )}
+      <div ref={containerRef} style={{ display: isLoaded ? 'block' : 'none', height, width }}>
       </div>
-      <p>Page {pageNumber} of {numPages}</p>
+      {isLoaded && (
+        <div className="toolbar-wrapper flex justify-center gap-2 mt-2">
+          <DownloadOutlined onClick={() => onDownload(src)} />
+          <RotateLeftOutlined onClick={handleRotateLeft} />
+          <RotateRightOutlined onClick={handleRotateRight} />
+          <ZoomOutOutlined disabled={zoomLevel <= 0.5} onClick={handleZoomOut} />
+          <ZoomInOutlined disabled={zoomLevel >= 3} onClick={handleZoomIn} />
+          <UndoOutlined onClick={handleReset} />
+        </div>
+      )}
     </div>
   );
 };
