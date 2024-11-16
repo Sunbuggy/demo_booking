@@ -12,6 +12,8 @@ export async function GET(req: NextRequest) {
   const lon = searchParams.get('lon');
   const supabase = createClient();
 
+  //   const list_of_sms_recipients = ['+17028072598', '+17024263318'];
+
   if (!veh || !lat || !lon) {
     console.error('Missing veh, lat, or lon query parameter');
     return NextResponse.json(
@@ -27,12 +29,9 @@ export async function GET(req: NextRequest) {
       }
     );
   }
-
-  let vehicleId: string;
-
-  // ammended veh, if veh is just numbers without alphabets, add 'sb' to the beginning
   const ammendedVeh = veh.match(/^[0-9]+$/) ? `sb${veh}` : veh;
   console.log('Ammended veh:', ammendedVeh);
+  let vehicleId: string;
   try {
     const res = await getVehicleIdFromName(supabase, ammendedVeh);
     vehicleId = res[0].id as string;
@@ -88,8 +87,10 @@ export async function GET(req: NextRequest) {
       latitude: parseFloat(lat),
       longitude: parseFloat(lon),
       created_at: created_at,
-      city: city
+      city: city,
+      is_distress_signal: true
     });
+
     return NextResponse.json(
       {
         success: true,
@@ -140,7 +141,6 @@ const locationCoordinates = {
     { lat: 36.288471, lon: -114.970005 },
     { lat: 36.316064, lon: -114.944085 }
   ],
-  pismoBeach: { lat: 35.090735, lon: -120.629598 }, //0.25 from here
   silverlakeShop: { lat: 43.675239, lon: -86.472552 },
   silverlakeDunes: { lat: 43.686365, lon: -86.508345 }
 };

@@ -812,6 +812,19 @@ export const fetchVehicleNameFromId = cache(
     return data;
   }
 );
+export const fetchVehicleNamesFromIds = cache(
+  async (supabase: SupabaseClient, vehicle_ids: string[]) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('name, id')
+      .in('id', vehicle_ids);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
 
 export const createVehicleTag = cache(
   async (
@@ -1117,6 +1130,24 @@ export const recordVehicleLocation = cache(
     const { data, error } = await supabase
       .from('vehicle_locations')
       .insert([vehicle_location]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+// Update VehicleLocations
+export const updateVehicleLocation = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle_location: Database['public']['Tables']['vehicle_locations']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicle_locations')
+      .update(vehicle_location)
+      .eq('id', id);
     if (error) {
       console.error(error);
       return [];

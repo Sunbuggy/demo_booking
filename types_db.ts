@@ -271,6 +271,32 @@ export type Database = {
         }
         Relationships: []
       }
+      dispatch_groups: {
+        Row: {
+          id: string
+          location: Database["public"]["Enums"]["dispatch_locations"] | null
+          user: string | null
+        }
+        Insert: {
+          id?: string
+          location?: Database["public"]["Enums"]["dispatch_locations"] | null
+          user?: string | null
+        }
+        Update: {
+          id?: string
+          location?: Database["public"]["Enums"]["dispatch_locations"] | null
+          user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch groups_user_fkey"
+            columns: ["user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_details: {
         Row: {
           emp_id: string | null
@@ -839,35 +865,90 @@ export type Database = {
       vehicle_locations: {
         Row: {
           city: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
           created_by: string | null
+          dispatch_notes: string | null
+          dispatch_status: Database["public"]["Enums"]["dispatch_status"] | null
+          dispatched_at: string | null
+          dispatched_by: string | null
+          distress_ticket_number: number | null
           id: string
+          is_distress_signal: boolean
           latitude: number | null
           longitude: number | null
           vehicle_id: string | null
         }
         Insert: {
           city?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at: string
           created_by?: string | null
+          dispatch_notes?: string | null
+          dispatch_status?:
+            | Database["public"]["Enums"]["dispatch_status"]
+            | null
+          dispatched_at?: string | null
+          dispatched_by?: string | null
+          distress_ticket_number?: number | null
           id?: string
+          is_distress_signal?: boolean
           latitude?: number | null
           longitude?: number | null
           vehicle_id?: string | null
         }
         Update: {
           city?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by?: string | null
+          dispatch_notes?: string | null
+          dispatch_status?:
+            | Database["public"]["Enums"]["dispatch_status"]
+            | null
+          dispatched_at?: string | null
+          dispatched_by?: string | null
+          distress_ticket_number?: number | null
           id?: string
+          is_distress_signal?: boolean
           latitude?: number | null
           longitude?: number | null
           vehicle_id?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "vehicle_locations_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_locations_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "vehicle_locations_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_locations_dispatched_by_fkey"
+            columns: ["dispatched_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1671,6 +1752,8 @@ export type Database = {
       }
     }
     Enums: {
+      dispatch_locations: "NV" | "CA" | "MI"
+      dispatch_status: "claimed" | "open" | "closed"
       pricing_plan_interval: "day" | "week" | "month" | "year"
       pricing_type: "one_time" | "recurring"
       request_progress: "rejected" | "pending" | "accepted"

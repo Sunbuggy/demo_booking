@@ -77,6 +77,9 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
           title: 'Success',
           description: 'Files uploaded successfully'
         });
+
+        // reload page
+        window.location.reload();
       } else {
         throw new Error(data.message || 'Failed to upload files');
       }
@@ -87,9 +90,6 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
         description: 'Failed to upload files. Please try again.',
         variant: 'destructive'
       });
-    } finally {
-      // reload page
-      window.location.reload();
     }
   };
 
