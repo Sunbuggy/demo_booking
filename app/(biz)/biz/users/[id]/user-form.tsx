@@ -5,16 +5,17 @@ import { useToast } from '@/components/ui/use-toast';
 import { Database } from '@/types_db';
 import { createClient } from '@/utils/supabase/client';
 import {
+  removeDispatchGroup,
   updateUser,
   upsertDispatchGroup,
   upsertEmployeeDetails
 } from '@/utils/supabase/queries';
 import React from 'react';
 import { z } from 'zod';
-import UserImage from './components/user-image';
+// import UserImage from './components/user-image';
 type EmpDetails = Database['public']['Tables']['employee_details']['Row'][];
 type User = Database['public']['Tables']['users']['Row'];
-type enumLocation = 'NV' | 'CA' | 'MI' | null;
+type enumLocation = ('NV' | 'CA' | 'MI' | null)[];
 
 export const formSchema = z.object({
   email: z.string().nullable().optional(),
@@ -29,7 +30,7 @@ export const formSchema = z.object({
   payroll_company: z.string().nullable().optional(),
   primary_position: z.string().nullable().optional(),
   primary_work_location: z.string().nullable().optional(),
-  sst_group_location: z.enum(['NV', 'CA', 'MI']).nullable()
+  sst_group_location: z.array(z.enum(['NV', 'CA', 'MI'])).nullable()
 });
 
 export const fields: FieldConfig[] = [
@@ -115,7 +116,7 @@ export const fields: FieldConfig[] = [
     ]
   },
   {
-    type: 'select',
+    type: 'checkbox',
     name: 'sst_group_location',
     label: 'SST Group Location',
     placeholder: 'Select SST Group Location',
@@ -150,10 +151,11 @@ const UserForm = ({
     const usr = {
       ...user,
       ...empDetails[0],
-      sst_group_location: userDispatchLocation || null
+      sst_group_location: userDispatchLocation || []
     };
     setInitialData(usr);
   }, [user, empDetails, userDispatchLocation]);
+
   React.useEffect(() => {
     if (formData) {
       const user_id = user.id;
@@ -187,6 +189,7 @@ const UserForm = ({
           variant: 'success',
           duration: 5000
         });
+
         upsertEmployeeDetails(supabase, empDetailsTableData).then(() => {
           toast({
             title: 'Employee Details updated',
@@ -195,19 +198,65 @@ const UserForm = ({
             duration: 5000
           });
         });
-        if (sst_group_location) {
-          upsertDispatchGroup(supabase, user_id, sst_group_location).then(
-            () => {
-              toast({
-                title: 'Dispatch Group updated',
-                description: 'Dispatch Group updated successfully',
-                variant: 'success',
-                duration: 5000
-              });
-              window.location.reload();
+
+        // Handle dispatch group updates
+        supabase
+          .from('dispatch_groups')
+          .select('location')
+          .eq('user', user_id)
+          .then((res) => {
+            if (res.error) {
+              console.error('Error fetching dispatch groups:', res.error);
+              return;
             }
-          );
-        }
+
+            const currentLocations = res.data
+              ? res.data
+                  .map((item) => item.location)
+                  .filter(
+                    (location): location is 'NV' | 'CA' | 'MI' =>
+                      location !== null
+                  )
+              : [];
+            const newLocations = (sst_group_location || []).filter(
+              (location): location is 'NV' | 'CA' | 'MI' => location !== null
+            );
+
+            // Locations to add
+            const locationsToAdd = newLocations.filter(
+              (location) => !currentLocations.includes(location)
+            );
+
+            // Locations to remove
+            const locationsToRemove = currentLocations.filter(
+              (location) => !newLocations.includes(location)
+            );
+
+            // Add new locations
+            locationsToAdd.forEach((location) => {
+              upsertDispatchGroup(supabase, user_id, location).then(() => {
+                toast({
+                  title: 'Dispatch Group updated',
+                  description: `Added ${location} to dispatch group`,
+                  variant: 'success',
+                  duration: 5000
+                });
+              });
+            });
+
+            // Remove unchecked locations
+            locationsToRemove.forEach((location) => {
+              removeDispatchGroup(supabase, user_id, location).then(() => {
+                toast({
+                  title: 'Dispatch Group updated',
+                  description: `Removed ${location} from dispatch group`,
+                  variant: 'success',
+                  duration: 5000
+                });
+              });
+            });
+            window.location.reload();
+          });
       });
     }
   }, [formData, user, supabase, toast]);

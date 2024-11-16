@@ -280,6 +280,22 @@ export const insertIntoClockIn = cache(
   }
 );
 
+export const removeDispatchGroup = async (
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  location: string
+) => {
+  const { error } = await supabase
+    .from('dispatch_groups')
+    .delete()
+    .match({ user: userId, location: location });
+
+  if (error) {
+    console.error('Error removing dispatch group:', error);
+    throw error;
+  }
+};
+
 export const upsertDispatchGroup = cache(
   async (
     supabase: SupabaseClient,

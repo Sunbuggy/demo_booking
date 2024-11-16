@@ -29,7 +29,7 @@ const UserPage = async ({ params }: { params: { id: string } }) => {
   const userDispatchGroup = await supabase
     .from('dispatch_groups')
     .select('location')
-    .eq('user_id', params.id);
+    .eq('user', params.id);
   const scans = (await getQrHistoryByUser(
     supabase,
     params.id
@@ -48,9 +48,9 @@ const UserPage = async ({ params }: { params: { id: string } }) => {
     `profile_pic/${params.id}`
   ).then((res) => res?.url);
 
-  const userDispatchGroupLocation = userDispatchGroup.data
-    ? userDispatchGroup.data[0]?.location
-    : null;
+  const userDispatchGroupLocations = userDispatchGroup.data
+    ? userDispatchGroup.data.map((group) => group.location)
+    : [];
   const vehicleData =
     (await fetchVehicles(supabase).then((res) =>
       res.filter((vehicle) =>
@@ -69,7 +69,7 @@ const UserPage = async ({ params }: { params: { id: string } }) => {
               <UserForm
                 user={user[0]}
                 empDetails={empDetails}
-                userDispatchLocation={userDispatchGroupLocation || 'NV'}
+                userDispatchLocation={userDispatchGroupLocations}
               />
             </AccordionContent>
           </AccordionItem>
