@@ -4,12 +4,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { Database } from '@/types_db';
 import { createClient } from '@/utils/supabase/client';
-import { updateUser, upsertEmployeeDetails } from '@/utils/supabase/queries';
+import {
+  updateUser,
+  upsertDispatchGroup,
+  upsertEmployeeDetails
+} from '@/utils/supabase/queries';
 import React from 'react';
 import { z } from 'zod';
 import UserImage from './components/user-image';
 type EmpDetails = Database['public']['Tables']['employee_details']['Row'][];
 type User = Database['public']['Tables']['users']['Row'];
+type enumLocation = 'NV' | 'CA' | 'MI';
 
 export const formSchema = z.object({
   email: z.string().nullable().optional(),
@@ -23,7 +28,8 @@ export const formSchema = z.object({
   emp_id: z.string().nullable().optional(),
   payroll_company: z.string().nullable().optional(),
   primary_position: z.string().nullable().optional(),
-  primary_work_location: z.string().nullable().optional()
+  primary_work_location: z.string().nullable().optional(),
+  sst_group_location: z.enum(['NV', 'CA', 'MI']).nullable().optional()
 });
 
 export const fields: FieldConfig[] = [
@@ -107,6 +113,19 @@ export const fields: FieldConfig[] = [
       { label: 'CA', value: 'CA' },
       { label: 'FL', value: 'FL' }
     ]
+  },
+  {
+    type: 'select',
+    name: 'sst_group_location',
+    label: 'SST Group Location',
+    placeholder: 'SST Group Location',
+    description: 'The SST group location of the user.',
+    options: [
+      { label: 'NV', value: 'NV' },
+      { label: 'MI', value: 'MI' },
+      { label: 'CA', value: 'CA' },
+      { label: 'None', value: '' }
+    ]
   }
 ];
 
@@ -168,6 +187,18 @@ const UserForm = ({
           toast({
             title: 'Employee Details updated',
             description: 'Employee Details updated successfully',
+            variant: 'success',
+            duration: 5000
+          });
+        });
+        upsertDispatchGroup(
+          supabase,
+          user.id,
+          formData.sst_group_location || 'NV'
+        ).then(() => {
+          toast({
+            title: 'Dispatch Group updated',
+            description: 'Dispatch Group updated successfully',
             variant: 'success',
             duration: 5000
           });

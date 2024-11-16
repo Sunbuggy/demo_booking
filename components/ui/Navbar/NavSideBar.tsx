@@ -33,7 +33,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 300,
       external: true
     },
-    { href: '/biz/vehicles/admin', label: 'Vehicle Admin', minLevel: 300 },
     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 }
   ];
 
@@ -50,6 +49,19 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       label: 'MI',
       minLevel: 300,
       external: true
+    },
+    {
+      href: '/biz/vehicles/admin',
+      label: 'Vehicle Admin',
+      minLevel: 300,
+      external: false
+    },
+
+    {
+      href: '/biz/sst',
+      label: 'SST',
+      minLevel: 600,
+      external: false
     }
   ];
 

@@ -280,6 +280,29 @@ export const insertIntoClockIn = cache(
   }
 );
 
+export const upsertDispatchGroup = cache(
+  async (
+    supabase: SupabaseClient,
+    user: string,
+    location: 'NV' | 'CA' | 'MI'
+  ) => {
+    const { data, error } = await supabase
+      .from('dispatch_groups')
+      .upsert([
+        {
+          user,
+          location
+        }
+      ])
+      .select();
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
 export const insertIntoClockOut = cache(
   async (
     supabase: SupabaseClient,

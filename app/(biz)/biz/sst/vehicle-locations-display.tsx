@@ -145,7 +145,18 @@ export default function VehicleLocationsDisplay({
             </TableHeader>
             <TableBody>
               {groupedByDate[date].map((location, index) => (
-                <TableRow key={location.id}>
+                <TableRow
+                  key={location.id}
+                  className={`border border-gray-200 ${
+                    location.dispatch_status === 'open'
+                      ? 'bg-red-500/20'
+                      : location.dispatch_status === 'claimed'
+                        ? 'bg-purple-500/20'
+                        : location.dispatch_status === 'closed'
+                          ? 'bg-green-500/20'
+                          : ''
+                  }`}
+                >
                   <TableCell>
                     {vehicleNames.find(
                       (vehicle) => vehicle.id === location.vehicle_id
