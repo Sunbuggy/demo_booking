@@ -52,7 +52,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     },
     {
       href: '/biz/vehicles/admin',
-      label: 'Vehicle Admin',
+      label: 'Fleet',
       minLevel: 300,
       external: false
     },
