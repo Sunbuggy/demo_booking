@@ -14,7 +14,7 @@ import { z } from 'zod';
 import UserImage from './components/user-image';
 type EmpDetails = Database['public']['Tables']['employee_details']['Row'][];
 type User = Database['public']['Tables']['users']['Row'];
-type enumLocation = 'NV' | 'CA' | 'MI';
+type enumLocation = 'NV' | 'CA' | 'MI' | null;
 
 export const formSchema = z.object({
   email: z.string().nullable().optional(),
@@ -29,7 +29,7 @@ export const formSchema = z.object({
   payroll_company: z.string().nullable().optional(),
   primary_position: z.string().nullable().optional(),
   primary_work_location: z.string().nullable().optional(),
-  sst_group_location: z.enum(['NV', 'CA', 'MI']).nullable().optional()
+  sst_group_location: z.enum(['NV', 'CA', 'MI']).nullable()
 });
 
 export const fields: FieldConfig[] = [
@@ -118,23 +118,24 @@ export const fields: FieldConfig[] = [
     type: 'select',
     name: 'sst_group_location',
     label: 'SST Group Location',
-    placeholder: 'SST Group Location',
+    placeholder: 'Select SST Group Location',
     description: 'The SST group location of the user.',
     options: [
-      { label: 'NV', value: 'NV' },
-      { label: 'MI', value: 'MI' },
-      { label: 'CA', value: 'CA' },
-      { label: 'None', value: '' }
+      { label: 'Nevada', value: 'NV' },
+      { label: 'Michigan', value: 'MI' },
+      { label: 'California', value: 'CA' }
     ]
   }
 ];
 
 const UserForm = ({
   user,
-  empDetails
+  empDetails,
+  userDispatchLocation
 }: {
   user: User;
   empDetails: EmpDetails;
+  userDispatchLocation: enumLocation;
 }) => {
   const supabase = createClient();
   const [formData, setFormData] = React.useState<
@@ -148,10 +149,11 @@ const UserForm = ({
   React.useEffect(() => {
     const usr = {
       ...user,
-      ...empDetails[0]
+      ...empDetails[0],
+      sst_group_location: userDispatchLocation || null
     };
     setInitialData(usr);
-  }, []);
+  }, [user, empDetails, userDispatchLocation]);
   React.useEffect(() => {
     if (formData) {
       const user_id = user.id;
@@ -163,6 +165,8 @@ const UserForm = ({
       const payroll_company = formData.payroll_company;
       const primary_position = formData.primary_position;
       const primary_work_location = formData.primary_work_location;
+      const sst_group_location = formData.sst_group_location;
+
       const userTableData = {
         full_name,
         email,
@@ -191,26 +195,28 @@ const UserForm = ({
             duration: 5000
           });
         });
-        upsertDispatchGroup(
-          supabase,
-          user.id,
-          formData.sst_group_location || 'NV'
-        ).then(() => {
-          toast({
-            title: 'Dispatch Group updated',
-            description: 'Dispatch Group updated successfully',
-            variant: 'success',
-            duration: 5000
-          });
-          window.location.reload();
-        });
+        if (sst_group_location) {
+          upsertDispatchGroup(supabase, user_id, sst_group_location).then(
+            () => {
+              toast({
+                title: 'Dispatch Group updated',
+                description: 'Dispatch Group updated successfully',
+                variant: 'success',
+                duration: 5000
+              });
+              window.location.reload();
+            }
+          );
+        }
       });
     }
-  }, [formData]);
+  }, [formData, user, supabase, toast]);
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     setFormData(data);
   };
+  if (!user) return null;
+
   if (user)
     return (
       <>
