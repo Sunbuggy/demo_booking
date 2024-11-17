@@ -99,20 +99,23 @@ const EditDispatchGroups = () => {
       (user) =>
         user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) &&
         (selectedLocations.length === 0 ||
-          selectedLocations.includes(
-            dispatchGroups.find((group) => group.user === user.id)?.location ||
-              ''
+          selectedLocations.some((location) =>
+            dispatchGroups
+              .filter((group) => group.user === user.id)
+              .map((group) => group.location)
+              .includes(location as 'NV' | 'CA' | 'MI')
           ))
     );
   }, [users, searchTerm, selectedLocations, dispatchGroups]);
 
   const locations = ['NV', 'CA', 'MI'];
 
-  const handleDelete = async (userId: string) => {
+  const handleDelete = async (userId: string, location: string) => {
     const { error } = await supabase
       .from('dispatch_groups')
       .delete()
-      .eq('user', userId);
+      .eq('user', userId)
+      .eq('location', location);
 
     if (error) {
       console.error('Error deleting dispatch group:', error);
@@ -171,7 +174,7 @@ const EditDispatchGroups = () => {
       </div>
       <div className="space-y-4">
         {filteredUsers.map((user) => {
-          const dispatchGroup = dispatchGroups.find(
+          const userGroups = dispatchGroups.filter(
             (group) => group.user === user.id
           );
           return (
@@ -180,20 +183,19 @@ const EditDispatchGroups = () => {
               className="flex items-center justify-between p-4 shadow rounded"
             >
               <span className="text-lg font-medium">{user.full_name}</span>
-              {dispatchGroup ? (
-                <div className="flex gap-5 items-center">
-                  <span className="text-purple-600">
-                    {dispatchGroup.location}
-                  </span>
-                  <TrashIcon
-                    className="cursor-pointer"
-                    onClick={() => handleDelete(user.id)}
-                    aria-label={`Delete ${user.full_name} from dispatch group`}
-                  />
-                </div>
-              ) : (
-                <AddToGroup user={user.id} />
-              )}
+              <div className="flex gap-2 items-center">
+                {userGroups.map((group) => (
+                  <div key={group.location} className="flex items-center gap-1">
+                    <span className="text-purple-600">{group.location}</span>
+                    <TrashIcon
+                      className="cursor-pointer w-4 h-4"
+                      onClick={() => handleDelete(user.id, group.location)}
+                      aria-label={`Delete ${user.full_name} from ${group.location}`}
+                    />
+                  </div>
+                ))}
+                {userGroups.length < 3 && <AddToGroup user={user.id} />}
+              </div>
             </div>
           );
         })}

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Popover,
   PopoverContent,
@@ -15,17 +15,44 @@ import { PopoverClose } from '@radix-ui/react-popover';
 
 export default function AddToGroup({ user }: { user: string }) {
   const supabase = createClient();
-  const [location, setLocation] = useState<'NV' | 'CA' | 'MI' | null>(null);
+  const [locations, setLocations] = useState<('NV' | 'CA' | 'MI')[]>([]);
   const queryClient = useQueryClient();
 
-  const addToGroupMutation = useMutation({
-    mutationFn: async (newGroup: {
-      user: string;
-      location: 'NV' | 'CA' | 'MI';
-    }) => {
+  useEffect(() => {
+    async function fetchUserLocations() {
       const { data, error } = await supabase
         .from('dispatch_groups')
-        .upsert([newGroup]);
+        .select('location')
+        .eq('user', user);
+      if (error) {
+        console.error(error);
+        return;
+      }
+      setLocations(
+        data
+          .filter(
+            (item: { location: 'NV' | 'CA' | 'MI' | null }) =>
+              item.location !== null
+          )
+          .map(
+            (item: { location: 'NV' | 'CA' | 'MI' | null }) =>
+              item.location as 'NV' | 'CA' | 'MI'
+          )
+      );
+    }
+    fetchUserLocations();
+  }, [supabase, user]);
+
+  const addToGroupMutation = useMutation({
+    mutationFn: async (
+      newGroups: {
+        user: string;
+        location: 'NV' | 'CA' | 'MI';
+      }[]
+    ) => {
+      const { data, error } = await supabase
+        .from('dispatch_groups')
+        .upsert(newGroups);
       if (error) throw error;
       return data;
     },
@@ -35,8 +62,10 @@ export default function AddToGroup({ user }: { user: string }) {
   });
 
   function onSubmit() {
-    if (location) {
-      addToGroupMutation.mutate({ user, location });
+    if (locations.length > 0) {
+      const newGroups = locations.map((location) => ({ user, location }));
+      addToGroupMutation.mutate(newGroups);
+      window.location.reload();
     }
   }
 
@@ -48,30 +77,30 @@ export default function AddToGroup({ user }: { user: string }) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80">
-        <Label htmlFor="location-group">Location</Label>
-        <RadioGroup
-          id="location-group"
-          defaultValue="CA"
-          onValueChange={(value) => setLocation(value as 'NV' | 'CA' | 'MI')}
-        >
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="CA" id="r1" />
-            <Label htmlFor="r1">CA</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="NV" id="r2" />
-            <Label htmlFor="r2">NV</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="MI" id="r3" />
-            <Label htmlFor="r3">MI</Label>
-          </div>
-        </RadioGroup>
+        <Label htmlFor="location-group">Locations</Label>
+        <div className="space-y-2">
+          {(['CA', 'NV', 'MI'] as const).map((location) => (
+            <div key={location} className="flex items-center space-x-2">
+              <Checkbox
+                id={`location-${location}`}
+                checked={locations.includes(location)}
+                onCheckedChange={(checked) => {
+                  setLocations((prev) =>
+                    checked
+                      ? [...prev, location]
+                      : prev.filter((loc) => loc !== location)
+                  );
+                }}
+              />
+              <Label htmlFor={`location-${location}`}>{location}</Label>
+            </div>
+          ))}
+        </div>
         <PopoverClose asChild>
           <Button
             onClick={onSubmit}
             className="mt-4"
-            disabled={addToGroupMutation.isPending}
+            disabled={addToGroupMutation.isPending || locations.length === 0}
           >
             {addToGroupMutation.isPending ? 'Submitting...' : 'Submit'}
           </Button>
