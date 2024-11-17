@@ -2,17 +2,22 @@
 
 import { createClient } from '@/utils/supabase/client';
 import React, { useEffect, useState, useMemo } from 'react';
-import AddToGroup from './add-to-group';
 import { useRouter } from 'next/navigation';
-import { TrashIcon } from 'lucide-react';
+import { Trash, Plus, Search, MapPin } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import AddToGroup from './add-to-group';
 
 type Users = {
   id: string;
   full_name: string;
+  user_level: number;
 };
 
 type DispatchGroup = {
@@ -20,12 +25,15 @@ type DispatchGroup = {
   location: 'NV' | 'CA' | 'MI';
 };
 
-const EditDispatchGroups = () => {
+const locations = ['NV', 'CA', 'MI'];
+
+export default function EditDispatchGroups() {
   const [users, setUsers] = useState<Users[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [dispatchGroups, setDispatchGroups] = useState<DispatchGroup[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
   const supabase = createClient();
   const router = useRouter();
 
@@ -33,29 +41,31 @@ const EditDispatchGroups = () => {
     const fetchData = async () => {
       const [
         { data: usersData, error: usersError },
-        { data: dispatchGroupsData, error: dispatchGroupsError }
+        { data: dispatchGroupsData, error: dispatchGroupsError },
+        {
+          data: { user }
+        }
       ] = await Promise.all([
-        supabase.from('users').select('id, full_name'),
-        supabase.from('dispatch_groups').select('user, location')
+        supabase.from('users').select('id, full_name, user_level'),
+        supabase.from('dispatch_groups').select('user, location'),
+        supabase.auth.getUser()
       ]);
-      const {
-        data: { user }
-      } = await supabase.auth.getUser();
+
       if (!user) {
         return router.push('/login');
       }
-      if (user) {
-        setCurrentUser(user);
-      }
+
+      setCurrentUser(user);
 
       if (usersError) {
         console.error(usersError);
       } else {
         setUsers(
-          usersData.map((user) => ({
+          usersData?.map((user) => ({
             ...user,
-            full_name: user.full_name ?? ''
-          }))
+            full_name: user.full_name ?? '',
+            user_level: user.user_level ?? 100
+          })) ?? []
         );
       }
 
@@ -63,27 +73,25 @@ const EditDispatchGroups = () => {
         console.error(dispatchGroupsError);
       } else {
         setDispatchGroups(
-          dispatchGroupsData.map((group) => ({
+          dispatchGroupsData?.map((group) => ({
             user: group.user ?? '',
             location: group.location ?? 'NV'
-          }))
+          })) ?? []
         );
       }
+
+      setLoading(false);
     };
 
     fetchData();
   }, [supabase, router]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const channel = supabase
       .channel('realtime dispatch groups')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'dispatch_groups'
-        },
+        { event: '*', schema: 'public', table: 'dispatch_groups' },
         () => {
           router.refresh();
         }
@@ -108,8 +116,6 @@ const EditDispatchGroups = () => {
     );
   }, [users, searchTerm, selectedLocations, dispatchGroups]);
 
-  const locations = ['NV', 'CA', 'MI'];
-
   const handleDelete = async (userId: string, location: string) => {
     const { error } = await supabase
       .from('dispatch_groups')
@@ -120,7 +126,6 @@ const EditDispatchGroups = () => {
     if (error) {
       console.error('Error deleting dispatch group:', error);
     } else {
-      // Refresh the dispatch groups data
       const { data, error } = await supabase
         .from('dispatch_groups')
         .select('user, location');
@@ -137,71 +142,141 @@ const EditDispatchGroups = () => {
     }
   };
 
-  return (
-    <div className="space-y-6 p-4">
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="search-users">Search Users</Label>
-          <Input
-            id="search-users"
-            type="text"
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+  const handleAddToGroup = async (
+    userId: string,
+    location: 'NV' | 'CA' | 'MI'
+  ) => {
+    const { error } = await supabase
+      .from('dispatch_groups')
+      .insert({ user: userId, location });
+
+    if (error) {
+      console.error('Error adding to dispatch group:', error);
+    } else {
+      const { data, error } = await supabase
+        .from('dispatch_groups')
+        .select('user, location');
+      if (error) {
+        console.error('Error fetching updated dispatch groups:', error);
+      } else {
+        setDispatchGroups(
+          data.map((group) => ({
+            user: group.user ?? '',
+            location: group.location ?? 'NV'
+          }))
+        );
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 p-4">
+        <Skeleton className="h-12 w-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-1/4" />
+          <Skeleton className="h-10 w-full" />
         </div>
-        <div>
-          <Label>Filter by Location</Label>
-          <div className="flex space-x-4 mt-2">
-            {locations.map((location) => (
-              <div key={location} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`location-${location}`}
-                  checked={selectedLocations.includes(location)}
-                  onCheckedChange={(checked) => {
-                    setSelectedLocations((prev) =>
-                      checked
-                        ? [...prev, location]
-                        : prev.filter((loc) => loc !== location)
-                    );
-                  }}
-                />
-                <Label htmlFor={`location-${location}`}>{location}</Label>
-              </div>
-            ))}
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-1/3" />
+          <div className="flex space-x-4">
+            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-6 w-16" />
           </div>
         </div>
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-24 w-full" />
+        ))}
       </div>
-      <div className="space-y-4">
-        {filteredUsers.map((user) => {
-          const userGroups = dispatchGroups.filter(
-            (group) => group.user === user.id
-          );
-          return (
-            <div
-              key={user.id}
-              className="flex items-center justify-between p-4 shadow rounded"
-            >
-              <span className="text-lg font-medium">{user.full_name}</span>
-              <div className="flex gap-2 items-center">
-                {userGroups.map((group) => (
-                  <div key={group.location} className="flex items-center gap-1">
-                    <span className="text-purple-600">{group.location}</span>
-                    <TrashIcon
-                      className="cursor-pointer w-4 h-4"
-                      onClick={() => handleDelete(user.id, group.location)}
-                      aria-label={`Delete ${user.full_name} from ${group.location}`}
-                    />
-                  </div>
-                ))}
-                {userGroups.length < 3 && <AddToGroup user={user.id} />}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
+    );
+  }
 
-export default EditDispatchGroups;
+  return (
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle>Edit Dispatch Groups</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="search-users"
+              type="text"
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          <div>
+            <Label className="text-base">Filter by Location</Label>
+            <div className="flex flex-wrap gap-4 mt-2">
+              {locations.map((location) => (
+                <div key={location} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`location-${location}`}
+                    checked={selectedLocations.includes(location)}
+                    onCheckedChange={(checked) => {
+                      setSelectedLocations((prev) =>
+                        checked
+                          ? [...prev, location]
+                          : prev.filter((loc) => loc !== location)
+                      );
+                    }}
+                  />
+                  <Label htmlFor={`location-${location}`}>{location}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          {filteredUsers.map((user) => {
+            const userGroups = dispatchGroups.filter(
+              (group) => group.user === user.id
+            );
+            return (
+              <Card key={user.id} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-medium">
+                      {user.full_name}({user.user_level})
+                    </span>
+                    <div className="flex gap-2 items-center">
+                      {userGroups.map((group) => (
+                        <Badge
+                          key={group.location}
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
+                          <MapPin className="w-3 h-3" />
+                          {group.location}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4 p-0"
+                            onClick={() =>
+                              handleDelete(user.id, group.location)
+                            }
+                          >
+                            <Trash className="h-3 w-3" />
+                            <span className="sr-only">
+                              Remove from {group.location}
+                            </span>
+                          </Button>
+                        </Badge>
+                      ))}
+                      {userGroups.length < 3 && <AddToGroup user={user.id} />}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
