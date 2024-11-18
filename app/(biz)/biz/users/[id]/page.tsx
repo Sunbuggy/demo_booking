@@ -21,10 +21,15 @@ import {
 import ScannerPage from '@/components/ui/QrScanner/QrFunction';
 
 const bucket = 'users';
+
 const UserPage = async ({ params }: { params: { id: string } }) => {
   const supabase = createClient();
   const user = await getUserById(supabase, params.id);
   const empDetails = await getEmployeeDetails(supabase, params.id);
+  const userDispatchGroup = await supabase
+    .from('dispatch_groups')
+    .select('location')
+    .eq('user', params.id);
   const scans = (await getQrHistoryByUser(
     supabase,
     params.id
@@ -43,8 +48,9 @@ const UserPage = async ({ params }: { params: { id: string } }) => {
     `profile_pic/${params.id}`
   ).then((res) => res?.url);
 
-  // using await fetchVehicles(supabase) fetch all vehicles and from the scans get the vehicle_id column and filter the vehicles by the vehicle_id column
-
+  const userDispatchGroupLocations = userDispatchGroup.data
+    ? userDispatchGroup.data.map((group) => group.location)
+    : [];
   const vehicleData =
     (await fetchVehicles(supabase).then((res) =>
       res.filter((vehicle) =>
@@ -60,7 +66,11 @@ const UserPage = async ({ params }: { params: { id: string } }) => {
           <AccordionItem value="user-form">
             <AccordionTrigger>Update User Details</AccordionTrigger>
             <AccordionContent>
-              <UserForm user={user[0]} empDetails={empDetails} />
+              <UserForm
+                user={user[0]}
+                empDetails={empDetails}
+                userDispatchLocation={userDispatchGroupLocations}
+              />
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="scan-history">
@@ -72,7 +82,7 @@ const UserPage = async ({ params }: { params: { id: string } }) => {
           <AccordionItem value="search-history">
             <AccordionTrigger>Search Scan History</AccordionTrigger>
             <AccordionContent>
-            <ScannerPage user={user ? user[0] : null} />
+              <ScannerPage user={user ? user[0] : null} />
             </AccordionContent>
           </AccordionItem>
         </Accordion>

@@ -77,11 +77,35 @@ const FieldComponent = ({
       );
     case 'checkbox':
       return (
-        <Checkbox
-          checked={field.value}
-          onCheckedChange={field.onChange}
-          disabled={allDisabled}
-        />
+        <>
+          {fieldConfig.options?.map((option, idx) => (
+            <div key={idx} className="flex items-center space-x-2">
+              <Checkbox
+                checked={
+                  Array.isArray(field.value)
+                    ? field.value.includes(option.value)
+                    : false
+                }
+                onCheckedChange={(checked) => {
+                  const newValue = Array.isArray(field.value)
+                    ? [...field.value]
+                    : [];
+                  if (checked) {
+                    newValue.push(option.value);
+                  } else {
+                    const index = newValue.indexOf(option.value);
+                    if (index > -1) {
+                      newValue.splice(index, 1);
+                    }
+                  }
+                  field.onChange(newValue);
+                }}
+                disabled={allDisabled}
+              />
+              <label>{option.label}</label>
+            </div>
+          ))}
+        </>
       );
     case 'textarea':
       return (

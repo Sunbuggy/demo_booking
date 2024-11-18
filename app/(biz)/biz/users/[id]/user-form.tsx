@@ -4,12 +4,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { Database } from '@/types_db';
 import { createClient } from '@/utils/supabase/client';
-import { updateUser, upsertEmployeeDetails } from '@/utils/supabase/queries';
+import {
+  removeDispatchGroup,
+  updateUser,
+  upsertDispatchGroup,
+  upsertEmployeeDetails
+} from '@/utils/supabase/queries';
 import React from 'react';
 import { z } from 'zod';
-import UserImage from './components/user-image';
+// import UserImage from './components/user-image';
 type EmpDetails = Database['public']['Tables']['employee_details']['Row'][];
 type User = Database['public']['Tables']['users']['Row'];
+type enumLocation = ('NV' | 'CA' | 'MI' | null)[];
 
 export const formSchema = z.object({
   email: z.string().nullable().optional(),
@@ -23,7 +29,8 @@ export const formSchema = z.object({
   emp_id: z.string().nullable().optional(),
   payroll_company: z.string().nullable().optional(),
   primary_position: z.string().nullable().optional(),
-  primary_work_location: z.string().nullable().optional()
+  primary_work_location: z.string().nullable().optional(),
+  sst_group_location: z.array(z.enum(['NV', 'CA', 'MI'])).nullable()
 });
 
 export const fields: FieldConfig[] = [
@@ -107,15 +114,29 @@ export const fields: FieldConfig[] = [
       { label: 'CA', value: 'CA' },
       { label: 'FL', value: 'FL' }
     ]
+  },
+  {
+    type: 'checkbox',
+    name: 'sst_group_location',
+    label: 'SST Group Location',
+    placeholder: 'Select SST Group Location',
+    description: 'The SST group location of the user.',
+    options: [
+      { label: 'Nevada', value: 'NV' },
+      { label: 'Michigan', value: 'MI' },
+      { label: 'California', value: 'CA' }
+    ]
   }
 ];
 
 const UserForm = ({
   user,
-  empDetails
+  empDetails,
+  userDispatchLocation
 }: {
   user: User;
   empDetails: EmpDetails;
+  userDispatchLocation: enumLocation;
 }) => {
   const supabase = createClient();
   const [formData, setFormData] = React.useState<
@@ -129,10 +150,12 @@ const UserForm = ({
   React.useEffect(() => {
     const usr = {
       ...user,
-      ...empDetails[0]
+      ...empDetails[0],
+      sst_group_location: userDispatchLocation || []
     };
     setInitialData(usr);
-  }, []);
+  }, [user, empDetails, userDispatchLocation]);
+
   React.useEffect(() => {
     if (formData) {
       const user_id = user.id;
@@ -144,6 +167,8 @@ const UserForm = ({
       const payroll_company = formData.payroll_company;
       const primary_position = formData.primary_position;
       const primary_work_location = formData.primary_work_location;
+      const sst_group_location = formData.sst_group_location;
+
       const userTableData = {
         full_name,
         email,
@@ -164,6 +189,7 @@ const UserForm = ({
           variant: 'success',
           duration: 5000
         });
+
         upsertEmployeeDetails(supabase, empDetailsTableData).then(() => {
           toast({
             title: 'Employee Details updated',
@@ -171,15 +197,75 @@ const UserForm = ({
             variant: 'success',
             duration: 5000
           });
-          window.location.reload();
         });
+
+        // Handle dispatch group updates
+        supabase
+          .from('dispatch_groups')
+          .select('location')
+          .eq('user', user_id)
+          .then((res) => {
+            if (res.error) {
+              console.error('Error fetching dispatch groups:', res.error);
+              return;
+            }
+
+            const currentLocations = res.data
+              ? res.data
+                  .map((item) => item.location)
+                  .filter(
+                    (location): location is 'NV' | 'CA' | 'MI' =>
+                      location !== null
+                  )
+              : [];
+            const newLocations = (sst_group_location || []).filter(
+              (location): location is 'NV' | 'CA' | 'MI' => location !== null
+            );
+
+            // Locations to add
+            const locationsToAdd = newLocations.filter(
+              (location) => !currentLocations.includes(location)
+            );
+
+            // Locations to remove
+            const locationsToRemove = currentLocations.filter(
+              (location) => !newLocations.includes(location)
+            );
+
+            // Add new locations
+            locationsToAdd.forEach((location) => {
+              upsertDispatchGroup(supabase, user_id, location).then(() => {
+                toast({
+                  title: 'Dispatch Group updated',
+                  description: `Added ${location} to dispatch group`,
+                  variant: 'success',
+                  duration: 5000
+                });
+              });
+            });
+
+            // Remove unchecked locations
+            locationsToRemove.forEach((location) => {
+              removeDispatchGroup(supabase, user_id, location).then(() => {
+                toast({
+                  title: 'Dispatch Group updated',
+                  description: `Removed ${location} from dispatch group`,
+                  variant: 'success',
+                  duration: 5000
+                });
+              });
+            });
+            window.location.reload();
+          });
       });
     }
-  }, [formData]);
+  }, [formData, user, supabase, toast]);
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     setFormData(data);
   };
+  if (!user) return null;
+
   if (user)
     return (
       <>
