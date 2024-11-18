@@ -19,7 +19,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { updateSSTClaimed } from './actions';
 import { VehicleLocation } from '../../vehicles/types';
 import Link from 'next/link';
-import { MapIcon } from 'lucide-react';
+import { ArrowLeft, MapIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const CasesTable = ({
   initialSsts,
@@ -36,6 +37,7 @@ const CasesTable = ({
 }) => {
   const [ssts, setSsts] = useState(initialSsts);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const handleClaimSST = (sstId: string) => {
     startTransition(async () => {
@@ -48,6 +50,7 @@ const CasesTable = ({
               : sst
           )
         );
+        window.location.reload();
       } catch (error) {
         console.error('Failed to claim SST:', error);
         // Here you could also set some state to show an error message to the user
@@ -89,6 +92,15 @@ const CasesTable = ({
     >
       <MapIcon className="text-purple-500 mr-1" /> {sst.city || ''}
     </Link>
+  );
+
+  const renderViewClaimedButton = (sst: VehicleLocation) => (
+    <Button
+      onClick={() => router.push(`/biz/sst/cases/claimed/${sst.id}`)}
+      className="mt-2 w-full sm:w-auto sm:ml-3 green_button_small"
+    >
+      View
+    </Button>
   );
 
   const renderMobileCard = (sst: VehicleLocation) => (
@@ -152,6 +164,9 @@ const CasesTable = ({
   return (
     <div>
       {/* Mobile view */}
+      <Button onClick={() => router.push('/biz/sst')} className="mb-6">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+      </Button>
       <div className="md:hidden">
         {ssts
           .sort((a, b) =>
@@ -252,6 +267,7 @@ const CasesTable = ({
                           <span>
                             {' '}
                             at {new Date(sst.claimed_at).toLocaleTimeString()}
+                            {renderViewClaimedButton(sst)}
                           </span>
                         )}
                       </div>

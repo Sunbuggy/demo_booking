@@ -60,7 +60,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     {
       href: '/biz/sst',
       label: 'SST',
-      minLevel: 600,
+      minLevel: 300,
       external: false
     }
   ];

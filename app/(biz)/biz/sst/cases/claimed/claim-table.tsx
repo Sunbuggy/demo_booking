@@ -12,12 +12,15 @@ import {
 import { Button } from '@/components/ui/button';
 import {
   Popover,
+  PopoverClose,
   PopoverContent,
   PopoverTrigger
 } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { updateSSTClaimed } from './actions';
 import { VehicleLocation } from '../../../vehicles/types';
+import { ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const CasesTable = ({
   initialSsts,
@@ -34,15 +37,23 @@ const CasesTable = ({
 }) => {
   const [ssts, setSsts] = useState(initialSsts);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const [close_notes, setCloseNotes] = useState('');
 
-  const handleClaimSST = (sstId: string) => {
+  const handleClaimSST = (sstId: string, close_notes: string) => {
     startTransition(async () => {
       try {
-        await updateSSTClaimed(sstId, userId, userPhone);
+        await updateSSTClaimed(sstId, userId, userPhone, close_notes);
         setSsts((prevSsts) =>
           prevSsts.map((sst) =>
             sst.id === sstId
-              ? { ...sst, dispatch_status: 'claimed', claimed_by: userId }
+              ? {
+                  ...sst,
+                  dispatch_status: 'claimed',
+                  claimed_by: userId,
+                  closed_at: new Date().toISOString(),
+                  dispatch_close_notes: close_notes
+                }
               : sst
           )
         );
@@ -53,31 +64,6 @@ const CasesTable = ({
       }
     });
   };
-
-  const renderClaimButton = (sst: VehicleLocation) => (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          className="mt-2 w-full sm:w-auto sm:ml-3 green_button_small"
-          disabled={isPending}
-        >
-          Claim
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent>
-        <p>Are you sure you want to claim this ticket?</p>
-        <div className="flex gap-5 mt-4">
-          <Button
-            onClick={() => handleClaimSST(sst.id || '')}
-            disabled={isPending}
-          >
-            Yes
-          </Button>
-          <Button>No</Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
 
   const renderCloseButton = (sst: VehicleLocation) => (
     <Popover>
@@ -90,15 +76,21 @@ const CasesTable = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent>
-        <p>Are you sure you want to Close this ticket?</p>
+        <p>Please Provide a small note about this incident...</p>
+        <textarea
+          className="mt-2 w-full border border-gray-300 p-2"
+          placeholder="Enter close notes"
+          value={close_notes}
+          onChange={(e) => setCloseNotes(e.target.value)}
+        />
         <div className="flex gap-5 mt-4">
           <Button
-            onClick={() => handleClaimSST(sst.id || '')}
-            disabled={isPending}
+            onClick={() => handleClaimSST(sst.id || '', close_notes)}
+            disabled={isPending || !close_notes.trim()}
           >
-            Yes
+            Submit
           </Button>
-          <Button>No</Button>
+          <PopoverClose>Cancel</PopoverClose>
         </div>
       </PopoverContent>
     </Popover>
@@ -147,7 +139,6 @@ const CasesTable = ({
         <p>
           <strong>Dispatch Status:</strong> {sst.dispatch_status}
         </p>
-        {sst.dispatch_status === 'open' && renderClaimButton(sst)}
         {sst.dispatch_status === 'claimed' && (
           <div>
             <p>
@@ -165,6 +156,9 @@ const CasesTable = ({
 
   return (
     <div>
+      <Button onClick={() => router.push('/biz/sst')} className="mb-6">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+      </Button>
       {/* Mobile view */}
       <div className="md:hidden">
         {ssts
@@ -256,7 +250,6 @@ const CasesTable = ({
                   </TableCell>
                   <TableCell className="border border-gray-200">
                     {sst.dispatch_status}
-                    {sst.dispatch_status === 'open' && renderClaimButton(sst)}
                     {sst.dispatch_status === 'claimed' && (
                       <div className="flex flex-col">
                         <span>

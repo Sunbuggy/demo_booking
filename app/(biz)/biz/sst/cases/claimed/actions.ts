@@ -9,7 +9,8 @@ const formatPhone = (phone: string) => {
 export async function updateSSTClaimed(
   sstId: string,
   userId: string,
-  userPhone: string
+  userPhone: string,
+  close_notes: string
 ) {
   const supabase = createClient();
 
@@ -18,7 +19,8 @@ export async function updateSSTClaimed(
     .update({
       closed_by: userId,
       dispatch_status: 'closed',
-      closed_at: new Date().toISOString()
+      closed_at: new Date().toISOString(),
+      dispatch_close_notes: close_notes
     })
     .eq('id', sstId);
 

@@ -8,7 +8,7 @@ import {
 } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
 import { VehicleLocation } from '../vehicles/types';
-import { MapIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpLeftFromSquareIcon, MapIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import DialogFactory from '@/components/dialog-factory';
@@ -16,6 +16,7 @@ import DispatchForm from './dispatch-form';
 import { User } from '@supabase/supabase-js';
 import EditDispatchGroups from './edit-dispatch-groups';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRouter } from 'next/navigation';
 
 type VehicleLocationsDisplayProps = {
   initialData: VehicleLocation[];
@@ -32,6 +33,7 @@ export default function VehicleLocationsDisplay({
   const [isDispatchGroupsDialogOpen, setDispatchGroupsDialogOpen] =
     React.useState<boolean>(false);
   const supabase = createClient();
+  const router = useRouter();
   const { data: vehicleLocations } = useQuery({
     queryKey: ['vehicleLocations'],
     queryFn: () => fetchAllVehicleLocations(supabase),
@@ -179,6 +181,12 @@ export default function VehicleLocationsDisplay({
 
   return (
     <div className="container mx-auto py-6 px-4">
+      <Button
+        onClick={() => router.push('/biz/vehicles/admin')}
+        className="mb-6"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+      </Button>
       <Button
         onClick={() => setDispatchGroupsDialogOpen(true)}
         className="mb-6 w-full"

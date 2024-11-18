@@ -871,6 +871,7 @@ export type Database = {
           closed_by: string | null
           created_at: string
           created_by: string | null
+          dispatch_close_notes: string | null
           dispatch_notes: string | null
           dispatch_status: Database["public"]["Enums"]["dispatch_status"] | null
           dispatched_at: string | null
@@ -890,6 +891,7 @@ export type Database = {
           closed_by?: string | null
           created_at: string
           created_by?: string | null
+          dispatch_close_notes?: string | null
           dispatch_notes?: string | null
           dispatch_status?:
             | Database["public"]["Enums"]["dispatch_status"]
@@ -911,6 +913,7 @@ export type Database = {
           closed_by?: string | null
           created_at?: string
           created_by?: string | null
+          dispatch_close_notes?: string | null
           dispatch_notes?: string | null
           dispatch_status?:
             | Database["public"]["Enums"]["dispatch_status"]
