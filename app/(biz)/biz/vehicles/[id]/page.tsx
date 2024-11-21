@@ -12,6 +12,7 @@ import { fetchObjects } from '@/utils/biz/pics/get';
 import { VehicleTagType, VehicleType } from '../admin/page';
 import VehicleClientComponent from './components/vehicle-client';
 import { InventoryLocation, VehicleLocation } from '../types';
+import { VehicleReg } from '../admin/tables/components/row-action-reg';
 
 const bucket = 'sb-fleet';
 async function getVehicleData(id: string) {
@@ -44,7 +45,7 @@ async function getVehicleData(id: string) {
     const normalGifsResponse = await fetchObjects(
       bucket,
       false,
-      `badges/`
+      `badges/${id}`
     );
     const normalBadges = normalGifsResponse?.objects as VehicleGifs[];
 
@@ -53,7 +54,14 @@ async function getVehicleData(id: string) {
       false,
       `registrations/${id}`
     );
-    const registrationImages = registrationPicsResponse?.objects as VehiclePics[];
+
+    // Transform VehicleReg[] to VehiclePics[]
+    const registrationImages = (registrationPicsResponse?.objects || []).map(
+      (reg: VehicleReg) => ({
+        ...reg,
+        name: reg.file_name || 'Unnamed Registration', // Adjust as needed
+      })
+    ) as VehiclePics[];
 
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
@@ -73,6 +81,7 @@ async function getVehicleData(id: string) {
     };
   }
 }
+
 
 
 export default async function VehiclePage({

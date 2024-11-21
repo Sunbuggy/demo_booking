@@ -5,6 +5,7 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { VehicleTagType, VehicleType } from '../../admin/page';
 import EditVehicle from '../../admin/tables/components/edit-vehicle';
 import ImageView from './image-view';
+import PdfView from './pdf-view';
 import Link from 'next/link';
 import { ArrowBigLeftIcon } from 'lucide-react';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
@@ -17,6 +18,7 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import ImageGrid from './image-grid';
+import PdfGrid from './pdf-grid';
 import DialogFactory from '@/components/dialog-factory';
 import TagManagement from './tag-management';
 import { User } from '@supabase/supabase-js';
@@ -33,13 +35,14 @@ import InventoryHistory from './vehicle-location-inventory-history';
 import { InventoryLocation, VehicleLocation } from '../../types';
 import LocationScheduling from './location-scheduling';
 import { VehicleReg } from '../../admin/tables/components/row-action-reg';
+import RegistrationPDFList from './pdf-view';
 
 interface VehicleClientComponentProps {
   id: string;
   initialVehicleInfo: VehicleType;
   images: VehiclePics[];
   gif: VehicleGifs[];
-  registrationImages: VehicleReg[]; // Add registrationImages prop
+  registrationImages: VehicleReg[]; 
   profilePic?: string;
   vehicleTags: VehicleTagType[];
   user: User;
@@ -427,17 +430,11 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                     children={
                       <div>
                         <RegistrationUpload url_key={`registrations/${id}`} />
-                      </div>
+                      </div>  
                     }
                   />
-                  <ImageGrid
-                    images={[]} 
-                    width={200}
-                    height={120}
-                    gifs={[]} 
-                    registrations={registrationImages} 
-                  />
-                </div>
+<RegistrationPDFList registrationImages={registrationImages} />
+</div>
               </AccordionContent>
             </AccordionItem>
 
