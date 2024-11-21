@@ -7,8 +7,9 @@ interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
 }
 export interface VehicleReg {
-  key: string;
+  file_name?: string;
   url: string;
+  [key: string]: any; 
 }
 
 export function DataTableRowActions<TData>({

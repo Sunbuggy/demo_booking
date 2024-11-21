@@ -35,6 +35,7 @@ import InventoryHistory from './vehicle-location-inventory-history';
 import { InventoryLocation, VehicleLocation } from '../../types';
 import LocationScheduling from './location-scheduling';
 import { VehicleReg } from '../../admin/tables/components/row-action-reg';
+import RegistrationPDFList from './pdf-view';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -429,15 +430,11 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                     children={
                       <div>
                         <RegistrationUpload url_key={`registrations/${id}`} />
-                      </div>
+                      </div>  
                     }
                   />
-                  <PdfGrid 
-                    width={200}
-                    height={120}
-                    media={registrationImages} 
-                  />
-                </div>
+<RegistrationPDFList registrationImages={registrationImages} />
+</div>
               </AccordionContent>
             </AccordionItem>
 

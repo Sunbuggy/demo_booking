@@ -52,7 +52,7 @@ const PdfGrid = ({
       <div className="grid md:grid-cols-4 grid-cols-1 md:gap-4 gap-2">
         {selectedMedia.map((item, index) => (
           <div className="space-y-2" key={index}>
-            <PdfView src={item.url} height={height} width={width} />
+            {/* <PdfView src={item.url} height={height} width={width} /> */}
             <Popover>
               <PopoverTrigger className="w-8 flex items-start text-red-500 p-0 m-0" asChild>
                 <Trash2Icon className="cursor-pointer" />
