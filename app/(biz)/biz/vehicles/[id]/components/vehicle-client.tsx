@@ -5,7 +5,6 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { VehicleTagType, VehicleType } from '../../admin/page';
 import EditVehicle from '../../admin/tables/components/edit-vehicle';
 import ImageView from './image-view';
-import PdfView from './pdf-view';
 import Link from 'next/link';
 import { ArrowBigLeftIcon } from 'lucide-react';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
@@ -18,7 +17,6 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import ImageGrid from './image-grid';
-import PdfGrid from './pdf-grid';
 import DialogFactory from '@/components/dialog-factory';
 import TagManagement from './tag-management';
 import { User } from '@supabase/supabase-js';
@@ -42,7 +40,7 @@ interface VehicleClientComponentProps {
   initialVehicleInfo: VehicleType;
   images: VehiclePics[];
   gif: VehicleGifs[];
-  registrationImages: VehicleReg[]; 
+  registrationPdf: VehicleReg[]; 
   profilePic?: string;
   vehicleTags: VehicleTagType[];
   user: User;
@@ -50,14 +48,14 @@ interface VehicleClientComponentProps {
   inventoryLocations: InventoryLocation[];
 }
 
-// Destructure registrationImages in props
+// Destructure registrationPdf in props
 const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   id,
   initialVehicleInfo,
   profilePic,
   images,
   gif,
-  registrationImages,
+  registrationPdf,
   vehicleTags,
   user,
   vehicleLocations,
@@ -426,14 +424,14 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                     title={uploadMoreRegistration}
                     setIsDialogOpen={setIsUploadRegDialogOpen}
                     isDialogOpen={isUploadRegDialogOpen}
-                    description="Upload one or multiple images for the vehicle."
+                    description="Upload one or multiple pdf for the vehicle registration."
                     children={
                       <div>
                         <RegistrationUpload url_key={`registrations/${id}`} />
                       </div>  
                     }
                   />
-<RegistrationPDFList registrationImages={registrationImages} />
+<RegistrationPDFList registrationPdf={registrationPdf} />
 </div>
               </AccordionContent>
             </AccordionItem>

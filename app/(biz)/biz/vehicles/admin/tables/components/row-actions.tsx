@@ -7,10 +7,10 @@ interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
 }
 export interface VehiclePics {
-  file_name?: string;
+  key: string;
   url: string;
-  [key: string]: any; 
 }
+
 
 export function DataTableRowActions<TData>({
   row

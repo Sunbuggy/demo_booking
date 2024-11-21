@@ -49,26 +49,19 @@ async function getVehicleData(id: string) {
     );
     const normalBadges = normalGifsResponse?.objects as VehicleGifs[];
 
-    const registrationPicsResponse = await fetchObjects(
+    const normalRegResponse = await fetchObjects(
       bucket,
       false,
       `registrations/${id}`
     );
-
-    // Transform VehicleReg[] to VehiclePics[]
-    const registrationImages = (registrationPicsResponse?.objects || []).map(
-      (reg: VehicleReg) => ({
-        ...reg,
-        name: reg.file_name || 'Unnamed Registration', // Adjust as needed
-      })
-    ) as VehiclePics[];
-
+    const normalReg = normalRegResponse?.objects as VehicleReg[];
+    
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: normalImages || [],
       normalBadges: normalBadges || [],
       vehicleTags,
-      registrationImages: registrationImages || []
+      registrationPdf: normalReg || []
     };
   } catch (error) {
     console.error(`Error fetching objects for ${id} `, error);
@@ -77,7 +70,7 @@ async function getVehicleData(id: string) {
       normalImages: [],
       normalBadges: [],
       vehicleTags: [],
-      registrationImages: [] 
+      registrationPdf: [] 
     };
   }
 }
@@ -99,7 +92,7 @@ export default async function VehiclePage({
     `profile_pic/${params.id}`
   );
   const profilePic = String(profilePicResponse?.url);
-  const { vehicleInfo, normalImages, normalBadges,vehicleTags, registrationImages } = await getVehicleData(
+  const { vehicleInfo, normalImages, normalBadges,vehicleTags, registrationPdf } = await getVehicleData(
     params.id
   );
 
@@ -124,7 +117,7 @@ export default async function VehiclePage({
           user={user}
           vehicleLocations={vehicleLocations}
           inventoryLocations={inventoryLocations}
-          registrationImages={registrationImages} 
+          registrationPdf={registrationPdf} 
         />
       ) : (
         <div>No User</div>
