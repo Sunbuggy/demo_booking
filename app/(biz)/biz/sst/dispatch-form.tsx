@@ -97,18 +97,22 @@ const useSendSMS = (
 export default function DispatchForm({
   todayData,
   location,
-  user
+  user,
+  dispatchId
 }: {
   todayData: VehicleLocation[];
   location: VehicleLocation;
   user: User;
+  dispatchId?: string;
 }) {
   const [dispatchNotes, setDispatchNotes] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [resNumber, setResNumber] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [textLocation, setTextLocation] = useState('');
+  const [oldTicketNumber, setOldTicketNumber] = useState<number | null>(null);
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
   const todayDispatched = todayData.filter(
     (data) => data.dispatched_by !== null
@@ -117,6 +121,48 @@ export default function DispatchForm({
 
   const sendSMS = lat && lon ? useSendSMS(user, textLocation, lat, lon) : null;
 
+  React.useEffect(() => {
+    if (dispatchId) {
+      const supabase = createClient();
+      const fetchDispatch = async () => {
+        const { data: dispatch } = await supabase
+          .from('vehicle_locations')
+          .select('dispatch_notes, distress_ticket_number')
+          .eq('id', dispatchId)
+          .single();
+        if (dispatch && dispatch.dispatch_notes) {
+          // set the customer name the string between the dispatch notes between Customer Name and Res Number
+          const customerName = dispatch.dispatch_notes.match(
+            /Customer Name: (.*?)\n/
+          );
+          if (customerName) {
+            setCustomerName(customerName[1]);
+          }
+          // set the res number the string between the dispatch notes between Res Number and Customer Phone
+          const resNumber =
+            dispatch.dispatch_notes.match(/Res Number: (.*?)\n/);
+          if (resNumber) {
+            setResNumber(resNumber[1]);
+          }
+          // set the customer phone the string between the dispatch notes between Customer Phone and the end of the string
+          const customerPhone = dispatch.dispatch_notes.match(
+            /Customer Phone: (.*?)$/
+          );
+          if (customerPhone) {
+            setCustomerPhone(customerPhone[1]);
+          }
+
+          setDispatchNotes(dispatch.dispatch_notes.split('Customer Name')[0]);
+
+          if (dispatch.distress_ticket_number) {
+            setOldTicketNumber(dispatch.distress_ticket_number);
+          }
+        }
+      };
+      fetchDispatch();
+    }
+  }, []);
+
   useEffect(() => {
     if (lat && lon) {
       setTextLocation(getLocationType(lat, lon));
@@ -124,11 +170,12 @@ export default function DispatchForm({
   }, [lat, lon]);
 
   const onSubmit = async (e: React.FormEvent) => {
+    setLoading(true);
     e.preventDefault();
 
     const data = {
       vehicle_id: location.vehicle_id,
-      distress_ticket_number: todayDispatched + 1,
+      distress_ticket_number: oldTicketNumber || todayDispatched + 1,
       dispatch_notes: `${dispatchNotes}\nCustomer Name: ${customerName}\nRes Number: ${resNumber}\nCustomer Phone: ${customerPhone}`,
       dispatched_by: user.id,
       dispatch_status: 'open' as const,
@@ -148,6 +195,7 @@ export default function DispatchForm({
       });
       window.location.reload();
     } catch (error) {
+      setLoading(false);
       toast({
         title: 'Error',
         description: (error as Error).message,
@@ -161,7 +209,7 @@ export default function DispatchForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="w-full mx-auto p-6 space-y-8 rounded-lg shadow-lg"
+      className={`w-full mx-auto p-6 space-y-8 rounded-lg shadow-lg ${loading ? 'opacity-50 pointer-events-none' : ''}`}
     >
       <div className="space-y-6">
         <div className="grid gap-4">
@@ -175,7 +223,7 @@ export default function DispatchForm({
             <Input
               type="text"
               name="ticket_number"
-              value={todayDispatched + 1}
+              value={oldTicketNumber || todayDispatched + 1}
               readOnly
               className="bg-gray-50"
             />
@@ -248,7 +296,7 @@ export default function DispatchForm({
           type="submit"
           className="w-full transition-colors hover:bg-blue-600 active:bg-blue-700"
         >
-          Submit Dispatch
+          {dispatchId ? 'Redispatch' : 'Submit Dispatch'}
         </Button>
       </div>
     </form>

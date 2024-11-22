@@ -30,6 +30,9 @@ export default function VehicleLocationsDisplay({
   const [openDialogIndex, setOpenDialogIndex] = React.useState<number | null>(
     null
   );
+  const [openReDialogIndex, setOpenReDialogIndex] = React.useState<
+    number | null
+  >(null);
   const [isDispatchGroupsDialogOpen, setDispatchGroupsDialogOpen] =
     React.useState<boolean>(false);
   const supabase = createClient();
@@ -164,9 +167,30 @@ export default function VehicleLocationsDisplay({
             </>
           )}
           {location.dispatch_status === 'open' && (
-            <Link href={`/biz/sst/cases`}>
-              <Button>View</Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link href={`/biz/sst/cases`}>
+                <Button>View</Button>
+              </Link>
+              <>
+                <Button onClick={() => setOpenReDialogIndex(index)}>
+                  Re-Dispatch
+                </Button>
+                <DialogFactory
+                  isDialogOpen={openReDialogIndex === index}
+                  setIsDialogOpen={() => setOpenReDialogIndex(null)}
+                  title="Re-Dispatch"
+                  children={
+                    <DispatchForm
+                      todayData={today_data}
+                      location={location}
+                      user={user}
+                      dispatchId={location.id}
+                    />
+                  }
+                  description="Dispatch details"
+                />
+              </>
+            </div>
           )}
           {(location.dispatch_status === 'claimed' ||
             location.dispatch_status === 'closed') && (
