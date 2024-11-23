@@ -56,6 +56,12 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 300,
       external: false
     },
+    {
+      href: '/biz/reports',
+      label: 'Reports',
+      minLevel: 900,
+      external: false
+    },
 
     {
       href: '/biz/sst',
