@@ -4,22 +4,32 @@ import ReportsBoard from './components/ReportsBoard';
 const ReportsPage = async () => {
   const supabase = createClient();
 
-  // Fetch data from the necessary tables
-  const { data: tags } = await supabase.from('vehicle_tag').select('*');
-  const { data: scans } = await supabase.from('vehicle_locations').select('*');
+  // Fetch data from the necessary tables and sort by created_at in descending order
+  const { data: tags } = await supabase
+    .from('vehicle_tag')
+    .select('*')
+    .order('created_at', { ascending: false });
+  const { data: scans } = await supabase
+    .from('vehicle_locations')
+    .select('*')
+    .order('created_at', { ascending: false });
   const ssts = scans?.filter((scan) => scan.is_distress_signal === true);
   const { data: atv_pretrips } = await supabase
     .from('vehicle_pretrip_atv')
-    .select('*');
+    .select('*')
+    .order('created_at', { ascending: false });
   const { data: buggy_pretrips } = await supabase
     .from('vehicle_pretrip_buggy')
-    .select('*');
+    .select('*')
+    .order('created_at', { ascending: false });
   const { data: pretrip_shuttles } = await supabase
     .from('vehicle_pretrip_shuttle')
-    .select('*');
+    .select('*')
+    .order('created_at', { ascending: false });
   const { data: pretrip_trucks } = await supabase
     .from('vehicle_pretrip_truck')
-    .select('*');
+    .select('*')
+    .order('created_at', { ascending: false });
 
   // Fetch vehicles, users, and employee details data
   const { data: vehicles } = await supabase.from('vehicles').select('*');
