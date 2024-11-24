@@ -9,7 +9,13 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { DownloadIcon, FilterIcon, PlusCircle, X } from 'lucide-react';
+import {
+  DownloadIcon,
+  FilterIcon,
+  PlusCircle,
+  X,
+  Settings
+} from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -32,6 +38,14 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
+} from '@/components/ui/sheet';
 
 interface DataVisualizationProps {
   data: any[];
@@ -57,11 +71,17 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
 
   const columns = useMemo(() => {
     if (data.length === 0) return [];
     return Object.keys(data[0]).filter((col) => col !== 'id');
   }, [data]);
+
+  // Set default visible columns to the first 4
+  useMemo(() => {
+    setVisibleColumns(columns.slice(0, 4));
+  }, [columns]);
 
   const columnTypes: Record<string, ColumnType> = useMemo(() => {
     if (data.length === 0) return {};
@@ -182,9 +202,9 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   };
 
   const convertToCSV = (data: any[]) => {
-    const header = columns.join(',');
+    const header = visibleColumns.join(',');
     const rows = data.map((row) =>
-      columns.map((col) => JSON.stringify(row[col] ?? '')).join(',')
+      visibleColumns.map((col) => JSON.stringify(row[col] ?? '')).join(',')
     );
     return [header, ...rows].join('\n');
   };
@@ -272,6 +292,14 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
     );
   };
 
+  const toggleColumnVisibility = (column: string) => {
+    setVisibleColumns((prev) =>
+      prev.includes(column)
+        ? prev.filter((col) => col !== column)
+        : [...prev, column]
+    );
+  };
+
   return (
     <div className="space-y-8">
       <Accordion type="single" collapsible>
@@ -292,13 +320,43 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
       </Accordion>
 
       <div className="flex flex-col space-y-4">
-        <Input
-          type="text"
-          placeholder="Search..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full"
-        />
+        <div className="flex flex-wrap items-center gap-4">
+          <Input
+            type="text"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full sm:w-64"
+          />
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline">
+                <Settings className="mr-2 h-4 w-4" />
+                Column Settings
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Column Settings</SheetTitle>
+                <SheetDescription>
+                  Select which columns to display in the table.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-4 space-y-2">
+                {columns.map((column) => (
+                  <div key={column} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`column-${column}`}
+                      checked={visibleColumns.includes(column)}
+                      onCheckedChange={() => toggleColumnVisibility(column)}
+                    />
+                    <label htmlFor={`column-${column}`}>{column}</label>
+                  </div>
+                ))}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
         <div className="flex flex-wrap gap-4">
           {columnFilters.map((filter) => (
             <div
@@ -369,7 +427,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              {columns.map((column) => (
+              {visibleColumns.map((column) => (
                 <TableHead key={column}>
                   <div className="flex items-center space-x-2">
                     <span>{column.replace(/_/g, ' ')}</span>
@@ -436,7 +494,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
           <TableBody>
             {paginatedData.map((row, index) => (
               <TableRow key={index}>
-                {columns.map((column) => (
+                {visibleColumns.map((column) => (
                   <TableCell key={column}>
                     {column === 'created_at' || column === 'updated_at'
                       ? formatDate(row[column])
