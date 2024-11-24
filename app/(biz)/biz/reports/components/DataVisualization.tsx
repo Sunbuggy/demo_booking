@@ -14,7 +14,9 @@ import {
   FilterIcon,
   PlusCircle,
   X,
-  Settings
+  Settings,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import {
   Select,
@@ -72,6 +74,8 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const columns = useMemo(() => {
     if (data.length === 0) return [];
@@ -112,7 +116,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   }, [data, columns]);
 
   const filteredData = useMemo(() => {
-    return data.filter((item) => {
+    let filtered = data.filter((item) => {
       const itemDate = new Date(item.created_at);
       const isInDateRange =
         itemDate >= dateRange.from && itemDate <= dateRange.to;
@@ -120,7 +124,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
       const matchesSearch = Object.values(item).some(
         (value) =>
           value &&
-          value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+          value?.toString()?.toLowerCase().includes(searchTerm?.toLowerCase())
       );
 
       const matchesColumnFilters = columnFilters.every((filter) => {
@@ -128,8 +132,8 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
         switch (filter.type) {
           case 'string':
             return itemValue
-              .toLowerCase()
-              .includes(filter.value?.toString().toLowerCase() ?? '');
+              ?.toLowerCase()
+              .includes(filter.value?.toString()?.toLowerCase() ?? '');
           case 'number':
             return itemValue === Number(filter.value);
           case 'boolean':
@@ -145,7 +149,24 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
 
       return isInDateRange && matchesSearch && matchesColumnFilters;
     });
-  }, [data, dateRange, searchTerm, columnFilters]);
+
+    if (sortColumn) {
+      filtered = filtered.sort((a, b) => {
+        const aValue = a[sortColumn];
+        const bValue = b[sortColumn];
+
+        if (aValue < bValue) {
+          return sortOrder === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortOrder === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [data, dateRange, searchTerm, columnFilters, sortColumn, sortOrder]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
@@ -223,8 +244,8 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
           </SelectTrigger>
           <SelectContent>
             {uniqueColumnValues.map((value) => (
-              <SelectItem key={value} value={value.toString()}>
-                {value.toString()}
+              <SelectItem key={value} value={value?.toString()}>
+                {value?.toString()}
               </SelectItem>
             ))}
           </SelectContent>
@@ -272,7 +293,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
 
   const addFilter = () => {
     const newFilter: ColumnFilter = {
-      id: Date.now().toString(),
+      id: Date.now()?.toString(),
       column: columns[0],
       type: columnTypes[columns[0]],
       value: null
@@ -298,6 +319,15 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
         ? prev.filter((col) => col !== column)
         : [...prev, column]
     );
+  };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortOrder('desc');
+    }
   };
 
   return (
@@ -431,6 +461,21 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
                 <TableHead key={column}>
                   <div className="flex items-center space-x-2">
                     <span>{column.replace(/_/g, ' ')}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort(column)}
+                    >
+                      {sortColumn === column ? (
+                        sortOrder === 'asc' ? (
+                          <ArrowUp className="h-4 w-4" />
+                        ) : (
+                          <ArrowDown className="h-4 w-4" />
+                        )
+                      ) : (
+                        <ArrowDown className="h-4 w-4" />
+                      )}
+                    </Button>
                     {uniqueValues[column].size < 20 && (
                       <Popover>
                         <PopoverTrigger asChild>
@@ -455,7 +500,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
                                   onCheckedChange={(checked) => {
                                     if (checked) {
                                       const newFilter: ColumnFilter = {
-                                        id: Date.now().toString(),
+                                        id: Date.now()?.toString(),
                                         column,
                                         type: columnTypes[column],
                                         value
