@@ -33,7 +33,13 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 300,
       external: true
     },
-    { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 }
+    { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 },
+    {
+      href: '/biz/reports',
+      label: 'Reports',
+      minLevel: 900,
+      external: false
+    }
   ];
 
   const dashboardLinks: NavLink[] = [
@@ -54,12 +60,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       href: '/biz/vehicles/admin',
       label: 'Fleet',
       minLevel: 300,
-      external: false
-    },
-    {
-      href: '/biz/reports',
-      label: 'Reports',
-      minLevel: 900,
       external: false
     },
 

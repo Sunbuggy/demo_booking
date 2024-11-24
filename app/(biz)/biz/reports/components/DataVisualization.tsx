@@ -24,6 +24,14 @@ import {
   PopoverContent,
   PopoverTrigger
 } from '@/components/ui/popover';
+import TableDescription from './TableDescription';
+import Pagination from './Pagination';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from '@/components/ui/accordion';
 
 interface DataVisualizationProps {
   data: any[];
@@ -47,6 +55,8 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const columns = useMemo(() => {
     if (data.length === 0) return [];
@@ -90,7 +100,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
       const matchesSearch = Object.values(item).some(
         (value) =>
           value &&
-          value?.toString()?.toLowerCase().includes(searchTerm?.toLowerCase())
+          value.toString().toLowerCase().includes(searchTerm.toLowerCase())
       );
 
       const matchesColumnFilters = columnFilters.every((filter) => {
@@ -98,8 +108,8 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
         switch (filter.type) {
           case 'string':
             return itemValue
-              ?.toLowerCase()
-              .includes(filter.value?.toString()?.toLowerCase() ?? '');
+              .toLowerCase()
+              .includes(filter.value?.toString().toLowerCase() ?? '');
           case 'number':
             return itemValue === Number(filter.value);
           case 'boolean':
@@ -116,6 +126,13 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
       return isInDateRange && matchesSearch && matchesColumnFilters;
     });
   }, [data, dateRange, searchTerm, columnFilters]);
+
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredData.slice(startIndex, startIndex + pageSize);
+  }, [filteredData, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(filteredData.length / pageSize);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -186,8 +203,8 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
           </SelectTrigger>
           <SelectContent>
             {uniqueColumnValues.map((value) => (
-              <SelectItem key={value} value={value?.toString()}>
-                {value?.toString()}
+              <SelectItem key={value} value={value.toString()}>
+                {value.toString()}
               </SelectItem>
             ))}
           </SelectContent>
@@ -256,7 +273,16 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
+      <Accordion type="single" collapsible>
+        <AccordionItem value="item-1">
+          <AccordionTrigger>View Table Description</AccordionTrigger>
+          <AccordionContent>
+            <TableDescription data={data} columns={columns} />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
       <div className="flex flex-col space-y-4">
         <Input
           type="text"
@@ -400,7 +426,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredData.map((row, index) => (
+            {paginatedData.map((row, index) => (
               <TableRow key={index}>
                 {columns.map((column) => (
                   <TableCell key={column}>
@@ -416,6 +442,13 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
           </TableBody>
         </Table>
       </div>
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+      />
     </div>
   );
 };
