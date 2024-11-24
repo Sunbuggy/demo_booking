@@ -1,5 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Bar, Line, Pie } from 'react-chartjs-2';
+import {
+  Bar,
+  Line,
+  Pie,
+  Bubble,
+  Doughnut,
+  Radar,
+  PolarArea,
+  Scatter
+} from 'react-chartjs-2';
 import 'chart.js/auto';
 import { format, parseISO } from 'date-fns';
 
@@ -58,6 +67,37 @@ const TableDescription: React.FC<TableDescriptionProps> = ({
     setChartTypes((prev) => ({ ...prev, [column]: type }));
   };
 
+  const getRandomColor = () => {
+    const colors = [
+      'rgba(255, 99, 132, 0.2)',
+      'rgba(54, 162, 235, 0.2)',
+      'rgba(255, 206, 86, 0.2)',
+      'rgba(75, 192, 192, 0.2)',
+      'rgba(153, 102, 255, 0.2)',
+      'rgba(255, 159, 64, 0.2)',
+      'rgba(199, 199, 199, 0.2)',
+      'rgba(83, 102, 255, 0.2)',
+      'rgba(255, 99, 132, 0.2)',
+      'rgba(54, 162, 235, 0.2)',
+      'rgba(255, 159, 64, 0.2)',
+      'rgba(75, 192, 192, 0.2)',
+      'rgba(153, 102, 255, 0.2)',
+      'rgba(255, 206, 86, 0.2)',
+      'rgba(199, 199, 199, 0.2)',
+      'rgba(83, 102, 255, 0.2)',
+      'rgba(255, 99, 132, 0.2)',
+      'rgba(54, 162, 235, 0.2)',
+      'rgba(255, 206, 86, 0.2)',
+      'rgba(75, 192, 192, 0.2)',
+      'rgba(153, 102, 255, 0.2)',
+      'rgba(255, 159, 64, 0.2)',
+      'rgba(199, 199, 199, 0.2)',
+      'rgba(83, 102, 255, 0.2)',
+      'rgba(255, 99, 132, 0.2)'
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
+
   const renderChart = (column: string) => {
     const chartType = chartTypes[column] || 'Bar';
     const chartData = {
@@ -66,7 +106,9 @@ const TableDescription: React.FC<TableDescriptionProps> = ({
         {
           label: 'Count',
           data: tableInfo[column].valueCounts.map((vc: any) => vc.count),
-          backgroundColor: 'rgba(75, 192, 192, 0.6)',
+          backgroundColor: tableInfo[column].valueCounts.map(() =>
+            getRandomColor()
+          ),
           borderColor: 'rgba(75, 192, 192, 1)',
           borderWidth: 1
         }
@@ -87,6 +129,16 @@ const TableDescription: React.FC<TableDescriptionProps> = ({
         return <Line data={chartData} options={chartOptions} />;
       case 'Pie':
         return <Pie data={chartData} options={chartOptions} />;
+      case 'Bubble':
+        return <Bubble data={chartData} options={chartOptions} />;
+      case 'Doughnut':
+        return <Doughnut data={chartData} options={chartOptions} />;
+      case 'Radar':
+        return <Radar data={chartData} options={chartOptions} />;
+      case 'PolarArea':
+        return <PolarArea data={chartData} options={chartOptions} />;
+      case 'Scatter':
+        return <Scatter data={chartData} options={chartOptions} />;
       default:
         return <Bar data={chartData} options={chartOptions} />;
     }
@@ -116,6 +168,11 @@ const TableDescription: React.FC<TableDescriptionProps> = ({
                 <option value="Bar">Bar</option>
                 <option value="Line">Line</option>
                 <option value="Pie">Pie</option>
+                <option value="Bubble">Bubble</option>
+                <option value="Doughnut">Doughnut</option>
+                <option value="Radar">Radar</option>
+                <option value="PolarArea">PolarArea</option>
+                <option value="Scatter">Scatter</option>
               </select>
             </div>
             <div className="mt-4">

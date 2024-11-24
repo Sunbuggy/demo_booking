@@ -282,6 +282,14 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+      <Accordion type="single" collapsible>
+        <AccordionItem value="item-2">
+          <AccordionTrigger>View Generated Report Description</AccordionTrigger>
+          <AccordionContent>
+            <TableDescription data={filteredData} columns={columns} />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       <div className="flex flex-col space-y-4">
         <Input
