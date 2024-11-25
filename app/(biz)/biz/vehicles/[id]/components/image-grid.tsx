@@ -19,18 +19,16 @@ type Media = VehiclePics | VehicleGifs | VehicleReg;
 const ImageGrid = ({
   images = [],
   gifs = [],
-  registrations = [],
   width,
   height
 }: {
   images: VehiclePics[];
   gifs: VehicleGifs[];
-  registrations: VehicleReg[];
   width: number;
   height: number;
 }) => {
   const [currentPage, setCurrentPage] = useState(0);
-  const mediaArray = [...images, ...gifs, ...registrations]; 
+  const mediaArray = [...images, ...gifs]; 
   const [media, setMedia] = useState<Media[]>(mediaArray);
   const imagesPerPage = 4;
   const totalPages = Math.ceil(media.length / imagesPerPage);

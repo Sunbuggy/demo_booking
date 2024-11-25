@@ -126,7 +126,7 @@ export default function RegistrationUpload({
             />
             <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
             <span className="mt-2 block text-sm font-semibold">
-              Click to upload Registration (Images or PDFs)
+              Click to upload Registration (Must be PDFs)
             </span>
           </Label>
           <Label

@@ -8,6 +8,7 @@ import {
   PopoverTrigger
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface RegistrationPDFProps {
   registrationPdf: VehicleReg[];
@@ -15,6 +16,7 @@ interface RegistrationPDFProps {
 
 const RegistrationPDFList: React.FC<RegistrationPDFProps> = ({ registrationPdf }) => {
   const [pdfs, setPdfs] = useState<VehicleReg[]>(registrationPdf);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const deletePdf = async (pdf: VehicleReg) => {
     try {
@@ -39,46 +41,69 @@ const RegistrationPDFList: React.FC<RegistrationPDFProps> = ({ registrationPdf }
     }
   };
 
+  const filteredPdfs = pdfs.filter((doc) =>
+    (doc.file_name || doc.key.split('/').pop() || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (!pdfs || pdfs.length === 0) {
     return <p>No registration documents available.</p>;
   }
 
   return (
     <div>
-      <h3>Registration Documents</h3>
+      <h3 className="pb-2">Registration Documents</h3>
+      {/* Search input */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search documents..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="p-2 border border-gray-300 rounded w-full"
+        />
+      </div>
+
       <ul>
-        {pdfs.map((doc, index) => (
-          <li key={index} className="flex items-center justify-between">
-            <a
-              href={doc.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              {doc.file_name || `Registration Document ${index + 1}`}
-            </a>
-            <Popover>
-              <PopoverTrigger className="w-8 flex items-center text-red-500" asChild>
-                <Trash2Icon className="cursor-pointer" />
-              </PopoverTrigger>
-              <PopoverContent>
-                <div className="flex flex-col gap-4">
-                  <p>Are you sure you want to delete this file?</p>
-                  <div className="flex justify-between">
-                    <PopoverClose asChild>
-                      <Button onClick={() => deletePdf(doc)} variant={'destructive'}>
-                        Yes
-                      </Button>
-                    </PopoverClose>
-                    <PopoverClose asChild>
-                      <Button>No</Button>
-                    </PopoverClose>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          </li>
-        ))}
+        {filteredPdfs.length > 0 ? (
+          filteredPdfs.map((doc, index) => (
+            <ScrollArea key={index}>
+              <li className="flex items-center justify-between py-2">
+                <a
+                  href={doc.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  {doc.file_name || doc.key.split('/').pop() || `Registration Document ${index + 1}`}
+                </a>
+                <Popover>
+                  <PopoverTrigger className="w-8 flex items-center text-red-500" asChild>
+                    <Trash2Icon className="cursor-pointer" />
+                  </PopoverTrigger>
+                  <PopoverContent>
+                    <div className="flex flex-col gap-4">
+                      <p>Are you sure you want to delete this file?</p>
+                      <div className="flex justify-between">
+                        <PopoverClose asChild>
+                          <Button onClick={() => deletePdf(doc)} variant={'destructive'}>
+                            Yes
+                          </Button>
+                        </PopoverClose>
+                        <PopoverClose asChild>
+                          <Button>No</Button>
+                        </PopoverClose>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </li>
+              {/* Divider */}
+              <hr className="border-t border-gray-300 my-2" />
+            </ScrollArea>
+          ))
+        ) : (
+          <p>No documents match your search.</p>
+        )}
       </ul>
     </div>
   );
