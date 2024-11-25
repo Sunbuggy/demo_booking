@@ -372,7 +372,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
                   Select which columns to display in the table.
                 </SheetDescription>
               </SheetHeader>
-              <div className="mt-4 space-y-2">
+              <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
                 {columns.map((column) => (
                   <div key={column} className="flex items-center space-x-2">
                     <Checkbox
