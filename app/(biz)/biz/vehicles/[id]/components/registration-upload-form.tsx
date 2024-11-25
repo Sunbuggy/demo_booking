@@ -1,5 +1,5 @@
 import { Label } from '@/components/ui/label';
-import { CameraIcon, UploadIcon, FileTextIcon } from 'lucide-react';
+import { UploadIcon, FileTextIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import React, { useState, FormEvent } from 'react';
 import { DialogClose } from '@/components/ui/dialog';
@@ -18,7 +18,7 @@ export default function RegistrationUpload({
   url_key,
   updatePic = false,
   single = false,
-  acceptedFormats = 'image/*,application/pdf',
+  acceptedFormats = 'application/pdf',
   bucket = 'sb-fleet'
 }: RegistrationUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -39,7 +39,7 @@ export default function RegistrationUpload({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-  
+
     if (!url_key || !bucket) {
       toast({
         title: 'Configuration Error',
@@ -48,7 +48,7 @@ export default function RegistrationUpload({
       });
       return;
     }
-  
+
     if (selectedFiles.length === 0) {
       toast({
         title: 'Error',
@@ -57,23 +57,23 @@ export default function RegistrationUpload({
       });
       return;
     }
-  
+
     const formData = new FormData();
     formData.append('bucket', bucket);
     formData.append('mode', single ? 'single' : 'multiple');
     formData.append('key', url_key);
-  
+
     // Rename PDF files to the current date
     selectedFiles.forEach((file) => {
       let newFile = file;
       if (file.type === 'application/pdf') {
-        const today = new Date().toISOString().split('T')[0]; 
+        const today = new Date().toISOString().split('T')[0];
         newFile = new File([file], `${today}.pdf`, { type: file.type });
       }
       formData.append('files', newFile);
       formData.append('contentType', newFile.type);
     });
-  
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
@@ -82,12 +82,12 @@ export default function RegistrationUpload({
           body: formData
         }
       );
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Upload failed.');
       }
-  
+
       toast({
         title: 'Success',
         description: 'Files uploaded successfully!',
@@ -105,7 +105,6 @@ export default function RegistrationUpload({
       });
     }
   };
-  
 
   return (
     <form onSubmit={handleSubmit} ref={formRef} className="space-y-4">
@@ -129,22 +128,6 @@ export default function RegistrationUpload({
               Click to upload Registration (Must be PDFs)
             </span>
           </Label>
-          <Label
-            htmlFor="camera-upload"
-            className="flex items-center justify-center gap-2 text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-4 text-center cursor-pointer hover:border-primary transition-colors lg:hidden"
-          >
-            <Input
-              id="camera-upload"
-              name="files"
-              type="file"
-              className="sr-only"
-              capture="environment"
-              onChange={handleFileChange}
-              accept="image/*"
-            />
-            <CameraIcon className="h-6 w-6 text-gray-400" />
-            <span className="font-semibold">Take a picture</span>
-          </Label>
         </div>
       )}
       {selectedFiles.length > 0 && (
@@ -152,18 +135,10 @@ export default function RegistrationUpload({
           <div className="grid grid-cols-3 gap-4">
             {selectedFiles.map((file, index) => (
               <div key={index} className="relative group">
-                {file.type.startsWith('image/') ? (
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt={`Selected file ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-md"
-                  />
-                ) : (
-                  <div className="w-full h-32 flex items-center justify-center bg-gray-200 rounded-md">
-                    <FileTextIcon className="h-8 w-8 text-gray-500" />
-                    <span className="text-sm text-gray-500">{file.name}</span>
-                  </div>
-                )}
+                <div className="w-full h-32 flex items-center justify-center bg-gray-200 rounded-md">
+                  <FileTextIcon className="h-8 w-8 text-gray-500" />
+                  <span className="text-sm text-gray-500">{file.name}</span>
+                </div>
                 <button
                   type="button"
                   onClick={() => removeFile(index)}

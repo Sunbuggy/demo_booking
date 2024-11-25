@@ -51,7 +51,7 @@ const RegistrationPDFList: React.FC<RegistrationPDFProps> = ({ registrationPdf }
 
   return (
     <div>
-      <h3 className="pb-2">Registration Documents</h3>
+      {/* <h3 className="pb-2">Registration Documents</h3> */}
       {/* Search input */}
       <div className="mb-4">
         <input
@@ -97,7 +97,6 @@ const RegistrationPDFList: React.FC<RegistrationPDFProps> = ({ registrationPdf }
                   </PopoverContent>
                 </Popover>
               </li>
-              {/* Divider */}
               <hr className="border-t border-gray-300 my-2" />
             </ScrollArea>
           ))
