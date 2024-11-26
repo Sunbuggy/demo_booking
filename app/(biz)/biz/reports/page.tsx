@@ -30,6 +30,10 @@ const ReportsPage = async () => {
     .from('vehicle_pretrip_truck')
     .select('*')
     .order('created_at', { ascending: false });
+    const { data: time_entries } = await supabase
+    .from('time_entries')
+    .select('*')
+    .order('date', { ascending: false });
 
   // Fetch vehicles, users, and employee details data
   const { data: vehicles } = await supabase.from('vehicles').select('*');
@@ -61,7 +65,17 @@ const ReportsPage = async () => {
         employeeDetails?.find((e) => e.user_id === item.updated_by)?.emp_id ||
         '',
       closed_by_id:
-        employeeDetails?.find((e) => e.user_id === item.closed_by)?.emp_id || ''
+        employeeDetails?.find((e) => e.user_id === item.closed_by)?.emp_id || 
+        '',
+      user_id:
+      time_entries?.find((e) => e.user_id === item.time_entries)?.user_id ||
+        '',
+      clock_in_id:
+      time_entries?.find((e) => e.clock_in_id === item.time_entries)?.clock_in_id ||
+        '',
+      clock_out_id:
+      time_entries?.find((e) => e.clock_out_id === item.time_entries)?.clock_out_id || ''
+
     }));
   };
 
@@ -73,6 +87,7 @@ const ReportsPage = async () => {
   const mappedBuggyPretrips = mapData(buggy_pretrips || []);
   const mappedPretripShuttles = mapData(pretrip_shuttles || []);
   const mappedPretripTrucks = mapData(pretrip_trucks || []);
+  const mappedTimeEntries = mapData(time_entries || []);
 
   const tables = [
     { name: 'Tags', data: mappedTags },
@@ -81,7 +96,9 @@ const ReportsPage = async () => {
     { name: 'ATV Pre-trips', data: mappedAtvPretrips },
     { name: 'Buggy Pre-trips', data: mappedBuggyPretrips },
     { name: 'Shuttle Pre-trips', data: mappedPretripShuttles },
-    { name: 'Truck Pre-trips', data: mappedPretripTrucks }
+    { name: 'Truck Pre-trips', data: mappedPretripTrucks },
+    { name: 'Time Entries', data: mappedTimeEntries }
+
   ];
 
   return (
