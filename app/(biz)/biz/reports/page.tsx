@@ -33,7 +33,6 @@ const ReportsPage = async () => {
     const { data: time_entries } = await supabase
     .from('time_entries')
     .select('*')
-    .order('date', { ascending: false });
 
   // Fetch vehicles, users, and employee details data
   const { data: vehicles } = await supabase.from('vehicles').select('*');
@@ -41,6 +40,9 @@ const ReportsPage = async () => {
   const { data: employeeDetails } = await supabase
     .from('employee_details')
     .select('*');
+    const { data: clock_in } = await supabase.from('clock_in').select('*');
+    const { data: clock_out } = await supabase.from('clock_out').select('*');
+
 
   // Helper function to map vehicle_id, created_by, updated_by, and closed_by
   const mapData = (data: any[]) => {
@@ -68,13 +70,13 @@ const ReportsPage = async () => {
         employeeDetails?.find((e) => e.user_id === item.closed_by)?.emp_id || 
         '',
       user_id:
-      time_entries?.find((e) => e.user_id === item.time_entries)?.user_id ||
+      users?.find((t) => t.id === item.user_id)?.full_name ||
         '',
       clock_in_id:
-      time_entries?.find((e) => e.clock_in_id === item.time_entries)?.clock_in_id ||
+      clock_in?.find((t) => t.id === item.clock_in_id)?.clock_in_time ||
         '',
       clock_out_id:
-      time_entries?.find((e) => e.clock_out_id === item.time_entries)?.clock_out_id || ''
+      clock_out?.find((t) => t.id === item.clock_out_id)?.clock_out_time || ''
 
     }));
   };
