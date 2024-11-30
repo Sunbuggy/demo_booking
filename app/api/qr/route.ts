@@ -7,6 +7,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const url = searchParams.get('url');
   const count = parseInt(searchParams.get('count') || '1', 10);
+  const topText = searchParams.get('topText') || '';
+  const bottomText = searchParams.get('bottomText') || '';
 
   if (!url) {
     return new Response('Missing URL parameter', { status: 400 });
@@ -24,7 +26,7 @@ export async function GET(request: Request) {
     });
 
     const qrCodeSize = count === 2 ? 350 : count === 3 ? 250 : 450;
-    const padding = 20;
+    const padding = 10;
     const columns = count === 2 ? 1 : 2;
 
     return new ImageResponse(
@@ -37,7 +39,8 @@ export async function GET(request: Request) {
             width: '210mm',
             height: '297mm',
             padding: `${padding}px`,
-            backgroundColor: 'white'
+            backgroundColor: 'white',
+            fontFamily: 'sans-serif'
           },
           children: [
             {
@@ -61,19 +64,48 @@ export async function GET(request: Request) {
                       style: {
                         width: `${100 / columns}%`,
                         display: 'flex',
+                        flexDirection: 'column',
                         justifyContent: 'center',
                         alignItems: 'center',
                         padding: `${padding}px`,
-                        paddingLeft: `${padding + 500}px` // Added extra left padding
+                        paddingLeft: `${522}px`,
+                        paddingRight: `${padding}px`,
+                        marginBottom: '10px'
                       },
-                      children: {
-                        type: 'img',
-                        props: {
-                          src: `data:image/svg+xml;base64,${Buffer.from(qrCodeSvg).toString('base64')}`,
-                          width: qrCodeSize,
-                          height: qrCodeSize
+                      children: [
+                        topText && {
+                          type: 'div',
+                          props: {
+                            style: {
+                              fontSize: '24px',
+                              fontWeight: 'bold',
+                              marginBottom: '5px',
+                              textAlign: 'center'
+                            },
+                            children: topText
+                          }
+                        },
+                        {
+                          type: 'img',
+                          props: {
+                            src: `data:image/svg+xml;base64,${Buffer.from(qrCodeSvg).toString('base64')}`,
+                            width: qrCodeSize,
+                            height: qrCodeSize
+                          }
+                        },
+                        bottomText && {
+                          type: 'div',
+                          props: {
+                            style: {
+                              fontSize: '24px',
+                              fontWeight: 'bold',
+                              marginTop: '5px',
+                              textAlign: 'center'
+                            },
+                            children: bottomText
+                          }
                         }
-                      }
+                      ].filter(Boolean)
                     }
                   }))
               }
