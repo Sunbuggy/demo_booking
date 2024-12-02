@@ -68,6 +68,12 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       label: 'SST',
       minLevel: 300,
       external: false
+    },
+    {
+      href: '/biz/qr',
+      label: 'QR Generator',
+      minLevel: 300,
+      external: false
     }
   ];
 
