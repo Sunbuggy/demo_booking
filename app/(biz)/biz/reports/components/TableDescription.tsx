@@ -24,6 +24,8 @@ const TableDescription: React.FC<TableDescriptionProps> = ({
   const [chartTypes, setChartTypes] = useState<Record<string, string>>({});
 
   const tableInfo = useMemo(() => {
+    console.log("Data:", data);
+    console.log("Columns:", columns);
     const info: Record<string, any> = {
       rowCount: data.length,
       columnCount: columns.length

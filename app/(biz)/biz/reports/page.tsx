@@ -30,9 +30,22 @@ const ReportsPage = async () => {
     .from('vehicle_pretrip_truck')
     .select('*')
     .order('created_at', { ascending: false });
-    const { data: time_entries } = await supabase
+
+    const { data: timeEntries, error } = await supabase
     .from('time_entries')
-    .select('*')
+    .select(`
+      *,
+      users(full_name),
+      clock_in(clock_in_time, lat, long),
+      clock_out(clock_out_time, lat, long)
+    `)
+    .order('date', { ascending: false });
+  
+  // if (error) {
+  //   console.error('Error fetching time entries:', error.message);
+  // }
+  // console.log('Fetched time entries:', timeEntries);
+  
 
   // Fetch vehicles, users, and employee details data
   const { data: vehicles } = await supabase.from('vehicles').select('*');
@@ -40,9 +53,6 @@ const ReportsPage = async () => {
   const { data: employeeDetails } = await supabase
     .from('employee_details')
     .select('*');
-    const { data: clock_in } = await supabase.from('clock_in').select('*');
-    const { data: clock_out } = await supabase.from('clock_out').select('*');
-
 
   // Helper function to map vehicle_id, created_by, updated_by, and closed_by
   const mapData = (data: any[]) => {
@@ -67,17 +77,7 @@ const ReportsPage = async () => {
         employeeDetails?.find((e) => e.user_id === item.updated_by)?.emp_id ||
         '',
       closed_by_id:
-        employeeDetails?.find((e) => e.user_id === item.closed_by)?.emp_id || 
-        '',
-      user_id:
-      users?.find((t) => t.id === item.user_id)?.full_name ||
-        '',
-      clock_in_id:
-      clock_in?.find((t) => t.id === item.clock_in_id)?.clock_in_time ||
-        '',
-      clock_out_id:
-      clock_out?.find((t) => t.id === item.clock_out_id)?.clock_out_time || ''
-
+        employeeDetails?.find((e) => e.user_id === item.closed_by)?.emp_id || ''
     }));
   };
 
@@ -89,7 +89,23 @@ const ReportsPage = async () => {
   const mappedBuggyPretrips = mapData(buggy_pretrips || []);
   const mappedPretripShuttles = mapData(pretrip_shuttles || []);
   const mappedPretripTrucks = mapData(pretrip_trucks || []);
-  const mappedTimeEntries = mapData(time_entries || []);
+
+  // Map time entries
+  const mappedTimeEntries = (timeEntries || []).map((entry) => ({
+    user: entry.users?.full_name || 'Unknown',
+    clock_in_time: entry.clock_in?.clock_in_time || 'N/A',
+    clock_in_location: `(${entry.clock_in?.lat || 'N/A'}, ${
+      entry.clock_in?.long || 'N/A'
+    })`,
+    clock_out_time: entry.clock_out?.clock_out_time || 'N/A',
+    clock_out_location: `(${entry.clock_out?.lat || 'N/A'}, ${
+      entry.clock_out?.long || 'N/A'
+    })`,
+    duration: entry.duration || 0,
+    date: entry.date || 'Unknown'
+  }));
+
+  // console.log('Mapped time entries:', mappedTimeEntries);
 
   const tables = [
     { name: 'Tags', data: mappedTags },
@@ -100,7 +116,6 @@ const ReportsPage = async () => {
     { name: 'Shuttle Pre-trips', data: mappedPretripShuttles },
     { name: 'Truck Pre-trips', data: mappedPretripTrucks },
     { name: 'Time Entries', data: mappedTimeEntries }
-
   ];
 
   return (

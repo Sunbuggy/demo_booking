@@ -219,6 +219,7 @@ export const fetchTimeEntryByUserId = cache(
     return data;
   }
 );
+
 export const insertIntoClockIn = cache(
   async (
     supabase: SupabaseClient,
