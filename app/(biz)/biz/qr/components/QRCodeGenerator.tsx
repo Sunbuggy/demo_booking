@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -16,29 +16,48 @@ const formSchema = z.object({
 
 export type FormData = z.infer<typeof formSchema>;
 
-export default function QRCodeGenerator() {
+export default function QRCodeGenerator({
+  defUrl = '',
+  defTopText = '',
+  defBottomText = '',
+  defCount = '4',
+  hidden
+}: {
+  defUrl?: string;
+  defTopText?: string;
+  defBottomText?: string;
+  defCount?: '1' | '2' | '4';
+  hidden?: boolean;
+}) {
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      url: '',
-      topText: '',
-      bottomText: '',
-      count: '1'
+      url: defUrl,
+      topText: defTopText,
+      bottomText: defBottomText,
+      count: defCount || '4'
     }
   });
 
   const onSubmit = async (values: FormData) => {
+    console.log('onSubmit Run');
     if (values.url) {
       const qrCodeDataUrl = await generateQRCode(values.url);
       setQrCodeData(qrCodeDataUrl);
     }
   };
 
+  useEffect(() => {
+    if (hidden) {
+      onSubmit(form.getValues());
+    }
+  }, [hidden]);
+
   return (
     <div className="space-y-8">
-      <QRCodeForm form={form} onSubmit={onSubmit} />
+      <QRCodeForm form={form} onSubmit={onSubmit} hide={hidden} />
       {qrCodeData && (
         <QRCodeDisplay qrCodeData={qrCodeData} formData={form.getValues()} />
       )}
