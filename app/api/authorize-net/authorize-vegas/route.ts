@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function getUnsettledTransactionList() {
+async function getUnsettledTransactionList() {
   const merchantAuthenticationType = createMerchantAuthenticationType();
   const getRequest = new APIContracts.GetUnsettledTransactionListRequest();
   const paging = new APIContracts.Paging();
@@ -168,9 +168,7 @@ export async function getUnsettledTransactionList() {
   }
 }
 
-export async function createCustomerProfileFromTransaction(
-  transactionId: string
-) {
+async function createCustomerProfileFromTransaction(transactionId: string) {
   const merchantAuthenticationType = createMerchantAuthenticationType();
   const createRequest =
     new APIContracts.CreateCustomerProfileFromTransactionRequest();
@@ -225,7 +223,7 @@ export async function createCustomerProfileFromTransaction(
   }
 }
 
-export async function chargeCustomerProfile(
+async function chargeCustomerProfile(
   customerProfileId: string,
   customerPaymentProfileId: string,
   amount: string,
@@ -274,7 +272,7 @@ export async function chargeCustomerProfile(
   }
 }
 
-export function createTransactionRequest(
+function createTransactionRequest(
   customerProfileId: string,
   customerPaymentProfileId: string,
   amount: string,
@@ -310,7 +308,7 @@ export function createTransactionRequest(
   return transactionRequestType;
 }
 
-export async function getTrasactionDetails(transactionId: string) {
+async function getTrasactionDetails(transactionId: string) {
   const merchantAuthenticationType = createMerchantAuthenticationType();
   const getRequest = new APIContracts.GetTransactionDetailsRequest();
   getRequest.setMerchantAuthentication(merchantAuthenticationType);
@@ -348,10 +346,7 @@ export async function getTrasactionDetails(transactionId: string) {
   }
 }
 
-export async function getSettledBatchList(
-  first_date: string,
-  last_date: string
-) {
+async function getSettledBatchList(first_date: string, last_date: string) {
   const merchantAuthenticationType = createMerchantAuthenticationType();
   const getRequest = new APIContracts.GetSettledBatchListRequest();
   const paging = new APIContracts.Paging();
@@ -392,7 +387,7 @@ export async function getSettledBatchList(
   }
 }
 
-export async function getTransactionList(batchId: string) {
+async function getTransactionList(batchId: string) {
   const merchantAuthenticationType = createMerchantAuthenticationType();
   const getRequest = new APIContracts.GetTransactionListRequest();
   const paging = new APIContracts.Paging();
