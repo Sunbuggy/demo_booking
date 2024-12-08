@@ -1,4 +1,5 @@
 import { fetch_from_old_db } from '@/utils/old_db/actions';
+import TableUI from '../settled/table-ui';
 
 export interface Data {
   transId: string;
@@ -25,43 +26,59 @@ export interface VegasReservations {
 
 export type UnsettledCombinedData = Data & Partial<VegasReservations>;
 
-const Page = async ({
-  searchParams
-}: {
-  searchParams: { first_date: string; last_date: string };
-}) => {
-  const unsettled_response1 = await fetch(
-    `${process.env.NEXT_PUBLIC_SITE_URL}/api/authorize-net/authorize-vegas`
+const Page = async () => {
+  const unsettledResponse1 = await fetch(
+    `${process.env.NEXT_PUBLIC_SITE_URL}/api/authorize-net/authorize-vegas`,
+    {
+      cache: 'no-store',
+      next: { revalidate: 0 }
+    }
   );
-  // const unsettled_response2 = await fetch(
-  //   `${process.env.NEXT_PUBLIC_SITE_URL}/api/authorize-net/authorize-vsp`
-  // );
-  const unsettled_data1 = await unsettled_response1.json();
-  // const unsettled_data2 = await unsettled_response2.json();
-  // const unsettled_superData = (unsettled_data1.transactions ?? []).concat(
-  //   unsettled_data2?.transactions ?? []
-  // ) as Data[];
-  // const unsettled_invoiceNumbers = unsettled_superData.map(
-  //   (data) => data.invoiceNumber
-  // );
-  // const unsettled_query = `SELECT * FROM vegas_randy_numbers WHERE Res_ID IN (${unsettled_invoiceNumbers.join(`,`)})`;
-  // const oldDbData = (await fetch_from_old_db(
-  //   unsettled_query
-  // )) as VegasReservations[];
+  const unsettledResponse2 = await fetch(
+    `${process.env.NEXT_PUBLIC_SITE_URL}/api/authorize-net/authorize-vsp`,
+    {
+      cache: 'no-store',
+      next: { revalidate: 0 }
+    }
+  );
 
-  // const unsettled_combinedData = unsettled_superData.map((data) => {
-  //   const res = oldDbData.find(
-  //     (oldData) => oldData.Res_ID === Number(data.invoiceNumber)
-  //   );
-  //   return {
-  //     ...data,
-  //     ...res,
-  //     Res_Date: res?.Res_Date ? new Date(res.Res_Date) : undefined,
-  //     Res_Time: res?.Res_Time || undefined
-  //   };
-  // }) as UnsettledCombinedData[];
+  const unsettled_data1 = await unsettledResponse1.json();
+  const unflatSettled1 = unsettled_data1.transactions
+    ? unsettled_data1.transactions.flat()
+    : [];
+  const unsettled_data2 = await unsettledResponse2.json();
+  const unflatSettled2 = unsettled_data2.transactions
+    ? unsettled_data2.transactions.flat()
+    : [];
+  const unsettled_superData = (unflatSettled1 ?? []).concat(
+    unflatSettled2 ?? []
+  ) as Data[];
 
-  return <div className="container mx-auto py-10"></div>;
+  const unsettled_invoiceNumbers = unsettled_superData.map(
+    (data) => data.invoiceNumber
+  );
+  if (unsettled_invoiceNumbers.length === 0) {
+    return <div>No Transactions For Today</div>;
+  }
+  const unsettled_query = `SELECT * FROM vegas_randy_numbers WHERE Res_ID IN (${unsettled_invoiceNumbers.join(`,`)})`;
+  const oldDbData = (await fetch_from_old_db(
+    unsettled_query
+  )) as VegasReservations[];
+
+  const unsettled_combinedData = unsettled_superData.map((data) => {
+    const res = oldDbData.find(
+      (oldData) => oldData.Res_ID === Number(data.invoiceNumber)
+    );
+    return {
+      ...data,
+      ...res
+    };
+  }) as UnsettledCombinedData[];
+  return (
+    <div>
+      <TableUI data={unsettled_combinedData} />
+    </div>
+  );
 };
 
 export default Page;

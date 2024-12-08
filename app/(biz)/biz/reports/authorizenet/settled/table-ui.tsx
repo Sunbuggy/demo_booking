@@ -25,12 +25,14 @@ import { useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import dayjs from 'dayjs';
 import Link from 'next/link';
+import { BackwardFilled } from '@ant-design/icons';
 
 interface TableUIProps {
   data: SettledCombinedData[];
+  isSettled?: boolean;
 }
 
-export default function TableUI({ data }: TableUIProps) {
+export default function TableUI({ data, isSettled }: TableUIProps) {
   const router = useRouter();
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [singleDate, setSingleDate] = useState<Date | undefined>(undefined);
@@ -45,35 +47,33 @@ export default function TableUI({ data }: TableUIProps) {
     );
   }, [data, filter]);
 
-  const total = useMemo(() => {
-    return filteredData.reduce(
-      (sum, item) => sum + (item.settleAmount || 0),
-      0
-    );
-  }, [filteredData]);
-
   const handleDateRangeChange = async (range: DateRange | undefined) => {
     setIsLoading(true);
     setDateRange(range);
+    setSingleDate(undefined);
     if (range?.from && range?.to) {
       const fromStr = dayjs(range.from).format('YYYY-MM-DD');
       const toStr = dayjs(range.to).format('YYYY-MM-DD');
-      await router.push(`?first_date=${fromStr}&last_date=${toStr}`);
+      router.push(`?first_date=${fromStr}&last_date=${toStr}`);
     }
     setIsLoading(false);
   };
   const handleSingleDateChange = (date: Date | undefined) => {
     setSingleDate(date);
+    setDateRange(undefined);
     if (date) {
       const dateStr = format(date, 'yyyy-MM-dd');
       router.push(`?first_date=${dateStr}&last_date=${dateStr}`);
     }
   };
-
-  const formatDate = (date: Date) => format(date, 'LLL dd, y');
-
+  console.log(filteredData);
   return (
     <div className="space-y-4">
+      <Link href={'/biz/reports'}>
+        <Button variant={'outline'}>
+          <BackwardFilled /> Back To Reports Page
+        </Button>
+      </Link>
       {isLoading && (
         <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
           <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-2">
@@ -82,72 +82,128 @@ export default function TableUI({ data }: TableUIProps) {
           </div>
         </div>
       )}
-      <div className="flex space-x-4">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline">
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateRange?.from ? (
-                dateRange.to ? (
-                  <>
-                    {format(dateRange.from, 'LLL dd, y')} -{' '}
-                    {format(dateRange.to, 'LLL dd, y')}
-                  </>
+      {isSettled && (
+        <div className="flex space-x-4">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      {format(dateRange.from, 'LLL dd, y')} -{' '}
+                      {format(dateRange.to, 'LLL dd, y')}
+                    </>
+                  ) : (
+                    format(dateRange.from, 'LLL dd, y')
+                  )
                 ) : (
-                  format(dateRange.from, 'LLL dd, y')
-                )
-              ) : (
-                'Pick a date range'
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="range"
-              selected={dateRange}
-              onSelect={handleDateRangeChange}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+                  'Pick a date range'
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={handleDateRangeChange}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline">
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {singleDate
-                ? format(singleDate, 'LLL dd, y')
-                : 'Pick a single date'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={singleDate}
-              onSelect={handleSingleDateChange}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {singleDate
+                  ? format(singleDate, 'LLL dd, y')
+                  : 'Pick a single date'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={singleDate}
+                onSelect={handleSingleDateChange}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
 
       <div>
-        <div className="my-4">
-          <Input
-            type="text"
-            placeholder="Filter..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="max-w-sm"
-          />
-          <p className="text-green-600 text-2xl font-bold mt-2 text-end">
-            Total: $
-            {total.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })}
-          </p>
-        </div>
+        {!isSettled && (
+          <div className="my-4">
+            <Input
+              type="text"
+              placeholder="Filter..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="max-w-sm"
+            />
+            <p className="text-green-600 text-2xl font-bold mt-2 text-end">
+              Total:
+              {filteredData
+                .reduce(
+                  (a, b) =>
+                    b.transactionStatus === 'capturedPendingSettlement'
+                      ? a + b.settleAmount
+                      : b.transactionStatus === 'refundPendingSettlement'
+                        ? a - b.settleAmount
+                        : a,
+                  0
+                )
+                .toLocaleString('en-US', {
+                  style: 'currency',
+                  currency: 'USD'
+                })}
+            </p>
+          </div>
+        )}
+        {isSettled && (
+          <div className="my-4">
+            <Input
+              type="text"
+              placeholder="Filter..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="max-w-sm"
+            />
+            <p className="text-green-600 text-2xl font-bold mt-2 text-end">
+              Total:
+              {filteredData
+                .reduce(
+                  (a, b) =>
+                    b.transactionStatus === 'settledSuccessfully'
+                      ? a + b.settleAmount
+                      : b.transactionStatus === 'refundPendingSettlement' ||
+                          b.transactionStatus === 'refundSettledSuccessfully'
+                        ? a - b.settleAmount
+                        : a,
+                  0
+                )
+                .toLocaleString('en-US', {
+                  style: 'currency',
+                  currency: 'USD'
+                })}
+            </p>
+          </div>
+        )}
+
+        {dateRange && dateRange.from && dateRange.to && (
+          <div className="text-center text-2xl font-bold my-4">
+            {singleDate ? (
+              <span>{format(singleDate, 'LLL dd, y')}</span>
+            ) : (
+              <span>
+                {format(dateRange.from, 'LLL dd, y')} -{' '}
+                {format(dateRange.to, 'LLL dd, y')}
+              </span>
+            )}
+          </div>
+        )}
         <Table>
           <TableHeader>
             <TableRow>
@@ -188,7 +244,37 @@ export default function TableUI({ data }: TableUIProps) {
                       : '-'}
                   </TableCell>
                   <TableCell>{item.accountType || '-'}</TableCell>
-                  <TableCell>${item.settleAmount?.toFixed(2) || '-'}</TableCell>
+                  {!isSettled && (
+                    <TableCell
+                      className={`${
+                        item.transactionStatus === 'refundPendingSettlement'
+                          ? 'text-red-600'
+                          : item.transactionStatus ===
+                              'capturedPendingSettlement'
+                            ? 'text-green-600'
+                            : item.transactionStatus === 'declined'
+                              ? 'text-stone-400 line-through'
+                              : ''
+                      }`}
+                    >
+                      ${item.settleAmount?.toFixed(2) || '-'}
+                    </TableCell>
+                  )}
+                  {isSettled && (
+                    <TableCell
+                      className={`${
+                        item.transactionStatus === 'refundSettledSuccessfuly'
+                          ? 'text-red-600'
+                          : item.transactionStatus === 'settledSuccessfully'
+                            ? 'text-green-600'
+                            : item.transactionStatus === 'declined'
+                              ? 'text-stone-400 line-through'
+                              : ''
+                      }`}
+                    >
+                      ${item.settleAmount?.toFixed(2) || '-'}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
           </TableBody>

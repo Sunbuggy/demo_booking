@@ -90,7 +90,7 @@ const Page = async ({
   }) as SettledCombinedData[];
   return (
     <div>
-      <TableUI data={settled_combinedData} />
+      <TableUI data={settled_combinedData} isSettled={true} />
     </div>
   );
 };

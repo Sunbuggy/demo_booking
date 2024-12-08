@@ -3,6 +3,9 @@ import { APIContracts } from 'authorizenet';
 import axios from 'axios';
 import { createMerchantAuthenticationType } from '../helpers/vegas-vsp-create-merchant-authentication-type';
 
+export const dynamic = 'force-dynamic'; // Disable static optimization
+export const revalidate = 0; // Disable cache
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const isSettled = searchParams.get('isSettled');
@@ -12,7 +15,10 @@ export async function GET(request: NextRequest) {
   const chargeAmt = searchParams.get('chargeAmt');
   const invoiceNumber = searchParams.get('invoiceNumber');
   const fetchByTransId = searchParams.get('fetchByTransId');
-
+  const headersList = new Headers();
+  headersList.append('Cache-Control', 'no-cache, no-store, must-revalidate');
+  headersList.append('Pragma', 'no-cache');
+  headersList.append('Expires', '0');
   if (fetchByTransId) {
     try {
       const transactionDetails = await getTrasactionDetails(transactionId!);
@@ -91,20 +97,28 @@ export async function GET(request: NextRequest) {
       }
       if (!transactionId) {
         const transactions = await getUnsettledTransactionList();
-        return NextResponse.json({
-          message: 'Successfully fetched unsettled transactions',
-          transactions
-        });
+        return NextResponse.json(
+          {
+            message: 'Successfully fetched unsettled transactions',
+            transactions
+          },
+          {
+            headers: headersList
+          }
+        );
       }
     }
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching unsettled transactions:', error);
+    const errorMessage = (error as Error).message;
     return NextResponse.json(
       {
-        message:
-          'Could not find transaction in the system. Perhaps Check with the devs'
+        message: 'Failed to fetch unsettled transactions',
+        error: errorMessage
       },
-      { status: 500 }
+      {
+        headers: headersList
+      }
     );
   }
 }
@@ -330,7 +344,7 @@ export async function getTrasactionDetails(transactionId: string) {
     //   console.log(apiResponse.getMessages().getMessage()[0].getCode());
     //   console.log(apiResponse.getMessages().getMessage()[0].getText());
     // }
-    throw new Error(apiResponse.getMessages().getMessage());
+    // throw new Error(apiResponse.getMessages().getMessage());
   }
 }
 
