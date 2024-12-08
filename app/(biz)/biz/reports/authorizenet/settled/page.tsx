@@ -1,4 +1,5 @@
 import { fetch_from_old_db } from '@/utils/old_db/actions';
+import TableUI from './table-ui';
 
 export interface Data {
   transId: string;
@@ -22,6 +23,8 @@ export interface VegasReservations {
   Res_Date: string;
   Res_Time: string;
 }
+
+export type SettledCombinedData = Data & Partial<VegasReservations>;
 
 const Page = async ({
   searchParams
@@ -54,15 +57,23 @@ const Page = async ({
   );
 
   const settled_data1 = await settledResponse1.json();
+  const flatSettled1 = settled_data1.all_transactions
+    ? settled_data1.all_transactions.flat()
+    : [];
   const settled_data2 = await settledResponse2.json();
-
-  const settled_superData = (settled_data1.transactions ?? []).concat(
-    settled_data2?.transactions ?? []
+  const flatSettled2 = settled_data2.all_transactions
+    ? settled_data2.all_transactions.flat()
+    : [];
+  const settled_superData = (flatSettled1 ?? []).concat(
+    flatSettled2 ?? []
   ) as Data[];
 
   const settled_invoiceNumbers = settled_superData.map(
     (data) => data.invoiceNumber
   );
+  if (settled_invoiceNumbers.length === 0) {
+    return <div>No Transactions For This Day</div>;
+  }
   const settled_query = `SELECT * FROM vegas_randy_numbers WHERE Res_ID IN (${settled_invoiceNumbers.join(`,`)})`;
   const oldDbData = (await fetch_from_old_db(
     settled_query
@@ -76,9 +87,12 @@ const Page = async ({
       ...data,
       ...res
     };
-  });
-  console.log(settled_combinedData);
-  return <div>page</div>;
+  }) as SettledCombinedData[];
+  return (
+    <div>
+      <TableUI data={settled_combinedData} />
+    </div>
+  );
 };
 
 export default Page;
