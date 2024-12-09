@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { BackwardFilled } from '@ant-design/icons';
 
 interface Table {
   name: string;
@@ -21,7 +23,15 @@ const TableSelector: React.FC<TableSelectorProps> = ({ tables, onSelect }) => {
 
   return (
     <div className="space-y-4 p-4">
-      <h2 className="text-xl font-semibold">Select a table:</h2>
+      <div className="flex gap-5">
+        <Link href={'/biz/reports/authorizenet/settled'}>
+          <Button variant={'outline'}>Go to Settled Transactions</Button>
+        </Link>
+        <Link href={'/biz/reports/authorizenet/unsettled'}>
+          <Button variant={'outline'}>Go to Unsettled Transactions</Button>
+        </Link>
+      </div>
+      <h2 className="text-xl font-semibold">Select a Report:</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {tables.map((table) => (
           <Button

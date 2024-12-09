@@ -1,0 +1,84 @@
+import { fetch_from_old_db } from '@/utils/old_db/actions';
+import TableUI from '../settled/table-ui';
+
+export interface Data {
+  transId: string;
+  submitTimeUTC: string;
+  submitTimeLocal: string;
+  transactionStatus: string;
+  invoiceNumber: string;
+  firstName: string;
+  lastName: string;
+  accountType: string;
+  accountNumber: string;
+  settleAmount: number;
+  marketType: string;
+  product: string;
+}
+
+export interface VegasReservations {
+  Res_ID: number;
+  Book_Name: string;
+  Location: string;
+  Res_Date: string;
+  Res_Time: string;
+}
+
+export type UnsettledCombinedData = Data & Partial<VegasReservations>;
+
+const Page = async () => {
+  const unsettledResponse1 = await fetch(
+    `${process.env.NEXT_PUBLIC_SITE_URL}/api/authorize-net/authorize-vegas`,
+    {
+      cache: 'no-store',
+      next: { revalidate: 0 }
+    }
+  );
+  const unsettledResponse2 = await fetch(
+    `${process.env.NEXT_PUBLIC_SITE_URL}/api/authorize-net/authorize-vsp`,
+    {
+      cache: 'no-store',
+      next: { revalidate: 0 }
+    }
+  );
+
+  const unsettled_data1 = await unsettledResponse1.json();
+  const unflatSettled1 = unsettled_data1.transactions
+    ? unsettled_data1.transactions.flat()
+    : [];
+  const unsettled_data2 = await unsettledResponse2.json();
+  const unflatSettled2 = unsettled_data2.transactions
+    ? unsettled_data2.transactions.flat()
+    : [];
+  const unsettled_superData = (unflatSettled1 ?? []).concat(
+    unflatSettled2 ?? []
+  ) as Data[];
+
+  const unsettled_invoiceNumbers = unsettled_superData.map(
+    (data) => data.invoiceNumber
+  );
+  if (unsettled_invoiceNumbers.length === 0) {
+    return <div>No Transactions For Today</div>;
+  }
+  const unsettled_query = `SELECT * FROM vegas_randy_numbers WHERE Res_ID IN (${unsettled_invoiceNumbers.join(`,`)})`;
+  const oldDbData = (await fetch_from_old_db(
+    unsettled_query
+  )) as VegasReservations[];
+
+  const unsettled_combinedData = unsettled_superData.map((data) => {
+    const res = oldDbData.find(
+      (oldData) => oldData.Res_ID === Number(data.invoiceNumber)
+    );
+    return {
+      ...data,
+      ...res
+    };
+  }) as UnsettledCombinedData[];
+  return (
+    <div>
+      <TableUI data={unsettled_combinedData} />
+    </div>
+  );
+};
+
+export default Page;

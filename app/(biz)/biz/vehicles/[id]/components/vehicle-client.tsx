@@ -26,7 +26,7 @@ import { useRouter } from 'next/navigation';
 
 import ResponsiveImageUpload from './responsive-image-upload-form';
 import ResponsiveGifUpload from './responsive-gif-upload-form';
-import RegistrationUpload from './registration-upload-form'
+import RegistrationUpload from './registration-upload-form';
 import LocationHistory from './vehicle-location-history';
 import PretripFormManager from './pretrip-forms/pretrip-form-manager';
 import InventoryHistory from './vehicle-location-inventory-history';
@@ -34,13 +34,14 @@ import { InventoryLocation, VehicleLocation } from '../../types';
 import LocationScheduling from './location-scheduling';
 import { VehicleReg } from '../../admin/tables/components/row-action-reg';
 import RegistrationPDFList from './pdf-view';
+import QRCodeGenerator from '../../../qr/components/QRCodeGenerator';
 
 interface VehicleClientComponentProps {
   id: string;
   initialVehicleInfo: VehicleType;
   images: VehiclePics[];
   gif: VehicleGifs[];
-  registrationPdf: VehicleReg[]; 
+  registrationPdf: VehicleReg[];
   profilePic?: string;
   vehicleTags: VehicleTagType[];
   user: User;
@@ -72,7 +73,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     React.useState(false);
   const [isUploadGifsDialogOpen, setIsUploadGifsDialogOpen] =
     React.useState(false);
-    const [isUploadRegDialogOpen, setIsUploadRegDialogOpen] =
+  const [isUploadRegDialogOpen, setIsUploadRegDialogOpen] =
     React.useState(false);
   const [isLocationManagementDialogOpen, setIsLocationManagementDialogOpen] =
     React.useState(false);
@@ -115,7 +116,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       supabase.removeChannel(channel);
     };
   }, [supabase, router]);
-  
+
   React.useEffect(() => {
     const channel = supabase
       .channel('realtime vehicle tags and vehicle')
@@ -191,7 +192,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       </p>
     </div>
   );
-  
+
   if (vehicleInfo)
     return (
       <div className="md:w-[800px] min-w-[360px] space-y-5 relative">
@@ -291,7 +292,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       images={images}
                       width={200}
                       height={120}
-                      gifs={[]} />
+                      gifs={[]}
+                    />
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -311,9 +313,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         description="Upload one or multiple images for the vehicle."
                         children={
                           <div>
-                            <ResponsiveGifUpload
-                              url_key={`badges/${id}`}
-                            />
+                            <ResponsiveGifUpload url_key={`badges/${id}`} />
                           </div>
                         }
                       />
@@ -322,13 +322,14 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       gifs={gif}
                       width={200}
                       height={120}
-                      images={[]}/>
+                      images={[]}
+                    />
                   </div>
                 </AccordionContent>
               </AccordionItem>
-              
+
               <AccordionItem value="tag-management">
-                <AccordionTrigger>Tag Management</AccordionTrigger> 
+                <AccordionTrigger>Tag Management</AccordionTrigger>
                 <AccordionContent>
                   <TagManagement
                     tags={vehicleTags}
@@ -412,39 +413,54 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="show-registration">
-              <AccordionTrigger>Show Registration</AccordionTrigger>
-              <AccordionContent>
-                <div className="flex flex-col gap-5">
-                  <Button onClick={() => setIsUploadRegDialogOpen(true)}>
-                    Upload Registration
-                  </Button>
-                  <DialogFactory
-                    title={uploadMoreRegistration}
-                    setIsDialogOpen={setIsUploadRegDialogOpen}
-                    isDialogOpen={isUploadRegDialogOpen}
-                    description="Upload one or multiple pdf for the vehicle registration."
-                    children={
-                      <div>
-                        <RegistrationUpload url_key={`registrations/${id}`} />
-                      </div>  
-                    }
-                  />
-<RegistrationPDFList registrationPdf={registrationPdf} />
-</div>
-              </AccordionContent>
-            </AccordionItem>
-
+                <AccordionTrigger>Show Registration</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col gap-5">
+                    <Button onClick={() => setIsUploadRegDialogOpen(true)}>
+                      Upload Registration
+                    </Button>
+                    <DialogFactory
+                      title={uploadMoreRegistration}
+                      setIsDialogOpen={setIsUploadRegDialogOpen}
+                      isDialogOpen={isUploadRegDialogOpen}
+                      description="Upload one or multiple pdf for the vehicle registration."
+                      children={
+                        <div>
+                          <RegistrationUpload url_key={`registrations/${id}`} />
+                        </div>
+                      }
+                    />
+                    <RegistrationPDFList registrationPdf={registrationPdf} />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="show-vehicle-status">
+                <AccordionTrigger>Print QR Code</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col gap-5">
+                    <QRCodeGenerator
+                      defUrl={`book.sunbuggy.com/biz/vehicles/${vehicleInfo.id}`}
+                      defTopText={vehicleInfo.name
+                        .match(/[a-zA-Z]+/g)
+                        ?.join('')}
+                      defBottomText={vehicleInfo.name
+                        .match(/[0-9]+/g)
+                        ?.join('')}
+                      hidden={true}
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
             </Accordion>
           </CardContent>
         </Card>
         <div
-          className={`absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === 'maintenance' ? 'bg-yellow-600' : vehicleInfo.vehicle_status === 'broken' ? 'bg-red-600': vehicleInfo.vehicle_status === 'former' ? 'bg-gray-600' : 'bg-green-600'}`}
+          className={`absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === 'maintenance' ? 'bg-yellow-600' : vehicleInfo.vehicle_status === 'broken' ? 'bg-red-600' : vehicleInfo.vehicle_status === 'former' ? 'bg-gray-600' : 'bg-green-600'}`}
         >
           {vehicleInfo.vehicle_status}
         </div>
       </div>
     );
 };
-
 
 export default VehicleClientComponent;
