@@ -39,7 +39,7 @@ const ReportsPage = async () => {
       clock_in(clock_in_time, lat, long),
       clock_out(clock_out_time, lat, long)
     `)
-    .order('date', { ascending: false });
+    .order('created_at', { ascending: false });
   
   // if (error) {
   //   console.error('Error fetching time entries:', error.message);

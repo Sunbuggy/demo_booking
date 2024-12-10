@@ -117,16 +117,33 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
 
   const filteredData = useMemo(() => {
     let filtered = data.filter((item) => {
-      const itemDate = new Date(item.created_at);
+      // Parse the date from the 'created_at' field and ensure it's within the date range
+      const createdAtDate = new Date(item.created_at);
+  
       const isInDateRange =
-        itemDate >= dateRange.from && itemDate <= dateRange.to;
-
-      const matchesSearch = Object.values(item).some(
-        (value) =>
-          value &&
-          value?.toString()?.toLowerCase().includes(searchTerm?.toLowerCase())
+        createdAtDate >= new Date(dateRange.from) &&
+        createdAtDate <= new Date(dateRange.to);
+  
+      // Optionally check the 'date' field if it's relevant to the filter
+      const entryDate = new Date(item.date);
+      const isEntryDateInRange =
+        entryDate >= new Date(dateRange.from) &&
+        entryDate <= new Date(dateRange.to);
+  
+      // Combine both checks, as needed
+      if (!isInDateRange && !isEntryDateInRange) {
+        return false;
+      }
+  
+      // Apply search term filtering
+      const matchesSearch = Object.values(item).some((value) =>
+        value
+          ?.toString()
+          ?.toLowerCase()
+          .includes(searchTerm?.toLowerCase() ?? '')
       );
-
+  
+      // Apply column filter logic
       const matchesColumnFilters = columnFilters.every((filter) => {
         const itemValue = item[filter.column];
         switch (filter.type) {
@@ -146,15 +163,16 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
             return true;
         }
       });
-
-      return isInDateRange && matchesSearch && matchesColumnFilters;
+  
+      return matchesSearch && matchesColumnFilters;
     });
-
+  
+    // Sort filtered data based on the selected column and order
     if (sortColumn) {
       filtered = filtered.sort((a, b) => {
         const aValue = a[sortColumn];
         const bValue = b[sortColumn];
-
+  
         if (aValue < bValue) {
           return sortOrder === 'asc' ? -1 : 1;
         }
@@ -164,9 +182,10 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
         return 0;
       });
     }
-
+  
     return filtered;
   }, [data, dateRange, searchTerm, columnFilters, sortColumn, sortOrder]);
+  
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;

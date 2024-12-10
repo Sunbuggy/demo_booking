@@ -7,7 +7,7 @@ import {
   Doughnut,
   Radar,
   PolarArea,
-  Scatter
+  Scatter,
 } from 'react-chartjs-2';
 import 'chart.js/auto';
 import { format, parseISO } from 'date-fns';
@@ -19,34 +19,64 @@ interface TableDescriptionProps {
 
 const TableDescription: React.FC<TableDescriptionProps> = ({
   data,
-  columns
+  columns,
 }) => {
   const [chartTypes, setChartTypes] = useState<Record<string, string>>({});
 
   const tableInfo = useMemo(() => {
-    console.log("Data:", data);
-    console.log("Columns:", columns);
+    if (!data || data.length === 0) {
+      return {
+        rowCount: 0,
+        columnCount: 0,
+      };
+    }
+
+    const getColumnValue = (row: any, column: string) => {
+      try {
+        return column.split('.').reduce((acc, key) => acc?.[key], row);
+      } catch {
+        return undefined;
+      }
+    };
+
+    const getType = (value: any) => {
+      if (value === null) return 'null';
+      if (Array.isArray(value)) return 'array';
+      return typeof value;
+    };
+
     const info: Record<string, any> = {
       rowCount: data.length,
-      columnCount: columns.length
+      columnCount: columns.length,
     };
 
     columns.forEach((column) => {
       const uniqueValues = new Set(
-        data.map((row) => row[column]).filter((value) => value !== null)
+        data
+          .map((row) => getColumnValue(row, column))
+          .filter((value) => value !== null && value !== undefined)
       );
+
+      if (uniqueValues.size === 0) {
+        info[column] = {
+          uniqueCount: 0,
+          type: 'unknown',
+          valueCounts: [],
+        };
+        return;
+      }
+
       info[column] = {
         uniqueCount: uniqueValues.size,
-        type: typeof data[0][column]
+        type: getType(getColumnValue(data[0], column)),
       };
 
       const valueCounts = data.reduce((acc, row) => {
-        let value = row[column];
-        if (value === null) return acc;
+        let value = getColumnValue(row, column);
+        if (value === null || value === undefined) return acc;
 
-        if (column === 'created_at' || column === 'updated_at') {
-          value = format(parseISO(value), 'yyyy-MM-dd'); // Group by day
-          // value = format(parseISO(value), 'yyyy-ww'); // Group by week
+        if (column.includes('created_at') || column.includes('updated_at')) {
+          value = format(parseISO(value), 'yyyy-MM-dd');
         }
 
         acc[value] = (acc[value] || 0) + 1;
@@ -57,7 +87,7 @@ const TableDescription: React.FC<TableDescriptionProps> = ({
         ([value, count]) => ({
           value,
           count,
-          percentage: (((count as number) / data.length) * 100).toFixed(2)
+          percentage: (((count as number) / data.length) * 100).toFixed(2),
         })
       );
     });
@@ -79,51 +109,38 @@ const TableDescription: React.FC<TableDescriptionProps> = ({
       'rgba(255, 159, 64, 0.2)',
       'rgba(199, 199, 199, 0.2)',
       'rgba(83, 102, 255, 0.2)',
-      'rgba(255, 99, 132, 0.2)',
-      'rgba(54, 162, 235, 0.2)',
-      'rgba(255, 159, 64, 0.2)',
-      'rgba(75, 192, 192, 0.2)',
-      'rgba(153, 102, 255, 0.2)',
-      'rgba(255, 206, 86, 0.2)',
-      'rgba(199, 199, 199, 0.2)',
-      'rgba(83, 102, 255, 0.2)',
-      'rgba(255, 99, 132, 0.2)',
-      'rgba(54, 162, 235, 0.2)',
-      'rgba(255, 206, 86, 0.2)',
-      'rgba(75, 192, 192, 0.2)',
-      'rgba(153, 102, 255, 0.2)',
-      'rgba(255, 159, 64, 0.2)',
-      'rgba(199, 199, 199, 0.2)',
-      'rgba(83, 102, 255, 0.2)',
-      'rgba(255, 99, 132, 0.2)'
     ];
     return colors[Math.floor(Math.random() * colors.length)];
   };
 
   const renderChart = (column: string) => {
     const chartType = chartTypes[column] || 'Bar';
+    const columnInfo = tableInfo[column];
+
+    if (!columnInfo || !columnInfo.valueCounts) {
+      return <p className="text-red-600">No data available for this column.</p>;
+    }
+
     const chartData = {
-      labels: tableInfo[column].valueCounts.map((vc: any) => vc.value),
+      labels: columnInfo.valueCounts.map((vc: any) => vc.value),
       datasets: [
         {
           label: 'Count',
-          data: tableInfo[column].valueCounts.map((vc: any) => vc.count),
-          backgroundColor: tableInfo[column].valueCounts.map(() =>
-            getRandomColor()
-          ),
+          data: columnInfo.valueCounts.map((vc: any) => vc.count),
+          backgroundColor: columnInfo.valueCounts.map(() => getRandomColor()),
           borderColor: 'rgba(75, 192, 192, 1)',
-          borderWidth: 1
-        }
-      ]
+          borderWidth: 1,
+        },
+      ],
     };
 
     const chartOptions = {
       responsive: true,
       scales: {
         y: {
-          beginAtZero: true
-        }
-      }
+          beginAtZero: true,
+        },
+      },
     };
 
     switch (chartType) {
@@ -158,7 +175,7 @@ const TableDescription: React.FC<TableDescriptionProps> = ({
           <div key={column} className="p-4 bg-gray-100 rounded-lg shadow-md">
             <h3 className="text-xl font-semibold text-gray-700">{column}</h3>
             <p className="text-gray-600">
-              Unique values: {tableInfo[column].uniqueCount}
+              Unique values: {tableInfo[column]?.uniqueCount || 0}
             </p>
             <div className="mt-4">
               <label className="text-gray-600">Select chart type:</label>
