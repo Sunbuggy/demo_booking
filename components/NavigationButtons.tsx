@@ -1,11 +1,35 @@
 'use client';
 
-import { Home, RotateCw } from 'lucide-react';
+import { Home, RotateCw, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function NavigationButtons() {
+  const router = useRouter();
+  const [canGoBack, setCanGoBack] = useState(false);
+
+  useEffect(() => {
+    setCanGoBack(window.history.length > 1);
+  }, []);
+
+  const handleBackClick = () => {
+    if (canGoBack) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
+
   return (
-    <div className="fixed top-20 right-4 flex flex-col gap-2 md:flex-row md:gap-4">
+    <div className="fixed  top-40 left-1 flex flex-col gap-2">
+      <button
+        onClick={handleBackClick}
+        className="p-2 bg-background/50 rounded-full hover:bg-background/80 transition-colors duration-200"
+      >
+        <ArrowLeft className="w-5 h-5 text-foreground/50" />
+        <span className="sr-only">Go Back</span>
+      </button>
       <Link
         href="/"
         className="p-2 bg-background/50 rounded-full hover:bg-background/80 transition-colors duration-200"
