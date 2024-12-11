@@ -10,6 +10,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toster } from '@/components/ui/toaster';
 import { createClient } from '@/utils/supabase/server';
 import { getUserBgImage, getUserBgProperties } from '@/utils/supabase/queries';
+import NavigationButtons from '@/components/NavigationButtons';
 
 const title = 'Sunbuggy Fun Rentals';
 const description =
@@ -49,17 +50,22 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   const backgroundStyles = await getBackgroundStyles();
   return (
     <html lang="en" suppressHydrationWarning>
-      <body style={backgroundStyles}>
+      <body>
+        {/* Fixed background */}
+        <div style={backgroundStyles} className="fixed inset-0 z-[-1]" />
+
+        {/* Semi-transparent overlay */}
+        <div className="fixed inset-0 bg-background/85 z-[-1]" />
+
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
-          // themes={Object.keys(themes) as ThemeName[]}
         >
-          <div className="flex flex-col gap-5 max-w-full min-h-screen bg-background/85">
+          <div className="flex flex-col gap-5 min-h-screen relative">
             <Navbar />
-            {/* <ThemeSelector /> */}
+            <NavigationButtons />
             <main className="p-2 max-w-11/12 flex mx-auto flex-grow">
               <Providers>{children}</Providers>
             </main>

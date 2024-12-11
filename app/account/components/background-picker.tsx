@@ -75,7 +75,8 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
       backgroundImage: `url(${fullImageUrl})`,
       backgroundRepeat: properties.repeat,
       backgroundSize: properties.size,
-      backgroundPosition: properties.position
+      backgroundPosition: properties.position,
+      backgroundAttachment: 'fixed'
     });
   };
 
