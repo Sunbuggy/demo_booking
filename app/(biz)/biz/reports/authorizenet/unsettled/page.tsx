@@ -1,5 +1,8 @@
 import { fetch_from_old_db } from '@/utils/old_db/actions';
 import TableUI from '../settled/table-ui';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { BackwardFilled } from '@ant-design/icons';
 
 export interface Data {
   transId: string;
@@ -58,7 +61,17 @@ const Page = async () => {
     (data) => data.invoiceNumber
   );
   if (unsettled_invoiceNumbers.length === 0) {
-    return <div>No Transactions For Today</div>;
+    return (
+      <div>
+        <Link href={'/biz/reports'}>
+          <Button variant={'outline'}>
+            <BackwardFilled /> Back To Reports Page
+          </Button>
+        </Link>
+
+        <h1>No Transactions For This Day</h1>
+      </div>
+    );
   }
   const unsettled_query = `SELECT * FROM vegas_randy_numbers WHERE Res_ID IN (${unsettled_invoiceNumbers.join(`,`)})`;
   const oldDbData = (await fetch_from_old_db(

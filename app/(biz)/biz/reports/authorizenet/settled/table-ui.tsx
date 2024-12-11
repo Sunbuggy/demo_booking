@@ -1,10 +1,11 @@
 'use client';
-import { useState } from 'react';
+
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { SettledCombinedData } from './page';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Settings } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -18,10 +19,17 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
-import { useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import dayjs from 'dayjs';
 import Link from 'next/link';
@@ -32,12 +40,27 @@ interface TableUIProps {
   isSettled?: boolean;
 }
 
+interface ColumnDef {
+  key: string;
+  label: string;
+  visible: boolean;
+}
+
 export default function TableUI({ data, isSettled }: TableUIProps) {
   const router = useRouter();
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [singleDate, setSingleDate] = useState<Date | undefined>(undefined);
   const [filter, setFilter] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [columns, setColumns] = useState<ColumnDef[]>([
+    { key: 'invoiceNumber', label: 'Invoice #', visible: true },
+    { key: 'customer', label: 'Customer', visible: true },
+    { key: 'amount', label: 'Amount', visible: true },
+    { key: 'location', label: 'Location', visible: false },
+    { key: 'resTime', label: 'Reservation Time', visible: false },
+    { key: 'resDate', label: 'Reservation Date', visible: false },
+    { key: 'card', label: 'Card', visible: false }
+  ]);
 
   const filteredData = useMemo(() => {
     return data.filter((item) =>
@@ -46,6 +69,25 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
       )
     );
   }, [data, filter]);
+
+  const totalAmount = useMemo(() => {
+    return filteredData
+      .reduce(
+        (a, b) =>
+          b.transactionStatus ===
+          (isSettled ? 'settledSuccessfully' : 'capturedPendingSettlement')
+            ? a + b.settleAmount
+            : b.transactionStatus === 'refundPendingSettlement' ||
+                b.transactionStatus === 'refundSettledSuccessfully'
+              ? a - b.settleAmount
+              : a,
+        0
+      )
+      .toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD'
+      });
+  }, [filteredData, isSettled]);
 
   const handleDateRangeChange = async (range: DateRange | undefined) => {
     setIsLoading(true);
@@ -58,6 +100,7 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
     }
     setIsLoading(false);
   };
+
   const handleSingleDateChange = (date: Date | undefined) => {
     setSingleDate(date);
     setDateRange(undefined);
@@ -66,7 +109,15 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
       router.push(`?first_date=${dateStr}&last_date=${dateStr}`);
     }
   };
-  console.log(filteredData);
+
+  const toggleColumnVisibility = (columnKey: string) => {
+    setColumns(
+      columns.map((col) =>
+        col.key === columnKey ? { ...col, visible: !col.visible } : col
+      )
+    );
+  };
+
   return (
     <div className="space-y-4">
       <Link href={'/biz/reports'}>
@@ -74,6 +125,7 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
           <BackwardFilled /> Back To Reports Page
         </Button>
       </Link>
+
       {isLoading && (
         <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center">
           <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-2">
@@ -82,8 +134,9 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
           </div>
         </div>
       )}
-      {isSettled && (
-        <div className="flex space-x-4">
+
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline">
@@ -131,154 +184,132 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
             </PopoverContent>
           </Popover>
         </div>
+
+        <div className="flex flex-col items-end">
+          <p className="text-green-600 text-2xl font-bold">
+            Total: {totalAmount}
+          </p>
+          <Input
+            type="text"
+            placeholder="Filter..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="max-w-sm mt-2"
+          />
+        </div>
+      </div>
+
+      {dateRange && dateRange.from && dateRange.to && (
+        <div className="text-center text-2xl font-bold my-4">
+          {singleDate ? (
+            <span>{format(singleDate, 'LLL dd, y')}</span>
+          ) : (
+            <span>
+              {format(dateRange.from, 'LLL dd, y')} -{' '}
+              {format(dateRange.to, 'LLL dd, y')}
+            </span>
+          )}
+        </div>
       )}
 
-      <div>
-        {!isSettled && (
-          <div className="my-4">
-            <Input
-              type="text"
-              placeholder="Filter..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="max-w-sm"
-            />
-            <p className="text-green-600 text-2xl font-bold mt-2 text-end">
-              Total:
-              {filteredData
-                .reduce(
-                  (a, b) =>
-                    b.transactionStatus === 'capturedPendingSettlement'
-                      ? a + b.settleAmount
-                      : b.transactionStatus === 'refundPendingSettlement'
-                        ? a - b.settleAmount
-                        : a,
-                  0
-                )
-                .toLocaleString('en-US', {
-                  style: 'currency',
-                  currency: 'USD'
-                })}
-            </p>
-          </div>
-        )}
-        {isSettled && (
-          <div className="my-4">
-            <Input
-              type="text"
-              placeholder="Filter..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="max-w-sm"
-            />
-            <p className="text-green-600 text-2xl font-bold mt-2 text-end">
-              Total:
-              {filteredData
-                .reduce(
-                  (a, b) =>
-                    b.transactionStatus === 'settledSuccessfully'
-                      ? a + b.settleAmount
-                      : b.transactionStatus === 'refundPendingSettlement' ||
-                          b.transactionStatus === 'refundSettledSuccessfully'
-                        ? a - b.settleAmount
-                        : a,
-                  0
-                )
-                .toLocaleString('en-US', {
-                  style: 'currency',
-                  currency: 'USD'
-                })}
-            </p>
-          </div>
-        )}
+      <div className="flex justify-end mb-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="ml-auto">
+              <Settings className="mr-2 h-4 w-4" />
+              Columns
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {columns.map((column) => (
+              <DropdownMenuCheckboxItem
+                key={column.key}
+                checked={column.visible}
+                onCheckedChange={() => toggleColumnVisibility(column.key)}
+              >
+                {column.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
-        {dateRange && dateRange.from && dateRange.to && (
-          <div className="text-center text-2xl font-bold my-4">
-            {singleDate ? (
-              <span>{format(singleDate, 'LLL dd, y')}</span>
-            ) : (
-              <span>
-                {format(dateRange.from, 'LLL dd, y')} -{' '}
-                {format(dateRange.to, 'LLL dd, y')}
-              </span>
-            )}
-          </div>
-        )}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Invoice #</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Reservation Time</TableHead>
-              <TableHead>Reservation Date</TableHead>
-              <TableHead>Card</TableHead>
-              <TableHead>Amount</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredData
-              .sort((a, b) => {
-                if (a.submitTimeLocal && b.submitTimeLocal) {
-                  return a.submitTimeLocal > b.submitTimeLocal ? -1 : 1;
-                }
-                return 0;
-              })
-              .map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <Link
-                      href={`https://sunbuggy.biz/edt_res.php?id=${item.invoiceNumber}`}
-                      target="_blank"
-                      className="text-rose-400 underline"
-                    >
-                      {item.invoiceNumber}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{`${item.firstName || ''} ${item.lastName || ''}`}</TableCell>
-                  <TableCell>{item.Location || '-'}</TableCell>
-                  <TableCell>{item.Res_Time || '-'}</TableCell>
-                  <TableCell>
-                    {item.Res_Date
-                      ? dayjs(item.Res_Date).format('YYYY-MM-DD')
-                      : '-'}
-                  </TableCell>
-                  <TableCell>{item.accountType || '-'}</TableCell>
-                  {!isSettled && (
-                    <TableCell
-                      className={`${
-                        item.transactionStatus === 'refundPendingSettlement'
-                          ? 'text-red-600'
-                          : item.transactionStatus ===
-                              'capturedPendingSettlement'
-                            ? 'text-green-600'
-                            : item.transactionStatus === 'declined'
-                              ? 'text-stone-400 line-through'
-                              : ''
-                      }`}
-                    >
-                      ${item.settleAmount?.toFixed(2) || '-'}
-                    </TableCell>
-                  )}
-                  {isSettled && (
-                    <TableCell
-                      className={`${
-                        item.transactionStatus === 'refundSettledSuccessfuly'
-                          ? 'text-red-600'
-                          : item.transactionStatus === 'settledSuccessfully'
-                            ? 'text-green-600'
-                            : item.transactionStatus === 'declined'
-                              ? 'text-stone-400 line-through'
-                              : ''
-                      }`}
-                    >
-                      ${item.settleAmount?.toFixed(2) || '-'}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
+      <div className="w-full overflow-x-auto max-w-sm md:max-w-max mx-auto">
+        <div className="w-full overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {columns
+                  .filter((col) => col.visible)
+                  .map((column) => (
+                    <TableHead key={column.key} className="whitespace-nowrap">
+                      {column.label}
+                    </TableHead>
+                  ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredData
+                .sort((a, b) => {
+                  if (a.submitTimeLocal && b.submitTimeLocal) {
+                    return a.submitTimeLocal > b.submitTimeLocal ? -1 : 1;
+                  }
+                  return 0;
+                })
+                .map((item, index) => (
+                  <TableRow key={index}>
+                    {columns
+                      .filter((col) => col.visible)
+                      .map((column) => (
+                        <TableCell key={column.key}>
+                          {column.key === 'invoiceNumber' && (
+                            <Link
+                              href={`https://sunbuggy.biz/edt_res.php?id=${item.invoiceNumber}`}
+                              target="_blank"
+                              className="text-rose-400 underline"
+                            >
+                              {item.invoiceNumber}
+                            </Link>
+                          )}
+                          {column.key === 'customer' &&
+                            `${item.firstName || ''} ${item.lastName || ''}`}
+                          {column.key === 'amount' && (
+                            <span
+                              className={`${
+                                item.transactionStatus ===
+                                  'refundPendingSettlement' ||
+                                item.transactionStatus ===
+                                  'refundSettledSuccessfully'
+                                  ? 'text-red-600'
+                                  : item.transactionStatus ===
+                                        'capturedPendingSettlement' ||
+                                      item.transactionStatus ===
+                                        'settledSuccessfully'
+                                    ? 'text-green-600'
+                                    : item.transactionStatus === 'declined'
+                                      ? 'text-stone-400 line-through'
+                                      : ''
+                              }`}
+                            >
+                              ${item.settleAmount?.toFixed(2) || '-'}
+                            </span>
+                          )}
+                          {column.key === 'location' && (item.Location || '-')}
+                          {column.key === 'resTime' && (item.Res_Time || '-')}
+                          {column.key === 'resDate' &&
+                            (item.Res_Date
+                              ? dayjs(item.Res_Date).format('YYYY-MM-DD')
+                              : '-')}
+                          {column.key === 'card' && (item.accountType || '-')}
+                        </TableCell>
+                      ))}
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );
