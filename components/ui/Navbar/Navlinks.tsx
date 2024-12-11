@@ -20,6 +20,7 @@ import DialogFactory from '@/components/dialog-factory';
 import React from 'react';
 import { Button } from '../button';
 import { User } from '@supabase/supabase-js';
+import { MenuIcon } from 'lucide-react';
 
 interface NavlinksProps {
   user: UserType | null;
@@ -45,21 +46,23 @@ export default function Navlinks({
           <SheetTrigger asChild>
             <button aria-label="Logo">
               <div className="hidden dark:block">
-                <Image
+                {/* <Image
                   src={`/sb-logo-circle-yellow.svg`}
                   width={40}
                   height={40}
                   alt={`sunbuggy's logo`}
                   className="animate-pulse"
-                />
+                /> */}
+                <MenuIcon size={40} />
               </div>
               <div className="dark:hidden absolute pt-[5px] pl-[10px] transform -translate-y-1/2 block w-[50px] h-[38px] bg-transparent border-0 cursor-pointer z-[1000]">
-                <Image
+                {/* <Image
                   src={`/sb-logo-circle-black.svg`}
                   width={40}
                   height={40}
                   alt={`sunbuggy's logo`}
-                />
+                /> */}
+                <MenuIcon size={40} className="text-black" />
               </div>
             </button>
           </SheetTrigger>
