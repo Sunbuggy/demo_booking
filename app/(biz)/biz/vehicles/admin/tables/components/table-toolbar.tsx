@@ -40,18 +40,21 @@ export function DataTableToolbar<TData>({
 
   return (
     <div className="flex items-center justify-between">
-      <div className="flex flex-1 items-center space-x-2">
-        <Input
-          placeholder="Search vehicles..."
-          value={(table.getState().globalFilter as string) ?? ''}
-          onChange={(event) => table.setGlobalFilter(event.target.value)}
-          className="h-8 w-[150px] lg:w-[250px]"
-        />
-        <DataTableFacetedFilter
-          column={table.getColumn('type')}
-          title="fleet type"
-          options={vehicleTypes}
-        />
+      <div className="flex flex-col items-center space-x-2">
+        <div className="flex space-x-2">
+          <Input
+            placeholder="Search vehicles..."
+            value={(table.getState().globalFilter as string) ?? ''}
+            onChange={(event) => table.setGlobalFilter(event.target.value)}
+            className="h-8 w-[150px] lg:w-[250px]"
+          />
+          <DataTableFacetedFilter
+            column={table.getColumn('type')}
+            title="fleet type"
+            options={vehicleTypes}
+          />
+        </div>
+
         {isFiltered && (
           <Button
             variant="ghost"

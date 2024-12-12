@@ -31,21 +31,22 @@ const ReportsPage = async () => {
     .select('*')
     .order('created_at', { ascending: false });
 
-    const { data: timeEntries, error } = await supabase
+  const { data: timeEntries, error } = await supabase
     .from('time_entries')
-    .select(`
+    .select(
+      `
       *,
       users(full_name),
       clock_in(clock_in_time, lat, long),
       clock_out(clock_out_time, lat, long)
-    `)
+    `
+    )
     .order('created_at', { ascending: false });
-  
+
   // if (error) {
   //   console.error('Error fetching time entries:', error.message);
   // }
   // console.log('Fetched time entries:', timeEntries);
-  
 
   // Fetch vehicles, users, and employee details data
   const { data: vehicles } = await supabase.from('vehicles').select('*');
@@ -119,7 +120,7 @@ const ReportsPage = async () => {
   ];
 
   return (
-    <div className="container mx-auto py-8">
+    <div className=" py-8">
       <h1 className="text-3xl font-bold mb-8">Reports</h1>
       <ReportsBoard tables={tables} />
     </div>

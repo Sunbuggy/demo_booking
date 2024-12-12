@@ -195,7 +195,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
 
   if (vehicleInfo)
     return (
-      <div className="md:w-[800px] min-w-[360px] space-y-5 relative">
+      <div className="md:w-[800px] w-[375px] space-y-5 relative">
         <Link
           href={'/biz/vehicles/admin'}
           className="flex gap-2 hover:cursor-pointer text-pink-500 underline"
@@ -439,7 +439,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 <AccordionContent>
                   <div className="flex flex-col gap-5">
                     <QRCodeGenerator
-                      defUrl={`book.sunbuggy.com/biz/vehicles/${vehicleInfo.id}`}
+                      defUrl={`https://sunbuggy.com/fleet/${vehicleInfo.id}`}
                       defTopText={vehicleInfo.name
                         .match(/[a-zA-Z]+/g)
                         ?.join('')}

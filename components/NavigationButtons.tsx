@@ -22,7 +22,7 @@ export default function NavigationButtons() {
   };
 
   return (
-    <div className="fixed  top-40 left-1 flex flex-col gap-2">
+    <div className="fixed  top-20 left-1 flex  gap-2 z-40">
       <button
         onClick={handleBackClick}
         className="p-2 bg-background/50 rounded-full hover:bg-background/80 transition-colors duration-200"

@@ -22,13 +22,17 @@ const TableSelector: React.FC<TableSelectorProps> = ({ tables, onSelect }) => {
   };
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4 w-[375px] md:w-full flex flex-col items-center">
       <div className="flex gap-5">
         <Link href={'/biz/reports/authorizenet/settled'}>
-          <Button variant={'outline'}>Go to Settled Transactions</Button>
+          <Button variant={'outline'} size={'sm'} className="text-xs">
+            View Settled transactions
+          </Button>
         </Link>
         <Link href={'/biz/reports/authorizenet/unsettled'}>
-          <Button variant={'outline'}>Go to Unsettled Transactions</Button>
+          <Button variant={'outline'} size={'sm'} className="text-xs">
+            View Unsettled transactions
+          </Button>
         </Link>
       </div>
       <h2 className="text-xl font-semibold">Select a Report:</h2>
@@ -38,7 +42,7 @@ const TableSelector: React.FC<TableSelectorProps> = ({ tables, onSelect }) => {
             key={table.name}
             onClick={() => handleSelect(table)}
             variant={selectedTable === table.name ? 'positive' : 'outline'}
-            className="w-full"
+            className="w-[300px]"
           >
             {table.name}
           </Button>

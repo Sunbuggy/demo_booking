@@ -62,7 +62,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 300,
       external: false
     },
-
     {
       href: '/biz/sst',
       label: 'SST',
@@ -86,7 +85,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
           href={link.href}
           className={cn(
             'white_button',
-            'border-2 rounded-md transition-colors',
+            'border-2 rounded-md transition-colors p-2 block mr-1',
             isActive
               ? 'bg-orange-500 text-white hover:bg-orange-600'
               : 'hover:bg-zinc-800 dark:hover:bg-zinc-500',
@@ -116,10 +115,10 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     if (filteredLinks.length === 0) return null;
 
     return (
-      <React.Fragment key={title}>
-        <span className="menulinks">{title}</span>
-        {filteredLinks.map(renderNavLink)}
-      </React.Fragment>
+      <div key={title} className="mb-4">
+        <span className="menulinks mb-2 flex gap-5">{title}</span>
+        <div className="space-y-2">{filteredLinks.map(renderNavLink)}</div>
+      </div>
     );
   };
 
@@ -131,7 +130,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   const adminLinks = navLinks.filter((link) => link.minLevel === 900);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 p-4 overflow-y-auto h-full">
       {renderLinkGroup(publicLinks, 'PUBLIC', 0)}
       {user &&
         user.user_level >= 300 &&

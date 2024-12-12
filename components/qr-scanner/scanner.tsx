@@ -17,7 +17,7 @@ import InventoryModeScroll from './inventory-result-scroll';
 import InventoryForm from './inventory-form';
 import TaggingMode from './tagging-mode';
 import { User } from '@supabase/supabase-js';
-import { MapPin } from 'lucide-react';
+import { MapPin, RotateCcw } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -484,76 +484,106 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
 
   return (
     <div className="h-[70vh]">
-      <div className="flex w-full gap-4">
-        <div>
-          <div className="flex flex-col items-center gap-2 mb-5">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <MapPin
-                    size={24}
-                    className={`${locationSet ? 'text-green-500' : 'text-red-500'}`}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  {locationSet
-                    ? 'Location Set'
-                    : ' Allow  location access to scan the QR code'}
-                  <br />
-                  {/* Show Current Location */}
-                  {'Latitude: ' + currentLocation.latitude}
-                  <br />
-                  {'Longitude: ' + currentLocation.longitude}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+      <div className="flex flex-col w-full gap-4">
+        <div className="flex flex-col items-center gap-2 mb-5">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <MapPin
+                  size={24}
+                  className={`${locationSet ? 'text-green-500' : 'text-red-500'}`}
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                {locationSet
+                  ? 'Location Set'
+                  : ' Allow  location access to scan the QR code'}
+                <br />
+                {/* Show Current Location */}
+                {'Latitude: ' + currentLocation.latitude}
+                <br />
+                {'Longitude: ' + currentLocation.longitude}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-            <h1 className="text-xl font-bold text-center">
-              Mode:
-              {/* Create select to select mode */}
-              <select
-                className="border rounded-md p-1 m-2 text-sm"
-                onChange={(e) => {
-                  switch (e.target.value) {
-                    case 'normal':
-                      setNormalMode(true);
-                      setInventoryMode(false);
-                      setTaggingMode(false);
-                      break;
-                    case 'inventory':
-                      setNormalMode(false);
-                      setInventoryMode(true);
-                      setTaggingMode(false);
-                      break;
-                    case 'tagging':
-                      setNormalMode(false);
-                      setInventoryMode(false);
-                      setTaggingMode(true);
-                      break;
-                  }
-                }}
-              >
-                <option value="normal">Main</option>
-                <option value="inventory">Inventory</option>
-                <option value="tagging">Tagging</option>
-              </select>
-            </h1>
-          </div>
-          <div className="flex justify-center">
-            <div className="w-[150px] h-[150px]">
-              <video ref={ref} />
-            </div>
-          </div>
-          {locationSet ? (
-            <></>
-          ) : (
-            <div>
-              <h1 className="text-center text-red-500">
-                PLEASE ALLOW LOCATION ACCESS!!
-              </h1>
-            </div>
-          )}
+          <h1 className="text-xl font-bold text-center">
+            Mode:
+            {/* Create select to select mode */}
+            <select
+              className="border rounded-md p-1 m-2 text-sm"
+              onChange={(e) => {
+                switch (e.target.value) {
+                  case 'normal':
+                    setNormalMode(true);
+                    setInventoryMode(false);
+                    setTaggingMode(false);
+                    break;
+                  case 'inventory':
+                    setNormalMode(false);
+                    setInventoryMode(true);
+                    setTaggingMode(false);
+                    break;
+                  case 'tagging':
+                    setNormalMode(false);
+                    setInventoryMode(false);
+                    setTaggingMode(true);
+                    break;
+                }
+              }}
+            >
+              <option value="normal">Main</option>
+              <option value="inventory">Inventory</option>
+              <option value="tagging">Tagging</option>
+            </select>
+          </h1>
         </div>
+        <div className="flex justify-center">
+          <div className="w-[150px] h-[150px]">
+            <video ref={ref} />
+          </div>
+        </div>
+        {locationSet ? (
+          <></>
+        ) : (
+          <div className="w-full flex flex-col items-center gap-3">
+            <h1 className="text-center text-red-500">
+              PLEASE ALLOW LOCATION ACCESS!!
+            </h1>
+            <Button
+              onClick={() => {
+                if (!navigator.geolocation) {
+                  alert('Geolocation is not supported by your browser');
+                  return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                  (position) => {
+                    if (!position) return;
+                    if (
+                      position.coords.latitude === 0 &&
+                      position.coords.longitude === 0
+                    )
+                      return;
+                    setCurrentLocation({
+                      latitude: position.coords.latitude,
+                      longitude: position.coords.longitude
+                    });
+                    setLocationSet(true);
+                  },
+                  (error) => {
+                    console.error(error);
+                    alert(
+                      'Unable to retrieve your location, please allow location access'
+                    );
+                  },
+                  { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+              }}
+            >
+              <RotateCcw className="p-1" /> Retry Location Access
+            </Button>
+          </div>
+        )}
         <div>
           {normalMode &&
             (scannedUrls.length > 0 || scannedVehicleIds.length > 0) && (

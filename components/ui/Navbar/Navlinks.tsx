@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link'; // Use Next.js Link
-import Image from 'next/image';
+import Link from 'next/link';
 import NavSideBar from './NavSideBar';
 import Navhead from './Navhead';
 import {
@@ -46,32 +45,24 @@ export default function Navlinks({
           <SheetTrigger asChild>
             <button aria-label="Logo">
               <div className="hidden dark:block">
-                {/* <Image
-                  src={`/sb-logo-circle-yellow.svg`}
-                  width={40}
-                  height={40}
-                  alt={`sunbuggy's logo`}
-                  className="animate-pulse"
-                /> */}
                 <MenuIcon size={40} />
               </div>
               <div className="dark:hidden absolute pt-[5px] pl-[10px] transform -translate-y-1/2 block w-[50px] h-[38px] bg-transparent border-0 cursor-pointer z-[1000]">
-                {/* <Image
-                  src={`/sb-logo-circle-black.svg`}
-                  width={40}
-                  height={40}
-                  alt={`sunbuggy's logo`}
-                /> */}
                 <MenuIcon size={40} className="text-black" />
               </div>
             </button>
           </SheetTrigger>
-          <SheetContent side="left" className=" dark:bg-background">
-            <SheetHeader>
+          <SheetContent
+            side="left"
+            className="dark:bg-background flex flex-col h-full p-0"
+          >
+            <SheetHeader className="p-4 flex-shrink-0">
               <SheetTitle>Menu</SheetTitle>
               <SheetDescription></SheetDescription>
             </SheetHeader>
-            <NavSideBar user={user} />
+            <div className="flex-grow overflow-y-auto">
+              <NavSideBar user={user} />
+            </div>
           </SheetContent>
         </Sheet>
       </div>
