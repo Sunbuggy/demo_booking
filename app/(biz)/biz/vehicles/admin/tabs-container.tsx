@@ -26,7 +26,7 @@ const VehiclesTabContainer = async ({
   )) as VehicleLocation[];
 
   return (
-    <Tabs defaultValue="vehicles" className="w-[400px] md:w-full">
+    <Tabs defaultValue="vehicles" className="w-[375px] md:w-full">
       <TabsList>
         <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
         <TabsTrigger value="vehicle_status">Vehicles Status</TabsTrigger>

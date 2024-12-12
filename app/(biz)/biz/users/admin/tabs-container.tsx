@@ -24,7 +24,7 @@ const UsersTabsContainer = ({
   const userImage =
     loggedInUser && String(loggedInUser?.user_metadata.avatar_url);
   return (
-    <Tabs defaultValue="employees" className="w-[400px] md:w-full">
+    <Tabs defaultValue="employees" className="w-[375px] md:w-full">
       <TabsList>
         <TabsTrigger value="employees">Employees</TabsTrigger>
         <TabsTrigger value="customers">Customers</TabsTrigger>
