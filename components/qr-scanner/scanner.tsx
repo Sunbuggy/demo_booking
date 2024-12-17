@@ -212,7 +212,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
                         console.error(err);
                         toast({
                           title: 'error',
-                          description: 'Error Occured Please Contact Devs',
+                          description: 'Error Occured (1) Please Contact Devs',
                           duration: 5000,
                           variant: 'destructive'
                         });
@@ -232,7 +232,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
                       console.error(err);
                       toast({
                         title: 'error',
-                        description: 'Error Occured Please Contact Devs',
+                        description: 'Error Occured (2) Please Contact Devs',
                         duration: 5000,
                         variant: 'destructive'
                       });
@@ -243,7 +243,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
                 console.error(err);
                 toast({
                   title: 'error',
-                  description: 'Error Occured Please Contact Devs',
+                  description: 'Error Occured (3) Please Contact Devs',
                   duration: 5000,
                   variant: 'destructive'
                 });
@@ -264,7 +264,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
           console.error(err);
           toast({
             title: 'error',
-            description: 'Error Occured Please Contact Devs',
+            description: 'Error Occured (4) Please Contact Devs',
             duration: 5000,
             variant: 'destructive'
           });
@@ -466,7 +466,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
           console.error(err);
           toast({
             title: 'error',
-            description: 'Error Occured Please Contact Devs',
+            description: 'Error Occured (5) Please Contact Devs',
             duration: 5000,
             variant: 'destructive'
           });
