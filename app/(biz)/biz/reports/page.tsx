@@ -43,11 +43,6 @@ const ReportsPage = async () => {
     )
     .order('created_at', { ascending: false });
 
-  // if (error) {
-  //   console.error('Error fetching time entries:', error.message);
-  // }
-  // console.log('Fetched time entries:', timeEntries);
-
   // Fetch vehicles, users, and employee details data
   const { data: vehicles } = await supabase.from('vehicles').select('*');
   const { data: users } = await supabase.from('users').select('*');
@@ -106,7 +101,6 @@ const ReportsPage = async () => {
     date: entry.date || 'Unknown'
   }));
 
-  // console.log('Mapped time entries:', mappedTimeEntries);
 
   const tables = [
     { name: 'Tags', data: mappedTags },
