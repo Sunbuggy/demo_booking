@@ -2,13 +2,14 @@
 
 import { Home, RotateCw, ArrowLeft, Share } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { RWebShare } from 'react-web-share';
+import ShareButton from './share-button';
 
 export default function NavigationButtons() {
   const router = useRouter();
   const [canGoBack, setCanGoBack] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     setCanGoBack(window.history.length > 1);
@@ -45,15 +46,11 @@ export default function NavigationButtons() {
         <RotateCw className="w-5 h-5 text-foreground/50" />
         <span className="sr-only">Reload Page</span>
       </button>
-      <RWebShare
-        data={{
-          text: 'Check out this page!',
-          url: window.location.href
-        }}
-      >
-        <Share className="w-5 h-5 text-foreground/50" />
-        <span className="sr-only">Share Page</span>
-      </RWebShare>
+      <ShareButton
+        title="Share this page"
+        text="Share this page with your friends"
+        url={pathname}
+      />
     </div>
   );
 }
