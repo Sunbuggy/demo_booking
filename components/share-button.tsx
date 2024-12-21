@@ -1,4 +1,4 @@
-import { Share } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 import { RWebShare } from 'react-web-share';
 
 interface ShareButtonProps {
@@ -17,7 +17,7 @@ const ShareButton = ({ title, text, url }: ShareButtonProps) => {
       }}
     >
       <button className="p-2 bg-background/50 rounded-full hover:bg-background/80 transition-colors duration-200">
-        <Share className="w-5 h-5 text-foreground/50" />
+        <Share2 className="w-5 h-5 text-foreground/50" />
         <span className="sr-only">Share Page</span>
       </button>
     </RWebShare>
