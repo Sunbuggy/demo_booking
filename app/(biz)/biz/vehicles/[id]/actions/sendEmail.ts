@@ -30,7 +30,7 @@ export async function sendEmail(
         TextPart: content,
         HTMLPart: content.replace(/\n/g, '<br>'),
         Headers: {
-          'Reply-To': `${emailFrom}`
+          'Reply-To': `${emailFrom}, parts@sunbuggy.com`
         }
       }
     ]
