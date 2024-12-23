@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CameraIcon } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { sendEmail } from '../actions/sendEmail';
 
 // from createId create a new uuid consisting of 8 characters - 4 characters - 4 characters - 4 characters - 12 characters
 
@@ -41,6 +42,7 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
     vehicle_id: null,
     tag_type: 'maintenance' as unknown as VehicleTagType
   });
+  const [needsParts, setNeedsParts] = React.useState(false);
   const handleSubmit = async (key: string, update_pic?: boolean) => {
     if (files.length === 0) {
       toast({
@@ -121,6 +123,11 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
       notes: `(${user.user_metadata.full_name}): ${tag.notes}`
     } as unknown as VehicleTagType;
     const supabase = createClient();
+    const { data: vehicleDetails } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('id', id)
+      .single();
 
     switch (newTag.tag_type) {
       case 'maintenance':
@@ -190,6 +197,24 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
           });
         break;
       default:
+    }
+    if (needsParts) {
+      try {
+        await sendEmail(
+          `Parts Request for a ${vehicleDetails?.type} Vehicle  ${vehicleDetails?.name} (${vehicleDetails?.pet_name ? vehicleDetails?.pet_name : vehicleDetails?.make}) `,
+          tag.notes,
+          `${user.email} ` || 'cyberteam@sunbuggy.com',
+          ` ${user.user_metadata.full_name} `
+        );
+      } catch (error) {
+        console.error('Failed to send parts request email:', error);
+        toast({
+          title: 'Warning',
+          description: 'Tag created but failed to send parts request email',
+          variant: 'destructive',
+          duration: 3000
+        });
+      }
     }
     checkAndChangeVehicleStatus(supabase, id)
       .then((res) => {
@@ -335,7 +360,16 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
             ))}
           </div>
         </div>
-
+        <div className="flex items-center space-x-2 mb-4">
+          <input
+            type="checkbox"
+            id="needsParts"
+            checked={needsParts}
+            onChange={(e) => setNeedsParts(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <Label htmlFor="needsParts">I need parts</Label>
+        </div>
         <DialogClose asChild>
           <Button type="submit" variant={'positive'} className="w-full">
             Create Tag
