@@ -39,6 +39,12 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       label: 'Reports',
       minLevel: 900,
       external: false
+    },
+    {
+      href: '/biz/audit',
+      label: 'Audit Logs',
+      minLevel: 900,
+      external: false
     }
   ];
 
