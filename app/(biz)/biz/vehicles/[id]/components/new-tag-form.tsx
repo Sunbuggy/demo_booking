@@ -43,6 +43,7 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
     tag_type: 'maintenance' as unknown as VehicleTagType
   });
   const [needsParts, setNeedsParts] = React.useState(false);
+  const [partsRequest, setPartsRequest] = React.useState('');
   const handleSubmit = async (key: string, update_pic?: boolean) => {
     if (files.length === 0) {
       toast({
@@ -73,7 +74,6 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
       );
 
       const data = await response.json();
-
       if (response.ok) {
         toast({
           title: 'Success',
@@ -200,11 +200,19 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
     }
     if (needsParts) {
       try {
+        const emailContent = `
+          Vehicle Details: ${vehicleDetails?.type} ${vehicleDetails?.name} (${vehicleDetails?.pet_name ? vehicleDetails?.pet_name : vehicleDetails?.make})
+          
+          Tag Notes: ${tag.notes}
+          
+          Parts Request: ${partsRequest}
+        `;
+
         await sendEmail(
-          `Parts Request for a ${vehicleDetails?.type} Vehicle  ${vehicleDetails?.name} (${vehicleDetails?.pet_name ? vehicleDetails?.pet_name : vehicleDetails?.make}) `,
-          tag.notes,
-          `${user.email} ` || 'cyberteam@sunbuggy.com',
-          ` ${user.user_metadata.full_name} `
+          `Parts Request for a ${vehicleDetails?.type} Vehicle ${vehicleDetails?.name} (${vehicleDetails?.pet_name ? vehicleDetails?.pet_name : vehicleDetails?.make})`,
+          emailContent,
+          `${user.email}` || 'cyberteam@sunbuggy.com',
+          `${user.user_metadata.full_name}`
         );
       } catch (error) {
         console.error('Failed to send parts request email:', error);
@@ -360,15 +368,27 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
             ))}
           </div>
         </div>
-        <div className="flex items-center space-x-2 mb-4">
-          <input
-            type="checkbox"
-            id="needsParts"
-            checked={needsParts}
-            onChange={(e) => setNeedsParts(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300"
-          />
-          <Label htmlFor="needsParts">I need parts</Label>
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="needsParts"
+              checked={needsParts}
+              onChange={(e) => setNeedsParts(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <Label htmlFor="needsParts">I need parts</Label>
+          </div>
+          {needsParts && (
+            <Textarea
+              id="partsRequest"
+              name="partsRequest"
+              value={partsRequest}
+              onChange={(e) => setPartsRequest(e.target.value)}
+              className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+              placeholder="Describe the parts you need..."
+            />
+          )}
         </div>
         <DialogClose asChild>
           <Button type="submit" variant={'positive'} className="w-full">

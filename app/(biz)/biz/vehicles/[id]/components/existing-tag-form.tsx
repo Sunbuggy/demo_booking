@@ -26,24 +26,30 @@ import DialogFactory from '@/components/dialog-factory';
 import ResponsiveImageUpload from './responsive-image-upload-form';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { sendEmail } from '../actions/sendEmail';
 
 const ExistingTagForm = ({
   tag,
   user,
-  status
+  status,
+  id
 }: {
   tag: VehicleTagType | null;
   user: User;
   status?: string;
+  id?: string;
 }) => {
   const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
     React.useState(false);
   const supabase = createClient();
+
   const { toast } = useToast();
   const [createdBy, setCreatedBy] = React.useState<string | null>(null);
   const [updatedBy, setUpdatedBy] = React.useState<string | null>(null);
   const [images, setImages] = React.useState<VehiclePics[]>([]);
   const router = useRouter();
+  const [needsParts, setNeedsParts] = React.useState(false);
+  const [partsRequest, setPartsRequest] = React.useState('');
   const [formValues, setFormValues] = React.useState<VehicleTagType>({
     tag_status: tag?.tag_status || 'open',
     notes: tag?.notes || '',
@@ -68,7 +74,6 @@ const ExistingTagForm = ({
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    //
 
     if (formValues.tag_status === 'closed') {
       const updatedFormValues: VehicleTagType = {
@@ -97,7 +102,6 @@ const ExistingTagForm = ({
             duration: 5000
           });
         });
-      // create a new variable that is formValues minus the old_notes
     } else {
       const updatedFormValues = {
         ...formValues,
@@ -124,6 +128,45 @@ const ExistingTagForm = ({
           });
         });
     }
+    const { data: vehicleDetails } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('id', id || '')
+      .single();
+
+    if (needsParts) {
+      try {
+        const emailContent = `
+          Vehicle Details: ${vehicleDetails?.type} ${vehicleDetails?.name} (${vehicleDetails?.pet_name ? vehicleDetails?.pet_name : vehicleDetails?.make})
+          
+          Tag Notes: ${formValues.notes}
+          
+          Parts Request: ${partsRequest}
+        `;
+
+        await sendEmail(
+          `Parts Request for a ${vehicleDetails?.type} Vehicle ${vehicleDetails?.name} (${vehicleDetails?.pet_name ? vehicleDetails?.pet_name : vehicleDetails?.make})`,
+          emailContent,
+          `${user.email}` || 'cyberteam@sunbuggy.com',
+          `${user.user_metadata.full_name}`
+        );
+        toast({
+          title: 'Success',
+          description: 'Parts request email sent successfully',
+          variant: 'success',
+          duration: 3000
+        });
+      } catch (error) {
+        console.error('Failed to send parts request email:', error);
+        toast({
+          title: 'Warning',
+          description: 'Tag updated but failed to send parts request email',
+          variant: 'destructive',
+          duration: 3000
+        });
+      }
+    }
+
     checkAndChangeVehicleStatus(supabase, tag?.vehicle_id || '')
       .then((res) => {
         window.location.reload();
@@ -132,6 +175,7 @@ const ExistingTagForm = ({
         console.error(err);
       });
   };
+
   const new_created_by_id = tag?.created_by as string;
   const new_updated_by_id = tag?.updated_by as string;
 
@@ -214,7 +258,6 @@ const ExistingTagForm = ({
         <br />
         {(tag?.updated_by_legacy || tag?.updated_by) &&
           `last updated by: ${tag?.updated_by_legacy || updatedBy || 'unknown user'} @ ${dayjs(tag?.updated_at || '').format('YY/MM/DD@hh:mm a')}`}
-        {/* if there is a close_tag_comment and the status is closed add a closed by here */}
         {tag?.close_tag_comment && tag?.tag_status === 'closed' && (
           <>
             <br />
@@ -308,6 +351,34 @@ const ExistingTagForm = ({
                 })
               }
               disabled={status === 'closed'}
+            />
+          </div>
+        )}
+        <div className="flex items-center space-x-2 mb-4">
+          <input
+            type="checkbox"
+            id="needsParts"
+            checked={needsParts}
+            onChange={(e) => setNeedsParts(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <Label htmlFor="needsParts">I need parts</Label>
+        </div>
+        {needsParts && (
+          <div className="flex gap-2 items-baseline">
+            <label
+              htmlFor="parts-request"
+              className="block text-sm font-medium text-gray-400"
+            >
+              Parts Request
+            </label>
+            <Textarea
+              id="parts-request"
+              name="parts-request"
+              className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+              placeholder="Describe the parts you need..."
+              value={partsRequest}
+              onChange={(e) => setPartsRequest(e.target.value)}
             />
           </div>
         )}
