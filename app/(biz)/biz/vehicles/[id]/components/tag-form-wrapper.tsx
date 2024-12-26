@@ -19,7 +19,9 @@ const TagForm = ({
   if (tag === null) {
     return <NewTagForm user={user} id={id || ''} />;
   } else {
-    return <ExistingTagForm user={user} tag={tag} status={status} id={id} />;
+    return (
+      <ExistingTagForm user={user} tag={tag} status={status} id={id || ''} />
+    );
   }
 };
 

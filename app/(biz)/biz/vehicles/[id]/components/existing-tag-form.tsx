@@ -37,8 +37,9 @@ const ExistingTagForm = ({
   tag: VehicleTagType | null;
   user: User;
   status?: string;
-  id?: string;
+  id: string;
 }) => {
+  console.log('id', id);
   const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
     React.useState(false);
   const supabase = createClient();
