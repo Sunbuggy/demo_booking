@@ -90,12 +90,12 @@ export default async function SignIn({
             viewProp !== 'signup' &&
             allowOauth && (
               <>
-                <Separator text="Third-party sign-in" />
+                <Separator text="Sign in with" />
                 <OauthSignIn />
-                <Separator text="Email sign-in"/>
+                <Separator text="Or Use Email sign-in" />
               </>
             )}
-          
+
           {viewProp === 'password_signin' && (
             <PasswordSignIn
               allowEmail={allowEmail}
@@ -122,7 +122,6 @@ export default async function SignIn({
           {viewProp === 'signup' && (
             <SignUp allowEmail={allowEmail} redirectMethod={redirectMethod} />
           )}
-
         </Card>
       </div>
     </div>
