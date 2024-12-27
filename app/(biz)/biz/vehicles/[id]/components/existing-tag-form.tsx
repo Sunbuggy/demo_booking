@@ -39,7 +39,6 @@ const ExistingTagForm = ({
   status?: string;
   id: string;
 }) => {
-  console.log('id', id);
   const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
     React.useState(false);
   const supabase = createClient();
@@ -143,6 +142,9 @@ const ExistingTagForm = ({
           Tag Notes: ${formValues.notes}
           
           Parts Request: ${partsRequest}
+
+          <a href="https://book.sunbuggy.com/biz/vehicles/${id}">Link to vehicle</a>
+
         `;
 
         await sendEmail(

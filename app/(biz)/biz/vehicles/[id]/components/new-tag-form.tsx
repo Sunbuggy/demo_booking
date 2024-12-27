@@ -42,7 +42,6 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
     vehicle_id: null,
     tag_type: 'maintenance' as unknown as VehicleTagType
   });
-  console.log('id', id);
   const [needsParts, setNeedsParts] = React.useState(false);
   const [partsRequest, setPartsRequest] = React.useState('');
   const handleSubmit = async (key: string, update_pic?: boolean) => {
@@ -207,6 +206,8 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
           Tag Notes: ${tag.notes}
           
           Parts Request: ${partsRequest}
+
+          <a href="https://book.sunbuggy.com/biz/vehicles/${id}">Link to vehicle</a>
         `;
 
         await sendEmail(
