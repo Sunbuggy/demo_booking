@@ -13,6 +13,7 @@ interface UserType {
 interface NavLink {
   href: string;
   label: string;
+  title?: string;
   minLevel: number;
   external?: boolean;
 }
@@ -43,6 +44,13 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     {
       href: '/biz/audit',
       label: 'Audit Logs',
+      minLevel: 900,
+      external: false
+    },
+    {
+      href: '/biz/audit2',
+      label: 'Pictures',
+      title: 'feature/fetch_pics',
       minLevel: 900,
       external: false
     }
