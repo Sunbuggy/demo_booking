@@ -19,7 +19,7 @@
 }
 
 .slim {
-  @apply py-2 transform-none normal-case rounded-md;
+  @apply py-2 transform-none normal-case rounded-md border-orange-500 text-gray-500;
 }
 
 .disabled,

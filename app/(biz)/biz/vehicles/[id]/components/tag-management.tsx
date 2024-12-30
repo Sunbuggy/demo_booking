@@ -186,7 +186,7 @@ const TagManagement = ({
                       {tagTitleFromNotes}
                     </Button>
                     <DialogFactory
-                      children={<TagForm user={user} tag={tag} />}
+                      children={<TagForm user={user} tag={tag} id={id} />}
                       title={tagTitle}
                       description={`Edit ${tag.id}`}
                       isDialogOpen={openTagDialogs[tag.id] || false}

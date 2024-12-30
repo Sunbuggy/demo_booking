@@ -30,11 +30,12 @@ export type Database = {
         }
         Relationships: []
       }
-      adventures: {
+      adventure: {
         Row: {
           created_at: string
           created_by: string | null
           description: string | null
+          duration_minutes: number
           id: string
           imageUrl: string | null
           title: string | null
@@ -44,6 +45,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          duration_minutes: number
           id?: string
           imageUrl?: string | null
           title?: string | null
@@ -53,6 +55,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          duration_minutes?: number
           id?: string
           imageUrl?: string | null
           title?: string | null
@@ -62,6 +65,215 @@ export type Database = {
           {
             foreignKeyName: "adventures_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adventure_discounts: {
+        Row: {
+          adventure_id: string | null
+          created_at: string
+          created_by: string | null
+          discount_amt: number | null
+          discount_percent: number | null
+          end_date: string | null
+          id: string
+          start_date: string | null
+        }
+        Insert: {
+          adventure_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_amt?: number | null
+          discount_percent?: number | null
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+        }
+        Update: {
+          adventure_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_amt?: number | null
+          discount_percent?: number | null
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventure_discounts_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adventure_discounts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adventure_pricing: {
+        Row: {
+          adventure_id: string | null
+          adventure_vehicle_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          price: number
+        }
+        Insert: {
+          adventure_id?: string | null
+          adventure_vehicle_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          price: number
+        }
+        Update: {
+          adventure_id?: string | null
+          adventure_vehicle_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventure_pricing_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adventure_pricing_adventure_id_fkey1"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventure_vehicle"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adventure_pricing_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adventure_unavailability: {
+        Row: {
+          adventure_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string | null
+          time_range_start: string
+          timerange_end: string | null
+        }
+        Insert: {
+          adventure_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string | null
+          time_range_start: string
+          timerange_end?: string | null
+        }
+        Update: {
+          adventure_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string | null
+          time_range_start?: string
+          timerange_end?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventure_unavailability_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adventure_unavailability_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adventure_vehicle: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          seats: number | null
+          type: Database["public"]["Enums"]["vehicle_type"] | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          seats?: number | null
+          type?: Database["public"]["Enums"]["vehicle_type"] | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          seats?: number | null
+          type?: Database["public"]["Enums"]["vehicle_type"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventure_vehicle_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          action: string | null
+          created_at: string
+          id: string
+          row: string | null
+          table_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          id?: string
+          row?: string | null
+          table_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          id?: string
+          row?: string | null
+          table_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audot_logs_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -254,7 +466,15 @@ export type Database = {
           name?: string | null
           phone?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       departments: {
         Row: {
@@ -550,6 +770,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "qr_history_user_fkey"
+            columns: ["user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "qr_history_vehicle_id_fkey"
             columns: ["vehicle_id"]
             isOneToOne: false
@@ -611,6 +838,7 @@ export type Database = {
         Row: {
           clock_in_id: string | null
           clock_out_id: string | null
+          created_at: string | null
           date: string | null
           duration: number | null
           id: string
@@ -619,6 +847,7 @@ export type Database = {
         Insert: {
           clock_in_id?: string | null
           clock_out_id?: string | null
+          created_at?: string | null
           date?: string | null
           duration?: number | null
           id?: string
@@ -627,6 +856,7 @@ export type Database = {
         Update: {
           clock_in_id?: string | null
           clock_out_id?: string | null
+          created_at?: string | null
           date?: string | null
           duration?: number | null
           id?: string
@@ -776,7 +1006,15 @@ export type Database = {
             | null
           user_level?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicle_future_location: {
         Row: {
@@ -1875,17 +2113,3 @@ export type Enums<
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
 
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
-    | { schema: keyof Database },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never

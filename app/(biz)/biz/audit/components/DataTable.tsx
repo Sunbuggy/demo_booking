@@ -1,4 +1,4 @@
-'use client'
+'use client';
 import React, { useEffect, useState } from 'react';
 import {
   ColumnDef,
@@ -27,8 +27,8 @@ import { createClient } from '@/utils/supabase/client';
 
 interface AuditLog {
   id: number;
-  action: string;
-  user_id: string;
+  action: string | null;
+  user_id: string | null;
   created_at: string;
 }
 
@@ -69,7 +69,13 @@ export function DataTable() {
       if (error) {
         console.error('Error fetching audit logs:', error);
       } else {
-        setData(auditLogs || []);
+        // Transform data to match the `AuditLog` interface
+        const transformedData = (auditLogs || []).map((log) => ({
+          ...log,
+          id: Number(log.id), // Convert id to a number
+        })) as AuditLog[];
+
+        setData(transformedData);
       }
       setIsLoading(false);
     };
@@ -117,20 +123,17 @@ export function DataTable() {
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              // 
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} colSpan={header.colSpan}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
@@ -164,8 +167,7 @@ export function DataTable() {
           </TableBody>
         </Table>
       </div>
-
-            {/* <Pagination table={table}/> */}
-    </div>
+ {/* <Pagination table={table}/> */}
+     </div>
   );
 }
