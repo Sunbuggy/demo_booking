@@ -49,6 +49,12 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       external: false
     },  
     {
+      href: '/biz/fetch_pics',
+      label: 'fetch_pics',
+      minLevel: 900,
+      external: false
+    },  
+    {
       href: 'tel:+17752060022',
       label: 'Cyber Support: (775) 206-0022',
       minLevel: 300,
