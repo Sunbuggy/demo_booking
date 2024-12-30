@@ -1,18 +1,10 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
+  getCoreRowModel,
+  flexRender,
+  ColumnDef,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -22,7 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import Pagination from './Paginantion';
 import { createClient } from '@/utils/supabase/client';
 
 interface AuditLog {
@@ -34,88 +25,53 @@ interface AuditLog {
 
 const supabase = createClient();
 
-const columns: ColumnDef<AuditLog, any>[] = [
-  {
-    accessorKey: 'id',
-    header: 'ID',
-  },
-  {
-    accessorKey: 'action',
-    header: 'Action',
-  },
-  {
-    accessorKey: 'user_id',
-    header: 'User ID',
-  },
+const columns: ColumnDef<AuditLog>[] = [
+  // { accessorKey: 'id', header: 'ID' },
   {
     accessorKey: 'created_at',
     header: 'Created At',
-    cell: ({ getValue }) => new Date(getValue() as string).toLocaleString(),
+    cell: ({ getValue }) => new Date(getValue<string>()).toLocaleString(),
   },
+  { accessorKey: 'action', header: 'Action' },
+  { accessorKey: 'user_id', header: 'User' },
+
+  { accessorKey: 'table_name', header: 'Table' },
+
 ];
 
 export function DataTable() {
   const [data, setData] = useState<AuditLog[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch data from Supabase
   useEffect(() => {
-    const fetchAuditLogs = async () => {
-      setIsLoading(true);
-      const { data: auditLogs, error } = await supabase
-        .from('audit_logs')
-        .select('*');
-
+    (async () => {
+      const { data: audit_logs, error } = await supabase.from('audit_logs').select('*');
       if (error) {
-        console.error('Error fetching audit logs:', error);
-      } else {
-        // Transform data to match the `AuditLog` interface
-        const transformedData = (auditLogs || []).map((log) => ({
-          ...log,
-          id: Number(log.id), // Convert id to a number
-        })) as AuditLog[];
-
-        setData(transformedData);
+        console.error(error);
+        setIsLoading(false);
+        return;
       }
+
+      // Transform data to match the `AuditLog` interface
+      const transformedData: AuditLog[] = (audit_logs || []).map((log) => ({
+        id: Number(log.id), // Convert id to a number
+        action: log.action,
+        user_id: log.user_id,
+        created_at: log.created_at,
+      }));
+
+      setData(transformedData);
       setIsLoading(false);
-    };
-
-    fetchAuditLogs();
+    })();
   }, []);
-
-  const [rowSelection, setRowSelection] = React.useState({});
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
-  const [sorting, setSorting] = React.useState<SortingState>([]);
 
   const table = useReactTable({
     data,
     columns,
-    state: {
-      sorting,
-      columnVisibility,
-      rowSelection,
-      columnFilters,
-    },
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  if (isLoading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-4">
@@ -125,49 +81,34 @@ export function DataTable() {
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} colSpan={header.colSpan}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                  <TableHead key={header.id}>
+                    {flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                >
+                <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No items in this table.
+                <TableCell colSpan={columns.length} className="text-center">
+                  No items in this data table.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
- {/* <Pagination table={table}/> */}
-     </div>
+    </div>
   );
 }
