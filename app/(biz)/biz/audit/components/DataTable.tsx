@@ -1,10 +1,19 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+
+import React from 'react';
 import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
   ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable
 } from '@tanstack/react-table';
 import {
   Table,
@@ -12,66 +21,50 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
+  TableRow
 } from '@/components/ui/table';
-import { createClient } from '@/utils/supabase/client';
+import { DataTablePagination } from './Paginantion';
 
-interface AuditLog {
-  id: number;
-  action: string | null;
-  user_id: string | null;
-  created_at: string;
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  tableName: string;
 }
 
-const supabase = createClient();
-
-const columns: ColumnDef<AuditLog>[] = [
-  // { accessorKey: 'id', header: 'ID' },
-  {
-    accessorKey: 'created_at',
-    header: 'Created At',
-    cell: ({ getValue }) => new Date(getValue<string>()).toLocaleString(),
-  },
-  { accessorKey: 'action', header: 'Action' },
-  { accessorKey: 'user_id', header: 'User' },
-
-  { accessorKey: 'table_name', header: 'Table' },
-
-];
-
-export function DataTable() {
-  const [data, setData] = useState<AuditLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const { data: audit_logs, error } = await supabase.from('audit_logs').select('*');
-      if (error) {
-        console.error(error);
-        setIsLoading(false);
-        return;
-      }
-
-      // Transform data to match the `AuditLog` interface
-      const transformedData: AuditLog[] = (audit_logs || []).map((log) => ({
-        id: Number(log.id), // Convert id to a number
-        action: log.action,
-        user_id: log.user_id,
-        created_at: log.created_at,
-      }));
-
-      setData(transformedData);
-      setIsLoading(false);
-    })();
-  }, []);
+export function DataTable<TData, TValue>({
+  columns,
+  data,
+  tableName
+}: DataTableProps<TData, TValue>) {
+  const [rowSelection, setRowSelection] = React.useState({});
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    []
+  );
+  const [sorting, setSorting] = React.useState<SortingState>([]);
 
   const table = useReactTable({
     data,
     columns,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      columnFilters
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues()
   });
-
-  if (isLoading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-4">
@@ -80,35 +73,52 @@ export function DataTable() {
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.length ? (
+            {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && 'selected'}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="text-center">
-                  No items in this data table.
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+      <DataTablePagination table={table} />
     </div>
   );
 }
