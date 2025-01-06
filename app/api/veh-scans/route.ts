@@ -11,7 +11,8 @@ function getAllowedOrigin(request: NextRequest): string {
     'https://sunbuggy.biz',
     'https://www.sunbuggy.biz',
     'https://sunbuggy.com',
-    'https://www.sunbuggy.com'
+    'https://www.sunbuggy.com',
+    'https://book.sunbuggy.com'
   ];
 
   return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
