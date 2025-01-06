@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+          'Access-Control-Allow-Origin':
+            'https://sunbuggy.biz, https://www.sunbuggy.biz, https://sunbuggy.com, https://www.sunbuggy.com',
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
@@ -44,7 +45,8 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+          'Access-Control-Allow-Origin':
+            'https://sunbuggy.biz, https://www.sunbuggy.biz, https://sunbuggy.com, https://www.sunbuggy.com',
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
@@ -71,7 +73,8 @@ export async function GET(req: NextRequest) {
         },
         {
           headers: {
-            'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+            'Access-Control-Allow-Origin':
+              'https://sunbuggy.biz, https://www.sunbuggy.biz, https://sunbuggy.com, https://www.sunbuggy.com',
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type'
           }
@@ -97,7 +100,8 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+          'Access-Control-Allow-Origin':
+            'https://sunbuggy.biz, https://www.sunbuggy.biz, https://sunbuggy.com, https://www.sunbuggy.com',
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
@@ -111,7 +115,8 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+          'Access-Control-Allow-Origin':
+            'https://sunbuggy.biz, https://www.sunbuggy.biz, https://sunbuggy.com, https://www.sunbuggy.com',
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
@@ -125,7 +130,8 @@ export async function OPTIONS() {
     {},
     {
       headers: {
-        'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+        'Access-Control-Allow-Origin':
+          'https://sunbuggy.biz, https://www.sunbuggy.biz, https://sunbuggy.com, https://www.sunbuggy.com',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
       }
