@@ -1467,12 +1467,11 @@ export const getQrHistoryByUser = cache(
 );
 
 export const fetchAuditLog = cache(
-  async (supabase: SupabaseClient, userId: string) => {
+  async (supabase: SupabaseClient) => {
     const { data, error } = await supabase
-      .from('audit_log')
-      .select('id, created_at, action, user_id, table_, row')
-      .eq('user', userId)
-      .order('scanned_at', { ascending: false });
+      .from('audit_logs')
+      .select('id, created_at, action, user_id, table_name, row')
+      .order('created_at', { ascending: false });
     if (error) {
       console.error(error);
       return [];
@@ -1488,9 +1487,8 @@ export const updateAuditLog = cache(
     id: string
   ) => {
     const { data, error } = await supabase
-      .from('audit_log')
+      .from('audit_logs')
       .update(audit_log)
-      .eq('id', id);
     if (error) {
       console.error(error);
       return [];

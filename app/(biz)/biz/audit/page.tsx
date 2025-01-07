@@ -1,8 +1,10 @@
 'use client';
-import { createClient } from '@/utils/supabase/server';
+
 import { useEffect, useState } from 'react';
 import { DataTable } from './components/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
+import { fetchAuditLog } from '@/utils/supabase/queries';
+import { createClient } from '@/utils/supabase/client';
 
 type AuditLog = {
   id: string;
@@ -16,48 +18,39 @@ type AuditLog = {
 const columns: ColumnDef<AuditLog>[] = [
   {
     accessorKey: 'created_at',
-    header: 'Timestamp',
-    cell: ({ getValue }) => new Date(getValue() as string).toLocaleString()
+    header: 'Created At',
+    cell: ({ getValue }) => new Date(getValue() as string).toLocaleString(),
   },
   {
     accessorKey: 'action',
-    header: 'Action'
+    header: 'Action',
   },
   {
     accessorKey: 'user_id',
-    header: 'User ID'
+    header: 'User ID',
   },
   {
     accessorKey: 'table_name',
-    header: 'Table Name'
+    header: 'Table Name',
   },
   {
     accessorKey: 'row',
-    header: 'Row Data'
-  }
+    header: 'Row Data',
+  },
 ];
-  const supabase = createClient();
 
 export default function AuditLogPage() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const supabase = createClient();
 
   useEffect(() => {
-    const fetchAuditLogs = async () => {
-      const { data, error } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching audit logs:', error);
-        return;
-      }
-
-      setAuditLogs(data || []);
+    const loadAuditLogs = async () => {
+      const data = await fetchAuditLog(supabase);
+      setAuditLogs(data);
     };
 
-    fetchAuditLogs();
-  }, []);
+    loadAuditLogs();
+  }, [supabase]);
 
   return (
     <div>
