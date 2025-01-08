@@ -1,82 +1,62 @@
-'use client'
-import React, { useEffect, useState } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { Table } from '@tanstack/react-table';
+// import { DataTableViewOptions } from './table-view-options';
+import { Button } from '@/components/ui/button';
+import { Cross2Icon } from '@radix-ui/react-icons';
+import { Input } from '@/components/ui/input';
+// import { DataTableFacetedFilter } from './faceted-filter';
+import { Coffee, TimerOff, UserCheck } from 'lucide-react';
 
-interface Change {
-  event: 'INSERT' | 'UPDATE' | 'DELETE';
-  data: Record<string, any>;
+interface DataTableToolbarProps<TData> {
+  table: Table<TData>;
+  tableName: string;
 }
 
-const RealtimeTableListener: React.FC<{ tableName: string }> = ({ tableName }) => {
-  const [changes, setChanges] = useState<Change[]>([]);
-  const supabase = createClient();
+export const statuses = [
+  { value: 'clocked_in', label: 'clocked in', icon: UserCheck },
+  // { value: 'on_break', label: 'on break', icon: Coffee },
+  { value: 'clocked_out', label: 'clocked out', icon: TimerOff }
+];
 
-  useEffect(() => {
-    const logToAuditTable = async (
-      event: 'INSERT' | 'UPDATE' | 'DELETE',
-      tableName: string,
-      userId: string | null,
-      data: Record<string, any>
-    ) => {
-      const { error } = await supabase.from('audit_logs').insert([
-        {
-          action: `${event} on ${tableName}`,
-          user_id: userId,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
-      if (error) {
-        console.error('Failed to log to audit table:', error);
-      }
-    };
-
-    const fetchUserId = async () => {
-      const user = await supabase.auth.getUser();
-      return user?.data?.user?.id || null;
-    };
-
-    const channel = supabase
-      .channel('table-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: tableName },
-        async (payload: { eventType: any; new: any; old: any }) => {
-          const { eventType, new: newData, old: oldData } = payload;
-
-          console.log('Change received:', payload);
-
-          const userId = await fetchUserId();
-
-          // Log the event in the audit_logs table
-          await logToAuditTable(eventType, tableName, userId, eventType === 'DELETE' ? oldData : newData);
-
-          // Update local state
-          setChanges((prev) => [
-            ...prev,
-            { event: eventType, data: eventType === 'DELETE' ? oldData : newData },
-          ]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [tableName]);
+export function DataTableToolbar<TData>({
+  table,
+  tableName
+}: DataTableToolbarProps<TData>) {
+  const isFiltered = table.getState().columnFilters.length > 0;
 
   return (
-    <div>
-      <h3>Real-time Changes for Table: {tableName}</h3>
-      <ul>
-        {changes.map((change, index) => (
-          <li key={index}>
-            <strong>{change.event}:</strong> {JSON.stringify(change.data)}
-          </li>
-        ))}
-      </ul>
+    <div className="flex items-center justify-between">
+      <div className="flex flex-1 items-center space-x-2">
+        <Input
+          placeholder="Search users..."
+          value={
+            (table.getColumn('full_name')?.getFilterValue() as string) ?? ''
+          }
+          onChange={(event) =>
+            table.getColumn('full_name')?.setFilterValue(event.target.value)
+          }
+          className="h-8 w-[150px] lg:w-[250px]"
+        />
+        {/* {tableName === 'employees'
+          ? table.getColumn('time_entry_status') && (
+              // <DataTableFacetedFilter
+              //   column={table.getColumn('time_entry_status')}
+              //   title="time entry status"
+              //   options={statuses}
+              // />
+            )
+          : ''} */}
+        {isFiltered && (
+          <Button
+            variant="ghost"
+            onClick={() => table.resetColumnFilters()}
+            className="h-8 px-2 lg:px-3"
+          >
+            Reset
+            <Cross2Icon className="ml-2 h-4 w-4" />
+          </Button>
+        )}
+      </div>
+      {/* <DataTableViewOptions table={table} /> */}
     </div>
   );
-};
-
-export default RealtimeTableListener;
+}
