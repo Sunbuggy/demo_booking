@@ -1466,19 +1466,21 @@ export const getQrHistoryByUser = cache(
   }
 );
 
-export const fetchAuditLog = cache(
-  async (supabase: SupabaseClient) => {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select('id, created_at, action, user_id, table_name, row')
-      .order('created_at', { ascending: false });
-    if (error) {
-      console.error(error);
-      return [];
-    }
-    return data;
+export const fetchAuditLog = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('audit_logs')
+    .select('id, created_at, action, user_id, table_name, row')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching audit logs:', error);
+    return [];
   }
-);
+
+  console.log('Fetched Audit Logs:', data); // Log data for debugging
+  return data;
+});
+
 
 export const updateAuditLog = cache(
   async (

@@ -46,7 +46,8 @@ export default function AuditLogPage() {
   useEffect(() => {
     const loadAuditLogs = async () => {
       const data = await fetchAuditLog(supabase);
-      setAuditLogs(data);
+      console.log('Fetched Audit Logs:', data); // Debugging log
+      setAuditLogs(data); // Ensure the data is set to state
     };
 
     loadAuditLogs();
@@ -54,7 +55,8 @@ export default function AuditLogPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Audit Logs</h1>
+      <h1 className="text-2xl font-bold mb-4">Audit Logs</h1>
+      {/* Pass auditLogs state to DataTable */}
       <DataTable columns={columns} data={auditLogs} tableName="Audit Log" />
     </div>
   );
