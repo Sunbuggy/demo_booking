@@ -135,7 +135,7 @@ const SearchVehicles = ({
   }
 
   return (
-    <div className="w-full flex flex-col items-center">
+    <div className="w-full flex flex-col items-center gap-5 ">
       <Input
         type="text"
         value={query}

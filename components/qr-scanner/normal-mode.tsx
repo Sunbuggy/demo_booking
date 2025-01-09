@@ -18,6 +18,7 @@ const NormalMode = ({
   }[];
   scannedUrls: string[];
 }) => {
+  console.log('scanned Ids::::', scannedVehicleIds);
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = React.useState(true);
   const handleClick = (vehicleId: string) => {
@@ -26,13 +27,13 @@ const NormalMode = ({
   };
 
   return (
-    <Tabs defaultValue="new" className="w-[200px] mb-5">
+    <Tabs defaultValue="new" className="w-[300px] mb-5">
       <TabsList className="w-full ">
         <TabsTrigger value="new">New</TabsTrigger>
         <TabsTrigger value="legacy">Legacy</TabsTrigger>
       </TabsList>
       <TabsContent value="new">
-        <div className="w-[200px]">
+        <div className="w-[300px]">
           {scannedVehicleIds.length > 0 && (
             <ScrollArea className="h-[215px] ml-2  rounded-md border p-4">
               <h4 className="text-xl font mb-3">Scanned Vehicles:</h4>

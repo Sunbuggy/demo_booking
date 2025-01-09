@@ -68,6 +68,10 @@ export const BarcodeScanner = ({
     }
   });
 
+  React.useEffect(() => {
+    // console.log('ids:', scannedVehicleIds);
+  }, [scannedVehicleIds]);
+
   // useEffect to get the current device location
   React.useEffect(() => {
     // if User rejects the location access then disallow the scanning
@@ -544,7 +548,7 @@ export const BarcodeScanner = ({
             </select>
           </div>
         </div>
-        <div className="flex justify-center">
+        <div className="flex justify-center mb-5">
           <div className="w-[200px] h-[150px]">
             <video ref={ref} />
           </div>
@@ -590,19 +594,20 @@ export const BarcodeScanner = ({
             </Button>
           </div>
         )}
-        <div>
+        <div className="mt-1 w-full">
           {normalMode && (
             <>
-              <div className="mb-4">
-                <SearchVehicles user={user} setIsDialogOpen={setIsDialogOpen} />
-              </div>
-              {scannedUrls.length > 0 ||
-                (scannedVehicleIds.length > 0 && (
+              <div className="w-full">
+                {scannedVehicleIds.length > 0 && (
                   <NormalMode
                     scannedVehicleIds={scannedVehicleIds}
                     scannedUrls={scannedUrls}
                   />
-                ))}
+                )}
+              </div>
+              <div className="mb-4">
+                <SearchVehicles user={user} setIsDialogOpen={setIsDialogOpen} />
+              </div>
             </>
           )}
           {inventoryMode && scannedVehicleIds.length > 0 && (
