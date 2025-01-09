@@ -1476,8 +1476,6 @@ export const fetchAuditLog = cache(async (supabase: SupabaseClient) => {
     console.error('Error fetching audit logs:', error);
     return [];
   }
-
-  console.log('Fetched Audit Logs:', data); // Log data for debugging
   return data;
 });
 
@@ -1490,6 +1488,34 @@ export const updateAuditLog = cache(
   ) => {
     const { data, error } = await supabase
       .from('audit_logs')
+      .update(audit_log)
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+export const fetchAuditQueue = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('audit_table_queue')
+    .select('id, created_at, table')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching audit logs:', error);
+    return [];
+  }
+  return data;
+});
+export const updateAuditQueue = cache(
+  async (
+    supabase: SupabaseClient,
+    audit_log: Database['public']['Tables']['audit_logs']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase
+      .from('audit_table_queue')
       .update(audit_log)
     if (error) {
       console.error(error);
