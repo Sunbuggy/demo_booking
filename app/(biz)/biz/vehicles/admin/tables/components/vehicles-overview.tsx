@@ -328,16 +328,16 @@ export default function VehiclesOverview() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center z-50">
         <h1 className="text-2xl font-bold">Vehicles Overview</h1>
         <Select
           onValueChange={setSelectedLocation}
           defaultValue={selectedLocation}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] z-50">
             <SelectValue placeholder="Select location" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-50">
             <SelectItem value="all">All Locations</SelectItem>
             <SelectGroup>
               <SelectItem value="vegas" className="font-bold text-lg">
@@ -356,6 +356,15 @@ export default function VehiclesOverview() {
               <SelectItem value="pismo shop">Pismo Shop</SelectItem>
               <SelectItem value="pismo beach">Pismo Beach</SelectItem>
               <SelectItem value="pismo dunes">Pismo Dunes</SelectItem>
+            </SelectGroup>
+            <SelectGroup>
+              <SelectItem value="Silver Lake" className="font-bold text-lg">
+                Silver Lake
+              </SelectItem>
+              <SelectItem value="silver lake shop">Silver Lake Shop</SelectItem>
+              <SelectItem value="silver lake dunes">
+                Silver Lake Dunes
+              </SelectItem>
             </SelectGroup>
             <SelectItem value="no location">No Location</SelectItem>
           </SelectContent>
@@ -583,7 +592,9 @@ export default function VehiclesOverview() {
           </TableBody>
         </Table>
       </div>
-      <MapComponent vehicles={filteredVehicles} />
+      <div className="z-30">
+        <MapComponent vehicles={filteredVehicles} />
+      </div>
     </div>
   );
 }
