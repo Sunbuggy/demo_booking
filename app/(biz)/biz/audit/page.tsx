@@ -22,8 +22,8 @@ export default function AuditLogPage() {
 
   useEffect(() => {
     const loadAuditLogs = async () => {
-      const logs = await fetchAuditLog(supabase); // Assuming fetchAuditLog directly returns an array
-      setAuditLogs(logs || []); // Set the logs directly
+      const logs = await fetchAuditLog(supabase);
+      setAuditLogs(logs || []);
     };
 
     const loadUsers = async () => {
@@ -31,7 +31,7 @@ export default function AuditLogPage() {
       setUsers(
         data?.map(user => ({
           id: user.id,
-          full_name: user.full_name || '', // Ensure full_name is a string
+          full_name: user.full_name || '',
         })) || []
       );
     };
@@ -47,10 +47,6 @@ export default function AuditLogPage() {
       cell: ({ getValue }) => new Date(getValue() as string).toLocaleString(),
     },
     {
-      accessorKey: 'action',
-      header: 'Action',
-    },
-    {
       accessorKey: 'user_id',
       header: 'User ID',
       cell: ({ getValue }) => {
@@ -58,6 +54,11 @@ export default function AuditLogPage() {
         return user ? user.full_name : 'Unknown';
       },
     },
+    {
+      accessorKey: 'action',
+      header: 'Action',
+    },
+
     {
       accessorKey: 'table_name',
       header: 'Table Name',
