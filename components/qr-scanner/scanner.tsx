@@ -25,8 +25,14 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip';
 import useSound from 'use-sound';
-
-export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
+import SearchVehicles from './search-vehicles';
+export const BarcodeScanner = ({
+  user,
+  setIsDialogOpen
+}: {
+  user: User | null | undefined;
+  setIsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}) => {
   const supabase = createClient();
   const [normalMode, setNormalMode] = React.useState(true);
   const [inventoryMode, setInventoryMode] = React.useState(false);
@@ -194,7 +200,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
                     toast({
                       title: 'Vehicle Location Not Updated',
                       description: `Vehicle location not updated for ${true_veh_name} as it is less than 50 meters`,
-                      duration: 500,
+                      duration: 5000,
                       variant: 'default'
                     });
                     return;
@@ -204,7 +210,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
                         toast({
                           title: 'Vehicle Location Updated',
                           description: `Vehicle location updated for ${true_veh_name}`,
-                          duration: 500,
+                          duration: 5000,
                           variant: 'success'
                         });
                       })
@@ -507,7 +513,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
             </Tooltip>
           </TooltipProvider>
 
-          <h1 className="text-xl font-bold text-center">
+          <div className="text-xl font-bold text-center">
             Mode:
             {/* Create select to select mode */}
             <select
@@ -536,10 +542,10 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
               <option value="inventory">Inventory</option>
               <option value="tagging">Tagging</option>
             </select>
-          </h1>
+          </div>
         </div>
         <div className="flex justify-center">
-          <div className="w-[150px] h-[150px]">
+          <div className="w-[200px] h-[150px]">
             <video ref={ref} />
           </div>
         </div>
@@ -585,13 +591,20 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
           </div>
         )}
         <div>
-          {normalMode &&
-            (scannedUrls.length > 0 || scannedVehicleIds.length > 0) && (
-              <NormalMode
-                scannedVehicleIds={scannedVehicleIds}
-                scannedUrls={scannedUrls}
-              />
-            )}
+          {normalMode && (
+            <>
+              <div className="mb-4">
+                <SearchVehicles user={user} setIsDialogOpen={setIsDialogOpen} />
+              </div>
+              {scannedUrls.length > 0 ||
+                (scannedVehicleIds.length > 0 && (
+                  <NormalMode
+                    scannedVehicleIds={scannedVehicleIds}
+                    scannedUrls={scannedUrls}
+                  />
+                ))}
+            </>
+          )}
           {inventoryMode && scannedVehicleIds.length > 0 && (
             <InventoryModeScroll
               scannedVehicleIds={scannedVehicleIds}

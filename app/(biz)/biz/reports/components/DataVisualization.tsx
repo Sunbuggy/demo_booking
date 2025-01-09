@@ -119,22 +119,22 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
     let filtered = data.filter((item) => {
       // Parse the date from the 'created_at' field and ensure it's within the date range
       const createdAtDate = new Date(item.created_at);
-  
+
       const isInDateRange =
         createdAtDate >= new Date(dateRange.from) &&
         createdAtDate <= new Date(dateRange.to);
-  
+
       // Optionally check the 'date' field if it's relevant to the filter
       const entryDate = new Date(item.date);
       const isEntryDateInRange =
         entryDate >= new Date(dateRange.from) &&
         entryDate <= new Date(dateRange.to);
-  
+
       // Combine both checks, as needed
       if (!isInDateRange && !isEntryDateInRange) {
         return false;
       }
-  
+
       // Apply search term filtering
       const matchesSearch = Object.values(item).some((value) =>
         value
@@ -142,7 +142,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
           ?.toLowerCase()
           .includes(searchTerm?.toLowerCase() ?? '')
       );
-  
+
       // Apply column filter logic
       const matchesColumnFilters = columnFilters.every((filter) => {
         const itemValue = item[filter.column];
@@ -163,16 +163,16 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
             return true;
         }
       });
-  
+
       return matchesSearch && matchesColumnFilters;
     });
-  
+
     // Sort filtered data based on the selected column and order
     if (sortColumn) {
       filtered = filtered.sort((a, b) => {
         const aValue = a[sortColumn];
         const bValue = b[sortColumn];
-  
+
         if (aValue < bValue) {
           return sortOrder === 'asc' ? -1 : 1;
         }
@@ -182,10 +182,9 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
         return 0;
       });
     }
-  
+
     return filtered;
   }, [data, dateRange, searchTerm, columnFilters, sortColumn, sortOrder]);
-  
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
@@ -350,7 +349,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 md:w-full max-w-[375px] mx-auto">
       <Accordion type="single" collapsible>
         <AccordionItem value="item-1">
           <AccordionTrigger>View Table Description</AccordionTrigger>

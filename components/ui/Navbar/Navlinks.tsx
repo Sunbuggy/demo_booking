@@ -20,7 +20,6 @@ import React from 'react';
 import { Button } from '../button';
 import { User } from '@supabase/supabase-js';
 import { MenuIcon } from 'lucide-react';
-
 interface NavlinksProps {
   user: UserType | null;
   usr: User | null | undefined;
@@ -95,7 +94,9 @@ export default function Navlinks({
           </svg>
         </Button>
         <DialogFactory
-          children={<BarcodeScanner user={usr} />}
+          children={
+            <BarcodeScanner user={usr} setIsDialogOpen={setIsDialogOpen} />
+          }
           isDialogOpen={isDialogOpen}
           setIsDialogOpen={setIsDialogOpen}
           title="QR Scanner"
