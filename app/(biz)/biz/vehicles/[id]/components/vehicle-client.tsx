@@ -199,8 +199,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     if (city) {
       recordVehicleLocation(supabase, {
         vehicle_id: id,
-        latitude: location[city].lat,
-        longitude: location[city].lon,
+        latitude: location[city]?.lat,
+        longitude: location[city]?.lon,
         city: city,
         created_at: new Date().toISOString(),
         created_by: user.id

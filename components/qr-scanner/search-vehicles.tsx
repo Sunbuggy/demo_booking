@@ -8,11 +8,25 @@ import { useToast } from '../ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { Input } from '../ui/input';
 const SearchVehicles = ({
-  user,
-  setIsDialogOpen
+  setScannedVehicleIds,
+  scannedVehicleIds
 }: {
-  user: User | undefined | null;
-  setIsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setScannedVehicleIds: React.Dispatch<
+    React.SetStateAction<
+      {
+        name: string;
+        id: string;
+        status: string;
+        pet_name: string;
+      }[]
+    >
+  >;
+  scannedVehicleIds: {
+    name: string;
+    id: string;
+    status: string;
+    pet_name: string;
+  }[];
 }) => {
   const supabase = createClient();
   const [query, setQuery] = useState('');
@@ -31,10 +45,8 @@ const SearchVehicles = ({
     type: string;
     user_id: string;
     year: number;
+    vehicle_status: string;
   }
-  const { toast } = useToast();
-  const router = useRouter();
-
   const [results, setResults] = useState<Vehicle[]>([]);
   const [city, setCity] = useState('');
   const [currentLocation, setCurrentLocation] = React.useState<{
@@ -101,38 +113,38 @@ const SearchVehicles = ({
     fetchData();
   }, [query]);
 
-  function recordVehLoc(veh_id: string, veh_name: string) {
-    if (!user) return; // Check if user is logged in
+  // function recordVehLoc(veh_id: string, veh_name: string) {
+  //   if (!user) return; // Check if user is logged in
 
-    const vehicleLocation = {
-      city,
-      created_at: new Date().toISOString(),
-      latitude: currentLocation.latitude,
-      longitude: currentLocation.longitude,
-      vehicle_id: veh_id,
-      created_by: user?.id ?? 'unknown'
-    };
-    recordVehicleLocation(supabase, vehicleLocation)
-      .then(() => {
-        router.push(`/biz/vehicles/${veh_id}`);
-        setIsDialogOpen(false);
-        // toast({
-        //   title: 'Vehicle Location Updated',
-        //   description: `Vehicle location updated for ${veh_name}`,
-        //   duration: 5000,
-        //   variant: 'success'
-        // });
-      })
-      .catch((err) => {
-        console.error(err);
-        toast({
-          title: 'error',
-          description: 'Error Occured (1) Please Contact Devs',
-          duration: 5000,
-          variant: 'destructive'
-        });
-      });
-  }
+  //   const vehicleLocation = {
+  //     city,
+  //     created_at: new Date().toISOString(),
+  //     latitude: currentLocation.latitude,
+  //     longitude: currentLocation.longitude,
+  //     vehicle_id: veh_id,
+  //     created_by: user?.id ?? 'unknown'
+  //   };
+  //   recordVehicleLocation(supabase, vehicleLocation)
+  //     .then(() => {
+  //       router.push(`/biz/vehicles/${veh_id}`);
+  //       setIsDialogOpen(false);
+  //       // toast({
+  //       //   title: 'Vehicle Location Updated',
+  //       //   description: `Vehicle location updated for ${veh_name}`,
+  //       //   duration: 5000,
+  //       //   variant: 'success'
+  //       // });
+  //     })
+  //     .catch((err) => {
+  //       console.error(err);
+  //       toast({
+  //         title: 'error',
+  //         description: 'Error Occured (1) Please Contact Devs',
+  //         duration: 5000,
+  //         variant: 'destructive'
+  //       });
+  //     });
+  // }
 
   return (
     <div className="w-full flex flex-col items-center gap-5 ">
@@ -147,7 +159,17 @@ const SearchVehicles = ({
           <Button
             key={vehicle.id}
             className="large_button_circular relative"
-            onClick={() => recordVehLoc(vehicle.id, vehicle.name)}
+            onClick={() => {
+              setScannedVehicleIds([
+                ...scannedVehicleIds,
+                {
+                  name: vehicle.name,
+                  id: vehicle.id,
+                  status: vehicle.vehicle_status,
+                  pet_name: vehicle.pet_name ?? ''
+                }
+              ]);
+            }}
           >
             {vehicle.name}
           </Button>
