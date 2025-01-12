@@ -5,6 +5,19 @@ import {
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
+function getAllowedOrigin(request: NextRequest): string {
+  const origin = request.headers.get('origin') ?? '';
+  const allowedOrigins = [
+    'https://sunbuggy.biz',
+    'https://www.sunbuggy.biz',
+    'https://sunbuggy.com',
+    'https://www.sunbuggy.com',
+    'https://book.sunbuggy.com'
+  ];
+
+  return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+}
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const veh = decodeURIComponent(searchParams.get('veh') || '');
@@ -20,7 +33,7 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+          'Access-Control-Allow-Origin': getAllowedOrigin(req),
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
@@ -44,7 +57,7 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+          'Access-Control-Allow-Origin': getAllowedOrigin(req),
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
@@ -71,7 +84,7 @@ export async function GET(req: NextRequest) {
         },
         {
           headers: {
-            'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+            'Access-Control-Allow-Origin': getAllowedOrigin(req),
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type'
           }
@@ -97,7 +110,7 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+          'Access-Control-Allow-Origin': getAllowedOrigin(req),
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
@@ -111,7 +124,7 @@ export async function GET(req: NextRequest) {
       },
       {
         headers: {
-          'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+          'Access-Control-Allow-Origin': getAllowedOrigin(req),
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
@@ -120,12 +133,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(req: NextRequest) {
   return NextResponse.json(
     {},
     {
       headers: {
-        'Access-Control-Allow-Origin': 'https://sunbuggy.biz',
+        'Access-Control-Allow-Origin': getAllowedOrigin(req),
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
       }

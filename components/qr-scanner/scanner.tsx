@@ -25,8 +25,14 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip';
 import useSound from 'use-sound';
-
-export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
+import SearchVehicles from './search-vehicles';
+export const BarcodeScanner = ({
+  user,
+  setIsDialogOpen
+}: {
+  user: User | null | undefined;
+  setIsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}) => {
   const supabase = createClient();
   const [normalMode, setNormalMode] = React.useState(true);
   const [inventoryMode, setInventoryMode] = React.useState(false);
@@ -61,6 +67,10 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
       //   close the camera after scanning if in single mode
     }
   });
+
+  React.useEffect(() => {
+    // console.log('ids:', scannedVehicleIds);
+  }, [scannedVehicleIds]);
 
   // useEffect to get the current device location
   React.useEffect(() => {
@@ -194,7 +204,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
                     toast({
                       title: 'Vehicle Location Not Updated',
                       description: `Vehicle location not updated for ${true_veh_name} as it is less than 50 meters`,
-                      duration: 500,
+                      duration: 5000,
                       variant: 'default'
                     });
                     return;
@@ -204,7 +214,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
                         toast({
                           title: 'Vehicle Location Updated',
                           description: `Vehicle location updated for ${true_veh_name}`,
-                          duration: 500,
+                          duration: 5000,
                           variant: 'success'
                         });
                       })
@@ -507,7 +517,7 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
             </Tooltip>
           </TooltipProvider>
 
-          <h1 className="text-xl font-bold text-center">
+          <div className="text-xl font-bold text-center">
             Mode:
             {/* Create select to select mode */}
             <select
@@ -536,102 +546,114 @@ export const BarcodeScanner = ({ user }: { user: User | null | undefined }) => {
               <option value="inventory">Inventory</option>
               <option value="tagging">Tagging</option>
             </select>
-          </h1>
-        </div>
-        <div className="flex justify-center">
-          <div className="w-[150px] h-[150px]">
-            <video ref={ref} />
           </div>
         </div>
-        {locationSet ? (
-          <></>
-        ) : (
-          <div className="w-full flex flex-col items-center gap-3">
-            <h1 className="text-center text-red-500">
-              PLEASE ALLOW LOCATION ACCESS!!
-            </h1>
-            <Button
-              onClick={() => {
-                if (!navigator.geolocation) {
-                  alert('Geolocation is not supported by your browser');
-                  return;
-                }
-                navigator.geolocation.getCurrentPosition(
-                  (position) => {
-                    if (!position) return;
-                    if (
-                      position.coords.latitude === 0 &&
-                      position.coords.longitude === 0
-                    )
-                      return;
-                    setCurrentLocation({
-                      latitude: position.coords.latitude,
-                      longitude: position.coords.longitude
-                    });
-                    setLocationSet(true);
-                  },
-                  (error) => {
-                    console.error(error);
-                    alert(
-                      'Unable to retrieve your location, please allow location access'
-                    );
-                  },
-                  { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-                );
-              }}
-            >
-              <RotateCcw className="p-1" /> Retry Location Access
-            </Button>
+
+        <div className="flex flex-col items-center">
+          <div className=" mb-5">
+            <div className="w-[200px] h-[150px]">
+              <video ref={ref} />
+            </div>
           </div>
-        )}
-        <div>
-          {normalMode &&
-            (scannedUrls.length > 0 || scannedVehicleIds.length > 0) && (
-              <NormalMode
-                scannedVehicleIds={scannedVehicleIds}
-                scannedUrls={scannedUrls}
-              />
-            )}
-          {inventoryMode && scannedVehicleIds.length > 0 && (
-            <InventoryModeScroll
-              scannedVehicleIds={scannedVehicleIds}
-              handleCheckboxChange={handleCheckboxChange}
-              selectedForInventory={selectedForInventory}
-            />
+          {locationSet ? (
+            <div className="mt-1 w-full">
+              {normalMode && (
+                <div className="flex flex-col items-center">
+                  <div className="w-full flex flex-col items-center">
+                    {scannedVehicleIds.length > 0 && (
+                      <NormalMode
+                        scannedVehicleIds={scannedVehicleIds}
+                        scannedUrls={scannedUrls}
+                      />
+                    )}
+                  </div>
+                  <div className="mb-4">
+                    <SearchVehicles
+                      scannedVehicleIds={scannedVehicleIds}
+                      setScannedVehicleIds={setScannedVehicleIds}
+                    />
+                  </div>
+                </div>
+              )}
+              {inventoryMode && scannedVehicleIds.length > 0 && (
+                <InventoryModeScroll
+                  scannedVehicleIds={scannedVehicleIds}
+                  handleCheckboxChange={handleCheckboxChange}
+                  selectedForInventory={selectedForInventory}
+                />
+              )}
+              {inventoryMode && (
+                <div>
+                  <Button onClick={() => setIsManualInventoryDialogOpen(true)}>
+                    +Manual Inventory
+                  </Button>
+                  <DialogFactory
+                    disableCloseButton={true}
+                    children={<ManualInventory user_id={user?.id || ''} />}
+                    isDialogOpen={isManualInventoryDialogOpen}
+                    setIsDialogOpen={setIsManualInventoryDialogOpen}
+                    title="Add Inventory Manually"
+                  />
+                </div>
+              )}
+
+              {inventoryMode && scannedVehicleIds.length > 0 && (
+                <InventoryForm
+                  setBay={setBay}
+                  setLevel={setLevel}
+                  bay={bay}
+                  level={level}
+                  handleSubmit={handleSubmit}
+                />
+              )}
+
+              {taggingMode && scannedVehicleIds.length === 1 && user && (
+                <div className="m-4">
+                  <TaggingMode id={scannedVehicleIds[0].id} user={user} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="w-full flex flex-col items-center gap-3">
+              <h1 className="text-center text-red-500">
+                PLEASE ALLOW LOCATION ACCESS!!
+              </h1>
+              <Button
+                onClick={() => {
+                  if (!navigator.geolocation) {
+                    alert('Geolocation is not supported by your browser');
+                    return;
+                  }
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      if (!position) return;
+                      if (
+                        position.coords.latitude === 0 &&
+                        position.coords.longitude === 0
+                      )
+                        return;
+                      setCurrentLocation({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                      });
+                      setLocationSet(true);
+                    },
+                    (error) => {
+                      console.error(error);
+                      alert(
+                        'Unable to retrieve your location, please allow location access'
+                      );
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                  );
+                }}
+              >
+                <RotateCcw className="p-1" /> Retry Location Access
+              </Button>
+            </div>
           )}
         </div>
       </div>
-
-      {inventoryMode && (
-        <div>
-          <Button onClick={() => setIsManualInventoryDialogOpen(true)}>
-            +Manual Inventory
-          </Button>
-          <DialogFactory
-            disableCloseButton={true}
-            children={<ManualInventory user_id={user?.id || ''} />}
-            isDialogOpen={isManualInventoryDialogOpen}
-            setIsDialogOpen={setIsManualInventoryDialogOpen}
-            title="Add Inventory Manually"
-          />
-        </div>
-      )}
-
-      {inventoryMode && scannedVehicleIds.length > 0 && (
-        <InventoryForm
-          setBay={setBay}
-          setLevel={setLevel}
-          bay={bay}
-          level={level}
-          handleSubmit={handleSubmit}
-        />
-      )}
-
-      {taggingMode && scannedVehicleIds.length === 1 && user && (
-        <div className="m-4">
-          <TaggingMode id={scannedVehicleIds[0].id} user={user} />
-        </div>
-      )}
     </div>
   );
 };

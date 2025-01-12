@@ -1,4 +1,3 @@
-// pages/api/send-sms.ts or app/api/send-sms/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -31,7 +30,18 @@ export async function POST(req: NextRequest) {
       options
     );
     const data = await response.json();
-    return NextResponse.json(data);
+
+    if (response.ok) {
+      return NextResponse.json({
+        message: 'Text messages sent successfully',
+        data
+      });
+    } else {
+      return NextResponse.json(
+        { message: 'Failed to send text messages', data },
+        { status: response.status }
+      );
+    }
   } catch (error) {
     return NextResponse.json(
       { message: 'Error sending SMS', error: (error as Error).message },

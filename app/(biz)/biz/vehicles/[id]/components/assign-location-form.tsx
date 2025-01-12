@@ -44,6 +44,27 @@ const AssignLocationHistory = ({
       alias: 'Nellis',
       lat: 36.288372,
       lon: -114.970088
+    },
+    {
+      id: '3',
+      name: 'California',
+      alias: 'Pismo Beach',
+      lat: 35.090735,
+      lon: -120.629598
+    },
+    {
+      id: '4',
+      name: 'Michigan',
+      alias: 'Silverlake Shop',
+      lat: 43.675239,
+      lon: -86.472552
+    },
+    {
+      id: '5',
+      name: 'Michigan',
+      alias: 'Silverlake Dunes',
+      lat: 43.686365,
+      lon: -86.508345
     }
   ];
 

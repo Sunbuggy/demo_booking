@@ -35,6 +35,18 @@ import LocationScheduling from './location-scheduling';
 import { VehicleReg } from '../../admin/tables/components/row-action-reg';
 import RegistrationPDFList from './pdf-view';
 import QRCodeGenerator from '../../../qr/components/QRCodeGenerator';
+import {
+  fetchVehicleLocations,
+  recordVehicleLocation
+} from '@/utils/supabase/queries';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 interface VehicleClientComponentProps {
   id: string;
@@ -65,6 +77,15 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const vehicleInfo = initialVehicleInfo;
   const supabase = createClient();
   const router = useRouter();
+  const { toast } = useToast();
+  const location: {
+    [key in 'vegas' | 'pismo' | 'silverlake']: { lat: number; lon: number };
+  } = {
+    vegas: { lat: 36.278439, lon: -115.020068 },
+    pismo: { lat: 35.105821, lon: -120.63038 },
+    silverlake: { lat: 43.675239, lon: -86.472552 }
+  };
+  const [city, setCity] = React.useState<keyof typeof location | ''>('');
   const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
     React.useState(false);
   const [isUpdateUploadDialogOpen, setIsUpdateUploadDialogOpen] =
@@ -78,12 +99,31 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const [isLocationManagementDialogOpen, setIsLocationManagementDialogOpen] =
     React.useState(false);
   const [
+    isLocationCurrentManagementDialogOpen,
+    setIsLocationCurrentManagementDialogOpen
+  ] = React.useState(false);
+  const [
     isInventoryLocationManagementDialogOpen,
     setIsInventoryLocationManagementDialogOpen
   ] = React.useState(false);
   const [isPretripFormOpen, setIsPretripFormOpen] = React.useState(false);
   const [islocationSchedulingDialogOpen, setIsLocationSchedulingDialogOpen] =
     React.useState(false);
+
+  React.useEffect(() => {
+    async function getLocation() {
+      try {
+        const data = await fetchVehicleLocations(supabase, vehicleInfo.id);
+        if (data && data.length > 0) {
+          setCity(data[0].city);
+        }
+      } catch (error) {
+        console.error('Failed to fetch vehicle location:', error);
+      }
+    }
+
+    getLocation();
+  }, [vehicleInfo.id, supabase]); // Add dependencies
 
   React.useEffect(() => {
     const channel = supabase
@@ -147,6 +187,44 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       supabase.removeChannel(channel);
     };
   }, [supabase, router]);
+
+  React.useEffect(() => {
+    const location: {
+      [key in 'vegas' | 'pismo' | 'silverlake']: { lat: number; lon: number };
+    } = {
+      vegas: { lat: 36.278439, lon: -115.020068 },
+      pismo: { lat: 35.105821, lon: -120.63038 },
+      silverlake: { lat: 43.675239, lon: -86.472552 }
+    };
+    if (city) {
+      recordVehicleLocation(supabase, {
+        vehicle_id: id,
+        latitude: location[city]?.lat,
+        longitude: location[city]?.lon,
+        city: city,
+        created_at: new Date().toISOString(),
+        created_by: user.id
+      })
+        .then((data) => {
+          toast({
+            title: 'Success',
+            description: 'Vehicle location recorded successfully',
+            variant: 'success',
+            duration: 3000
+          });
+          setCity('');
+          setIsLocationCurrentManagementDialogOpen(false);
+        })
+        .catch((error) => {
+          toast({
+            title: 'Error',
+            description: 'Error recording vehicle location',
+            variant: 'destructive',
+            duration: 3000
+          });
+        });
+    }
+  }, [city]);
 
   const updateProfilePicTitle = (
     <div>
@@ -353,6 +431,43 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               <AccordionItem value="location-management">
                 <AccordionTrigger>Location Management</AccordionTrigger>
                 <AccordionContent>
+                  <div className="flex flex-col gap-5 mb-5">
+                    <Button
+                      onClick={() =>
+                        setIsLocationCurrentManagementDialogOpen(true)
+                      }
+                    >
+                      Set Current Location
+                    </Button>
+                    <DialogFactory
+                      title={'Location Setting'}
+                      setIsDialogOpen={setIsLocationCurrentManagementDialogOpen}
+                      isDialogOpen={isLocationCurrentManagementDialogOpen}
+                      description="Manage the current and future location for the vehicle."
+                      children={
+                        <div className="flex flex-col gap-5 w-full">
+                          <Select
+                            name="current-location"
+                            onValueChange={(e) =>
+                              setCity(e as keyof typeof location)
+                            }
+                            defaultValue={city}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select A Current Location" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="vegas">Vegas</SelectItem>
+                              <SelectItem value="pismo">Pismo</SelectItem>
+                              <SelectItem value="silverlake">
+                                Silver Lake
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      }
+                    />
+                  </div>
                   <div className="flex flex-col gap-5">
                     <Button
                       onClick={() => setIsLocationManagementDialogOpen(true)}

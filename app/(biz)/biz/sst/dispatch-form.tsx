@@ -21,71 +21,77 @@ const getLocationType = (lat: number, lon: number) => {
 
 const formatPhone = (phone: string) => {
   const formatted = phone.replace(/\D/g, '');
-  return formatted.length === 10 ? `+1${formatted}` : formatted;
+  return formatted.length === 10 ? `+1${formatted}` : `+${formatted}`;
 };
 
 // Custom hook for SMS sending
-const useSendSMS = (
-  user: User,
-  textLocation: string,
-  lat: number,
-  lon: number
-) => {
+const useSendSMS = (user: User, textLocation: string) => {
   const { toast } = useToast();
 
   const sendSMS = async () => {
     const supabase = createClient();
-    const { data: userIds } = await supabase
-      .from('dispatch_groups')
-      .select('user')
-      .in('location', [textLocation]);
+    try {
+      const { data: userIds, error: userIdsError } = await supabase
+        .from('dispatch_groups')
+        .select('user')
+        .in('location', [textLocation]);
 
-    if (!userIds) return;
+      if (userIdsError)
+        throw new Error(`Failed to fetch user IDs: ${userIdsError.message}`);
+      if (!userIds) throw new Error('No user IDs found');
 
-    const { data: users } = await supabase
-      .from('users')
-      .select('phone')
-      .in(
-        'id',
-        userIds.map((d) => d.user)
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('phone')
+        .in(
+          'id',
+          userIds.map((d) => d.user)
+        );
+
+      if (usersError)
+        throw new Error(`Failed to fetch users: ${usersError.message}`);
+      if (!users) throw new Error('No users found');
+
+      const formattedPhones = Array.from(
+        new Set(users.map((u) => formatPhone(u.phone || '')))
       );
 
-    if (!users) return;
+      const options = {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          infer_country_code: false,
+          user_id: user.id,
+          text: `SST Recieved click link to claim, ${process.env.NEXT_PUBLIC_SITE_URL}/biz/sst/cases`,
+          to_numbers: formattedPhones
+        })
+      };
 
-    const formattedPhones = Array.from(
-      new Set(users.map((u) => formatPhone(u.phone || '')))
-    );
-
-    const options = {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        infer_country_code: false,
-        user_id: user.id,
-        text: `SST Recieved click link to claim, ${process.env.NEXT_PUBLIC_SITE_URL}/biz/sst/cases`,
-        to_numbers: formattedPhones
-      })
-    };
-
-    try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SITE_URL}/api/send-sms`,
         options
       );
-      if (!res.ok) throw new Error('Failed to send SMS');
-      toast({
-        title: 'SMS Sent',
-        description: 'SMS sent successfully',
-        variant: 'success'
-      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(
+          `Failed to send SMS: ${res.status} ${res.statusText} - ${errorText}`
+        );
+      } else {
+        toast({
+          title: 'SMS Sent',
+          description: 'SMS sent successfully',
+          variant: 'success'
+        });
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error in sendSMS:', err);
       toast({
         title: 'Error',
-        description: 'Failed to send SMS',
+        description: `Failed to send SMS: ${(err as Error).message}`,
         variant: 'destructive'
       });
     }
@@ -119,7 +125,7 @@ export default function DispatchForm({
   ).length;
   const { latitude: lat, longitude: lon } = location;
 
-  const sendSMS = lat && lon ? useSendSMS(user, textLocation, lat, lon) : null;
+  const send_SMS = lat && lon ? useSendSMS(user, textLocation) : null;
 
   React.useEffect(() => {
     if (dispatchId) {
@@ -185,8 +191,10 @@ export default function DispatchForm({
     try {
       const supabase = createClient();
       await updateVehicleLocation(supabase, data, location.id);
-      if (sendSMS) {
-        await sendSMS();
+      if (send_SMS) {
+        await send_SMS();
+      } else {
+        console.log('sms not sent');
       }
       toast({
         title: 'Dispatched',
