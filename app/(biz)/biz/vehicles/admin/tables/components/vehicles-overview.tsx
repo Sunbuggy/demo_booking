@@ -380,6 +380,9 @@ export default function VehiclesOverview() {
               <span className="text-green-500">Operational</span>/
               <span className="text-red-500">Broken</span>
             </TableHead>
+            <TableHead>
+              <span className="text-green-500">Percentage</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -437,6 +440,27 @@ export default function VehiclesOverview() {
                       {broken}
                     </span>
                   </TableCell>
+                  <TableCell>
+                    <span
+                      className={`${
+                        operational / (operational + broken) > 0.7
+                          ? 'text-green-500'
+                          : 'text-red-500'
+                      } font-bold cursor-pointer underline hover:text-blue-500`}
+                      onClick={
+                        operational / (operational + broken) > 0.7
+                          ? () =>
+                              handleOverviewDialogOpen(
+                                operationalIds,
+                                'operational'
+                              )
+                          : () => handleOverviewDialogOpen(brokenIds, 'broken')
+                      }
+                    >
+                      {Math.round((operational / (operational + broken)) * 100)}
+                      % running
+                    </span>
+                  </TableCell>
                 </TableRow>
               );
             }
@@ -484,6 +508,9 @@ export default function VehiclesOverview() {
                 <span className="text-green-500">Operational</span>/
                 <span className="text-red-500">Broken</span>
               </TableHead>
+              <TableHead>
+                <span className="text-green-500">Percentage</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -525,6 +552,30 @@ export default function VehiclesOverview() {
                         {broken}
                       </span>
                     </TableCell>
+                    <TableCell>
+                      <span
+                        className={`${
+                          operational / (operational + broken) > 0.7
+                            ? 'text-green-500'
+                            : 'text-red-500'
+                        } font-bold cursor-pointer underline hover:text-blue-500`}
+                        onClick={
+                          operational / (operational + broken) > 0.7
+                            ? () =>
+                                handleOverviewDialogOpen(
+                                  operationalIds,
+                                  'operational'
+                                )
+                            : () =>
+                                handleOverviewDialogOpen(brokenIds, 'broken')
+                        }
+                      >
+                        {Math.round(
+                          (operational / (operational + broken)) * 100
+                        )}
+                        % running
+                      </span>
+                    </TableCell>
                   </TableRow>
                 );
               }
@@ -543,6 +594,9 @@ export default function VehiclesOverview() {
               <TableHead>
                 <span className="text-green-500">Operational</span>/
                 <span className="text-red-500">Broken</span>
+              </TableHead>
+              <TableHead>
+                <span className="text-green-500">Percentage</span>
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -583,6 +637,30 @@ export default function VehiclesOverview() {
                         }
                       >
                         {broken}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`${
+                          operational / (operational + broken) > 0.7
+                            ? 'text-green-500'
+                            : 'text-red-500'
+                        } font-bold cursor-pointer underline hover:text-blue-500`}
+                        onClick={
+                          operational / (operational + broken) > 0.7
+                            ? () =>
+                                handleOverviewDialogOpen(
+                                  operationalIds,
+                                  'operational'
+                                )
+                            : () =>
+                                handleOverviewDialogOpen(brokenIds, 'broken')
+                        }
+                      >
+                        {Math.round(
+                          (operational / (operational + broken)) * 100
+                        )}
+                        % running
                       </span>
                     </TableCell>
                   </TableRow>
