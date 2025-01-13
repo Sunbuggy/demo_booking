@@ -46,6 +46,7 @@ const SchedulePopup = ({
 
     await insertIntoVehicleFutureLocation(supabase, { ...location })
       .then((data) => {
+        console.log(data);
         toast({
           title: 'Success',
           description: 'Vehicle Future Location inserted successfully',
