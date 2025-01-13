@@ -1508,18 +1508,20 @@ export const fetchAuditQueue = cache(async (supabase: SupabaseClient) => {
   }
   return data;
 });
+
 export const updateAuditQueue = cache(
   async (
     supabase: SupabaseClient,
-    audit_log: Database['public']['Tables']['audit_logs']['Update'],
-    id: string
+    audit_queue: Database['public']['Tables']['audit_table_queue']['Insert']
   ) => {
     const { data, error } = await supabase
       .from('audit_table_queue')
-      .update(audit_log)
+      .insert(audit_queue)
+      .select();
+
     if (error) {
-      console.error(error);
-      return [];
+      console.error('Error inserting audit queue:', error);
+      return null; 
     }
     return data;
   }
