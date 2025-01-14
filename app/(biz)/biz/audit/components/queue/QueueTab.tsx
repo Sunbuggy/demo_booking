@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { DataTable } from '../DataTable';
 import { ColumnDef } from '@tanstack/react-table';
-import { fetchAuditQueue, updateAuditQueue } from '@/utils/supabase/queries';
+import { fetchAuditQueue, deleteAuditQueue, updateAuditQueue } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
+import { Trash2Icon } from 'lucide-react';
 
 type AuditQueue = {
   id: string;
@@ -39,12 +40,24 @@ export default function QueueTab() {
 
     const result = await updateAuditQueue(supabase, newQueueItem);
     if (result) {
-      // Add the new item to the state
       setAuditQueues((prev) => [...prev, result[0]]);
-      setNewTableName(''); // Clear the input field
+      setNewTableName('');
       alert('New item added successfully.');
     } else {
       alert('Failed to add the new item.');
+    }
+  };
+
+  const handleDeleteQueue = async (id: string) => {
+    const confirmDelete = window.confirm('Are you sure you want to delete this item?');
+    if (!confirmDelete) return;
+
+    const result = await deleteAuditQueue(supabase, id);
+    if (result) {
+      setAuditQueues((prev) => prev.filter((queue) => queue.id !== id));
+      alert('Item deleted successfully.');
+    } else {
+      alert('Failed to delete the item.');
     }
   };
 
@@ -57,6 +70,15 @@ export default function QueueTab() {
     {
       accessorKey: 'table',
       header: 'Table Name',
+      cell: ({ row }) => (
+        <div className="flex items-center justify-between">
+          <span>{row.original.table}</span>
+          <Trash2Icon
+            className="cursor-pointer text-red-500"
+            onClick={() => handleDeleteQueue(row.original.id)}
+          />
+        </div>
+      ),
     },
   ];
 

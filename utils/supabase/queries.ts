@@ -1526,3 +1526,13 @@ export const updateAuditQueue = cache(
     return data;
   }
 );
+
+export const deleteAuditQueue = async (supabase: SupabaseClient, id: string) => {
+  const { error } = await supabase.from('audit_table_queue').delete().eq('id', id);
+  if (error) {
+    console.error('Error deleting audit queue:', error);
+    return null; // Return null on failure
+  }
+  return true; 
+};
+             
