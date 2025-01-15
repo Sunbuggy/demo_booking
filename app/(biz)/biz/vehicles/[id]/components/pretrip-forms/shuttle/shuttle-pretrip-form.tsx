@@ -401,7 +401,11 @@ const ShuttlePretripForm = ({
       };
       // gather all the results and if there is any 'no' answer then grab all the 'no' answers and console.log them
       const noAnswers = Object.keys(data).filter(
-        (key) => data[key as keyof typeof data] === false
+        (key) =>
+          key !== 'is_check_engine_on' &&
+          key !== 'visible_leaks' &&
+          key !== 'shuttles_plugged_in_winter' &&
+          data[key as keyof typeof data] === false
       );
       if (noAnswers.length > 0) {
         console.log('No answers:', noAnswers);
