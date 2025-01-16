@@ -544,7 +544,6 @@ const BuggyPretripForm = ({
         created_at: new Date().toISOString(),
         created_by: user_id
       };
-      // gather all the results and if there is any 'no' answer then grab all the 'no' answers and console.log them
       const noAnswers = Object.keys(data).filter(
         (key) =>
           key !== 'is_check_engine_on' &&
