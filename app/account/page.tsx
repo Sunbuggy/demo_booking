@@ -9,8 +9,7 @@ import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 import ScannerPage from '@/components/ui/QrScanner/QrFunction';
 import BackgroundPickerButton from './components/background-picker-button';
 import UserPage from '../(biz)/biz/users/[id]/page';
-import PageSelector from '@/components/ui/Homepage/PageSelector';
-import HomepageSelector from './components/homepage-selector';
+
 export type TimeEntry = {
   id: any;
   date: any;
@@ -67,12 +66,6 @@ export default async function Account() {
               clockInTimeStamp={clockInTimeStamp}
             />
           )}
-{/* <PageSelector
-          selectedPage={selectedPage}
-          onChange={(page) => setSelectedPage(page)}
-        /> */}
-  <HomepageSelector/>        
-  
           </div>
         </div>
 
