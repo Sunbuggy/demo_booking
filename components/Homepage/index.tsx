@@ -18,7 +18,7 @@ const HomepageSelector = async () => {
     return <BizPage params={{ date: currentDate }} searchParams={{ dcos: false, torchc: false, admc: false }} />;
   }
 
-  if (userLevel >= 400) {
+  if (userLevel >= 300) {
     return <BizPage params={{ date: currentDate }} searchParams={{ dcos: false, torchc: false, admc: false }} />;
   }
 
