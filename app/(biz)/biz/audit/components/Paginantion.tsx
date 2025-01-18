@@ -11,7 +11,7 @@ export function DataTablePagination({ table }: DataTablePaginationProps) {
       <button
         onClick={() => table.previousPage()}
         disabled={!table.getCanPreviousPage()}
-        className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
+        className="px-4 py-2 rounded "
       >
         Previous
       </button>
@@ -22,7 +22,7 @@ export function DataTablePagination({ table }: DataTablePaginationProps) {
       <button
         onClick={() => table.nextPage()}
         disabled={!table.getCanNextPage()}
-        className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
+        className="px-4 py-2 rounded "
       >
         Next
       </button>

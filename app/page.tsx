@@ -1,10 +1,15 @@
-import ChooseAdventure from './(com)/choose-adventure/page';
+import HomepageSelector from '@/components/Homepage';
 import { default as InstallSunbuggy } from '@/components/add-to-screen/page';
-export default async function MainPage() {
+
+export const dynamic = 'force-dynamic';
+
+const Home = async () => {
   return (
-    <div>
-      <ChooseAdventure />
-      <InstallSunbuggy />
-    </div>
+    <main>
+      <HomepageSelector />
+      <InstallSunbuggy/>
+    </main>
   );
-}
+};
+
+export default Home;
