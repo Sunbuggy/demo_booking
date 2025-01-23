@@ -7,6 +7,5 @@ export type InventoryLocation =
 export type InventoryLocationInsert =
   Database['public']['Tables']['vehicle_inventory_location']['Insert'];
 export type VehiclesType = Database['public']['Tables']['vehicles']['Row'];
-
 export type VehicleFutureLocationType =
   Database['public']['Tables']['vehicle_future_location']['Row'];
