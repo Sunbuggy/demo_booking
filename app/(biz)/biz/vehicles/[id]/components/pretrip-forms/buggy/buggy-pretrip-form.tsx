@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { FactoryForm, FieldConfig } from '@/components/factory-form';
-import React from 'react';
+import React, { cache } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
   changeVehicleStatusToMaintenance,
@@ -11,6 +11,7 @@ import {
 } from '@/utils/supabase/queries';
 import { Database } from '@/types_db';
 import { useToast } from '@/components/ui/use-toast';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export const formSchema = z.object({
   axle_sleeves_intact: z.boolean(),
@@ -534,6 +535,22 @@ const BuggyPretripForm = ({
     z.infer<typeof formSchema> | undefined
   >(undefined);
   const { toast } = useToast();
+  const [prevData, setPrevData] = React.useState<
+    Database['public']['Tables']['vehicle_pretrip_buggy']['Row'][]
+  >([]);
+
+  React.useEffect(() => {
+    cache(async (supabase: SupabaseClient, veh_table: string) => {
+      const { data, error } = await supabase.from(veh_table).select('*');
+      if (error) {
+        console.error(error);
+        return [];
+      }
+      setPrevData(
+        data as Database['public']['Tables']['vehicle_pretrip_buggy']['Row'][]
+      );
+    });
+  }, []);
 
   React.useEffect(() => {
     if (formData !== undefined) {
@@ -551,9 +568,20 @@ const BuggyPretripForm = ({
           key !== 'shuttles_plugged_in_winter' &&
           data[key as keyof typeof data] === false
       );
-      if (noAnswers.length > 0) {
-        console.log('No answers:', noAnswers);
-        noAnswers.forEach((answer) => {
+
+      // Filter out answers that already exist
+      const newFailedAnswers = noAnswers.filter((answer) => {
+        if (prevData.length === 0) {
+          return noAnswers;
+        }
+        return !prevData.some(
+          (prev) => prev[answer as keyof typeof prev] === false
+        );
+      });
+
+      if (newFailedAnswers.length > 0) {
+        console.log('New failed answers:', newFailedAnswers);
+        newFailedAnswers.forEach((answer) => {
           const vehicleTag: Database['public']['Tables']['vehicle_tag']['Insert'] =
             {
               vehicle_id: vehicle_id,
@@ -606,7 +634,7 @@ const BuggyPretripForm = ({
           console.error('Error inserting into pretrip form', error);
         });
     }
-  }, [formData]);
+  }, [formData, prevData]);
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     setFormData(data);
