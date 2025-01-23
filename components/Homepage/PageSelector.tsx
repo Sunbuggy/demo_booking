@@ -18,7 +18,7 @@ const PageSelector = ({ availablePages, currentPage }: { availablePages: string[
 
     const { error } = await supabase
       .from('users')
-      .update({ homepage: newHomepage }) 
+      .update({ homepage: newHomepage })  
       .eq('id', user.id);
 
     if (error) {
@@ -26,7 +26,6 @@ const PageSelector = ({ availablePages, currentPage }: { availablePages: string[
       return;
     }
 
-    console.log('homepage updated to: ', newHomepage);
     router.refresh(); // Refresh the page to reflect the change
   };
 

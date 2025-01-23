@@ -9,7 +9,7 @@ const HomepageSettings = async () => {
   const userLevel = userDetails?.[0]?.user_level ?? 0;
 
   if (userLevel < 300) {
-    return <div>Access Denied</div>;
+    return <div>Choose Your Adventure</div>
   }
 
   // Define available pages

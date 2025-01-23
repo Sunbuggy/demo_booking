@@ -6,7 +6,6 @@ import { getUserDetails } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/server';
 import dayjs from 'dayjs';
 
-// This component will be an SSR-enabled page
 export const dynamic = 'force-dynamic'; // Ensures the page fetches fresh data on every request
 
 const HomepageSelector = async () => {
@@ -18,7 +17,7 @@ const HomepageSelector = async () => {
   const userHomepage = userDetails?.[0]?.homepage ?? 'ChooseAdventure';
   const currentDate = dayjs().format('YYYY-MM-DD');
 
-  // Render the appropriate homepage based on `homepage` column and `user_level`
+if (userLevel >= 300){
   if (userHomepage === 'VehiclesManagementPage') {
     return <VehiclesManagementPage />;
   }
@@ -31,9 +30,11 @@ const HomepageSelector = async () => {
       />
     );
   }
+} 
 
-  // Default to ChooseAdventure if homepage is null or "ChooseAdventure"
   return <ChooseAdventure />;
-};
+
+}
+
 
 export default HomepageSelector;
