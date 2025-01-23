@@ -6,26 +6,33 @@ import { getUserDetails } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/server';
 import dayjs from 'dayjs';
 
+// This component will be an SSR-enabled page
+export const dynamic = 'force-dynamic'; // Ensures the page fetches fresh data on every request
+
 const HomepageSelector = async () => {
   const supabase = createClient();
   const userDetails = await getUserDetails(supabase);
-  const userLevel = userDetails?.[0]?.user_level ?? 0;
 
+  // Extract necessary user details
+  const userLevel = userDetails?.[0]?.user_level ?? 0;
+  const userHomepage = userDetails?.[0]?.homepage ?? 'ChooseAdventure';
   const currentDate = dayjs().format('YYYY-MM-DD');
 
-  if (userLevel > 650) {
-    // Default page for admin level users
-    return <BizPage params={{ date: currentDate }} searchParams={{ dcos: false, torchc: false, admc: false }} />;
-  }
-
-  if (userLevel >= 300) {
-    return <BizPage params={{ date: currentDate }} searchParams={{ dcos: false, torchc: false, admc: false }} />;
-  }
-
-  if (userLevel > 200) {
+  // Render the appropriate homepage based on `homepage` column and `user_level`
+  if (userHomepage === 'VehiclesManagementPage') {
     return <VehiclesManagementPage />;
   }
 
+  if (userHomepage === 'BizPage') {
+    return (
+      <BizPage
+        params={{ date: currentDate }}
+        searchParams={{ dcos: false, torchc: false, admc: false }}
+      />
+    );
+  }
+
+  // Default to ChooseAdventure if homepage is null or "ChooseAdventure"
   return <ChooseAdventure />;
 };
 

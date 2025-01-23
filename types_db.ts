@@ -972,6 +972,7 @@ export type Database = {
           bg_size: string | null
           email: string | null
           full_name: string | null
+          homepage: string | null
           id: string
           phone: string | null
           time_entry_status:
@@ -987,6 +988,7 @@ export type Database = {
           bg_size?: string | null
           email?: string | null
           full_name?: string | null
+          homepage?: string | null
           id: string
           phone?: string | null
           time_entry_status?:
@@ -1002,6 +1004,7 @@ export type Database = {
           bg_size?: string | null
           email?: string | null
           full_name?: string | null
+          homepage?: string | null
           id?: string
           phone?: string | null
           time_entry_status?:

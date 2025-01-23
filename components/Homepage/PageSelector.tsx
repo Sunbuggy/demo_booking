@@ -1,52 +1,52 @@
 'use client';
 
 import React, { useState } from 'react';
-import ChooseAdventure from '@/app/(com)/choose-adventure/page';
-import BizPage from '@/app/(biz)/biz/[date]/page';
-import VehiclesManagementPage from '@/app/(biz)/biz/vehicles/admin/page';
-import dayjs from 'dayjs';
+import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
 
-interface AdminDashboardSelectorProps {
-  defaultPage?: 'BizPage' | 'VehiclesManagementPage' | 'ChooseAdventure';
-}
+const PageSelector = ({ availablePages, currentPage }: { availablePages: string[]; currentPage: string }) => {
+  const [selectedPage, setSelectedPage] = useState(currentPage);
+  const supabase = createClient();
+  const router = useRouter();
 
-const PageSelect: React.FC<AdminDashboardSelectorProps> = ({
-  defaultPage = 'BizPage',
-}) => {
-  const [selectedPage, setSelectedPage] = useState<'BizPage' | 'VehiclesManagementPage' | 'ChooseAdventure'>(defaultPage);
-  const currentDate = dayjs().format('YYYY-MM-DD');
+  const handlePageChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const newHomepage = event.target.value;
+    setSelectedPage(newHomepage);
 
-  const renderSelectedPage = () => {
-    switch (selectedPage) {
-      case 'BizPage':
-        return <BizPage params={{ date: currentDate }} searchParams={{ dcos: false, torchc: false, admc: false }} />;
-      case 'VehiclesManagementPage':
-        return <VehiclesManagementPage />;
-      case 'ChooseAdventure':
-        return <ChooseAdventure />;
-      default:
-        return null;
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('users')
+      .update({ homepage: newHomepage }) 
+      .eq('id', user.id);
+
+    if (error) {
+      console.error('Failed to update homepage:', error);
+      return;
     }
+
+    console.log('homepage updated to: ', newHomepage);
+    router.refresh(); // Refresh the page to reflect the change
   };
 
   return (
-    <div className="min-h-screen p-4">
-      <h1 className="text-3xl font-bold text-center mb-4">Admin Page Selector</h1>
-      <label className="block text-lg font-medium text-center mb-4">
-        Select your homepage:
-        <select
-          className="block w-1/2 mx-auto mt-2 p-2 border rounded-md"
-          value={selectedPage}
-          onChange={(e) => setSelectedPage(e.target.value as 'BizPage' | 'VehiclesManagementPage' | 'ChooseAdventure')}
-        >
-          <option value="BizPage">BizPage</option>
-          <option value="VehiclesManagementPage">Vehicles Management</option>
-          <option value="ChooseAdventure">Choose Adventure</option>
-        </select>
-      </label>
-      <div>{renderSelectedPage()}</div>
+    <div>
+      <label className='p-4' htmlFor="homepage-selector">Select your homepage:</label>
+      <select
+        id="homepage-selector"
+        value={selectedPage}
+        onChange={handlePageChange}
+        className="mt-2 p-2 border rounded"
+      >
+        {availablePages.map((page) => (
+          <option key={page} value={page}>
+            {page}
+          </option>
+        ))}
+      </select>
     </div>
   );
 };
 
-export default PageSelect;
+export default PageSelector;

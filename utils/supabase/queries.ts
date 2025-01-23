@@ -25,6 +25,7 @@ export type UserDetails = {
   id: string;
   user_level?: number | null;
   email?: string | null;
+  homepage?: string | null;
 };
 
 export const getUserDetails = cache(
@@ -1535,4 +1536,3 @@ export const deleteAuditQueue = async (supabase: SupabaseClient, id: string) => 
   }
   return true; 
 };
-             
