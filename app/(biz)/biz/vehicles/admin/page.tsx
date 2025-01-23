@@ -29,10 +29,10 @@ const VehiclesManagementPage = async () => {
 
   return (
     <div>
-      {userLevel > 300 &&(
+      {userLevel >= 300 &&(
       <VehiclesTabContainer vehicles={vehicles} loggedInUser={loggedInUser} />
       )}
-      {userLevel <=300 && (
+      {userLevel <300 && (
         <div><ChooseAdventure/></div>
       )}
     </div>
