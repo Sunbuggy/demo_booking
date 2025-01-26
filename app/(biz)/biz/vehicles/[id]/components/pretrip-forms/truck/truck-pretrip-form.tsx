@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { FactoryForm, FieldConfig } from '@/components/factory-form';
-import React from 'react';
+import React, { cache } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import {
   changeVehicleStatusToMaintenance,
@@ -13,6 +13,7 @@ import { randomUUID } from 'crypto';
 import { useToast } from '@/components/ui/use-toast';
 import { VehicleTagType } from '../../../../admin/page';
 import { Database } from '@/types_db';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export const formSchema = z.object({
   ac_working: z.boolean(),
@@ -575,6 +576,23 @@ const TruckPretripForm = ({
   >(undefined);
   const { toast } = useToast();
 
+  const [prevData, setPrevData] = React.useState<
+    Database['public']['Tables']['vehicle_pretrip_atv']['Row'][]
+  >([]);
+
+  React.useEffect(() => {
+    cache(async (supabase: SupabaseClient, veh_table: string) => {
+      const { data, error } = await supabase.from(veh_table).select('*');
+      if (error) {
+        console.error(error);
+        return [];
+      }
+      setPrevData(
+        data as Database['public']['Tables']['vehicle_pretrip_atv']['Row'][]
+      );
+    });
+  }, []);
+
   React.useEffect(() => {
     if (formData !== undefined) {
       const supabase = createClient();
@@ -586,11 +604,25 @@ const TruckPretripForm = ({
       };
       // gather all the results and if there is any 'no' answer then grab all the 'no' answers and console.log them
       const noAnswers = Object.keys(data).filter(
-        (key) => data[key as keyof typeof data] === false
+        (key) =>
+          key !== 'is_check_engine_on' &&
+          key !== 'visible_leaks' &&
+          key !== 'shuttles_plugged_in_winter' &&
+          data[key as keyof typeof data] === false
       );
-      if (noAnswers.length > 0) {
-        console.log('No answers:', noAnswers);
-        noAnswers.forEach((answer) => {
+      // Filter out answers that already exist
+      const newFailedAnswers = noAnswers.filter((answer) => {
+        if (prevData.length === 0) {
+          return noAnswers;
+        }
+        return !prevData.some(
+          (prev) => prev[answer as keyof typeof prev] === false
+        );
+      });
+
+      if (newFailedAnswers.length > 0) {
+        console.log('New failed answers:', newFailedAnswers);
+        newFailedAnswers.forEach((answer) => {
           const vehicleTag: Database['public']['Tables']['vehicle_tag']['Insert'] =
             {
               vehicle_id: vehicle_id,
@@ -657,7 +689,7 @@ const TruckPretripForm = ({
           });
         });
     }
-  }, [formData]);
+  }, [formData, prevData]);
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     setFormData(data);

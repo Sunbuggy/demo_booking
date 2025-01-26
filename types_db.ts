@@ -272,13 +272,31 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "audot_logs_user_id_fkey"
+            foreignKeyName: "audit_logs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_table_queue: {
+        Row: {
+          created_at: string
+          id: number
+          table: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          table?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          table?: string | null
+        }
+        Relationships: []
       }
       booking: {
         Row: {
@@ -466,15 +484,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "customers_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       departments: {
         Row: {
@@ -770,13 +780,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "qr_history_user_fkey"
-            columns: ["user"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "qr_history_vehicle_id_fkey"
             columns: ["vehicle_id"]
             isOneToOne: false
@@ -969,6 +972,7 @@ export type Database = {
           bg_size: string | null
           email: string | null
           full_name: string | null
+          homepage: string | null
           id: string
           phone: string | null
           time_entry_status:
@@ -984,6 +988,7 @@ export type Database = {
           bg_size?: string | null
           email?: string | null
           full_name?: string | null
+          homepage?: string | null
           id: string
           phone?: string | null
           time_entry_status?:
@@ -999,6 +1004,7 @@ export type Database = {
           bg_size?: string | null
           email?: string | null
           full_name?: string | null
+          homepage?: string | null
           id?: string
           phone?: string | null
           time_entry_status?:
@@ -1006,15 +1012,7 @@ export type Database = {
             | null
           user_level?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "users_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       vehicle_future_location: {
         Row: {
@@ -2113,3 +2111,17 @@ export type Enums<
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
 
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof PublicSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never

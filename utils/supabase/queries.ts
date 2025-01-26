@@ -25,6 +25,7 @@ export type UserDetails = {
   id: string;
   user_level?: number | null;
   email?: string | null;
+  homepage?: string | null;
 };
 
 export const getUserDetails = cache(
@@ -1476,8 +1477,6 @@ export const fetchAuditLog = cache(async (supabase: SupabaseClient) => {
     console.error('Error fetching audit logs:', error);
     return [];
   }
-
-  console.log('Fetched Audit Logs:', data); // Log data for debugging
   return data;
 });
 
@@ -1498,3 +1497,42 @@ export const updateAuditLog = cache(
     return data;
   }
 );
+export const fetchAuditQueue = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('audit_table_queue')
+    .select('id, created_at, table')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching audit logs:', error);
+    return [];
+  }
+  return data;
+});
+
+export const updateAuditQueue = cache(
+  async (
+    supabase: SupabaseClient,
+    audit_queue: Database['public']['Tables']['audit_table_queue']['Insert']
+  ) => {
+    const { data, error } = await supabase
+      .from('audit_table_queue')
+      .insert(audit_queue)
+      .select();
+
+    if (error) {
+      console.error('Error inserting audit queue:', error);
+      return null; 
+    }
+    return data;
+  }
+);
+
+export const deleteAuditQueue = async (supabase: SupabaseClient, id: string) => {
+  const { error } = await supabase.from('audit_table_queue').delete().eq('id', id);
+  if (error) {
+    console.error('Error deleting audit queue:', error);
+    return null; // Return null on failure
+  }
+  return true; 
+};

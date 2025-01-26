@@ -9,7 +9,7 @@ import { createClient } from '@/utils/supabase/server';
 import LocationHistory from '../[id]/components/vehicle-location-history';
 import { fetchAllVehicleLocations } from '@/utils/supabase/queries';
 import { VehicleLocation } from '../types';
-import VehiclesOverview from './tables/components/vehicles-overview';
+import VehiclesOverview from './tables/components/overview/vehicles-overview';
 import { FilteredVehicles } from './tables/components/filter-vehicles';
 
 const VehiclesTabContainer = async ({

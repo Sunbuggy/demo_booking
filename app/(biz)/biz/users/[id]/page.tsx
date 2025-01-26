@@ -19,6 +19,8 @@ import {
   AccordionTrigger
 } from '@/components/ui/accordion';
 import ScannerPage from '@/components/ui/QrScanner/QrFunction';
+import HomepageSettings from '@/components/Homepage/HomepageSettings';
+
 
 const bucket = 'users';
 
@@ -84,8 +86,14 @@ const UserPage = async ({ params }: { params: { id: string } }) => {
             <AccordionContent>
               <ScannerPage user={user ? user[0] : null} />
             </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+         </AccordionItem>
+          <AccordionItem value="change-homepage">
+            <AccordionTrigger>Change Homepage</AccordionTrigger>
+            <AccordionContent>
+            <HomepageSettings/>
+            </AccordionContent>
+          </AccordionItem>        
+          </Accordion>
       </>
     );
 };
