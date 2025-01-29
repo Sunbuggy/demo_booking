@@ -4,9 +4,7 @@ import { NextResponse } from 'next/server';
 // GET request handler
 export async function GET() {
   // Disable this route in production
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Not allowed in production' }, { status: 403 });
-  }
+
 
   try {
     // Initialize Supabase client during runtime
