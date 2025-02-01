@@ -1,71 +1,99 @@
-import { ImapFlow } from 'imapflow';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable import/no-anonymous-default-export */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+// connect to my gmail using the imap protocol and the imap package
+import Imap, { type Box, type ImapFetch, type ImapMessage } from "imap";
+import { type NextApiRequest, type NextApiResponse } from "next";
+import { type Source, simpleParser } from "mailparser";
+import fs from "fs";
+import path from "path";
+export default (req: NextApiRequest, res: NextApiResponse) => {
+  const imap = new Imap({
+    user: process.env.GOOGLE_EMAIL!,
+    password: process.env.GOOGLE_PASSWORD!,
+    host: "imap.gmail.com",
+    port: 993,
+    tls: true,
+    tlsOptions: { rejectUnauthorized: false },
+  });
 
-interface Email {
-  subject: string;
-  from: string; 
-  body: string;
-}
-
-export class ImapService {
-  private client: ImapFlow;
-
-  constructor(private readonly username: string, private readonly password: string) {
-    this.client = new ImapFlow({
-      host: 'imap.gmail.com',
-      port: 993,
-      secure: true,
-      auth: {
-        user: this.username,
-        pass: this.password
-      }
-    });
+  function openInbox(cb: (error: Error, mailbox: Box) => void) {
+    imap.openBox("INBOX", true, cb);
   }
 
-  async connect(): Promise<void> {
-    await this.client.connect();
-  }
+  imap.once("ready", function () {
+    openInbox(function (err: any, box: any) {
+      if (err) throw err;
 
-  async fetchEmails(): Promise<Email[]> {
-    const emails: Email[] = [];
-    try {
-      await this.connect();
-      await this.client.mailboxOpen('INBOX');
+      // Search for emails from "jjOb"
+      imap.search(
+        ["ALL", ["TO", "SBVegas"]],
+        function (err: any, results: any) {
+          if (err) throw err;
 
-      const lock = await this.client.getMailboxLock();
-      try {
-        const messages = await this.client.fetch('1:10', { source: true });
-        for await (let message of messages) {
-          const email: Email = {
-            subject: this.decodeHeader(message.subject),
-            from: message.from.text,
-            body: this.extractBody(message.body)
-          };
-          emails.push(email);
+          const fetch: ImapFetch = imap.fetch(results, { bodies: "" });
+
+          fetch.on("message", function (msg: ImapMessage) {
+            msg.on("body", function (stream) {
+              const mailparser = simpleParser(stream as unknown as Source); // Pass the stream to simpleParser
+
+              mailparser
+                .then((mail) => {
+                  const dateStr = mail.date || "";
+                  const date = new Date(dateStr);
+                  const formattedDate = `${date.toDateString()}`;
+                  // let's get the year, month, and day separately
+                  const year = date.getFullYear();
+                  const month = date.getMonth() + 1;
+                  const day = date.getDate();
+
+                  mail.attachments?.forEach((attachment, index) => {
+                    const outputDirectory = path.join(
+                      process.cwd(),
+                      `public/daily-pics/${year}/${month}/${day}/${(
+                        mail.subject || ""
+                      ).toLocaleUpperCase()}`
+                    );
+                    fs.mkdirSync(outputDirectory, { recursive: true });
+
+                    const outputFilePath = path.join(
+                      outputDirectory,
+                      `${attachment.filename || ""}`
+                    );
+
+                    // Check if the file exists
+                    if (!fs.existsSync(outputFilePath)) {
+                      fs.writeFileSync(outputFilePath, attachment.content);
+                    }
+                  });
+                })
+                .catch((err) => console.error(err));
+            });
+          });
+
+          fetch.once("error", function (err: string) {
+            console.log("Fetch error: " + err);
+          });
+
+          fetch.once("end", function () {
+            console.log("Done fetching all messages!");
+            res.status(200).json({ message: "Emails fetched successfully" });
+
+            imap.end();
+          });
         }
-      } finally {
-        lock.release();
-      }
-    } catch (error) {
-      console.error('Error fetching emails:', error);
-    } finally {
-      await this.client.logout();
-    }
-    return emails;
-  }
+      );
+    });
+  });
+  imap.once("error", function (err: any) {
+    console.log(err);
+  });
 
-  private decodeHeader(header: string): string {
-    return header.split(' ').map(part => {
-      const decoded = Buffer.from(part, 'base64').toString('utf-8');
-      return decoded.replace(/=\?.*?\?B\?/g, '').replace(/\?=/g, '');
-    }).join(' ');
-  }
+  imap.once("end", function () {
+    console.log("Connection ended");
+    res.status(200).json({ message: "Emails fetched successfully" });
+  });
 
-  private extractBody(body: ImapFlow.FetchMessageBody): string {
-    if (body?.html) {
-      return body.html;
-    } else if (body?.text) {
-      return body.text;
-    }
-    return '';
-  }
-}
+  imap.connect();
+};
