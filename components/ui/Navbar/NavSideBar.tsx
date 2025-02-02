@@ -49,7 +49,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       external: false
     },  
     {
-      href: '/biz/fetch_pics',
+      href: '/fetchpics',
       label: 'fetch_pics',
       minLevel: 900,
       external: false
