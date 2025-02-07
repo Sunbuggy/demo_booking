@@ -554,7 +554,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 <AccordionContent>
                   <div className="flex flex-col gap-5">
                     <QRCodeGenerator
-                      defUrl={`https://sunbuggy.com/fleet/${vehicleInfo.id}`}
+                      defUrl={`https://sunbuggy.com/fleet/${vehicleInfo.name}`}
                       defTopText={vehicleInfo.name
                         .match(/[a-zA-Z]+/g)
                         ?.join('')}
