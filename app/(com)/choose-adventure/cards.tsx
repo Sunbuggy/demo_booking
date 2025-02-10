@@ -69,6 +69,9 @@ const AdventureCard = ({
                 alt={title}
                 fill
                 className="object-cover rounded-md"
+                sizes="(max-width: 768px) 100vw, 50vw" // Adjust based on your layout
+                quality={75} // Reduce image quality for better performance
+                priority // Prioritize loading for above-the-fold images
               />
             </div>
           )}
