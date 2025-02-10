@@ -17,7 +17,9 @@ export async function GET() {
   try {
     const { data } = await gmail.users.messages.list({
       userId: 'me',
-      maxResults: 25,
+      maxResults: 40, // Adjust as needed
+	  //labelIds: ['CATEGORY_UPDATES'], // Filter by "Updates" category
+      //q: 'from:sbvegas@sunbuggyfunrentals.com', // Filter by sender
     });
 
     const images = [];
