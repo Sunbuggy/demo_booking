@@ -15,11 +15,11 @@ const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
 export async function GET() {
   try {
+    // Fetch list of emails sent to the specific recipient
     const { data } = await gmail.users.messages.list({
       userId: 'me',
       maxResults: 40, // Adjust as needed
-	  //labelIds: ['CATEGORY_UPDATES'], // Filter by "Updates" category
-      //q: 'from:sbvegas@sunbuggyfunrentals.com', // Filter by sender
+      q: 'to:sbvegas@sunbuggyfunrentals.com', // Filter by recipient
     });
 
     const images = [];
@@ -28,7 +28,7 @@ export async function GET() {
       const msg = await gmail.users.messages.get({
         userId: 'me',
         id: message.id!,
-        format: 'raw'
+        format: 'raw',
       });
 
       const rawMessage = Buffer.from(msg.data.raw!, 'base64').toString('binary');
@@ -39,7 +39,7 @@ export async function GET() {
           if (attachment.contentType?.startsWith('image/')) {
             images.push({
               filename: attachment.filename,
-              data: `data:${attachment.contentType};base64,${attachment.content.toString('base64')}`
+              data: `data:${attachment.contentType};base64,${attachment.content.toString('base64')}`,
             });
           }
         }
