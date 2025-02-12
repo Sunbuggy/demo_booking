@@ -98,7 +98,12 @@ function isNearLocation(
   );
 }
 
-export function getLocationType(lat: number, lon: number): string {
+export function getLocationType(
+  lat: number,
+  lon: number,
+  city?: string
+): string {
+  if (city) return city;
   if (isNearLocation(lat, lon, 'vegasShop')) return 'Vegas Shop';
   if (isNearLocation(lat, lon, 'pismoShop', 0.5)) return 'Pismo Shop';
   if (isNearLocation(lat, lon, 'nellis')) return 'Vegas Nellis';
@@ -221,7 +226,11 @@ export function processVehicleLocations(
       ...vehicle,
       city:
         location && location.latitude && location.longitude
-          ? getLocationType(location.latitude, location.longitude)
+          ? getLocationType(
+              location.latitude,
+              location.longitude,
+              location.city || ''
+            )
           : 'No Location',
       latitude: location?.latitude,
       longitude: location?.longitude,
