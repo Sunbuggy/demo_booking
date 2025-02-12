@@ -591,13 +591,11 @@ export const BarcodeScanner = ({
             </select>
           </div>
         </div>
-        {locationSet && (
-          <div className=" mb-5">
-            <div className="w-[200px] h-[150px]">
-              <video ref={ref} />
-            </div>
+        <div className=" mb-5">
+          <div className="w-[200px] h-[150px]">
+            <video ref={ref} />
           </div>
-        )}
+        </div>
         <div className="flex flex-col items-center">
           {locationSet ? (
             <div>
