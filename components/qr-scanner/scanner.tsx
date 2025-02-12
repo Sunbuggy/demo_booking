@@ -72,6 +72,18 @@ export const BarcodeScanner = ({
     // console.log('ids:', scannedVehicleIds);
   }, [scannedVehicleIds]);
 
+  // notify via toast when location is set
+  React.useEffect(() => {
+    if (locationSet) {
+      toast({
+        title: 'Location Set',
+        description: 'Location Set',
+        duration: 3000,
+        variant: 'success'
+      });
+    }
+  }, [locationSet]);
+
   // useEffect to get the current device location
   React.useEffect(() => {
     // if User rejects the location access then disallow the scanning
