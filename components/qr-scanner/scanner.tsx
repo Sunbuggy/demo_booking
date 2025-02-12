@@ -581,13 +581,13 @@ export const BarcodeScanner = ({
         </div>
 
         <div className="flex flex-col items-center">
-          <div className=" mb-5">
-            <div className="w-[200px] h-[150px]">
-              <video ref={ref} />
-            </div>
-          </div>
           {locationSet ? (
             <div className="mt-1 w-full">
+              <div className=" mb-5">
+                <div className="w-[200px] h-[150px]">
+                  <video ref={ref} />
+                </div>
+              </div>
               {normalMode && (
                 <div className="flex flex-col items-center">
                   <div className="w-full flex flex-col items-center">
