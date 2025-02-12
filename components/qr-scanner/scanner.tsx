@@ -181,6 +181,21 @@ export const BarcodeScanner = ({
             created_by: user?.id ?? 'unknown'
           };
 
+          // if no current location then return
+          if (
+            currentLocation.latitude === 0 ||
+            currentLocation.longitude === 0
+          ) {
+            errSound();
+            toast({
+              title: 'Location Not Set',
+              description: 'Location not set please allow location access',
+              duration: 7000,
+              variant: 'destructive'
+            });
+            return;
+          }
+
           // Check if the vehicle is already scanned and not repeated
           if (
             !scannedVehicleIds.find((v) => v.id === veh_id) &&
