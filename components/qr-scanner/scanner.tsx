@@ -257,6 +257,28 @@ export const BarcodeScanner = ({
                     });
                     return;
                   } else {
+                    if (
+                      vehicleLocation.latitude === 0 ||
+                      vehicleLocation.longitude === 0
+                    ) {
+                      return;
+                    }
+                    if (
+                      vehicleLocation.latitude === undefined ||
+                      vehicleLocation.longitude === undefined
+                    ) {
+                      return;
+                    }
+                    if (
+                      !vehicleLocation.latitude ||
+                      !vehicleLocation.longitude
+                    ) {
+                      return;
+                    }
+                    if (!vehicleLocation.city) {
+                      return;
+                    }
+
                     recordVehicleLocation(supabase, vehicleLocation)
                       .then(() => {
                         toast({
@@ -277,6 +299,24 @@ export const BarcodeScanner = ({
                       });
                   }
                 } else {
+                  if (
+                    vehicleLocation.latitude === 0 ||
+                    vehicleLocation.longitude === 0
+                  ) {
+                    return;
+                  }
+                  if (
+                    vehicleLocation.latitude === undefined ||
+                    vehicleLocation.longitude === undefined
+                  ) {
+                    return;
+                  }
+                  if (!vehicleLocation.latitude || !vehicleLocation.longitude) {
+                    return;
+                  }
+                  if (!vehicleLocation.city) {
+                    return;
+                  }
                   recordVehicleLocation(supabase, vehicleLocation)
                     .then(() => {
                       toast({
