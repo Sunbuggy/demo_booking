@@ -212,7 +212,12 @@ export const BarcodeScanner = ({
           // if no current location then return
           if (
             currentLocation.latitude === 0 ||
-            currentLocation.longitude === 0
+            currentLocation.longitude === 0 ||
+            !locationSet ||
+            currentLocation.latitude === undefined ||
+            currentLocation.longitude === undefined ||
+            !currentLocation.latitude ||
+            !currentLocation.longitude
           ) {
             errSound();
             toast({
