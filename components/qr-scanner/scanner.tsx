@@ -582,67 +582,71 @@ export const BarcodeScanner = ({
 
         <div className="flex flex-col items-center">
           {locationSet ? (
-            <div className="mt-1 w-full">
+            <div>
               <div className=" mb-5">
                 <div className="w-[200px] h-[150px]">
                   <video ref={ref} />
                 </div>
               </div>
-              {normalMode && (
-                <div className="flex flex-col items-center">
-                  <div className="w-full flex flex-col items-center">
-                    {scannedVehicleIds.length > 0 && (
-                      <NormalMode
+              <div className="mt-1 w-full">
+                {normalMode && (
+                  <div className="flex flex-col items-center">
+                    <div className="w-full flex flex-col items-center">
+                      {scannedVehicleIds.length > 0 && (
+                        <NormalMode
+                          scannedVehicleIds={scannedVehicleIds}
+                          scannedUrls={scannedUrls}
+                        />
+                      )}
+                    </div>
+                    <div className="mb-4">
+                      <SearchVehicles
                         scannedVehicleIds={scannedVehicleIds}
-                        scannedUrls={scannedUrls}
+                        setScannedVehicleIds={setScannedVehicleIds}
                       />
-                    )}
+                    </div>
                   </div>
-                  <div className="mb-4">
-                    <SearchVehicles
-                      scannedVehicleIds={scannedVehicleIds}
-                      setScannedVehicleIds={setScannedVehicleIds}
+                )}
+                {inventoryMode && scannedVehicleIds.length > 0 && (
+                  <InventoryModeScroll
+                    scannedVehicleIds={scannedVehicleIds}
+                    handleCheckboxChange={handleCheckboxChange}
+                    selectedForInventory={selectedForInventory}
+                  />
+                )}
+                {inventoryMode && (
+                  <div>
+                    <Button
+                      onClick={() => setIsManualInventoryDialogOpen(true)}
+                    >
+                      +Manual Inventory
+                    </Button>
+                    <DialogFactory
+                      disableCloseButton={true}
+                      children={<ManualInventory user_id={user?.id || ''} />}
+                      isDialogOpen={isManualInventoryDialogOpen}
+                      setIsDialogOpen={setIsManualInventoryDialogOpen}
+                      title="Add Inventory Manually"
                     />
                   </div>
-                </div>
-              )}
-              {inventoryMode && scannedVehicleIds.length > 0 && (
-                <InventoryModeScroll
-                  scannedVehicleIds={scannedVehicleIds}
-                  handleCheckboxChange={handleCheckboxChange}
-                  selectedForInventory={selectedForInventory}
-                />
-              )}
-              {inventoryMode && (
-                <div>
-                  <Button onClick={() => setIsManualInventoryDialogOpen(true)}>
-                    +Manual Inventory
-                  </Button>
-                  <DialogFactory
-                    disableCloseButton={true}
-                    children={<ManualInventory user_id={user?.id || ''} />}
-                    isDialogOpen={isManualInventoryDialogOpen}
-                    setIsDialogOpen={setIsManualInventoryDialogOpen}
-                    title="Add Inventory Manually"
+                )}
+
+                {inventoryMode && scannedVehicleIds.length > 0 && (
+                  <InventoryForm
+                    setBay={setBay}
+                    setLevel={setLevel}
+                    bay={bay}
+                    level={level}
+                    handleSubmit={handleSubmit}
                   />
-                </div>
-              )}
+                )}
 
-              {inventoryMode && scannedVehicleIds.length > 0 && (
-                <InventoryForm
-                  setBay={setBay}
-                  setLevel={setLevel}
-                  bay={bay}
-                  level={level}
-                  handleSubmit={handleSubmit}
-                />
-              )}
-
-              {taggingMode && scannedVehicleIds.length === 1 && user && (
-                <div className="m-4">
-                  <TaggingMode id={scannedVehicleIds[0].id} user={user} />
-                </div>
-              )}
+                {taggingMode && scannedVehicleIds.length === 1 && user && (
+                  <div className="m-4">
+                    <TaggingMode id={scannedVehicleIds[0].id} user={user} />
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="w-full flex flex-col items-center gap-3">
