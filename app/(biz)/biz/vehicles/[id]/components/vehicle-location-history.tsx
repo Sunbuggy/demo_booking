@@ -118,8 +118,6 @@ function isNearLocation(
 }
 
 function getLocationType(lat: number, lon: number, city?: string): string {
-  // if there is city provided return city;
-  if (city) return city;
   if (isNearLocation(lat, lon, 'vegasShop')) return 'Vegas Shop';
   if (isNearLocation(lat, lon, 'pismoShop', 0.5)) return 'Pismo Shop';
   if (isNearLocation(lat, lon, 'nellis')) return 'Vegas Nellis';
@@ -325,11 +323,7 @@ export default function LocationHistory({
                     'Guest User'}
                 </TableCell>
                 <TableCell>
-                  {getLocationType(
-                    location.latitude,
-                    location.longitude,
-                    location.city || ''
-                  )}
+                  {getLocationType(location.latitude, location.longitude)}
                 </TableCell>
                 <TableCell>
                   {location.latitude === 0 || location.longitude === 0 ? (

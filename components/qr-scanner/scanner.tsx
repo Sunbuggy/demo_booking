@@ -76,9 +76,25 @@ export const BarcodeScanner = ({
   React.useEffect(() => {
     // if User rejects the location access then disallow the scanning
     if (!navigator.geolocation) {
-      alert('Please allow location access to scan the QR code');
+      alert(
+        'Geolocation is not supported by your browser. Please use a modern browser.'
+      );
       setCloseCamera(true);
+      return;
     }
+
+    // Request the user to allow location access. This call will trigger the browser's prompt if not already granted.
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        // Permission granted: do nothing here as location fetching is handled later.
+      },
+      (error) => {
+        alert('Please allow location access to scan the QR code');
+        setCloseCamera(true);
+        // send a request to the user to allow location access
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
