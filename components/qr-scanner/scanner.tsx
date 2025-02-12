@@ -72,13 +72,41 @@ export const BarcodeScanner = ({
     // console.log('ids:', scannedVehicleIds);
   }, [scannedVehicleIds]);
 
+  // notify via toast when location is set
+  React.useEffect(() => {
+    if (locationSet) {
+      toast({
+        title: 'Location Set',
+        description: 'Location Set',
+        duration: 3000,
+        variant: 'success'
+      });
+    }
+  }, [locationSet]);
+
   // useEffect to get the current device location
   React.useEffect(() => {
     // if User rejects the location access then disallow the scanning
     if (!navigator.geolocation) {
-      alert('Please allow location access to scan the QR code');
+      alert(
+        'Geolocation is not supported by your browser. Please use a modern browser.'
+      );
       setCloseCamera(true);
+      return;
     }
+
+    // Request the user to allow location access. This call will trigger the browser's prompt if not already granted.
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        // Permission granted: do nothing here as location fetching is handled later.
+      },
+      (error) => {
+        alert('Please allow location access to scan the QR code');
+        setCloseCamera(true);
+        // send a request to the user to allow location access
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -181,6 +209,26 @@ export const BarcodeScanner = ({
             created_by: user?.id ?? 'unknown'
           };
 
+          // if no current location then return
+          if (
+            currentLocation.latitude === 0 ||
+            currentLocation.longitude === 0 ||
+            !locationSet ||
+            currentLocation.latitude === undefined ||
+            currentLocation.longitude === undefined ||
+            !currentLocation.latitude ||
+            !currentLocation.longitude
+          ) {
+            errSound();
+            toast({
+              title: 'Location Not Set',
+              description: 'Location not set please allow location access',
+              duration: 7000,
+              variant: 'destructive'
+            });
+            return;
+          }
+
           // Check if the vehicle is already scanned and not repeated
           if (
             !scannedVehicleIds.find((v) => v.id === veh_id) &&
@@ -209,6 +257,28 @@ export const BarcodeScanner = ({
                     });
                     return;
                   } else {
+                    if (
+                      vehicleLocation.latitude === 0 ||
+                      vehicleLocation.longitude === 0
+                    ) {
+                      return;
+                    }
+                    if (
+                      vehicleLocation.latitude === undefined ||
+                      vehicleLocation.longitude === undefined
+                    ) {
+                      return;
+                    }
+                    if (
+                      !vehicleLocation.latitude ||
+                      !vehicleLocation.longitude
+                    ) {
+                      return;
+                    }
+                    if (!vehicleLocation.city) {
+                      return;
+                    }
+
                     recordVehicleLocation(supabase, vehicleLocation)
                       .then(() => {
                         toast({
@@ -229,6 +299,24 @@ export const BarcodeScanner = ({
                       });
                   }
                 } else {
+                  if (
+                    vehicleLocation.latitude === 0 ||
+                    vehicleLocation.longitude === 0
+                  ) {
+                    return;
+                  }
+                  if (
+                    vehicleLocation.latitude === undefined ||
+                    vehicleLocation.longitude === undefined
+                  ) {
+                    return;
+                  }
+                  if (!vehicleLocation.latitude || !vehicleLocation.longitude) {
+                    return;
+                  }
+                  if (!vehicleLocation.city) {
+                    return;
+                  }
                   recordVehicleLocation(supabase, vehicleLocation)
                     .then(() => {
                       toast({
@@ -548,70 +636,73 @@ export const BarcodeScanner = ({
             </select>
           </div>
         </div>
-
-        <div className="flex flex-col items-center">
-          <div className=" mb-5">
-            <div className="w-[200px] h-[150px]">
-              <video ref={ref} />
-            </div>
+        <div className=" mb-5">
+          <div className="w-[200px] h-[150px]">
+            <video ref={ref} />
           </div>
+        </div>
+        <div className="flex flex-col items-center">
           {locationSet ? (
-            <div className="mt-1 w-full">
-              {normalMode && (
-                <div className="flex flex-col items-center">
-                  <div className="w-full flex flex-col items-center">
-                    {scannedVehicleIds.length > 0 && (
-                      <NormalMode
+            <div>
+              <div className="mt-1 w-full">
+                {normalMode && (
+                  <div className="flex flex-col items-center">
+                    <div className="w-full flex flex-col items-center">
+                      {scannedVehicleIds.length > 0 && (
+                        <NormalMode
+                          scannedVehicleIds={scannedVehicleIds}
+                          scannedUrls={scannedUrls}
+                        />
+                      )}
+                    </div>
+                    <div className="mb-4">
+                      <SearchVehicles
                         scannedVehicleIds={scannedVehicleIds}
-                        scannedUrls={scannedUrls}
+                        setScannedVehicleIds={setScannedVehicleIds}
                       />
-                    )}
+                    </div>
                   </div>
-                  <div className="mb-4">
-                    <SearchVehicles
-                      scannedVehicleIds={scannedVehicleIds}
-                      setScannedVehicleIds={setScannedVehicleIds}
+                )}
+                {inventoryMode && scannedVehicleIds.length > 0 && (
+                  <InventoryModeScroll
+                    scannedVehicleIds={scannedVehicleIds}
+                    handleCheckboxChange={handleCheckboxChange}
+                    selectedForInventory={selectedForInventory}
+                  />
+                )}
+                {inventoryMode && (
+                  <div>
+                    <Button
+                      onClick={() => setIsManualInventoryDialogOpen(true)}
+                    >
+                      +Manual Inventory
+                    </Button>
+                    <DialogFactory
+                      disableCloseButton={true}
+                      children={<ManualInventory user_id={user?.id || ''} />}
+                      isDialogOpen={isManualInventoryDialogOpen}
+                      setIsDialogOpen={setIsManualInventoryDialogOpen}
+                      title="Add Inventory Manually"
                     />
                   </div>
-                </div>
-              )}
-              {inventoryMode && scannedVehicleIds.length > 0 && (
-                <InventoryModeScroll
-                  scannedVehicleIds={scannedVehicleIds}
-                  handleCheckboxChange={handleCheckboxChange}
-                  selectedForInventory={selectedForInventory}
-                />
-              )}
-              {inventoryMode && (
-                <div>
-                  <Button onClick={() => setIsManualInventoryDialogOpen(true)}>
-                    +Manual Inventory
-                  </Button>
-                  <DialogFactory
-                    disableCloseButton={true}
-                    children={<ManualInventory user_id={user?.id || ''} />}
-                    isDialogOpen={isManualInventoryDialogOpen}
-                    setIsDialogOpen={setIsManualInventoryDialogOpen}
-                    title="Add Inventory Manually"
+                )}
+
+                {inventoryMode && scannedVehicleIds.length > 0 && (
+                  <InventoryForm
+                    setBay={setBay}
+                    setLevel={setLevel}
+                    bay={bay}
+                    level={level}
+                    handleSubmit={handleSubmit}
                   />
-                </div>
-              )}
+                )}
 
-              {inventoryMode && scannedVehicleIds.length > 0 && (
-                <InventoryForm
-                  setBay={setBay}
-                  setLevel={setLevel}
-                  bay={bay}
-                  level={level}
-                  handleSubmit={handleSubmit}
-                />
-              )}
-
-              {taggingMode && scannedVehicleIds.length === 1 && user && (
-                <div className="m-4">
-                  <TaggingMode id={scannedVehicleIds[0].id} user={user} />
-                </div>
-              )}
+                {taggingMode && scannedVehicleIds.length === 1 && user && (
+                  <div className="m-4">
+                    <TaggingMode id={scannedVehicleIds[0].id} user={user} />
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="w-full flex flex-col items-center gap-3">

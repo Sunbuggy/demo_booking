@@ -134,7 +134,10 @@ function isNearLocation(
   );
 }
 
-function getLocationType(lat: number, lon: number): string {
+function getLocationType(lat: number, lon: number, city?: string): string {
+  if (city) {
+    return city;
+  }
   if (isNearLocation(lat, lon, 'vegasShop')) return 'Vegas Shop';
   if (isNearLocation(lat, lon, 'pismoShop', 0.5)) return 'Pismo Shop';
   if (isNearLocation(lat, lon, 'nellis')) return 'Vegas Nellis';
@@ -300,7 +303,11 @@ export default function VehiclesOverview() {
       ...vehicle,
       city:
         location && location.latitude && location.longitude
-          ? getLocationType(location.latitude, location.longitude)
+          ? getLocationType(
+              location.latitude,
+              location.longitude,
+              location.city || ''
+            )
           : 'No Location',
       latitude: location?.latitude,
       longitude: location?.longitude,
@@ -325,6 +332,7 @@ export default function VehiclesOverview() {
   const locations = Array.from(
     new Set(vehiclesWithLocation.map((v) => v.city))
   );
+  console.log(vehiclesWithLocation.length);
 
   return (
     <div className="space-y-6">

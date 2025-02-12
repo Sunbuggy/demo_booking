@@ -35,33 +35,35 @@ const VehiclesLister = ({ list }: { list: string[] | null }) => {
       <h2 className="text-2xl font-bold tracking-tight">Vehicles</h2>
       <ScrollArea className="h-[215px] ml-2 rounded-md border p-4">
         <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-          {vehicles.map((vehicle, index) => (
-            <span key={index}>
-              <Button
-                className="large_button_circular relative"
-                onClick={() => handleClick(vehicle.id)}
-              >
-                {vehicle.pet_name ? (
-                  <>
-                    {vehicle.pet_name}
-                    <br />
-                    {vehicle.name}
-                  </>
-                ) : (
-                  vehicle.name
-                )}{' '}
-                {vehicle.vehicle_status === 'broken' && (
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-                )}
-                {vehicle.vehicle_status === 'maintenance' && (
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-amber-500 rounded-full"></span>
-                )}
-                {vehicle.vehicle_status === 'fine' && (
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full"></span>
-                )}
-              </Button>
-            </span>
-          ))}
+          {vehicles
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((vehicle, index) => (
+              <span key={index}>
+                <Button
+                  className="large_button_circular relative"
+                  onClick={() => handleClick(vehicle.id)}
+                >
+                  {vehicle.pet_name ? (
+                    <>
+                      {vehicle.pet_name}
+                      <br />
+                      {vehicle.name}
+                    </>
+                  ) : (
+                    vehicle.name
+                  )}{' '}
+                  {vehicle.vehicle_status === 'broken' && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                  )}
+                  {vehicle.vehicle_status === 'maintenance' && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-amber-500 rounded-full"></span>
+                  )}
+                  {vehicle.vehicle_status === 'fine' && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full"></span>
+                  )}
+                </Button>
+              </span>
+            ))}
         </div>
       </ScrollArea>
     </div>

@@ -1154,7 +1154,8 @@ export const fetchVehicleLocations = cache(
     const { data, error } = await supabase
       .from('vehicle_locations')
       .select()
-      .eq('vehicle_id', vehicle_id);
+      .eq('vehicle_id', vehicle_id)
+      .order('created_at', { ascending: false });
     if (error) {
       console.error(error);
       return [];
@@ -1480,16 +1481,13 @@ export const fetchAuditLog = cache(async (supabase: SupabaseClient) => {
   return data;
 });
 
-
 export const updateAuditLog = cache(
   async (
     supabase: SupabaseClient,
     audit_log: Database['public']['Tables']['audit_logs']['Update'],
     id: string
   ) => {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .update(audit_log)
+    const { data, error } = await supabase.from('audit_logs').update(audit_log);
     if (error) {
       console.error(error);
       return [];
@@ -1522,17 +1520,23 @@ export const updateAuditQueue = cache(
 
     if (error) {
       console.error('Error inserting audit queue:', error);
-      return null; 
+      return null;
     }
     return data;
   }
 );
 
-export const deleteAuditQueue = async (supabase: SupabaseClient, id: string) => {
-  const { error } = await supabase.from('audit_table_queue').delete().eq('id', id);
+export const deleteAuditQueue = async (
+  supabase: SupabaseClient,
+  id: string
+) => {
+  const { error } = await supabase
+    .from('audit_table_queue')
+    .delete()
+    .eq('id', id);
   if (error) {
     console.error('Error deleting audit queue:', error);
     return null; // Return null on failure
   }
-  return true; 
+  return true;
 };

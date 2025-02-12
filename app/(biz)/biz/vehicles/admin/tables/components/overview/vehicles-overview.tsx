@@ -81,7 +81,11 @@ export default function VehiclesOverview() {
         ...vehicle,
         city:
           location && location.latitude && location.longitude
-            ? getLocationType(location.latitude, location.longitude)
+            ? getLocationType(
+                location.latitude,
+                location.longitude,
+                location.city || ''
+              )
             : 'No Location',
         latitude: location?.latitude,
         longitude: location?.longitude,

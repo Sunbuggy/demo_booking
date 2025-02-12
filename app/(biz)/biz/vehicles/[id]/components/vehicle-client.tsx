@@ -197,6 +197,20 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       silverlake: { lat: 43.675239, lon: -86.472552 }
     };
     if (city) {
+      if (!location[city]?.lat || !location[city]?.lon) {
+        return;
+      }
+
+      if (location[city]?.lat === 0 || location[city]?.lon === 0) {
+        return;
+      }
+      if (
+        location[city]?.lat === undefined ||
+        location[city]?.lon === undefined
+      ) {
+        return;
+      }
+
       recordVehicleLocation(supabase, {
         vehicle_id: id,
         latitude: location[city]?.lat,
