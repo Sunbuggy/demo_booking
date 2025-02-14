@@ -13,7 +13,7 @@ const ChooseAdventure = () => {
       {' '}
       {/* homepage */}
       <h1 className="text-2xl font-bold text-center m-4 w-full">
-        Choose an Adventure
+        Choose an Adventures
       </h1>
       <AdventureCard
         description={minibajachase.description}
