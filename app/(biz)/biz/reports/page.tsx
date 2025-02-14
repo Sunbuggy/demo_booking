@@ -101,6 +101,7 @@ const ReportsPage = async () => {
     date: entry.date || 'Unknown'
   }));
 
+  console.log('NEXT_PUBLIC_SITE_URL: ', process.env.NEXT_PUBLIC_SITE_URL)
 
   const tables = [
     { name: 'Tags', data: mappedTags },
