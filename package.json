@@ -61,7 +61,6 @@
     "antd": "^5.20.0",
     "authorizenet": "^1.0.8",
     "axios": "^1.7.7",
-    "canvas": "^2.11.2",
     "chart.js": "^4.4.6",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.5.1",

@@ -1115,8 +1115,8 @@ export type Database = {
           distress_ticket_number: number | null
           id: string
           is_distress_signal: boolean
-          latitude: number | null
-          longitude: number | null
+          latitude: number
+          longitude: number
           vehicle_id: string | null
         }
         Insert: {
@@ -1137,8 +1137,8 @@ export type Database = {
           distress_ticket_number?: number | null
           id?: string
           is_distress_signal?: boolean
-          latitude?: number | null
-          longitude?: number | null
+          latitude?: number
+          longitude?: number
           vehicle_id?: string | null
         }
         Update: {
@@ -1159,8 +1159,8 @@ export type Database = {
           distress_ticket_number?: number | null
           id?: string
           is_distress_signal?: boolean
-          latitude?: number | null
-          longitude?: number | null
+          latitude?: number
+          longitude?: number
           vehicle_id?: string | null
         }
         Relationships: [

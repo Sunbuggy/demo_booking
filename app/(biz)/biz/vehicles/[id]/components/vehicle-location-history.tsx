@@ -117,7 +117,7 @@ function isNearLocation(
   );
 }
 
-function getLocationType(lat: number, lon: number): string {
+function getLocationType(lat: number, lon: number, city?: string): string {
   if (isNearLocation(lat, lon, 'vegasShop')) return 'Vegas Shop';
   if (isNearLocation(lat, lon, 'pismoShop', 0.5)) return 'Pismo Shop';
   if (isNearLocation(lat, lon, 'nellis')) return 'Vegas Nellis';

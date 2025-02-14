@@ -75,6 +75,12 @@ const AssignLocationHistory = ({
       );
       if (selectedLocation) {
         try {
+          // record only if selectedLocation.lat and lon are non falsy
+
+          if (!selectedLocation.lat || !selectedLocation.lon) {
+            throw new Error('Location is missing latitude or longitude');
+          }
+
           await recordVehicleLocation(supabase, {
             city: selectedLocation.name,
             latitude: selectedLocation.lat,
