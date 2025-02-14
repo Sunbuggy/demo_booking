@@ -11,6 +11,7 @@ const ChooseAdventure = () => {
   return (
     <div className="flex flex-col gap-4 items-center">
       {' '}
+      {/* homepage */}
       <h1 className="text-2xl font-bold text-center m-4 w-full">
         Choose an Adventure
       </h1>
