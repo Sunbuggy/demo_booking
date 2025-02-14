@@ -131,9 +131,6 @@ importers:
       axios:
         specifier: ^1.7.7
         version: 1.7.7
-      canvas:
-        specifier: ^2.11.2
-        version: 2.11.2
       chart.js:
         specifier: ^4.4.6
         version: 4.4.6
@@ -5864,6 +5861,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+    optional: true
 
   '@napi-rs/canvas-android-arm64@0.1.64':
     optional: true
@@ -7412,7 +7410,8 @@ snapshots:
   '@zxing/text-encoding@0.9.0':
     optional: true
 
-  abbrev@1.1.1: {}
+  abbrev@1.1.1:
+    optional: true
 
   acorn-jsx@5.3.2(acorn@8.12.1):
     dependencies:
@@ -7425,6 +7424,7 @@ snapshots:
       debug: 4.3.6
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   agent-base@7.1.1:
     dependencies:
@@ -7514,12 +7514,14 @@ snapshots:
       normalize-path: 3.0.0
       picomatch: 2.3.1
 
-  aproba@2.0.0: {}
+  aproba@2.0.0:
+    optional: true
 
   are-we-there-yet@2.0.0:
     dependencies:
       delegates: 1.0.0
       readable-stream: 3.6.2
+    optional: true
 
   arg@5.0.2: {}
 
@@ -7762,6 +7764,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+    optional: true
 
   canvas@3.0.0-rc2:
     dependencies:
@@ -7796,7 +7799,8 @@ snapshots:
   chownr@1.1.4:
     optional: true
 
-  chownr@2.0.0: {}
+  chownr@2.0.0:
+    optional: true
 
   chownr@3.0.0: {}
 
@@ -7843,7 +7847,8 @@ snapshots:
       color-name: 1.1.4
       simple-swizzle: 0.2.2
 
-  color-support@1.1.3: {}
+  color-support@1.1.3:
+    optional: true
 
   color@4.2.3:
     dependencies:
@@ -7862,7 +7867,8 @@ snapshots:
 
   concat-map@0.0.1: {}
 
-  console-control-strings@1.1.0: {}
+  console-control-strings@1.1.0:
+    optional: true
 
   cookie@0.6.0: {}
 
@@ -7959,6 +7965,7 @@ snapshots:
   decompress-response@4.2.1:
     dependencies:
       mimic-response: 2.1.0
+    optional: true
 
   decompress-response@6.0.0:
     dependencies:
@@ -8005,7 +8012,8 @@ snapshots:
 
   delayed-stream@1.0.0: {}
 
-  delegates@1.0.0: {}
+  delegates@1.0.0:
+    optional: true
 
   denque@2.1.0: {}
 
@@ -8495,8 +8503,10 @@ snapshots:
   fs-minipass@2.1.0:
     dependencies:
       minipass: 3.3.6
+    optional: true
 
-  fs.realpath@1.0.0: {}
+  fs.realpath@1.0.0:
+    optional: true
 
   fsevents@2.3.3:
     optional: true
@@ -8523,6 +8533,7 @@ snapshots:
       string-width: 4.2.3
       strip-ansi: 6.0.1
       wide-align: 1.1.5
+    optional: true
 
   generate-function@2.3.1:
     dependencies:
@@ -8590,6 +8601,7 @@ snapshots:
       minimatch: 3.1.2
       once: 1.4.0
       path-is-absolute: 1.0.1
+    optional: true
 
   globalize@0.1.1: {}
 
@@ -8638,7 +8650,8 @@ snapshots:
     dependencies:
       has-symbols: 1.0.3
 
-  has-unicode@2.0.1: {}
+  has-unicode@2.0.1:
+    optional: true
 
   hasown@2.0.2:
     dependencies:
@@ -8662,6 +8675,7 @@ snapshots:
       debug: 4.3.6
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   https-proxy-agent@7.0.5:
     dependencies:
@@ -8694,6 +8708,7 @@ snapshots:
     dependencies:
       once: 1.4.0
       wrappy: 1.0.2
+    optional: true
 
   inherits@2.0.4: {}
 
@@ -8975,6 +8990,7 @@ snapshots:
   make-dir@3.1.0:
     dependencies:
       semver: 6.3.1
+    optional: true
 
   make-event-props@1.6.2: {}
 
@@ -8999,7 +9015,8 @@ snapshots:
     dependencies:
       mime-db: 1.52.0
 
-  mimic-response@2.1.0: {}
+  mimic-response@2.1.0:
+    optional: true
 
   mimic-response@3.1.0:
     optional: true
@@ -9023,8 +9040,10 @@ snapshots:
   minipass@3.3.6:
     dependencies:
       yallist: 4.0.0
+    optional: true
 
-  minipass@5.0.0: {}
+  minipass@5.0.0:
+    optional: true
 
   minipass@7.1.2: {}
 
@@ -9032,6 +9051,7 @@ snapshots:
     dependencies:
       minipass: 3.3.6
       yallist: 4.0.0
+    optional: true
 
   minizlib@3.0.1:
     dependencies:
@@ -9041,7 +9061,8 @@ snapshots:
   mkdirp-classic@0.5.3:
     optional: true
 
-  mkdirp@1.0.4: {}
+  mkdirp@1.0.4:
+    optional: true
 
   mkdirp@3.0.1: {}
 
@@ -9081,7 +9102,8 @@ snapshots:
     dependencies:
       lru-cache: 7.18.3
 
-  nan@2.22.0: {}
+  nan@2.22.0:
+    optional: true
 
   nano-css@5.6.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
@@ -9146,6 +9168,7 @@ snapshots:
   node-fetch@2.7.0:
     dependencies:
       whatwg-url: 5.0.0
+    optional: true
 
   node-fetch@3.3.2:
     dependencies:
@@ -9166,6 +9189,7 @@ snapshots:
   nopt@5.0.0:
     dependencies:
       abbrev: 1.1.1
+    optional: true
 
   normalize-path@3.0.0: {}
 
@@ -9181,6 +9205,7 @@ snapshots:
       console-control-strings: 1.1.0
       gauge: 3.0.2
       set-blocking: 2.0.0
+    optional: true
 
   oauth-sign@0.9.0: {}
 
@@ -9232,6 +9257,7 @@ snapshots:
   once@1.4.0:
     dependencies:
       wrappy: 1.0.2
+    optional: true
 
   optionator@0.9.4:
     dependencies:
@@ -9275,7 +9301,8 @@ snapshots:
 
   path-exists@4.0.0: {}
 
-  path-is-absolute@1.0.1: {}
+  path-is-absolute@1.0.1:
+    optional: true
 
   path-key@3.1.1: {}
 
@@ -9946,6 +9973,7 @@ snapshots:
       inherits: 2.0.4
       string_decoder: 1.3.0
       util-deprecate: 1.0.2
+    optional: true
 
   readdirp@3.6.0:
     dependencies:
@@ -10020,6 +10048,7 @@ snapshots:
   rimraf@3.0.2:
     dependencies:
       glob: 7.2.3
+    optional: true
 
   rimraf@5.0.10:
     dependencies:
@@ -10139,17 +10168,20 @@ snapshots:
       get-intrinsic: 1.2.4
       object-inspect: 1.13.2
 
-  signal-exit@3.0.7: {}
+  signal-exit@3.0.7:
+    optional: true
 
   signal-exit@4.1.0: {}
 
-  simple-concat@1.0.1: {}
+  simple-concat@1.0.1:
+    optional: true
 
   simple-get@3.1.1:
     dependencies:
       decompress-response: 4.2.1
       once: 1.4.0
       simple-concat: 1.0.1
+    optional: true
 
   simple-get@4.0.1:
     dependencies:
@@ -10272,6 +10304,7 @@ snapshots:
   string_decoder@1.3.0:
     dependencies:
       safe-buffer: 5.2.1
+    optional: true
 
   strip-ansi@6.0.1:
     dependencies:
@@ -10382,6 +10415,7 @@ snapshots:
       minizlib: 2.1.2
       mkdirp: 1.0.4
       yallist: 4.0.0
+    optional: true
 
   tar@7.4.3:
     dependencies:
@@ -10635,6 +10669,7 @@ snapshots:
   wide-align@1.1.5:
     dependencies:
       string-width: 4.2.3
+    optional: true
 
   winston@2.4.7:
     dependencies:
@@ -10665,7 +10700,8 @@ snapshots:
       string-width: 5.1.2
       strip-ansi: 7.1.0
 
-  wrappy@1.0.2: {}
+  wrappy@1.0.2:
+    optional: true
 
   write-file-atomic@6.0.0:
     dependencies:
@@ -10676,7 +10712,8 @@ snapshots:
 
   y18n@4.0.3: {}
 
-  yallist@4.0.0: {}
+  yallist@4.0.0:
+    optional: true
 
   yallist@5.0.0: {}
 

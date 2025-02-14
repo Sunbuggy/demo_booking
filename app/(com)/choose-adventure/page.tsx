@@ -19,7 +19,6 @@ const ChooseAdventure = () => {
         title={minibajachase.title}
         videoId={minibajachase.videoId}
         playlistId={minibajachase.playlistId}
-        // autoplay={1}
         linkHref="/book/minibaja-chase"
       />
       <AdventureCard
