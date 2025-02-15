@@ -58,6 +58,7 @@ const Page = async ({
   const settledResponse2 = await fetch(
     `${process.env.NEXT_PUBLIC_SITE_URL}/api/authorize-net/authorize-vsp?isSettled=true&first_date=${first_date || formattedTwoDaysAgo}&last_date=${last_date || formattedToday}`
   );
+console.log('.NEXT_PUBLIC_SITE_URL', process.env.NEXT_PUBLIC_SITE_URL)
   const settled_data1 = await settledResponse1.json();
   const flatSettled1 = settled_data1.all_transactions
     ? settled_data1.all_transactions.flat()
