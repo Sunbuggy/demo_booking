@@ -34,14 +34,14 @@ const Page = async () => {
     `${process.env.NEXT_PUBLIC_SITE_URL}/api/authorize-net/authorize-vegas`,
     {
       cache: 'no-store',
-      next: { revalidate: 0 }
+      // next: { revalidate: 0 }
     }
   );
   const unsettledResponse2 = await fetch(
     `${process.env.NEXT_PUBLIC_SITE_URL}/api/authorize-net/authorize-vsp`,
     {
       cache: 'no-store',
-      next: { revalidate: 0 }
+      // next: { revalidate: 0 }
     }
   );
 
