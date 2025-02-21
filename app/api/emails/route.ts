@@ -15,7 +15,7 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 oauth2Client.setCredentials({
-  refresh_token: process.env.REFRESH_TOKEN,
+  refresh_token: process.env.REFRESH_TOKEN
 });
 
 const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
@@ -25,8 +25,8 @@ export async function GET() {
     // Fetch list of emails sent to the specific recipient
     const response = await gmail.users.messages.list({
       userId: 'me',
-      maxResults: 100, // Fetch up to 100 emails
-      q: `to:sbvegas@sunbuggyfunrentals.com`,
+      maxResults: 10, // Fetch up to 100 emails
+      q: `to:sbvegas@sunbuggyfunrentals.com`
     });
 
     const messages = response.data.messages || [];
@@ -39,13 +39,13 @@ export async function GET() {
         const msg = await gmail.users.messages.get({
           userId: 'me',
           id: message.id!,
-          format: 'full', // Use 'full' to get the internalDate
+          format: 'full' // Use 'full' to get the internalDate
         });
 
         return {
           id: message.id!,
           internalDate: Number(msg.data.internalDate), // Convert to number for sorting
-          payload: msg.data.payload, // Include the payload to check for attachments
+          payload: msg.data.payload // Include the payload to check for attachments
         };
       })
     );
@@ -67,10 +67,12 @@ export async function GET() {
       const msg = await gmail.users.messages.get({
         userId: 'me',
         id: message.id,
-        format: 'raw',
+        format: 'raw'
       });
 
-      const rawMessage = Buffer.from(msg.data.raw!, 'base64').toString('binary');
+      const rawMessage = Buffer.from(msg.data.raw!, 'base64').toString(
+        'binary'
+      );
       const parsed = await simpleParser(rawMessage);
 
       if (parsed.attachments) {
@@ -78,7 +80,7 @@ export async function GET() {
           if (attachment.contentType?.startsWith('image/')) {
             images.push({
               filename: attachment.filename,
-              data: `data:${attachment.contentType};base64,${attachment.content.toString('base64')}`,
+              data: `data:${attachment.contentType};base64,${attachment.content.toString('base64')}`
             });
           }
         }
