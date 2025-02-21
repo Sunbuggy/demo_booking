@@ -4,7 +4,7 @@ import axios from 'axios';
 import { createMerchantAuthenticationType } from '../helpers/vegas-create-merchant-authentication-type';
 
 export const dynamic = 'force-dynamic'; // Disable static optimization
-export const revalidate = 0; // Disable cache
+// export const revalidate = 0; // Disable cache
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
