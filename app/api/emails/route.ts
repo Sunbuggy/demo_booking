@@ -5,7 +5,6 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 
-// Extend dayjs with UTC and timezone plugins
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -15,85 +14,84 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 oauth2Client.setCredentials({
-  refresh_token: process.env.REFRESH_TOKEN
+  refresh_token: process.env.REFRESH_TOKEN,
 });
 
 const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
 export async function GET() {
   try {
-    // Fetch list of emails sent to the specific recipient
+    // Hardcoded date range with known emails
+    const startDate = '2025/02/14';
+    const endDate = '2025/02/20'; // Use valid end date format
+
+    // Construct query with explicit timezone handling
+    const query = `to:sbvegas@sunbuggyfunrentals.com after:${startDate} before:${endDate}`;
+    console.log('Final Gmail Query:', query);
+
+    // Verify dates are valid
+    console.log('Query Start Date:', dayjs(startDate).format('YYYY-MM-DD'));
+    console.log('Query End Date:', dayjs(endDate).format('YYYY-MM-DD'));
+
     const response = await gmail.users.messages.list({
       userId: 'me',
-      maxResults: 10, // Fetch up to 100 emails
-      q: `to:sbvegas@sunbuggyfunrentals.com`
+      maxResults: 500, // Increased from 200
+      q: query,
     });
 
     const messages = response.data.messages || [];
-
+    console.log('Raw API Response:', JSON.stringify(response.data, null, 2));
     console.log('Total messages found:', messages.length);
 
-    // Fetch full details of each message and sort by internalDate (most recent first)
+    // Process ALL found messages (remove date filtering)
     const messagesWithDetails = await Promise.all(
       messages.map(async (message) => {
         const msg = await gmail.users.messages.get({
           userId: 'me',
           id: message.id!,
-          format: 'full' // Use 'full' to get the internalDate
+          format: 'full',
         });
+
+        // Log full message headers
+        console.log(`Email ${message.id} headers:`, msg.data.payload?.headers);
 
         return {
           id: message.id!,
-          internalDate: Number(msg.data.internalDate), // Convert to number for sorting
-          payload: msg.data.payload // Include the payload to check for attachments
+          internalDate: Number(msg.data.internalDate),
         };
       })
     );
 
-    // Sort messages by internalDate in descending order (most recent first)
-    messagesWithDetails.sort((a, b) => b.internalDate - a.internalDate);
-
-    console.log('Sorted messages:', messagesWithDetails);
-
-    // Limit to the 100 most recent emails
-    const recentMessages = messagesWithDetails.slice(0, 100);
-
-    console.log('Processing 100 most recent emails:', recentMessages.length);
-
+    // Process images from ALL messages
     const images = [];
-
-    // Process only the 100 most recent emails
-    for (const message of recentMessages) {
+    for (const message of messagesWithDetails) {
       const msg = await gmail.users.messages.get({
         userId: 'me',
         id: message.id,
-        format: 'raw'
+        format: 'raw',
       });
 
-      const rawMessage = Buffer.from(msg.data.raw!, 'base64').toString(
-        'binary'
+      const parsed = await simpleParser(
+        Buffer.from(msg.data.raw!, 'base64').toString('binary')
       );
-      const parsed = await simpleParser(rawMessage);
 
       if (parsed.attachments) {
-        for (const attachment of parsed.attachments) {
-          if (attachment.contentType?.startsWith('image/')) {
-            images.push({
-              filename: attachment.filename,
-              data: `data:${attachment.contentType};base64,${attachment.content.toString('base64')}`
-            });
-          }
-        }
+        images.push(...parsed.attachments
+          .filter(a => a.contentType?.startsWith('image/'))
+          .map(a => ({
+            filename: a.filename,
+            data: `data:${a.contentType};base64,${a.content.toString('base64')}`
+          }))
+        );
       }
     }
 
     console.log('Total images found:', images.length);
-
     return NextResponse.json({ images });
   } catch (error) {
-    console.error('Error fetching emails:', error);
+    console.error('Full error details:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch emails' },
+      { error: 'Failed to fetch emails', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
