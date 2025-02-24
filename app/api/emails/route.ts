@@ -26,7 +26,7 @@ export async function GET() {
     const endDate = '2025/02/20'; // Use valid end date format
 
     // Construct query with explicit timezone handling
-    const query = `to:sbvegas@sunbuggyfunrentals.com after:${startDate} before:${endDate}`;
+    const query = `to:sbvegas@sunbuggyfunrentals.com`;
     console.log('Final Gmail Query:', query);
 
     // Verify dates are valid
@@ -35,12 +35,12 @@ export async function GET() {
 
     const response = await gmail.users.messages.list({
       userId: 'me',
-      maxResults: 500, // Increased from 200
+      maxResults: 50, // Increased from 200
       q: query,
     });
 
     const messages = response.data.messages || [];
-    console.log('Raw API Response:', JSON.stringify(response.data, null, 2));
+    // console.log('Raw API Response:', JSON.stringify(response.data, null, 2));
     console.log('Total messages found:', messages.length);
 
     // Process ALL found messages (remove date filtering)
@@ -53,7 +53,7 @@ export async function GET() {
         });
 
         // Log full message headers
-        console.log(`Email ${message.id} headers:`, msg.data.payload?.headers);
+        // console.log(`Email ${message.id} headers:`, msg.data.payload?.headers);
 
         return {
           id: message.id!,
