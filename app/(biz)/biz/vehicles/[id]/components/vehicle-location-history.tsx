@@ -120,6 +120,7 @@ function isNearLocation(
 function getLocationType(lat: number, lon: number, city?: string): string {
   if (isNearLocation(lat, lon, 'vegasShop')) return 'Vegas Shop';
   if (isNearLocation(lat, lon, 'pismoShop', 0.5)) return 'Pismo Shop';
+  if (isNearLocation(lat, lon, 'pismoBeach', 0.5)) return 'Pismo Beach';
   if (isNearLocation(lat, lon, 'nellis')) return 'Vegas Nellis';
   if (isBetweenCoordinates(lat, lon, vofCoordinates))
     return 'Vegas Valley of fire';
