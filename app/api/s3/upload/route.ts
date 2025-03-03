@@ -129,20 +129,19 @@ export async function GET(req: Request) {
         url: signedUrl
       });
     } catch (error) {
-      if (error instanceof Error)
-        if (error.name === 'NotFound') {
-          // If the object does not exist, return null
-          return NextResponse.json({
-            key,
-            url: null
-          });
-        } else {
-          console.error('Error fetching object:', error);
-          return NextResponse.json(
-            { success: false, body: JSON.stringify(error) },
-            { status: 500 }
-          );
-        }
+      console.error('Error fetching object:', error);
+      if (error instanceof Error && error.name === 'NotFound') {
+        // If the object does not exist, return null
+        return NextResponse.json({
+          key,
+          url: null
+        });
+      } else {
+        return NextResponse.json(
+          { success: false, body: JSON.stringify(error) },
+          { status: 500 }
+        );
+      }
     }
   }
 

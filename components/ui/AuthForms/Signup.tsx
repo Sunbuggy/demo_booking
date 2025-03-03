@@ -42,7 +42,7 @@ export default function SignUp({ allowEmail, redirectMethod }: SignUpProps) {
               autoCapitalize="words"
               autoComplete="name"
               autoCorrect="off"
-              className="w-full p-3 rounded-md bg-zinc-800"
+              className="w-full p-3 rounded-md "
               required
             />
             <label htmlFor="email">Email</label>
@@ -54,7 +54,7 @@ export default function SignUp({ allowEmail, redirectMethod }: SignUpProps) {
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect="off"
-              className="w-full p-3 rounded-md bg-zinc-800"
+              className="w-full p-3 rounded-md"
             />
             <label htmlFor="password">Password</label>
             <input
@@ -63,7 +63,7 @@ export default function SignUp({ allowEmail, redirectMethod }: SignUpProps) {
               type="password"
               name="password"
               autoComplete="current-password"
-              className="w-full p-3 rounded-md bg-zinc-800"
+              className="w-full p-3 rounded-md"
             />
           </div>
           <Button
@@ -78,25 +78,20 @@ export default function SignUp({ allowEmail, redirectMethod }: SignUpProps) {
       </form>
       <p>Already have an account?</p>
       <p>
-        <Link
-          
-          href="/signin/password_signin"
-          className="font-light text-sm"
-        >
+        <Link href="/signin/password_signin" className="font-light text-sm">
           Sign in with email and password
         </Link>
       </p>
-      {allowEmail && (
+      {/* {allowEmail && (
         <p>
           <Link
-            
             href="/signin/email_signin"
-            className="font-light text-sm"
+            className="font-light text-sm hover:underline"
           >
             Sign in via magic link
           </Link>
         </p>
-      )}
+      )} */}
     </div>
   );
 }

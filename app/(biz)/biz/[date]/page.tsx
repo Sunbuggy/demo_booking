@@ -47,13 +47,19 @@ const BizPage = async ({
       <div className="min-h-screen flex flex-col gap-5">
         {role && role > 299 && (
           <div className="flex gap-2 justify-center items-center">
-            <Link href={`/biz/${yesterday}`} passHref>
+            <Link
+              href={`/biz/${yesterday}${dcos == true ? '/dcos=true' : ''}`}
+              passHref
+            >
               <RiArrowLeftWideFill />
             </Link>
             <Link href="/biz/calendar" passHref>
               <Button>{date}</Button>
             </Link>
-            <Link href={`/biz/${tomorrow}`} passHref>
+            <Link
+              href={`/biz/${tomorrow}${dcos == true ? '/dcos=true' : ''}`}
+              passHref
+            >
               <RiArrowRightWideFill />
             </Link>
           </div>
@@ -68,7 +74,7 @@ const BizPage = async ({
           />
         )}
 
-        {loadedData && role && role > 350 ? (
+        {loadedData && role && role > 299 ? (
           <Landing
             data={loadedData}
             display_cost={dcos}
@@ -76,7 +82,7 @@ const BizPage = async ({
             date={date}
             full_name={full_name || ''}
           />
-        ) : role && role < 350 ? (
+        ) : role && role < 299 ? (
           <div className="h-screen flex justify-center items-center">
             unauthorized
           </div>

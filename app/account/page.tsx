@@ -6,8 +6,9 @@ import {
   getUserDetails
 } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
-// import RoleForm from '@/components/ui/AccountForms/RoleForm';
 import ScannerPage from '@/components/ui/QrScanner/QrFunction';
+import BackgroundPickerButton from './components/background-picker-button';
+import UserPage from '../(biz)/biz/users/[id]/page';
 
 export type TimeEntry = {
   id: any;
@@ -46,24 +47,17 @@ export default async function Account() {
     const phone = user[0]?.phone;
     const clockinStatus = user[0]?.time_entry_status;
     return (
-      <section className="mb-32">
+      <section className="mb-32  w-screen">
         <div className="max-w-6xl px-4 py-8 mx-auto sm:px-6 sm:pt-24 lg:px-8">
           <div className="sm:align-center sm:flex sm:flex-col">
             <h1 className="text-4xl font-extrabold dark:text-white sm:text-center sm:text-6xl">
               Account
             </h1>
-            <p className="max-w-2xl m-auto mt-5 text-xl dark:text-zinc-200 sm:text-center sm:text-2xl">
-              We partnered with Authorize.net for a simplified billing.
-            </p>
-          </div>
-        </div>
-        <div className="p-4">
-          <ScannerPage user={user ? user[0] : null} />
-          <NameForm
-            userName={userName ?? ''}
-            user_role={role || 100}
-            phone={phone}
-          />
+         <div className="p-4">
+         <UserPage params={{
+            id: userId
+           }}>
+          </UserPage>
           {role > 284 && (
             <ClockinForm
               user_role={role || 100}
@@ -72,8 +66,18 @@ export default async function Account() {
               clockInTimeStamp={clockInTimeStamp}
             />
           )}
-          {/* {Number(role) > 900 ? <RoleForm role={String(role) ?? ''} /> : ''} */}
+          </div>
         </div>
+
+          {/* <ScannerPage user={user ? user[0] : null} /> */}
+          {/* <NameForm
+            userName={userName ?? ''}
+            user_role={role || 100}
+            phone={phone}
+          /> */}
+
+        </div>
+        <BackgroundPickerButton user={user ? user[0] : null} />
       </section>
     );
   }

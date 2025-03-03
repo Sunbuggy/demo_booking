@@ -2,11 +2,18 @@
 
 import { z } from 'zod';
 import { FactoryForm, FieldConfig } from '@/components/factory-form';
-import React from 'react';
+import React, { cache } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { insertIntoTruckPretripForm } from '@/utils/supabase/queries';
+import {
+  changeVehicleStatusToMaintenance,
+  createVehicleTag,
+  insertIntoTruckPretripForm
+} from '@/utils/supabase/queries';
 import { randomUUID } from 'crypto';
 import { useToast } from '@/components/ui/use-toast';
+import { VehicleTagType } from '../../../../admin/page';
+import { Database } from '@/types_db';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export const formSchema = z.object({
   ac_working: z.boolean(),
@@ -518,8 +525,8 @@ export const fields: FieldConfig[] = [
   {
     type: 'radio',
     name: 'vehicle_clean_or_dirty',
-    label: 'vehicle clean or dirty',
-    description: 'Is the vehicle clean or dirty?',
+    label: 'vehicle clean',
+    description: 'Is the vehicle clean?',
     options: [
       { value: true, label: 'Yes' },
       { value: false, label: 'No' }
@@ -569,6 +576,23 @@ const TruckPretripForm = ({
   >(undefined);
   const { toast } = useToast();
 
+  const [prevData, setPrevData] = React.useState<
+    Database['public']['Tables']['vehicle_pretrip_atv']['Row'][]
+  >([]);
+
+  React.useEffect(() => {
+    cache(async (supabase: SupabaseClient, veh_table: string) => {
+      const { data, error } = await supabase.from(veh_table).select('*');
+      if (error) {
+        console.error(error);
+        return [];
+      }
+      setPrevData(
+        data as Database['public']['Tables']['vehicle_pretrip_atv']['Row'][]
+      );
+    });
+  }, []);
+
   React.useEffect(() => {
     if (formData !== undefined) {
       const supabase = createClient();
@@ -578,6 +602,71 @@ const TruckPretripForm = ({
         created_at: new Date().toISOString(),
         created_by: user_id
       };
+      // gather all the results and if there is any 'no' answer then grab all the 'no' answers and console.log them
+      const noAnswers = Object.keys(data).filter(
+        (key) =>
+          key !== 'is_check_engine_on' &&
+          key !== 'visible_leaks' &&
+          key !== 'shuttles_plugged_in_winter' &&
+          data[key as keyof typeof data] === false
+      );
+      // Filter out answers that already exist
+      const newFailedAnswers = noAnswers.filter((answer) => {
+        if (prevData.length === 0) {
+          return noAnswers;
+        }
+        return !prevData.some(
+          (prev) => prev[answer as keyof typeof prev] === false
+        );
+      });
+
+      if (newFailedAnswers.length > 0) {
+        console.log('New failed answers:', newFailedAnswers);
+        newFailedAnswers.forEach((answer) => {
+          const vehicleTag: Database['public']['Tables']['vehicle_tag']['Insert'] =
+            {
+              vehicle_id: vehicle_id,
+              created_at: new Date().toISOString(),
+              created_by: user_id,
+              notes: `Pretrip form failed, ${answer}`,
+              tag_type: 'maintenance',
+              tag_status: 'open'
+            };
+          createVehicleTag(supabase, vehicleTag)
+            .then((res) => {
+              if (vehicle_id) {
+                changeVehicleStatusToMaintenance(supabase, vehicle_id).then(
+                  (res) => {
+                    toast({
+                      title: 'Vehicle status changed',
+                      description: 'Vehicle status changed to maintenance',
+                      variant: 'success',
+                      duration: 2000
+                    });
+                  }
+                );
+              }
+
+              toast({
+                title: 'Vehicle tag created',
+                description:
+                  'A vehicle tag has been created for the failed pretrip form',
+                variant: 'success',
+                duration: 2000
+              });
+            })
+            .catch((error) => {
+              console.error('Error creating vehicle tag', error);
+              toast({
+                title: 'Error creating vehicle tag',
+                description: 'There was an error creating the vehicle tag',
+                variant: 'destructive',
+                duration: 2000
+              });
+            });
+        });
+      }
+
       insertIntoTruckPretripForm(supabase, data, 'vehicle_pretrip_truck')
         .then((res) => {
           // clear the form
@@ -600,7 +689,7 @@ const TruckPretripForm = ({
           });
         });
     }
-  }, [formData]);
+  }, [formData, prevData]);
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     setFormData(data);

@@ -15,12 +15,16 @@ interface ResponsiveImageUploadProps {
   url_key: string;
   updatePic?: boolean;
   single?: boolean;
+  acceptedFormats?: string;
+  bucket?: string;
 }
 
 export default function ResponsiveImageUpload({
   url_key,
   updatePic = false,
-  single = false
+  single = false,
+  acceptedFormats = 'image/*',
+  bucket = 'sb-fleet'
 }: ResponsiveImageUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const { toast } = useToast();
@@ -53,7 +57,7 @@ export default function ResponsiveImageUpload({
     const formData = new FormData();
 
     // Manually append all form data
-    formData.append('bucket', 'sb-fleet');
+    formData.append('bucket', bucket);
     formData.append('mode', single ? 'single' : 'multiple');
     formData.append('key', url_key);
     formData.append('contentType', 'image/jpeg');
@@ -116,7 +120,7 @@ export default function ResponsiveImageUpload({
               className="sr-only"
               multiple={!single}
               onChange={handleFileChange}
-              accept="image/png, image/jpeg"
+              accept={acceptedFormats}
             />
             <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
             <span className="mt-2 block text-sm font-semibold">
@@ -134,7 +138,7 @@ export default function ResponsiveImageUpload({
               className="sr-only"
               capture="environment"
               onChange={handleFileChange}
-              accept="image/png, image/jpeg"
+              accept="image/*"
             />
             <CameraIcon className="h-6 w-6 text-gray-400" />
             <span className="font-semibold">Take a picture</span>

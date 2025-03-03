@@ -21,18 +21,6 @@ const PanelSelector = (props: {
   return (
     <>
       <Card className="flex p-5 gap-5">
-        {props.role > 899 && (
-          <>
-            <input
-              checked={showPanels.admin}
-              type="checkbox"
-              id="admin"
-              name="admin"
-              onChange={handleCheckboxChange('admin')}
-            />
-            <label htmlFor="admin"> Show Admin</label>
-          </>
-        )}
         {props.role > 449 && (
           <>
             <input
@@ -47,7 +35,6 @@ const PanelSelector = (props: {
         )}
       </Card>
 
-      {showPanels.admin && props.role > 899 && <div>{props.admin}</div>}
       {showPanels.torch && props.role > 449 && <div>{props.torch}</div>}
     </>
   );

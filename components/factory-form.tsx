@@ -77,11 +77,35 @@ const FieldComponent = ({
       );
     case 'checkbox':
       return (
-        <Checkbox
-          checked={field.value}
-          onCheckedChange={field.onChange}
-          disabled={allDisabled}
-        />
+        <>
+          {fieldConfig.options?.map((option, idx) => (
+            <div key={idx} className="flex items-center space-x-2">
+              <Checkbox
+                checked={
+                  Array.isArray(field.value)
+                    ? field.value.includes(option.value)
+                    : false
+                }
+                onCheckedChange={(checked) => {
+                  const newValue = Array.isArray(field.value)
+                    ? [...field.value]
+                    : [];
+                  if (checked) {
+                    newValue.push(option.value);
+                  } else {
+                    const index = newValue.indexOf(option.value);
+                    if (index > -1) {
+                      newValue.splice(index, 1);
+                    }
+                  }
+                  field.onChange(newValue);
+                }}
+                disabled={allDisabled}
+              />
+              <label>{option.label}</label>
+            </div>
+          ))}
+        </>
       );
     case 'textarea':
       return (
@@ -124,6 +148,7 @@ type FactoryFormProps = {
   formSchema: z.ZodObject<any>;
   onSubmit: (data: any) => void;
   initialData?: Record<string, any>;
+  data?: Record<string, any>;
   hideFilterBoxField?: boolean;
   allDisabled?: boolean;
 };
@@ -133,6 +158,7 @@ export function FactoryForm({
   formSchema,
   onSubmit,
   initialData,
+  data,
   hideFilterBoxField,
   allDisabled
 }: FactoryFormProps) {
@@ -140,7 +166,7 @@ export function FactoryForm({
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {}
+    defaultValues: initialData || data || {}
   });
 
   useEffect(() => {
@@ -150,6 +176,14 @@ export function FactoryForm({
       });
     }
   }, [initialData, form]);
+
+  useEffect(() => {
+    if (data) {
+      Object.keys(data).forEach((key) => {
+        form.setValue(key, data[key]);
+      });
+    }
+  }, [data, form]);
 
   const visibleFields = fields.filter(
     (field) => !field.hidden || showAllFields

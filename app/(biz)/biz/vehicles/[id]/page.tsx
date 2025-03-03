@@ -12,11 +12,13 @@ import { fetchObjects } from '@/utils/biz/pics/get';
 import { VehicleTagType, VehicleType } from '../admin/page';
 import VehicleClientComponent from './components/vehicle-client';
 import { InventoryLocation, VehicleLocation } from '../types';
+import { VehicleReg } from '../admin/tables/components/row-action-reg';
 
 const bucket = 'sb-fleet';
 async function getVehicleData(id: string) {
   const supabase = createClient();
   const vehicleInfo = await fetchVehicleInfo(supabase, id);
+
   const fetchVehicleTagInfo = async () => {
     const { data, error } = await supabase
       .from('vehicle_tag')
@@ -45,25 +47,35 @@ async function getVehicleData(id: string) {
       false,
       `badges/${id}`
     );
-
     const normalBadges = normalGifsResponse?.objects as VehicleGifs[];
 
+    const normalRegResponse = await fetchObjects(
+      bucket,
+      false,
+      `registrations/${id}`
+    );
+    const normalReg = normalRegResponse?.objects as VehicleReg[];
+    
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: normalImages || [],
       normalBadges: normalBadges || [],
-      vehicleTags
+      vehicleTags,
+      registrationPdf: normalReg || []
     };
   } catch (error) {
     console.error(`Error fetching objects for ${id} `, error);
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: [],
-      normalBadges:[],
-      vehicleTags: []
+      normalBadges: [],
+      vehicleTags: [],
+      registrationPdf: [] 
     };
   }
 }
+
+
 
 export default async function VehiclePage({
   params
@@ -80,7 +92,7 @@ export default async function VehiclePage({
     `profile_pic/${params.id}`
   );
   const profilePic = String(profilePicResponse?.url);
-  const { vehicleInfo, normalImages, normalBadges,vehicleTags } = await getVehicleData(
+  const { vehicleInfo, normalImages, normalBadges,vehicleTags, registrationPdf } = await getVehicleData(
     params.id
   );
 
@@ -105,6 +117,7 @@ export default async function VehiclePage({
           user={user}
           vehicleLocations={vehicleLocations}
           inventoryLocations={inventoryLocations}
+          registrationPdf={registrationPdf} 
         />
       ) : (
         <div>No User</div>

@@ -1,7 +1,9 @@
 'use client';
+
 import React, { useState } from 'react';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
 import { VehicleGifs } from '../../admin/tables/components/row-actions-gif';
+import { VehicleReg } from '../../admin/tables/components/row-action-reg';
 import ImageView from './image-view';
 import { Trash2Icon } from 'lucide-react';
 import {
@@ -12,11 +14,11 @@ import {
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 
-type Media = VehiclePics | VehicleGifs;
+type Media = VehiclePics | VehicleGifs | VehicleReg;
 
 const ImageGrid = ({
-  images,
-  gifs,
+  images = [],
+  gifs = [],
   width,
   height
 }: {
@@ -50,21 +52,15 @@ const ImageGrid = ({
       }
     })
       .then((res) => res.json())
-      .then((data) => {
-        // remove item from the media array
+      .then(() => {
         setMedia((prev) => prev.filter((mediaItem) => mediaItem.key !== item.key));
       })
-      .catch((error) => {
-        console.error(error);
-      });
+      .catch((error) => console.error(error));
   };
 
   return (
     <div className="flex flex-col items-center">
-      {
-        // if there are no media items to display, show a message
-        media.length === 0 && <p>No media to display</p>
-      }
+      {media.length === 0 && <p>No media to display</p>}
       <div className="grid md:grid-cols-4 grid-cols-1 md:gap-4 gap-2">
         {selectedMedia.map((item, index) => (
           <div className="space-y-2" key={index}>
@@ -74,10 +70,7 @@ const ImageGrid = ({
               <ImageView src={item.url} height={height} width={width} />
             )}
             <Popover>
-              <PopoverTrigger
-                className="w-8 flex items-start text-red-500 p-0 m-0"
-                asChild
-              >
+              <PopoverTrigger className="w-8 flex items-start text-red-500 p-0 m-0" asChild>
                 <Trash2Icon className="cursor-pointer" />
               </PopoverTrigger>
               <PopoverContent>
@@ -85,10 +78,7 @@ const ImageGrid = ({
                   <p>Are you sure you want to delete this item?</p>
                   <div className="flex justify-between">
                     <PopoverClose asChild>
-                      <Button
-                        onClick={() => removeMedia(item)}
-                        variant={'destructive'}
-                      >
+                      <Button onClick={() => removeMedia(item)} variant={'destructive'}>
                         Yes
                       </Button>
                     </PopoverClose>

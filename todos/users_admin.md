@@ -82,3 +82,7 @@
 
 - Delete Customer
 - Remove From Employees
+
+## Create User Page For All Users
+
+-Display user's name, uploaded pics, and bio, clockin status, timesheets, crud capabilities if user or admin.

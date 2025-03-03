@@ -24,12 +24,12 @@ const UsersTabsContainer = ({
   const userImage =
     loggedInUser && String(loggedInUser?.user_metadata.avatar_url);
   return (
-    <Tabs defaultValue="employees" className="w-[400px] md:w-full">
+    <Tabs defaultValue="employees" className="w-[375px] md:w-full">
       <TabsList>
         <TabsTrigger value="employees">Employees</TabsTrigger>
         <TabsTrigger value="customers">Customers</TabsTrigger>
       </TabsList>
-      <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex bg-black/75">
+      <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex ">
         <div className="flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">

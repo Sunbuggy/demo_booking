@@ -14,7 +14,6 @@ export default async function Footer() {
       <div className="grid grid-cols-1 gap-2 py-12 transition-colors duration-150 border-b lg:grid-cols-12 border-zinc-600 ">
         <div className="col-span-1 lg:col-span-2">
           <Link
-            
             href="/"
             className="flex items-center flex-initial font-bold md:mr-24"
           >
@@ -40,38 +39,22 @@ export default async function Footer() {
         <div className="col-span-1 lg:col-span-2">
           <ul className="flex flex-col flex-initial md:flex-1">
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                
-                href="/"
-                className=" transition duration-150 ease-in-out "
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 Home
               </Link>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                
-                href="/"
-                className=" transition duration-150 ease-in-out "
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 About
               </Link>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                
-                href="/"
-                className=" transition duration-150 ease-in-out "
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 Careers
               </Link>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                
-                href="/"
-                className=" transition duration-150 ease-in-out "
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 Blog
               </Link>
             </li>
@@ -85,27 +68,18 @@ export default async function Footer() {
               </p>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                
-                href="/"
-                className=" transition duration-150 ease-in-out "
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 Privacy Policy
               </Link>
             </li>
             <li className="py-3 md:py-0 md:pb-4">
-              <Link
-                
-                href="/"
-                className=" transition duration-150 ease-in-out "
-              >
+              <Link href="/" className=" transition duration-150 ease-in-out ">
                 Terms of Use
               </Link>
             </li>
             {role && role > 299 && (
               <li className="py-3 md:py-0 md:pb-4">
                 <Link
-                  
                   href={`/biz/${date}`}
                   className=" transition duration-150 ease-in-out "
                 >

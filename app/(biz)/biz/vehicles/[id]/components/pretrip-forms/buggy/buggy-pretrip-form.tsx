@@ -2,9 +2,16 @@
 
 import { z } from 'zod';
 import { FactoryForm, FieldConfig } from '@/components/factory-form';
-import React from 'react';
+import React, { cache } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { insertIntoBuggyPretripForm } from '@/utils/supabase/queries';
+import {
+  changeVehicleStatusToMaintenance,
+  createVehicleTag,
+  insertIntoBuggyPretripForm
+} from '@/utils/supabase/queries';
+import { Database } from '@/types_db';
+import { useToast } from '@/components/ui/use-toast';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export const formSchema = z.object({
   axle_sleeves_intact: z.boolean(),
@@ -527,6 +534,23 @@ const BuggyPretripForm = ({
   const [formData, setFormData] = React.useState<
     z.infer<typeof formSchema> | undefined
   >(undefined);
+  const { toast } = useToast();
+  const [prevData, setPrevData] = React.useState<
+    Database['public']['Tables']['vehicle_pretrip_buggy']['Row'][]
+  >([]);
+
+  React.useEffect(() => {
+    cache(async (supabase: SupabaseClient, veh_table: string) => {
+      const { data, error } = await supabase.from(veh_table).select('*');
+      if (error) {
+        console.error(error);
+        return [];
+      }
+      setPrevData(
+        data as Database['public']['Tables']['vehicle_pretrip_buggy']['Row'][]
+      );
+    });
+  }, []);
 
   React.useEffect(() => {
     if (formData !== undefined) {
@@ -537,6 +561,70 @@ const BuggyPretripForm = ({
         created_at: new Date().toISOString(),
         created_by: user_id
       };
+      const noAnswers = Object.keys(data).filter(
+        (key) =>
+          key !== 'is_check_engine_on' &&
+          key !== 'visible_leaks' &&
+          key !== 'shuttles_plugged_in_winter' &&
+          data[key as keyof typeof data] === false
+      );
+
+      // Filter out answers that already exist
+      const newFailedAnswers = noAnswers.filter((answer) => {
+        if (prevData.length === 0) {
+          return noAnswers;
+        }
+        return !prevData.some(
+          (prev) => prev[answer as keyof typeof prev] === false
+        );
+      });
+
+      if (newFailedAnswers.length > 0) {
+        console.log('New failed answers:', newFailedAnswers);
+        newFailedAnswers.forEach((answer) => {
+          const vehicleTag: Database['public']['Tables']['vehicle_tag']['Insert'] =
+            {
+              vehicle_id: vehicle_id,
+              created_at: new Date().toISOString(),
+              created_by: user_id,
+              notes: `Pretrip form failed, ${answer}`,
+              tag_type: 'maintenance',
+              tag_status: 'open'
+            };
+          createVehicleTag(supabase, vehicleTag)
+            .then((res) => {
+              if (vehicle_id) {
+                changeVehicleStatusToMaintenance(supabase, vehicle_id).then(
+                  (res) => {
+                    toast({
+                      title: 'Vehicle status changed',
+                      description: 'Vehicle status changed to maintenance',
+                      variant: 'success',
+                      duration: 2000
+                    });
+                  }
+                );
+              }
+              toast({
+                title: 'Vehicle tag created',
+                description:
+                  'A vehicle tag has been created for the failed pretrip form',
+                variant: 'success',
+                duration: 2000
+              });
+            })
+            .catch((error) => {
+              console.error('Error creating vehicle tag', error);
+              toast({
+                title: 'Error creating vehicle tag',
+                description: 'There was an error creating the vehicle tag',
+                variant: 'destructive',
+                duration: 2000
+              });
+            });
+        });
+      }
+
       insertIntoBuggyPretripForm(supabase, data, 'vehicle_pretrip_buggy')
         .then((res) => {
           // clear the form
@@ -546,7 +634,7 @@ const BuggyPretripForm = ({
           console.error('Error inserting into pretrip form', error);
         });
     }
-  }, [formData]);
+  }, [formData, prevData]);
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     setFormData(data);

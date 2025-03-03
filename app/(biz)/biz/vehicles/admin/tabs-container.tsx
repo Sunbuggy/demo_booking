@@ -9,6 +9,8 @@ import { createClient } from '@/utils/supabase/server';
 import LocationHistory from '../[id]/components/vehicle-location-history';
 import { fetchAllVehicleLocations } from '@/utils/supabase/queries';
 import { VehicleLocation } from '../types';
+import VehiclesOverview from './tables/components/overview/vehicles-overview';
+import { FilteredVehicles } from './tables/components/filter-vehicles';
 
 const VehiclesTabContainer = async ({
   vehicles,
@@ -24,13 +26,13 @@ const VehiclesTabContainer = async ({
   )) as VehicleLocation[];
 
   return (
-    <Tabs defaultValue="vehicles" className="w-[400px] md:w-full">
+    <Tabs defaultValue="vehicles" className="w-[375px] md:w-full">
       <TabsList>
         <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
         <TabsTrigger value="vehicle_status">Vehicles Status</TabsTrigger>
         <TabsTrigger value="location_stream">Location Stream</TabsTrigger>
       </TabsList>
-      <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex bg-black/75">
+      <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex ">
         <div className="flex items-center justify-between space-y-2"></div>
         <TabsContent value="vehicles">
           <div>
@@ -39,10 +41,11 @@ const VehiclesTabContainer = async ({
             </h2>
             <p className="text-muted-foreground"></p>
           </div>
-          <VehiclesTab vehicles={vehicles} />
+          <FilteredVehicles vehicles={vehicles} />
         </TabsContent>
         <TabsContent value="vehicle_status">
-          <VehicleStatus vehicles={vehicles} />
+          {/* <VehicleStatus vehicles={vehicles} /> */}
+          <VehiclesOverview />
         </TabsContent>
         <TabsContent value="location_stream">
           <LocationHistory vehicleLocations={allVehicleLocations} />

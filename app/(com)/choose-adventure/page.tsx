@@ -11,15 +11,15 @@ const ChooseAdventure = () => {
   return (
     <div className="flex flex-col gap-4 items-center">
       {' '}
+      {/* homepage */}
       <h1 className="text-2xl font-bold text-center m-4 w-full">
-        Choose an Adventure
+        Choose an Adventures
       </h1>
       <AdventureCard
         description={minibajachase.description}
         title={minibajachase.title}
         videoId={minibajachase.videoId}
         playlistId={minibajachase.playlistId}
-        // autoplay={1}
         linkHref="/book/minibaja-chase"
       />
       <AdventureCard

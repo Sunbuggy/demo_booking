@@ -26,17 +26,34 @@ import { useRouter } from 'next/navigation';
 
 import ResponsiveImageUpload from './responsive-image-upload-form';
 import ResponsiveGifUpload from './responsive-gif-upload-form';
+import RegistrationUpload from './registration-upload-form';
 import LocationHistory from './vehicle-location-history';
 import PretripFormManager from './pretrip-forms/pretrip-form-manager';
 import InventoryHistory from './vehicle-location-inventory-history';
 import { InventoryLocation, VehicleLocation } from '../../types';
 import LocationScheduling from './location-scheduling';
+import { VehicleReg } from '../../admin/tables/components/row-action-reg';
+import RegistrationPDFList from './pdf-view';
+import QRCodeGenerator from '../../../qr/components/QRCodeGenerator';
+import {
+  fetchVehicleLocations,
+  recordVehicleLocation
+} from '@/utils/supabase/queries';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 interface VehicleClientComponentProps {
   id: string;
   initialVehicleInfo: VehicleType;
   images: VehiclePics[];
   gif: VehicleGifs[];
+  registrationPdf: VehicleReg[];
   profilePic?: string;
   vehicleTags: VehicleTagType[];
   user: User;
@@ -44,12 +61,14 @@ interface VehicleClientComponentProps {
   inventoryLocations: InventoryLocation[];
 }
 
+// Destructure registrationPdf in props
 const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   id,
   initialVehicleInfo,
   profilePic,
   images,
   gif,
+  registrationPdf,
   vehicleTags,
   user,
   vehicleLocations,
@@ -58,16 +77,31 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const vehicleInfo = initialVehicleInfo;
   const supabase = createClient();
   const router = useRouter();
+  const { toast } = useToast();
+  const location: {
+    [key in 'vegas' | 'pismo' | 'silverlake']: { lat: number; lon: number };
+  } = {
+    vegas: { lat: 36.278439, lon: -115.020068 },
+    pismo: { lat: 35.105821, lon: -120.63038 },
+    silverlake: { lat: 43.675239, lon: -86.472552 }
+  };
+  const [city, setCity] = React.useState<keyof typeof location | ''>('');
   const [isNewUploadDialogOpen, setIsNewUploadDialogOpen] =
     React.useState(false);
   const [isUpdateUploadDialogOpen, setIsUpdateUploadDialogOpen] =
     React.useState(false);
   const [isUploadImagesDialogOpen, setIsUploadImagesDialogOpen] =
     React.useState(false);
-    const [isUploadGifsDialogOpen, setIsUploadGifsDialogOpen] =
+  const [isUploadGifsDialogOpen, setIsUploadGifsDialogOpen] =
+    React.useState(false);
+  const [isUploadRegDialogOpen, setIsUploadRegDialogOpen] =
     React.useState(false);
   const [isLocationManagementDialogOpen, setIsLocationManagementDialogOpen] =
     React.useState(false);
+  const [
+    isLocationCurrentManagementDialogOpen,
+    setIsLocationCurrentManagementDialogOpen
+  ] = React.useState(false);
   const [
     isInventoryLocationManagementDialogOpen,
     setIsInventoryLocationManagementDialogOpen
@@ -75,6 +109,53 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const [isPretripFormOpen, setIsPretripFormOpen] = React.useState(false);
   const [islocationSchedulingDialogOpen, setIsLocationSchedulingDialogOpen] =
     React.useState(false);
+
+  React.useEffect(() => {
+    async function getLocation() {
+      try {
+        const data = await fetchVehicleLocations(supabase, vehicleInfo.id);
+        if (data && data.length > 0) {
+          setCity(data[0].city);
+        }
+      } catch (error) {
+        console.error('Failed to fetch vehicle location:', error);
+      }
+    }
+
+    getLocation();
+  }, [vehicleInfo.id, supabase]); // Add dependencies
+
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('realtime vehicle locator')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle_locations'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'groups'
+        },
+        () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, router]);
 
   React.useEffect(() => {
     const channel = supabase
@@ -106,6 +187,58 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       supabase.removeChannel(channel);
     };
   }, [supabase, router]);
+
+  React.useEffect(() => {
+    const location: {
+      [key in 'vegas' | 'pismo' | 'silverlake']: { lat: number; lon: number };
+    } = {
+      vegas: { lat: 36.278439, lon: -115.020068 },
+      pismo: { lat: 35.105821, lon: -120.63038 },
+      silverlake: { lat: 43.675239, lon: -86.472552 }
+    };
+    if (city) {
+      if (!location[city]?.lat || !location[city]?.lon) {
+        return;
+      }
+
+      if (location[city]?.lat === 0 || location[city]?.lon === 0) {
+        return;
+      }
+      if (
+        location[city]?.lat === undefined ||
+        location[city]?.lon === undefined
+      ) {
+        return;
+      }
+
+      recordVehicleLocation(supabase, {
+        vehicle_id: id,
+        latitude: location[city]?.lat,
+        longitude: location[city]?.lon,
+        city: city,
+        created_at: new Date().toISOString(),
+        created_by: user.id
+      })
+        .then((data) => {
+          toast({
+            title: 'Success',
+            description: 'Vehicle location recorded successfully',
+            variant: 'success',
+            duration: 3000
+          });
+          setCity('');
+          setIsLocationCurrentManagementDialogOpen(false);
+        })
+        .catch((error) => {
+          toast({
+            title: 'Error',
+            description: 'Error recording vehicle location',
+            variant: 'destructive',
+            duration: 3000
+          });
+        });
+    }
+  }, [city]);
 
   const updateProfilePicTitle = (
     <div>
@@ -143,9 +276,18 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     </div>
   );
 
+  const uploadMoreRegistration = (
+    <div>
+      <p>
+        Upload More Registration for{' '}
+        <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
+      </p>
+    </div>
+  );
+
   if (vehicleInfo)
     return (
-      <div className="md:w-[800px] min-w-[360px] space-y-5 relative">
+      <div className="md:w-[800px] w-[375px] space-y-5 relative">
         <Link
           href={'/biz/vehicles/admin'}
           className="flex gap-2 hover:cursor-pointer text-pink-500 underline"
@@ -238,10 +380,16 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         }
                       />
                     </div>
-                    <ImageGrid images={images} width={200} height={120} gifs={[]} />
+                    <ImageGrid
+                      images={images}
+                      width={200}
+                      height={120}
+                      gifs={[]}
+                    />
                   </div>
                 </AccordionContent>
               </AccordionItem>
+
               <AccordionItem value="show-badges">
                 <AccordionTrigger>Show Badge</AccordionTrigger>
                 <AccordionContent>
@@ -257,17 +405,21 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         description="Upload one or multiple images for the vehicle."
                         children={
                           <div>
-                            <ResponsiveGifUpload
-                              url_key={`badges/${id}/${createId()}`}
-                            />
+                            <ResponsiveGifUpload url_key={`badges/${id}`} />
                           </div>
                         }
                       />
                     </div>
-                    <ImageGrid gifs={gif} width={200} height={120} images={[]}  />
+                    <ImageGrid
+                      gifs={gif}
+                      width={200}
+                      height={120}
+                      images={[]}
+                    />
                   </div>
                 </AccordionContent>
               </AccordionItem>
+
               <AccordionItem value="tag-management">
                 <AccordionTrigger>Tag Management</AccordionTrigger>
                 <AccordionContent>
@@ -293,6 +445,43 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               <AccordionItem value="location-management">
                 <AccordionTrigger>Location Management</AccordionTrigger>
                 <AccordionContent>
+                  <div className="flex flex-col gap-5 mb-5">
+                    <Button
+                      onClick={() =>
+                        setIsLocationCurrentManagementDialogOpen(true)
+                      }
+                    >
+                      Set Current Location
+                    </Button>
+                    <DialogFactory
+                      title={'Location Setting'}
+                      setIsDialogOpen={setIsLocationCurrentManagementDialogOpen}
+                      isDialogOpen={isLocationCurrentManagementDialogOpen}
+                      description="Manage the current and future location for the vehicle."
+                      children={
+                        <div className="flex flex-col gap-5 w-full">
+                          <Select
+                            name="current-location"
+                            onValueChange={(e) =>
+                              setCity(e as keyof typeof location)
+                            }
+                            defaultValue={city}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select A Current Location" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="vegas">Vegas</SelectItem>
+                              <SelectItem value="pismo">Pismo</SelectItem>
+                              <SelectItem value="silverlake">
+                                Silver Lake
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      }
+                    />
+                  </div>
                   <div className="flex flex-col gap-5">
                     <Button
                       onClick={() => setIsLocationManagementDialogOpen(true)}
@@ -305,7 +494,11 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                       isDialogOpen={isLocationManagementDialogOpen}
                       description="Manage the current and future location for the vehicle."
                       children={
-                        <LocationHistory vehicleLocations={vehicleLocations} />
+                        <LocationHistory
+                          vehicleLocations={vehicleLocations}
+                          locCreator={true}
+                          user_id={user.id}
+                        />
                       }
                     />
                     <Button
@@ -348,11 +541,50 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                   </div>
                 </AccordionContent>
               </AccordionItem>
+              <AccordionItem value="show-registration">
+                <AccordionTrigger>Show Registration</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col gap-5">
+                    <Button onClick={() => setIsUploadRegDialogOpen(true)}>
+                      Upload Registration
+                    </Button>
+                    <DialogFactory
+                      title={uploadMoreRegistration}
+                      setIsDialogOpen={setIsUploadRegDialogOpen}
+                      isDialogOpen={isUploadRegDialogOpen}
+                      description="Upload one or multiple pdf for the vehicle registration."
+                      children={
+                        <div>
+                          <RegistrationUpload url_key={`registrations/${id}`} />
+                        </div>
+                      }
+                    />
+                    <RegistrationPDFList registrationPdf={registrationPdf} />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="show-vehicle-status">
+                <AccordionTrigger>Print QR Code</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col gap-5">
+                    <QRCodeGenerator
+                      defUrl={`https://sunbuggy.com/fleet/${vehicleInfo.name}`}
+                      defTopText={vehicleInfo.name
+                        .match(/[a-zA-Z]+/g)
+                        ?.join('')}
+                      defBottomText={vehicleInfo.name
+                        .match(/[0-9]+/g)
+                        ?.join('')}
+                      hidden={true}
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
             </Accordion>
           </CardContent>
         </Card>
         <div
-          className={`absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === 'maintenance' ? 'bg-yellow-600' : vehicleInfo.vehicle_status === 'broken' ? 'bg-red-600' : 'bg-green-600'}`}
+          className={`absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === 'maintenance' ? 'bg-yellow-600' : vehicleInfo.vehicle_status === 'broken' ? 'bg-red-600' : vehicleInfo.vehicle_status === 'former' ? 'bg-gray-600' : 'bg-green-600'}`}
         >
           {vehicleInfo.vehicle_status}
         </div>

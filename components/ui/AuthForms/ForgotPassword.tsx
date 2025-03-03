@@ -62,31 +62,29 @@ export default function ForgotPassword({
       </form>
       <p>
         <Link
-          
           href="/signin/password_signin"
-          className="font-light text-sm"
+          className="font-light text-sm hover:underline"
         >
           Sign in with email and password
         </Link>
       </p>
-      {allowEmail && (
+      {/* {allowEmail && (
         <p>
           <Link
-            
             href="/signin/email_signin"
-            className="font-light text-sm"
+            className="font-light text-sm hover:underline"
           >
             Sign in via magic link
           </Link>
         </p>
-      )}
+      )} */}
       <p>
         <Link
-          
           href="/signin/signup"
-          className="font-light text-sm"
+          className="font-light text-sm hover:underline"
         >
-          Don't have an account? Sign up
+          Don't have an account?{' '}
+          <span className="text-orange-500">Sign up</span>
         </Link>
       </p>
     </div>

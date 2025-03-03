@@ -286,10 +286,10 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
               theme={{
                 components: {
                   Calendar: {
-                    fullPanelBg: `${currentTheme === 'dark' ? '#2b2a2a' : 'light' ? '#ffffff' : '#2b2a2a'}`,
-                    fullBg: `${currentTheme === 'dark' ? '#2b2a2a' : 'light' ? '#ffffff' : '#2b2a2a'}`,
+                    fullPanelBg: `${currentTheme === 'dark' ? '#2b2a2a' :  '#ffffff' }`,
+                    fullBg: `${currentTheme === 'dark' ? '#2b2a2a' :  '#ffffff'}`,
                     itemActiveBg: '#FFC47E',
-                    colorText: `${currentTheme === 'dark' ? '#ffffff' : 'light' ? '#000000' : '#ffffff'}`
+                    colorText: `${currentTheme === 'dark' ? '#ffffff' : '#000000' }`
                   }
                 }
               }}

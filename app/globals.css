@@ -1,0 +1,204 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+.normal_button {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-4 py-2;
+}
+
+.normal_button_small {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-6 px-2 py-1;
+}
+.normal_button_circular_small {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-6 w-6;
+}
+.normal_button_large {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-12 px-6 py-3;
+}
+.normal_button_circular {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 w-10;
+}
+
+.large_button_circular {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-full text-xs text-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-16 w-16 p-4;
+}
+.normal_button_xlarge {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-xl font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-16 px-8 py-4;
+}
+
+.red_button {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-red-500  text-zinc-50 hover:bg-red-500/90 dark:bg-red-900 dark:text-zinc-50 dark:hover:bg-red-900/90 h-10 px-4 py-2;
+}
+
+.green_button {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-green-500  text-zinc-50 hover:bg-green-500/90 dark:bg-green-900 dark:text-zinc-50 dark:hover:bg-green-900/90 h-10 px-4 py-2;
+}
+
+.red_button_small {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-red-500 text-zinc-50 hover:bg-red-500/90 dark:bg-red-900 dark:text-zinc-50 dark:hover:bg-red-900/90 h-6 px-2 py-1;
+}
+
+.green_button_small {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-green-500 text-zinc-50 hover:bg-green-500/90 dark:bg-green-900 dark:text-zinc-50 dark:hover:bg-green-900/90 h-6 px-2 py-1;
+}
+
+.white_button {
+  @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 h-10 px-4 py-2;
+}
+.ant-picker-content > thead > tr > th,
+.ant-picker-calendar-date-value {
+  text-align: left;
+}
+.HotelListing {
+  font-weight: bold;
+}
+
+@font-face {
+  font-family: 'banco';
+  src:
+    local('banco'),
+    url('/fonts/Banco_Regular.ttf') format('opentype') tech(color-COLRv1),
+    url('/fonts/Banco_Regular.ttf') format('opentype'),
+    url('/fonts/Banco_Regular.ttf') format('ttf');
+}
+.nav_head {
+  font-family: 'banco', Fallback, sans-serif;
+  padding-bottom: 0.5rem;
+  padding-top: 0.5rem;
+  background-color: transparent;
+  font-size: 2.5rem;
+  line-height: 2rem;
+  text-align: center;
+  color: yellow;
+}
+@media (max-width: inherit) {
+  .nav_head {
+    font-size: 1.6rem;
+    /* padding-left: 4rem; */
+  }
+}
+.maincard {
+  @apply w-full rounded-lg border border-zinc-200  text-zinc-950 shadow-sm dark:border-zinc-800  dark:text-zinc-50;
+}
+.LocationCardStyle {
+  @apply flex flex-col rounded-md p-1 shadow-none gap-1 dark:border-yellow-100;
+}
+.itembox {
+  border: 1px solid rgba(255, 255, 0, 0.101);
+  border-radius: 5px;
+  padding: 3px;
+  flex-wrap: nowrap;
+}
+.HourCardStyle {
+  @apply rounded-md p-3 shadow-none flex-auto gap-3 dark:border-yellow-500;
+}
+.bookingcard {
+  @apply rounded-md p-3 shadow-none flex-auto gap-3;
+}
+.bookingcardtitle {
+  @apply p-2 gap-3 flex-auto space-x-2 space-y-2;
+}
+.daytotal {
+  @apply text-start;
+}
+.occasionbox {
+  @apply p-1 max-w-fit;
+}
+.menulinks {
+  @apply text-center text-lg dark:text-yellow-500 text-black;
+}
+.itembox {
+  border: 1px solid yellow;
+  border-radius: 5px;
+  padding-right: 2px;
+  padding-left: 2px;
+}
+::file-selector-button {
+  display: none;
+}
+@keyframes rotate-180 {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+.rotate-180 {
+  animation: rotate-180 0.5s forwards;
+}
+
+.rbc-btn-group {
+  margin: 10px;
+}
+
+.rbc-today {
+  background-color: #5e2a00ad !important;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

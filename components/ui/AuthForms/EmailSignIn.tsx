@@ -46,7 +46,7 @@ export default function EmailSignIn({
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect="off"
-              className="w-full p-3 rounded-md bg-zinc-800"
+              className="w-full p-3 rounded-md"
             />
           </div>
           <Button
@@ -63,21 +63,17 @@ export default function EmailSignIn({
       {allowPassword && (
         <>
           <p>
-            <Link
-              
-              href="/signin/password_signin"
-              className="font-light text-sm"
-            >
+            <Link href="/signin/password_signin" className="font-light text-sm">
               Sign in with email and password
             </Link>
           </p>
           <p>
             <Link
-              
               href="/signin/signup"
-              className="font-light text-sm"
+              className="font-light text-sm hover:underline"
             >
-              Don't have an account? Sign up
+              Don't have an account?{' '}
+              <span className="text-orange-500">Sign up</span>
             </Link>
           </p>
         </>

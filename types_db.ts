@@ -30,6 +30,274 @@ export type Database = {
         }
         Relationships: []
       }
+      adventure: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number
+          id: string
+          imageUrl: string | null
+          title: string | null
+          videoUrl: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes: number
+          id?: string
+          imageUrl?: string | null
+          title?: string | null
+          videoUrl?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          imageUrl?: string | null
+          title?: string | null
+          videoUrl?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventures_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adventure_discounts: {
+        Row: {
+          adventure_id: string | null
+          created_at: string
+          created_by: string | null
+          discount_amt: number | null
+          discount_percent: number | null
+          end_date: string | null
+          id: string
+          start_date: string | null
+        }
+        Insert: {
+          adventure_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_amt?: number | null
+          discount_percent?: number | null
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+        }
+        Update: {
+          adventure_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_amt?: number | null
+          discount_percent?: number | null
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventure_discounts_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adventure_discounts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adventure_pricing: {
+        Row: {
+          adventure_id: string | null
+          adventure_vehicle_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          price: number
+        }
+        Insert: {
+          adventure_id?: string | null
+          adventure_vehicle_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          price: number
+        }
+        Update: {
+          adventure_id?: string | null
+          adventure_vehicle_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventure_pricing_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adventure_pricing_adventure_id_fkey1"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventure_vehicle"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adventure_pricing_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adventure_unavailability: {
+        Row: {
+          adventure_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string | null
+          time_range_start: string
+          timerange_end: string | null
+        }
+        Insert: {
+          adventure_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string | null
+          time_range_start: string
+          timerange_end?: string | null
+        }
+        Update: {
+          adventure_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string | null
+          time_range_start?: string
+          timerange_end?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventure_unavailability_adventure_id_fkey"
+            columns: ["adventure_id"]
+            isOneToOne: false
+            referencedRelation: "adventure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adventure_unavailability_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      adventure_vehicle: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          seats: number | null
+          type: Database["public"]["Enums"]["vehicle_type"] | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          seats?: number | null
+          type?: Database["public"]["Enums"]["vehicle_type"] | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          seats?: number | null
+          type?: Database["public"]["Enums"]["vehicle_type"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adventure_vehicle_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          action: string | null
+          created_at: string
+          id: string
+          row: string | null
+          table_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          id?: string
+          row?: string | null
+          table_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          id?: string
+          row?: string | null
+          table_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_table_queue: {
+        Row: {
+          created_at: string
+          id: number
+          table: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          table?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          table?: string | null
+        }
+        Relationships: []
+      }
       booking: {
         Row: {
           booked_by: string
@@ -216,15 +484,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "customers_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       departments: {
         Row: {
@@ -240,6 +500,67 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      dispatch_groups: {
+        Row: {
+          id: string
+          location: Database["public"]["Enums"]["dispatch_locations"] | null
+          user: string | null
+        }
+        Insert: {
+          id?: string
+          location?: Database["public"]["Enums"]["dispatch_locations"] | null
+          user?: string | null
+        }
+        Update: {
+          id?: string
+          location?: Database["public"]["Enums"]["dispatch_locations"] | null
+          user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch groups_user_fkey"
+            columns: ["user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_details: {
+        Row: {
+          emp_id: string | null
+          id: string
+          payroll_company: string | null
+          primary_position: string | null
+          primary_work_location: string | null
+          user_id: string | null
+        }
+        Insert: {
+          emp_id?: string | null
+          id?: string
+          payroll_company?: string | null
+          primary_position?: string | null
+          primary_work_location?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          emp_id?: string | null
+          id?: string
+          payroll_company?: string | null
+          primary_position?: string | null
+          primary_work_location?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_details_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       group_vehicles: {
         Row: {
@@ -431,29 +752,38 @@ export type Database = {
       }
       qr_history: {
         Row: {
-          id: number
-          link: string | null
+          id: string
+          latitude: number | null
+          location: string | null
+          longitude: number | null
           scanned_at: string | null
           user: string | null
+          vehicle_id: string | null
         }
         Insert: {
-          id?: number
-          link?: string | null
+          id?: string
+          latitude?: number | null
+          location?: string | null
+          longitude?: number | null
           scanned_at?: string | null
           user?: string | null
+          vehicle_id?: string | null
         }
         Update: {
-          id?: number
-          link?: string | null
+          id?: string
+          latitude?: number | null
+          location?: string | null
+          longitude?: number | null
           scanned_at?: string | null
           user?: string | null
+          vehicle_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "qr_history_user_fkey"
-            columns: ["user"]
+            foreignKeyName: "qr_history_vehicle_id_fkey"
+            columns: ["vehicle_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
@@ -511,6 +841,7 @@ export type Database = {
         Row: {
           clock_in_id: string | null
           clock_out_id: string | null
+          created_at: string | null
           date: string | null
           duration: number | null
           id: string
@@ -519,6 +850,7 @@ export type Database = {
         Insert: {
           clock_in_id?: string | null
           clock_out_id?: string | null
+          created_at?: string | null
           date?: string | null
           duration?: number | null
           id?: string
@@ -527,6 +859,7 @@ export type Database = {
         Update: {
           clock_in_id?: string | null
           clock_out_id?: string | null
+          created_at?: string | null
           date?: string | null
           duration?: number | null
           id?: string
@@ -633,8 +966,13 @@ export type Database = {
       users: {
         Row: {
           avatar_url: string | null
+          bg_image: string | null
+          bg_position: string | null
+          bg_repeat: string | null
+          bg_size: string | null
           email: string | null
           full_name: string | null
+          homepage: string | null
           id: string
           phone: string | null
           time_entry_status:
@@ -644,8 +982,13 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          bg_image?: string | null
+          bg_position?: string | null
+          bg_repeat?: string | null
+          bg_size?: string | null
           email?: string | null
           full_name?: string | null
+          homepage?: string | null
           id: string
           phone?: string | null
           time_entry_status?:
@@ -655,8 +998,13 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          bg_image?: string | null
+          bg_position?: string | null
+          bg_repeat?: string | null
+          bg_size?: string | null
           email?: string | null
           full_name?: string | null
+          homepage?: string | null
           id?: string
           phone?: string | null
           time_entry_status?:
@@ -664,15 +1012,7 @@ export type Database = {
             | null
           user_level?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "users_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       vehicle_future_location: {
         Row: {
@@ -761,35 +1101,93 @@ export type Database = {
       vehicle_locations: {
         Row: {
           city: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
           created_by: string | null
+          dispatch_close_notes: string | null
+          dispatch_notes: string | null
+          dispatch_status: Database["public"]["Enums"]["dispatch_status"] | null
+          dispatched_at: string | null
+          dispatched_by: string | null
+          distress_ticket_number: number | null
           id: string
-          latitude: number | null
-          longitude: number | null
+          is_distress_signal: boolean
+          latitude: number
+          longitude: number
           vehicle_id: string | null
         }
         Insert: {
           city?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at: string
           created_by?: string | null
+          dispatch_close_notes?: string | null
+          dispatch_notes?: string | null
+          dispatch_status?:
+            | Database["public"]["Enums"]["dispatch_status"]
+            | null
+          dispatched_at?: string | null
+          dispatched_by?: string | null
+          distress_ticket_number?: number | null
           id?: string
-          latitude?: number | null
-          longitude?: number | null
+          is_distress_signal?: boolean
+          latitude?: number
+          longitude?: number
           vehicle_id?: string | null
         }
         Update: {
           city?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           created_by?: string | null
+          dispatch_close_notes?: string | null
+          dispatch_notes?: string | null
+          dispatch_status?:
+            | Database["public"]["Enums"]["dispatch_status"]
+            | null
+          dispatched_at?: string | null
+          dispatched_by?: string | null
+          distress_ticket_number?: number | null
           id?: string
-          latitude?: number | null
-          longitude?: number | null
+          is_distress_signal?: boolean
+          latitude?: number
+          longitude?: number
           vehicle_id?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "vehicle_locations_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_locations_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "vehicle_locations_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_locations_dispatched_by_fkey"
+            columns: ["dispatched_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1516,6 +1914,7 @@ export type Database = {
           model: string
           name: string
           notes: string | null
+          pet_name: string | null
           profile_pic_bucket: string | null
           profile_pic_key: string | null
           seats: number
@@ -1533,6 +1932,7 @@ export type Database = {
           model?: string
           name: string
           notes?: string | null
+          pet_name?: string | null
           profile_pic_bucket?: string | null
           profile_pic_key?: string | null
           seats?: number
@@ -1550,6 +1950,7 @@ export type Database = {
           model?: string
           name?: string
           notes?: string | null
+          pet_name?: string | null
           profile_pic_bucket?: string | null
           profile_pic_key?: string | null
           seats?: number
@@ -1590,6 +1991,8 @@ export type Database = {
       }
     }
     Enums: {
+      dispatch_locations: "NV" | "CA" | "MI"
+      dispatch_status: "claimed" | "open" | "closed"
       pricing_plan_interval: "day" | "week" | "month" | "year"
       pricing_type: "one_time" | "recurring"
       request_progress: "rejected" | "pending" | "accepted"
@@ -1606,7 +2009,7 @@ export type Database = {
       time_entry_status: "clocked_in" | "clocked_out" | "on_break"
       user_type: "employee" | "customer" | "partner"
       vehicle_fuel_level: "quarter" | "half" | "three_quarters" | "full"
-      vehicle_status: "broken" | "maintenance" | "fine"
+      vehicle_status: "broken" | "maintenance" | "fine" | "former"
       vehicle_tag_type: "maintenance" | "repair"
       vehicle_type:
         | "shuttle"
@@ -1706,4 +2109,19 @@ export type Enums<
   ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof PublicSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never

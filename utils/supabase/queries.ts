@@ -1,3 +1,4 @@
+import { VehicleType } from '@/app/(biz)/biz/vehicles/admin/page';
 import { Database } from '@/types_db';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { cache } from 'react';
@@ -22,8 +23,9 @@ export type UserDetails = {
   avatar_url: string | null;
   full_name: string | null;
   id: string;
-  user_level?: number | null; // Add user_level to the type definition
+  user_level?: number | null;
   email?: string | null;
+  homepage?: string | null;
 };
 
 export const getUserDetails = cache(
@@ -76,6 +78,20 @@ export const getUserDetailsById = cache(
     } catch (error) {
       console.error(error);
     }
+  }
+);
+
+export const getUserById = cache(
+  async (supabase: SupabaseClient, id: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
   }
 );
 
@@ -204,6 +220,7 @@ export const fetchTimeEntryByUserId = cache(
     return data;
   }
 );
+
 export const insertIntoClockIn = cache(
   async (
     supabase: SupabaseClient,
@@ -262,6 +279,45 @@ export const insertIntoClockIn = cache(
     }
 
     return timeEntryData;
+  }
+);
+
+export const removeDispatchGroup = async (
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  location: string
+) => {
+  const { error } = await supabase
+    .from('dispatch_groups')
+    .delete()
+    .match({ user: userId, location: location });
+
+  if (error) {
+    console.error('Error removing dispatch group:', error);
+    throw error;
+  }
+};
+
+export const upsertDispatchGroup = cache(
+  async (
+    supabase: SupabaseClient,
+    user: string,
+    location: 'NV' | 'CA' | 'MI'
+  ) => {
+    const { data, error } = await supabase
+      .from('dispatch_groups')
+      .upsert([
+        {
+          user,
+          location
+        }
+      ])
+      .select();
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
   }
 );
 
@@ -659,8 +715,22 @@ export const fetchVehicles = cache(async (supabase: SupabaseClient) => {
     console.error(error);
     return [];
   }
-  return data;
+  return data as VehicleType[];
 });
+
+export const fetchVehiclesFromListOfIds = cache(
+  async (supabase: SupabaseClient, vehicleIds: string[]) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select()
+      .in('id', vehicleIds);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data as VehicleType[];
+  }
+);
 
 export const removeVehicle = cache(
   async (supabase: SupabaseClient, vehicle_id: string) => {
@@ -760,7 +830,7 @@ export const getVehicleIdFromName = cache(
   async (supabase: SupabaseClient, vehicle_name: string) => {
     const { data, error } = await supabase
       .from('vehicles')
-      .select('id')
+      .select('id, vehicle_status, pet_name')
       .eq('name', vehicle_name);
     if (error) {
       console.error(error);
@@ -776,6 +846,19 @@ export const fetchVehicleNameFromId = cache(
       .from('vehicles')
       .select('name, id')
       .eq('id', vehicle_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+export const fetchVehicleNamesFromIds = cache(
+  async (supabase: SupabaseClient, vehicle_ids: string[]) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('name, id')
+      .in('id', vehicle_ids);
     if (error) {
       console.error(error);
       return [];
@@ -915,11 +998,12 @@ export const insertIntoQrHistorys = cache(
     return data;
   }
 );
+
 export const fetchQrHistoryInfo = cache(
   async (supabase: SupabaseClient, qr_history_id: string) => {
     const { data, error } = await supabase
       .from('qr_history')
-      .select()
+      .select('id, vehicle_id, scanned_at, location, latitude, longitude')
       .eq('id', qr_history_id);
     if (error) {
       console.error(error);
@@ -928,6 +1012,22 @@ export const fetchQrHistoryInfo = cache(
     return data;
   }
 );
+
+export const fetchUserScanHistory = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    const { data, error } = await supabase
+      .from('qr_history')
+      .select('id, vehicle_id, scanned_at, location, latitude, longitude')
+      .eq('user', userId)
+      .order('scanned_at', { ascending: false });
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
 export const updateQrHistory = cache(
   async (
     supabase: SupabaseClient,
@@ -1044,7 +1144,7 @@ export const fetchAllVehicleLocations = cache(
       console.error(error);
       return [];
     }
-    return data;
+    return data as Database['public']['Tables']['vehicle_locations']['Row'][];
   }
 );
 
@@ -1054,7 +1154,8 @@ export const fetchVehicleLocations = cache(
     const { data, error } = await supabase
       .from('vehicle_locations')
       .select()
-      .eq('vehicle_id', vehicle_id);
+      .eq('vehicle_id', vehicle_id)
+      .order('created_at', { ascending: false });
     if (error) {
       console.error(error);
       return [];
@@ -1071,6 +1172,24 @@ export const recordVehicleLocation = cache(
     const { data, error } = await supabase
       .from('vehicle_locations')
       .insert([vehicle_location]);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+// Update VehicleLocations
+export const updateVehicleLocation = cache(
+  async (
+    supabase: SupabaseClient,
+    vehicle_location: Database['public']['Tables']['vehicle_locations']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase
+      .from('vehicle_locations')
+      .update(vehicle_location)
+      .eq('id', id);
     if (error) {
       console.error(error);
       return [];
@@ -1139,3 +1258,285 @@ export const fetchVehicleFutureLocationForVehicle = cache(
     return data as Database['public']['Tables']['vehicle_future_location']['Row'][];
   }
 );
+
+export const upsertUserBackgroundPreference = cache(
+  async (
+    supabase: SupabaseClient,
+    user_id: string,
+    background_image: string
+  ) => {
+    const { data, error } = await supabase
+      .from('users')
+      .upsert({ id: user_id, background_image });
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// Check the vehicle_future_location table then if today is the future date or if it has passed copy the future_location to the city column of the  vehicle_location table along with created_at and created_by with the same names for the same vehicle_id vehicles. Then clear the vehicle_future_location table for that vehicle_id
+
+export const checkVehicleFutureLocation = cache(
+  async (supabase: SupabaseClient) => {
+    const { data: futureLocations, error: futureLocationError } = await supabase
+      .from('vehicle_future_location')
+      .select();
+    if (futureLocationError) {
+      console.error(futureLocationError);
+      return [];
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    for (const futureLocation of futureLocations) {
+      const futureDate = futureLocation.future_date;
+      const vehicle_id = futureLocation.vehicle_id;
+
+      if (new Date(today) > new Date(futureDate)) {
+        const { data, error } = await supabase
+          .from('vehicle_future_location')
+          .delete()
+          .eq('vehicle_id', vehicle_id);
+        if (error) {
+          console.error(error);
+          continue;
+        }
+      }
+
+      if (today === futureDate) {
+        const { data, error } = await supabase
+          .from('vehicle_locations')
+          .update({
+            city: futureLocation.future_location,
+            created_at: futureLocation.created_at,
+            created_by: futureLocation.created_by
+          })
+          .eq('vehicle_id', vehicle_id);
+        if (error) {
+          console.error(error);
+          continue;
+        }
+
+        const { data: clearData, error: clearError } = await supabase
+          .from('vehicle_future_location')
+          .delete()
+          .eq('vehicle_id', vehicle_id);
+        if (clearError) {
+          console.error(clearError);
+          continue;
+        }
+      }
+    }
+  }
+);
+
+export const getUserBgImage = cache(
+  async (supabase: SupabaseClient, user_id: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('bg_image')
+      .eq('id', user_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const setUserBgImage = cache(
+  async (supabase: SupabaseClient, user_id: string, bg_image: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .upsert({ id: user_id, bg_image });
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// bg properties: bg_size, bg_repeat, bg_position.
+export const setUserBgProperties = cache(
+  async (
+    supabase: SupabaseClient,
+    user_id: string,
+    bg_size: string,
+    bg_repeat: string,
+    bg_position: string
+  ) => {
+    const { data, error } = await supabase
+      .from('users')
+      .upsert({ id: user_id, bg_size, bg_repeat, bg_position });
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const getUserBgProperties = cache(
+  async (supabase: SupabaseClient, user_id: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('bg_size, bg_repeat, bg_position')
+      .eq('id', user_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const getEmployeeDetails = cache(
+  async (supabase: SupabaseClient, user_id: string) => {
+    const { data, error } = await supabase
+      .from('employee_details')
+      .select()
+      .eq('user_id', user_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data as Database['public']['Tables']['employee_details']['Row'][];
+  }
+);
+
+export const upsertEmployeeDetails = cache(
+  async (
+    supabase: SupabaseClient,
+    employee_details: Database['public']['Tables']['employee_details']['Insert']
+  ) => {
+    const { data, error } = await supabase
+      .from('employee_details')
+      .upsert(employee_details);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+export const updateUser = cache(
+  async (
+    supabase: SupabaseClient,
+    user: Database['public']['Tables']['users']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase
+      .from('users')
+      .update(user)
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const checkIfUserHasLevel = cache(
+  async (supabase: SupabaseClient, user_id: string, user_level: number) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', user_id)
+      .gte('user_level', user_level);
+    if (error) {
+      console.error(error);
+      return false;
+    }
+    return data.length > 0;
+  }
+);
+export const getQrHistoryByUser = cache(
+  async (supabase: SupabaseClient, user_id: string) => {
+    const { data, error } = await supabase
+      .from('qr_history')
+      .select()
+      .eq('user', user_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data as Database['public']['Tables']['qr_history']['Row'][];
+  }
+);
+
+export const fetchAuditLog = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('audit_logs')
+    .select('id, created_at, action, user_id, table_name, row')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching audit logs:', error);
+    return [];
+  }
+  return data;
+});
+
+export const updateAuditLog = cache(
+  async (
+    supabase: SupabaseClient,
+    audit_log: Database['public']['Tables']['audit_logs']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase.from('audit_logs').update(audit_log);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+export const fetchAuditQueue = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('audit_table_queue')
+    .select('id, created_at, table')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching audit logs:', error);
+    return [];
+  }
+  return data;
+});
+
+export const updateAuditQueue = cache(
+  async (
+    supabase: SupabaseClient,
+    audit_queue: Database['public']['Tables']['audit_table_queue']['Insert']
+  ) => {
+    const { data, error } = await supabase
+      .from('audit_table_queue')
+      .insert(audit_queue)
+      .select();
+
+    if (error) {
+      console.error('Error inserting audit queue:', error);
+      return null;
+    }
+    return data;
+  }
+);
+
+export const deleteAuditQueue = async (
+  supabase: SupabaseClient,
+  id: string
+) => {
+  const { error } = await supabase
+    .from('audit_table_queue')
+    .delete()
+    .eq('id', id);
+  if (error) {
+    console.error('Error deleting audit queue:', error);
+    return null; // Return null on failure
+  }
+  return true;
+};

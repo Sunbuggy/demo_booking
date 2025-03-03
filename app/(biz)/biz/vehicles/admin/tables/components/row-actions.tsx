@@ -11,6 +11,7 @@ export interface VehiclePics {
   url: string;
 }
 
+
 export function DataTableRowActions<TData>({
   row
 }: DataTableRowActionsProps<TData>) {

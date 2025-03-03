@@ -35,7 +35,7 @@ export const getViewTypes = () => {
 };
 
 export const getDefaultSignInView = (preferredSignInView: string | null) => {
-  let defaultView = 'email_signin';
+  let defaultView = 'password_signin';
   if (preferredSignInView && getViewTypes().includes(preferredSignInView)) {
     defaultView = preferredSignInView;
   }

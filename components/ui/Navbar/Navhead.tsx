@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -9,21 +9,29 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
 
-function Navhead() {
-  // Define the type of possible positions as a union of string literals
-  type LocationKey = 'lasvegas' | 'pismo' | 'silverlake';
-  
-  const [position, setPosition] = React.useState<LocationKey | null>(null); // no default location selected
+type LocationKey = 'lasvegas' | 'pismo' | 'silverlake';
+
+const Navhead = () => {
+  const [position, setPosition] = useState<LocationKey | null>(null);
 
   const locations: Record<LocationKey, string> = {
     lasvegas: 'Las Vegas',
     pismo: 'Pismo',
-    silverlake: 'Silverlake',
+    silverlake: 'Silverlake'
   };
+
+  // Define dropdown links based on user level
+  const dropdownLinks = [
+    { value: 'lasvegas' as LocationKey, link: '/' },
+    // { value: 'pismo' as LocationKey, link: 'https://fareharbor.com/sunbuggypismobeach/dashboard' },
+    { value: 'pismo' as LocationKey, link: '/location/pismo' },
+    { value: 'silverlake' as LocationKey, link: '/location/silverlake' }
+
+    // { value: 'silverlake' as LocationKey, link: 'https://fareharbor.com/sunbuggysilverlakedunes/dashboard' },
+  ];
 
   return (
     <div>
@@ -41,24 +49,22 @@ function Navhead() {
             Choose a Location
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuRadioGroup 
-            value={position || ''} 
+          <DropdownMenuRadioGroup
+            value={position || ''}
             onValueChange={(value) => setPosition(value as LocationKey)}
           >
-            <Link href="/">
-              <DropdownMenuRadioItem value="lasvegas">Las Vegas</DropdownMenuRadioItem>
-            </Link>
-            <Link href="https://www.sunbuggy.com/sunbuggy_pismo.php">
-            <DropdownMenuRadioItem value="pismo">Pismo</DropdownMenuRadioItem>
-            </Link>
-            <Link href="https://www.sunbuggy.com/silverlake/">
-            <DropdownMenuRadioItem value="silverlake">Silverlake</DropdownMenuRadioItem>
-            </Link>            
+            {dropdownLinks.map((link) => (
+              <Link href={link.link} key={link.value}>
+                <DropdownMenuRadioItem value={link.value}>
+                  {locations[link.value as LocationKey]}
+                </DropdownMenuRadioItem>
+              </Link>
+            ))}
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
   );
-}
+};
 
 export default Navhead;

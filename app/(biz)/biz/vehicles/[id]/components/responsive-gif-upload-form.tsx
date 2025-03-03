@@ -6,11 +6,6 @@ import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
-interface VehicleGif {
-  url: string;
-  key: string;
-}
-
 interface ResponsiveGifUploadProps {
   url_key: string;
   updateGif?: boolean;

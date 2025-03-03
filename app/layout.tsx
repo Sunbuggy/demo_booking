@@ -5,9 +5,12 @@ import { Toaster } from '@/components/ui/Toasts/toaster';
 import Providers from './providers';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
-import 'styles/main.css';
+import '@/app/globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toster } from '@/components/ui/toaster';
+import { createClient } from '@/utils/supabase/server';
+import { getUserBgImage, getUserBgProperties } from '@/utils/supabase/queries';
+import NavigationButtons from '@/components/NavigationButtons';
 
 const title = 'Sunbuggy Fun Rentals';
 const description =
@@ -23,19 +26,47 @@ export const metadata: Metadata = {
   }
 };
 
+async function getBackgroundStyles() {
+  const supabase = createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) return {};
+  const bgImageData = await getUserBgImage(supabase, user.id);
+  const bgPropertiesData = await getUserBgProperties(supabase, user.id);
+  const bgImage = bgImageData?.[0]?.bg_image || '';
+  const bgProperties = bgPropertiesData?.[0] || {};
+  return {
+    backgroundImage: bgImage
+      ? `url(${process.env.NEXT_PUBLIC_STORAGE_PUBLIC_PREFIX}/${bgImage})`
+      : 'none',
+    backgroundSize: bgProperties.bg_size || 'cover',
+    backgroundPosition: bgProperties.bg_position || 'center',
+    backgroundRepeat: bgProperties.bg_repeat || 'no-repeat'
+  };
+}
+
 export default async function RootLayout({ children }: PropsWithChildren) {
+  const backgroundStyles = await getBackgroundStyles();
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
+        {/* Fixed background */}
+        <div style={backgroundStyles} className="fixed inset-0 z-[-1]" />
+
+        {/* Semi-transparent overlay */}
+        <div className="fixed inset-0 bg-background/85 z-[-1]" />
+
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex flex-col gap-5 max-w-full">
+          <div className="flex flex-col gap-5 min-h-screen relative">
             <Navbar />
-            <main className="p-2 max-w-11/12 flex mx-auto">
+            <NavigationButtons />
+            <main className="p-2 max-w-11/12 flex mx-auto flex-grow">
               <Providers>{children}</Providers>
             </main>
             <Footer />

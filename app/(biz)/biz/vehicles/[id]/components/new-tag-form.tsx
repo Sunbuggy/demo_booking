@@ -17,6 +17,8 @@ import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CameraIcon } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { sendEmail } from '../actions/sendEmail';
 
 // from createId create a new uuid consisting of 8 characters - 4 characters - 4 characters - 4 characters - 12 characters
 
@@ -40,6 +42,8 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
     vehicle_id: null,
     tag_type: 'maintenance' as unknown as VehicleTagType
   });
+  const [needsParts, setNeedsParts] = React.useState(false);
+  const [partsRequest, setPartsRequest] = React.useState('');
   const handleSubmit = async (key: string, update_pic?: boolean) => {
     if (files.length === 0) {
       toast({
@@ -70,12 +74,14 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
       );
 
       const data = await response.json();
-
       if (response.ok) {
         toast({
           title: 'Success',
           description: 'Files uploaded successfully'
         });
+
+        // reload page
+        window.location.reload();
       } else {
         throw new Error(data.message || 'Failed to upload files');
       }
@@ -86,9 +92,6 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
         description: 'Failed to upload files. Please try again.',
         variant: 'destructive'
       });
-    } finally {
-      // reload page
-      // window.location.reload();
     }
   };
 
@@ -120,6 +123,11 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
       notes: `(${user.user_metadata.full_name}): ${tag.notes}`
     } as unknown as VehicleTagType;
     const supabase = createClient();
+    const { data: vehicleDetails } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('id', id)
+      .single();
 
     switch (newTag.tag_type) {
       case 'maintenance':
@@ -164,7 +172,7 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
                   title: 'Success',
                   description: 'Tag created successfully',
                   variant: 'success',
-                  duration: 2000
+                  duration: 5000
                 });
               })
               .catch((err) => {
@@ -173,7 +181,7 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
                   title: 'Error',
                   description: 'Error changing vehicle status to broken',
                   variant: 'destructive',
-                  duration: 2000
+                  duration: 7000
                 });
               });
             handleSubmit(`vehicle_damage/${id}/${res[0].id}`, false);
@@ -184,15 +192,44 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
               title: 'Error',
               description: 'Error creating tag',
               variant: 'destructive',
-              duration: 2000
+              duration: 7000
             });
           });
         break;
       default:
     }
+    if (needsParts) {
+      try {
+        const emailContent = `
+          Vehicle Details: ${vehicleDetails?.type} ${vehicleDetails?.name} (${vehicleDetails?.pet_name ? vehicleDetails?.pet_name : vehicleDetails?.make})
+          
+          Tag Notes: ${tag.notes}
+          
+          Parts Request: ${partsRequest}
+
+          <a href="https://book.sunbuggy.com/biz/vehicles/${id}">Link to vehicle</a>
+        `;
+
+        await sendEmail(
+          `Parts Request for a ${vehicleDetails?.type} Vehicle ${vehicleDetails?.name} (${vehicleDetails?.pet_name ? vehicleDetails?.pet_name : vehicleDetails?.make})`,
+          emailContent,
+          `${user.email}` || 'cyberteam@sunbuggy.com',
+          `${user.user_metadata.full_name}`
+        );
+      } catch (error) {
+        console.error('Failed to send parts request email:', error);
+        toast({
+          title: 'Warning',
+          description: 'Tag created but failed to send parts request email',
+          variant: 'destructive',
+          duration: 3000
+        });
+      }
+    }
     checkAndChangeVehicleStatus(supabase, id)
       .then((res) => {
         // reload page
+        router.refresh();
       })
       .catch((err) => {
         console.error(err);
@@ -234,6 +271,27 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
     <div className=" mx-auto  p-8 rounded-lg shadow-md w-full">
       <form className="space-y-6 w-full" onSubmit={onSubmit}>
         <div>
+          <Label htmlFor="tag-status" className="text-sm font-medium">
+            Maintenance or Repair?
+          </Label>
+          <RadioGroup
+            id="tag-status"
+            onValueChange={(value) =>
+              setTag({ ...tag, tag_type: value as unknown as VehicleTagType })
+            }
+            className="mt-2 space-y-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="maintenance" id="maintenance" />
+              <Label htmlFor="maintenance">Maintenance</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="repair" id="repair" />
+              <Label htmlFor="repair">Repair</Label>
+            </div>
+          </RadioGroup>
+        </div>
+        <div>
           <label
             htmlFor="notes"
             className="block text-sm font-medium text-gray-700"
@@ -256,28 +314,6 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
         {/* tag status select */}
 
         <div>
-          <label
-            htmlFor="tag-status"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Maintenance or Repair?
-          </label>
-          <select
-            id="tag-status"
-            name="tag-status"
-            className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-            onChange={(e) =>
-              setTag({
-                ...tag,
-                tag_type: e.target.value as unknown as VehicleTagType
-              })
-            }
-          >
-            <option value="maintenance">maintenance</option>
-            <option value="repair">repair</option>
-          </select>
-        </div>
-        <div>
           {/* Stage pics for uploading */}
           {!selectedFiles.length && (
             <>
@@ -292,7 +328,7 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
                   multiple
                   ref={inputFile}
                   onChange={handleFileChange}
-                  accept="image/png, image/jpeg"
+                  accept="image/*"
                 />
                 Click Here To Upload Pics
               </Label>
@@ -306,7 +342,7 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
                   className="hidden"
                   capture="environment"
                   onChange={handleFileChange}
-                  accept="image/png, image/jpeg"
+                  accept="image/*"
                 />
                 {/*camera icon  */}
                 <CameraIcon size={24} />
@@ -334,7 +370,28 @@ const NewTagForm = ({ user, id }: { user: User; id: string }) => {
             ))}
           </div>
         </div>
-
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="needsParts"
+              checked={needsParts}
+              onChange={(e) => setNeedsParts(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <Label htmlFor="needsParts">I need parts</Label>
+          </div>
+          {needsParts && (
+            <Textarea
+              id="partsRequest"
+              name="partsRequest"
+              value={partsRequest}
+              onChange={(e) => setPartsRequest(e.target.value)}
+              className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+              placeholder="Describe the parts you need..."
+            />
+          )}
+        </div>
         <DialogClose asChild>
           <Button type="submit" variant={'positive'} className="w-full">
             Create Tag
