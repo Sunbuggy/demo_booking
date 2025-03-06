@@ -293,7 +293,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const uploadMoreTitle = (
     <div>
       <p>
-        Upload More title for{' '}
+        Upload More Title for{' '}
         <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
       </p>
     </div>
@@ -578,7 +578,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="show-title">
-                <AccordionTrigger>Show title</AccordionTrigger>
+                <AccordionTrigger>Show Title</AccordionTrigger>
                 <AccordionContent>
                   <div className="flex flex-col gap-5">
                     <Button onClick={() => setIsUploadTitleDialogOpen(true)}>
