@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { VehicleReg } from '../../admin/tables/components/row-action-reg';
+import { VehiclePdf } from '../../admin/tables/components/row-action-pdf';
 import { Trash2Icon } from 'lucide-react';
 import {
   Popover,
@@ -10,15 +10,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-interface RegistrationPDFProps {
-  registrationPdf: VehicleReg[];
+interface PDFListProps {
+  pdfList: VehiclePdf[]; // Generic prop for PDF list
+  type: 'registration' | 'title'; // Add a type to differentiate between registration and title
 }
-
-const RegistrationPDFList: React.FC<RegistrationPDFProps> = ({ registrationPdf }) => {
-  const [pdfs, setPdfs] = useState<VehicleReg[]>(registrationPdf);
+const PDFList: React.FC<PDFListProps> = ({ pdfList = [], type }) => {
+  const [pdfs, setPdfs] = useState<VehiclePdf[]>(pdfList);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const deletePdf = async (pdf: VehicleReg) => {
+  const deletePdf = async (pdf: VehiclePdf) => {
     try {
       // Make the DELETE API request
       const response = await fetch(`/api/s3/upload?bucket=sb-fleet&key=${pdf.key}`, {
@@ -46,17 +46,16 @@ const RegistrationPDFList: React.FC<RegistrationPDFProps> = ({ registrationPdf }
   );
 
   if (!pdfs || pdfs.length === 0) {
-    return <p>No registration documents available.</p>;
+    return <p>No {type} documents available.</p>;
   }
 
   return (
     <div>
-      {/* <h3 className="pb-2">Registration Documents</h3> */}
       {/* Search input */}
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Search documents..."
+          placeholder={`Search ${type} documents...`}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="p-2 border border-gray-300 rounded w-full"
@@ -74,7 +73,7 @@ const RegistrationPDFList: React.FC<RegistrationPDFProps> = ({ registrationPdf }
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline"
                 >
-                  {doc.file_name || doc.key.split('/').pop() || `Registration Document ${index + 1}`}
+                  {doc.file_name || doc.key.split('/').pop() || `${type} Document ${index + 1}`}
                 </a>
                 <Popover>
                   <PopoverTrigger className="w-8 flex items-center text-red-500" asChild>
@@ -108,4 +107,4 @@ const RegistrationPDFList: React.FC<RegistrationPDFProps> = ({ registrationPdf }
   );
 };
 
-export default RegistrationPDFList;
+export default PDFList;
