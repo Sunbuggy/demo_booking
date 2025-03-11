@@ -5,7 +5,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
+  DialogTitle
 } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -15,7 +15,11 @@ interface PicFormProps {
   groupName: string; // Add groupName as a prop
 }
 
-const PicForm: React.FC<PicFormProps> = ({ isOpen, onOpenChange, groupName }) => {
+const PicForm: React.FC<PicFormProps> = ({
+  isOpen,
+  onOpenChange,
+  groupName
+}) => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [pictureNumber, setPictureNumber] = useState(1); // Track the number of pictures uploaded
   const { toast } = useToast();
@@ -40,19 +44,23 @@ const PicForm: React.FC<PicFormProps> = ({ isOpen, onOpenChange, groupName }) =>
       toast({
         title: 'Error',
         description: 'Failed to capture and upload the image.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   };
 
-  const handleUploadPicture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadPicture = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       try {
         // Upload each file sequentially
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          const renamedFile = new File([file], generateFileName(), { type: file.type });
+          const renamedFile = new File([file], generateFileName(), {
+            type: file.type
+          });
           await uploadFile(renamedFile);
           setPictureNumber((prev) => prev + 1); // Increment the picture number
         }
@@ -64,7 +72,7 @@ const PicForm: React.FC<PicFormProps> = ({ isOpen, onOpenChange, groupName }) =>
         toast({
           title: 'Error',
           description: 'Failed to upload the file(s).',
-          variant: 'destructive',
+          variant: 'destructive'
         });
       }
     }
@@ -95,10 +103,13 @@ const PicForm: React.FC<PicFormProps> = ({ isOpen, onOpenChange, groupName }) =>
     formData.append('files', file);
     formData.append('contentType', file.type);
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`, {
-      method: 'POST',
-      body: formData,
-    });
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
+      {
+        method: 'POST',
+        body: formData
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -108,7 +119,7 @@ const PicForm: React.FC<PicFormProps> = ({ isOpen, onOpenChange, groupName }) =>
     toast({
       title: 'Success',
       description: 'File uploaded successfully!',
-      variant: 'success',
+      variant: 'success'
     });
   };
 

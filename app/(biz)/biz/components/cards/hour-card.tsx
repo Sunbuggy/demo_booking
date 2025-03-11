@@ -35,23 +35,19 @@ const HourCard = async ({
         groupHr={groupHr}
         reservationsDataInLocation={reservationsDataInLocation}
       />
-      <div className="flex items-center ml-5">
-        <div>
-          <GroupSheet
-            trigger="+Add"
-            hr={groupHr}
-            CreateGroupWizard={
-              <CreateGroupWizard
-                hour={groupHr}
-                group_date={date}
-                full_name={full_name}
-              />
-            }
-          />
-        </div>
-        <div className="ml-4">
-          <PicForm />
-        </div>
+      <div className="ml-5">
+        <GroupSheet
+          trigger="+Add"
+          hr={groupHr}
+          CreateGroupWizard={
+            <CreateGroupWizard
+              hour={groupHr}
+              group_date={date}
+              full_name={full_name}
+            />
+          }
+        />
+        {/* <p>sha tba</p> */}
       </div>
       <CardContent className="flex flex-col gap-5 p-3">
         {Object.keys(data[hr]).map((locationKey) => {
