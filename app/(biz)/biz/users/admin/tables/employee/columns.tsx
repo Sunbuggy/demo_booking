@@ -224,10 +224,9 @@ export const columns: ColumnDef<UserType, any>[] = [
                   <span className="text-3xl font-extrabold">
                     Current Level: {row.original.user_level}
                   </span>
-                  <br />
-                  Customers &gt; 100,
-                  <br />
-                  Employees &gt; 299,
+                  <br /> Customers &gt; 100,
+                  <br /> Employees &gt; 299,
+                  <br /> Drivers = 350,
                   <br /> Managers &gt; 650,
                   <br /> admins = 900
                 </DialogDescription>

@@ -37,12 +37,12 @@ const Navhead = () => {
     <div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <span className="nav_head flex flex-col items-center text-xl font-bold cursor-pointer">
+          <button className="nav_head flex flex-col items-center text-xl font-bold cursor-pointer">
             SunBuggy
             <span className="text-sm font-normal">
               {position ? locations[position] : 'Choose a location'}
             </span>
-          </span>
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56">
           <DropdownMenuLabel className="text-center w-full">
