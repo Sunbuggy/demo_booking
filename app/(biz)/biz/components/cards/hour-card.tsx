@@ -46,7 +46,7 @@ const HourCard = async ({
             />
           }
         /> 
-      <p>sha tba</p>
+      {/* <p>sha tba</p> */}
 
       </div>
       <CardContent className="flex flex-col gap-5 p-3">
