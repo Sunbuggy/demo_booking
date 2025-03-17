@@ -44,7 +44,7 @@ export async function updateSSTClaimed(
     body: JSON.stringify({
       infer_country_code: false,
       user_id: userId,
-      text: `Congrats!, You have successfully claimed this SST, You can close the  SST here: ${process.env.NEXT_PUBLIC_SITE_URL}/biz/sst/cases/claimed/${sstId}  Location: ${googleMapsLink}`,
+      text: `Congrats!, You have successfully claimed this SST, Location: ${googleMapsLink}`,
       to_numbers: formatPhone(userPhone)
     })
   };

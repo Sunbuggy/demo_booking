@@ -56,7 +56,7 @@ const LaunchGroup = ({
             })
           : toast({
               title: 'Group Launched',
-              description: `Group ${groupId} has been launched.`,
+              description: `Group ${groupName} has been launched.`,
               duration: 2000,
               variant: 'success'
             });
