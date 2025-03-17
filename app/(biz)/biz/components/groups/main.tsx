@@ -62,9 +62,9 @@ const MainGroups = async ({
     return result;
   };
   return (
-    <div className="ml-5 flex gap-1">
+    <div className="ml-2 flex">
       <span className="flex items-start text-cyan-500">Groups:</span>{' '}
-      <span className="flex flex-col gap-1">
+      <span className="flex flex-col">
         {filterGroupsByHour(groups, groupHr)
           .sort((a, b) => {
             return a.group_name.localeCompare(b.group_name);
@@ -86,7 +86,7 @@ const MainGroups = async ({
             const sweep = group.sweep;
             const launched = group.launched;
             return (
-              <span className="text-xs mb-2" key={group.id}>
+              <span className="text-sm mb-2" key={group.id}>
                 {' '}
                 {/* {groupName}{' '} */}
                 <div className="flex justify-start items-start">
@@ -147,7 +147,8 @@ const MainGroups = async ({
                         });
                       })}
                     </div>
-                  </PopoverGroupEdit>
+                  </PopoverGroupEdit> 
+                  {/* dd */}
                   <LaunchGroup
                     groupId={groupId}
                     launched={Boolean(launched)}
