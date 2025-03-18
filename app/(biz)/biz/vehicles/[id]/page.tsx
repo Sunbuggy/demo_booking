@@ -12,7 +12,7 @@ import { fetchObjects } from '@/utils/biz/pics/get';
 import { VehicleTagType, VehicleType } from '../admin/page';
 import VehicleClientComponent from './components/vehicle-client';
 import { InventoryLocation, VehicleLocation } from '../types';
-import { VehicleReg } from '../admin/tables/components/row-action-reg';
+import { VehiclePdf } from '../admin/tables/components/row-action-pdf';
 
 const bucket = 'sb-fleet';
 async function getVehicleData(id: string) {
@@ -54,14 +54,23 @@ async function getVehicleData(id: string) {
       false,
       `registrations/${id}`
     );
-    const normalReg = normalRegResponse?.objects as VehicleReg[];
+    const normalReg = normalRegResponse?.objects as VehiclePdf[];
     
+    const normalTitleResponse = await fetchObjects(
+      bucket,
+      false,
+      `titles/${id}`
+    );
+    const normalTitle = normalTitleResponse?.objects as VehiclePdf[];
+
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: normalImages || [],
       normalBadges: normalBadges || [],
       vehicleTags,
-      registrationPdf: normalReg || []
+      registrationPdf: normalReg || [],
+      titlePdf: normalTitle || []
+
     };
   } catch (error) {
     console.error(`Error fetching objects for ${id} `, error);
@@ -70,7 +79,8 @@ async function getVehicleData(id: string) {
       normalImages: [],
       normalBadges: [],
       vehicleTags: [],
-      registrationPdf: [] 
+      registrationPdf: [],
+      titlePdf: []
     };
   }
 }
@@ -92,7 +102,7 @@ export default async function VehiclePage({
     `profile_pic/${params.id}`
   );
   const profilePic = String(profilePicResponse?.url);
-  const { vehicleInfo, normalImages, normalBadges,vehicleTags, registrationPdf } = await getVehicleData(
+  const { vehicleInfo, normalImages, normalBadges,vehicleTags, registrationPdf, titlePdf } = await getVehicleData(
     params.id
   );
 
@@ -118,7 +128,8 @@ export default async function VehiclePage({
           vehicleLocations={vehicleLocations}
           inventoryLocations={inventoryLocations}
           registrationPdf={registrationPdf} 
-        />
+          titlePdf={titlePdf}
+          />
       ) : (
         <div>No User</div>
       )}

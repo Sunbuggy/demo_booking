@@ -22,7 +22,7 @@ export function PopoverGroupEdit({
           {openText}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80">{children}</PopoverContent>
+      <PopoverContent className="w-96">{children}</PopoverContent>
     </Popover>
   );
 }

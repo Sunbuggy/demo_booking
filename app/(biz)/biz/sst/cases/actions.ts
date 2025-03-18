@@ -25,7 +25,16 @@ export async function updateSSTClaimed(
   if (error) {
     throw new Error('Failed to update SST');
   }
+  const { data: vehicleLocation, error: fetchError } = await supabase
+    .from('vehicle_locations')
+    .select('latitude, longitude')
+    .eq('id', sstId)
+    .single();
 
+  if (fetchError) {
+    throw new Error('Failed to fetch vehicle location');
+  }
+  const googleMapsLink = `https://www.google.com/maps?q=${vehicleLocation.latitude},${vehicleLocation.longitude}`;
   const options = {
     method: 'POST',
     headers: {
@@ -35,7 +44,7 @@ export async function updateSSTClaimed(
     body: JSON.stringify({
       infer_country_code: false,
       user_id: userId,
-      text: `Congrats!, You have successfully claimed this SST, You can close the  SST here: ${process.env.NEXT_PUBLIC_SITE_URL}/biz/sst/cases/claimed/${sstId}`,
+      text: `Congrats!, You have successfully claimed this SST, Location: ${googleMapsLink}`,
       to_numbers: formatPhone(userPhone)
     })
   };

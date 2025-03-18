@@ -10,7 +10,7 @@ export default async function Footer() {
   if (!user) return null;
   const role = user[0]?.user_level;
   return (
-    <footer className="mx-auto px-6  w-screen">
+    <footer className="mx-auto px-6  w-screen bg-black/75">
       <div className="grid grid-cols-1 gap-2 py-12 transition-colors duration-150 border-b lg:grid-cols-12 border-zinc-600 ">
         <div className="col-span-1 lg:col-span-2">
           <Link

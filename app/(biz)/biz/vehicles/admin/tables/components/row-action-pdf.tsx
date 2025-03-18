@@ -6,7 +6,7 @@ import React from 'react';
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
 }
-export interface VehicleReg {
+export interface VehiclePdf {
   file_name?: string;
   url: string;
   [key: string]: any; 

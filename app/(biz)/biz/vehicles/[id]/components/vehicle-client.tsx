@@ -27,13 +27,14 @@ import { useRouter } from 'next/navigation';
 import ResponsiveImageUpload from './responsive-image-upload-form';
 import ResponsiveGifUpload from './responsive-gif-upload-form';
 import RegistrationUpload from './registration-upload-form';
+import TitleUpload from './title-upload-form';
 import LocationHistory from './vehicle-location-history';
 import PretripFormManager from './pretrip-forms/pretrip-form-manager';
 import InventoryHistory from './vehicle-location-inventory-history';
 import { InventoryLocation, VehicleLocation } from '../../types';
 import LocationScheduling from './location-scheduling';
-import { VehicleReg } from '../../admin/tables/components/row-action-reg';
-import RegistrationPDFList from './pdf-view';
+import { VehiclePdf } from '../../admin/tables/components/row-action-pdf';
+import PDFList from './pdf-view';
 import QRCodeGenerator from '../../../qr/components/QRCodeGenerator';
 import {
   fetchVehicleLocations,
@@ -53,7 +54,8 @@ interface VehicleClientComponentProps {
   initialVehicleInfo: VehicleType;
   images: VehiclePics[];
   gif: VehicleGifs[];
-  registrationPdf: VehicleReg[];
+  registrationPdf: VehiclePdf[];
+  titlePdf: VehiclePdf[];
   profilePic?: string;
   vehicleTags: VehicleTagType[];
   user: User;
@@ -69,6 +71,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   images,
   gif,
   registrationPdf,
+  titlePdf,
   vehicleTags,
   user,
   vehicleLocations,
@@ -95,6 +98,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const [isUploadGifsDialogOpen, setIsUploadGifsDialogOpen] =
     React.useState(false);
   const [isUploadRegDialogOpen, setIsUploadRegDialogOpen] =
+    React.useState(false);
+  const [isUploadTitleDialogOpen, setIsUploadTitleDialogOpen] =
     React.useState(false);
   const [isLocationManagementDialogOpen, setIsLocationManagementDialogOpen] =
     React.useState(false);
@@ -280,6 +285,15 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     <div>
       <p>
         Upload More Registration for{' '}
+        <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
+      </p>
+    </div>
+  );
+
+  const uploadMoreTitle = (
+    <div>
+      <p>
+        Upload More Title for{' '}
         <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
       </p>
     </div>
@@ -559,7 +573,29 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                         </div>
                       }
                     />
-                    <RegistrationPDFList registrationPdf={registrationPdf} />
+                    <PDFList pdfList={registrationPdf} type="registration" />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="show-title">
+                <AccordionTrigger>Show Title</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-col gap-5">
+                    <Button onClick={() => setIsUploadTitleDialogOpen(true)}>
+                      Upload Title
+                    </Button>
+                    <DialogFactory
+                      title={uploadMoreTitle}
+                      setIsDialogOpen={setIsUploadTitleDialogOpen}
+                      isDialogOpen={isUploadTitleDialogOpen}
+                      description="Upload one or multiple pdf for the vehicle titles."
+                      children={
+                        <div>
+                          <TitleUpload url_key={`titles/${id}`} />
+                        </div>
+                      }
+                    />
+                    <PDFList pdfList={titlePdf} type="title" />
                   </div>
                 </AccordionContent>
               </AccordionItem>

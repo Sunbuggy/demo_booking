@@ -13,7 +13,7 @@ const HomepageSettings = async () => {
   }
 
   // Define available pages
-  const availablePages = ['BizPage', 'VehiclesManagementPage', 'ChooseAdventure'];
+  const availablePages = ['BizPage', 'VehiclesManagementPage', 'ChooseAdventure', 'UnsettledPage'];
 
   // Get the user's current homepage
   const currentPage = userDetails?.[0]?.homepage || 'ChooseAdventure';

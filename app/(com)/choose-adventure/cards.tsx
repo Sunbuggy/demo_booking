@@ -7,7 +7,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-  CardContent
+  CardContent,
 } from '@/components/ui/card';
 import LazyYoutube from '@/components/lazy-youtube';
 import Link from 'next/link';
@@ -39,11 +39,10 @@ const AdventureCard = ({
 
   return (
     <>
-      <Card className="sm:w-full">
+      <Card className="w-full">
         <CardHeader className="pb-3">
           <CardTitle>{title}</CardTitle>
           <CardDescription>
-            {/* shorten discription to the first sentence and show more when button clicked */}
             {showmore ? description : firstSentence}
             <Button
               variant={'link'}
@@ -64,13 +63,15 @@ const AdventureCard = ({
               autoplay={autoplay}
             />
           ) : (
-            <div>
+            <div className="relative w-full pt-[56.25%]"> {/* 16:9 aspect ratio */}
               <Image
                 src={src || ''}
                 alt={title}
-                width={1150}
-                height={300}
-                className=" object-contain"
+                fill
+                className="object-cover rounded-md"
+                sizes="(max-width: 768px) 100vw, 50vw" // Adjust based on your layout
+                quality={75} // Reduce image quality for better performance
+                priority // Prioritize loading for above-the-fold images
               />
             </div>
           )}
@@ -78,9 +79,7 @@ const AdventureCard = ({
         <CardFooter>
           {showBookButton && (
             <Button asChild onClick={() => setLoading(true)}>
-              <Link  href={linkHref}>
-                Book
-              </Link>
+              <Link href={linkHref}>Book</Link>
             </Button>
           )}
         </CardFooter>
