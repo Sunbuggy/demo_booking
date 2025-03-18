@@ -15,6 +15,12 @@ interface PicFormProps {
   groupName: string; // Add groupName as a prop
 }
 
+interface PicFormProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  groupName: string; // Add groupName as a prop
+}
+
 const PicForm: React.FC<PicFormProps> = ({
   isOpen,
   onOpenChange,
