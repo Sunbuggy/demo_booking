@@ -35,6 +35,13 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       external: true
     },
 
+    {
+      href: '/daily-pics',
+      label: 'Daily Pics',
+      minLevel: 300,
+      external: true
+    },
+
     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 },
     {
       href: '/biz/reports',
@@ -42,25 +49,24 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 900,
       external: false
     },
-    {
-      href: '/biz/audit',
-      label: 'Audit Logs',
-      minLevel: 900,
-      external: false
-    },  
-    {
-      href: '/fetchpics',
-      label: 'fetch_pics',
-      minLevel: 900,
-      external: false
-    },  
+    // {
+    //   href: '/biz/audit',
+    //   label: 'Audit Logs',
+    //   minLevel: 900,
+    //   external: false
+    // },
+    // {
+    //   href: '/fetchpics',
+    //   label: 'fetch_pics',
+    //   minLevel: 900,
+    //   external: false
+    // },
     {
       href: 'tel:+17752060022',
       label: 'Cyber Support: (775) 206-0022',
       minLevel: 300,
-      external: false,
-    },
-    
+      external: false
+    }
   ];
 
   const dashboardLinks: NavLink[] = [
