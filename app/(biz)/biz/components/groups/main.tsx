@@ -11,6 +11,8 @@ import DisplayExistingGroups, {
 import { PopoverGroupEdit } from './popover_group_edit';
 import { launchGroup } from '@/utils/old_db/actions';
 import LaunchGroup from './launch-group';
+import PicForm from '../pictures/pic-upload-form';
+import GroupPics from '../pictures/group-pics';
 
 const MainGroups = async ({
   groupHr,
@@ -147,8 +149,8 @@ const MainGroups = async ({
                         });
                       })}
                     </div>
-                  </PopoverGroupEdit> 
-                  {/* dd */}
+                  </PopoverGroupEdit>
+                  <GroupPics groupName={group.group_name} />
                   <LaunchGroup
                     groupId={groupId}
                     launched={Boolean(launched)}
