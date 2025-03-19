@@ -750,6 +750,27 @@ export type Database = {
         }
         Relationships: []
       }
+      locations: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       qr_history: {
         Row: {
           id: string
@@ -784,6 +805,99 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rollcall_vehicles: {
+        Row: {
+          created_at: string | null
+          departed_at: string | null
+          departed_user_id: string | null
+          id: string
+          returned_at: string | null
+          returned_user_id: string | null
+          rollcall_id: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          departed_at?: string | null
+          departed_user_id?: string | null
+          id?: string
+          returned_at?: string | null
+          returned_user_id?: string | null
+          rollcall_id: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string | null
+          departed_at?: string | null
+          departed_user_id?: string | null
+          id?: string
+          returned_at?: string | null
+          returned_user_id?: string | null
+          rollcall_id?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rollcall_vehicles_rollcall_id_fkey"
+            columns: ["rollcall_id"]
+            isOneToOne: false
+            referencedRelation: "rollcalls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rollcall_vehicles_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rollcalls: {
+        Row: {
+          created_at: string | null
+          end_location: string
+          id: string
+          name: string
+          occasion: string | null
+          start_location: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_location: string
+          id?: string
+          name: string
+          occasion?: string | null
+          start_location: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_location?: string
+          id?: string
+          name?: string
+          occasion?: string | null
+          start_location?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rollcalls_end_location_fkey"
+            columns: ["end_location"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rollcalls_start_location_fkey"
+            columns: ["start_location"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
         ]
@@ -1848,6 +1962,7 @@ export type Database = {
       vehicle_tag: {
         Row: {
           close_tag_comment: string | null
+          closed_by: string | null
           created_at: string | null
           created_by: string | null
           created_by_legacy: string | null
@@ -1862,6 +1977,7 @@ export type Database = {
         }
         Insert: {
           close_tag_comment?: string | null
+          closed_by?: string | null
           created_at?: string | null
           created_by?: string | null
           created_by_legacy?: string | null
@@ -1876,6 +1992,7 @@ export type Database = {
         }
         Update: {
           close_tag_comment?: string | null
+          closed_by?: string | null
           created_at?: string | null
           created_by?: string | null
           created_by_legacy?: string | null
@@ -1889,6 +2006,13 @@ export type Database = {
           vehicle_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vehicle_tag_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vehicle_tag_created_by_fkey"
             columns: ["created_by"]
