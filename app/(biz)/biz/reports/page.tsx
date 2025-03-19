@@ -5,6 +5,7 @@ const ReportsPage = async () => {
   const supabase = createClient();
 
   // Fetch data from the necessary tables and sort by created_at in descending order
+  //
   const { data: tags } = await supabase
     .from('vehicle_tag')
     .select('*')
