@@ -39,7 +39,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       href: '/daily-pics',
       label: 'Daily Pics',
       minLevel: 300,
-      external: true
+      external: false
     },
 
     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 },
