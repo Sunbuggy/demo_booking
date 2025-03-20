@@ -12,23 +12,32 @@ import { updateVehicleLocation } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
 
 // Utility functions
-const getLocationType = (lat: number, lon: number) => {
+const getLocationType = (lat: number, lon: number): 'CA' | 'NV' | 'MI' | null => {
   if (lat > 35.1 && lat < 35.9 && lon > -120.7 && lon < -120.5) return 'CA';
   if (lat > 36.1 && lat < 36.3 && lon > -115.2 && lon < -114.9) return 'NV';
   if (lat > 43.6 && lat < 43.8 && lon > -86.4 && lon < -86.2) return 'MI';
-  return 'Unknown';
+  return null;
 };
 
-const formatPhone = (phone: string) => {
+const formatPhone = (phone: string): string => {
   const formatted = phone.replace(/\D/g, '');
   return formatted.length === 10 ? `+1${formatted}` : `+${formatted}`;
 };
 
 // Custom hook for SMS sending
-const useSendSMS = (user: User, textLocation: string) => {
+const useSendSMS = (user: User, textLocation: 'CA' | 'NV' | 'MI' | null) => {
   const { toast } = useToast();
 
   const sendSMS = async () => {
+    if (!textLocation) {
+      toast({
+        title: 'Error',
+        description: 'Invalid location for SMS dispatch.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const supabase = createClient();
     try {
       const { data: userIds, error: userIdsError } = await supabase
@@ -40,13 +49,15 @@ const useSendSMS = (user: User, textLocation: string) => {
         throw new Error(`Failed to fetch user IDs: ${userIdsError.message}`);
       if (!userIds) throw new Error('No user IDs found');
 
+      // Filter out null values from the user IDs
+      const validUserIds = userIds
+        .map((d) => d.user)
+        .filter((user): user is string => user !== null);
+
       const { data: users, error: usersError } = await supabase
         .from('users')
         .select('phone')
-        .in(
-          'id',
-          userIds.map((d) => d.user)
-        );
+        .in('id', validUserIds);
 
       if (usersError)
         throw new Error(`Failed to fetch users: ${usersError.message}`);
@@ -60,14 +71,14 @@ const useSendSMS = (user: User, textLocation: string) => {
         method: 'POST',
         headers: {
           accept: 'application/json',
-          'content-type': 'application/json'
+          'content-type': 'application/json',
         },
         body: JSON.stringify({
           infer_country_code: false,
           user_id: user.id,
-          text: `SST Recieved click link to claim, ${process.env.NEXT_PUBLIC_SITE_URL}/biz/sst/cases`,
-          to_numbers: formattedPhones
-        })
+          text: `SST Received, click link to claim: ${process.env.NEXT_PUBLIC_SITE_URL}/biz/sst/cases`,
+          to_numbers: formattedPhones,
+        }),
       };
 
       const res = await fetch(
@@ -84,7 +95,7 @@ const useSendSMS = (user: User, textLocation: string) => {
         toast({
           title: 'SMS Sent',
           description: 'SMS sent successfully',
-          variant: 'success'
+          variant: 'success',
         });
       }
     } catch (err) {
@@ -92,7 +103,7 @@ const useSendSMS = (user: User, textLocation: string) => {
       toast({
         title: 'Error',
         description: `Failed to send SMS: ${(err as Error).message}`,
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
   };
@@ -104,7 +115,7 @@ export default function DispatchForm({
   todayData,
   location,
   user,
-  dispatchId
+  dispatchId,
 }: {
   todayData: VehicleLocation[];
   location: VehicleLocation;
@@ -115,7 +126,7 @@ export default function DispatchForm({
   const [customerName, setCustomerName] = useState('');
   const [resNumber, setResNumber] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [textLocation, setTextLocation] = useState('');
+  const [textLocation, setTextLocation] = useState<'CA' | 'NV' | 'MI' | null>(null);
   const [oldTicketNumber, setOldTicketNumber] = useState<number | null>(null);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -125,7 +136,7 @@ export default function DispatchForm({
   ).length;
   const { latitude: lat, longitude: lon } = location;
 
-  const send_SMS = lat && lon ? useSendSMS(user, textLocation) : null;
+  const send_SMS = useSendSMS(user, textLocation);
 
   React.useEffect(() => {
     if (dispatchId) {
@@ -137,20 +148,16 @@ export default function DispatchForm({
           .eq('id', dispatchId)
           .single();
         if (dispatch && dispatch.dispatch_notes) {
-          // set the customer name the string between the dispatch notes between Customer Name and Res Number
           const customerName = dispatch.dispatch_notes.match(
             /Customer Name: (.*?)\n/
           );
           if (customerName) {
             setCustomerName(customerName[1]);
           }
-          // set the res number the string between the dispatch notes between Res Number and Customer Phone
-          const resNumber =
-            dispatch.dispatch_notes.match(/Res Number: (.*?)\n/);
+          const resNumber = dispatch.dispatch_notes.match(/Res Number: (.*?)\n/);
           if (resNumber) {
             setResNumber(resNumber[1]);
           }
-          // set the customer phone the string between the dispatch notes between Customer Phone and the end of the string
           const customerPhone = dispatch.dispatch_notes.match(
             /Customer Phone: (.*?)$/
           );
@@ -167,7 +174,7 @@ export default function DispatchForm({
       };
       fetchDispatch();
     }
-  }, []);
+  }, [dispatchId]);
 
   useEffect(() => {
     if (lat && lon) {
@@ -185,21 +192,23 @@ export default function DispatchForm({
       dispatch_notes: `${dispatchNotes}\nCustomer Name: ${customerName}\nRes Number: ${resNumber}\nCustomer Phone: ${customerPhone}`,
       dispatched_by: user.id,
       dispatch_status: 'open' as const,
-      dispatched_at: new Date().toISOString()
+      dispatched_at: new Date().toISOString(),
     };
 
     try {
       const supabase = createClient();
       await updateVehicleLocation(supabase, data, location.id);
-      if (send_SMS) {
+
+      if (textLocation) {
         await send_SMS();
       } else {
-        console.log('sms not sent');
+        console.log('SMS not sent: No valid location data');
       }
+
       toast({
         title: 'Dispatched',
         description: 'Dispatched successfully',
-        variant: 'success'
+        variant: 'success',
       });
       window.location.reload();
     } catch (error) {
@@ -207,7 +216,7 @@ export default function DispatchForm({
       toast({
         title: 'Error',
         description: (error as Error).message,
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
   };
