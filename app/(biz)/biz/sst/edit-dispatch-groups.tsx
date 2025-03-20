@@ -25,7 +25,7 @@ type DispatchGroup = {
   location: 'NV' | 'CA' | 'MI';
 };
 
-const locations = ['NV', 'CA', 'MI'];
+const locations = ['NV', 'CA', 'MI'] as const;
 
 export default function EditDispatchGroups() {
   const [users, setUsers] = useState<Users[]>([]);
@@ -116,7 +116,7 @@ export default function EditDispatchGroups() {
     );
   }, [users, searchTerm, selectedLocations, dispatchGroups]);
 
-  const handleDelete = async (userId: string, location: string) => {
+  const handleDelete = async (userId: string, location: 'NV' | 'CA' | 'MI') => {
     const { error } = await supabase
       .from('dispatch_groups')
       .delete()

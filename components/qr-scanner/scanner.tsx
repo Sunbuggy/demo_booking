@@ -6,7 +6,7 @@ import {
   fetchVehicleLocations,
   getVehicleIdFromName,
   insertIntoVehicleInventoryLocation,
-  recordVehicleLocation
+  recordVehicleLocation,
 } from '@/utils/supabase/queries';
 import ManualInventory from '@/app/(biz)/biz/vehicles/admin/tables/components/manual-inventory';
 import { useToast } from '../ui/use-toast';
@@ -22,13 +22,14 @@ import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger
+  TooltipTrigger,
 } from '@/components/ui/tooltip';
 import useSound from 'use-sound';
 import SearchVehicles from './search-vehicles';
+
 export const BarcodeScanner = ({
   user,
-  setIsDialogOpen
+  setIsDialogOpen,
 }: {
   user: User | null | undefined;
   setIsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -64,29 +65,29 @@ export const BarcodeScanner = ({
     paused: closeCamera,
     onDecodeResult(result) {
       setResult(result.getText());
-      //   close the camera after scanning if in single mode
-    }
+      // Close the camera after scanning if in single mode
+    },
   });
 
   React.useEffect(() => {
     // console.log('ids:', scannedVehicleIds);
   }, [scannedVehicleIds]);
 
-  // notify via toast when location is set
+  // Notify via toast when location is set
   React.useEffect(() => {
     if (locationSet) {
       toast({
         title: 'Location Set',
         description: 'Location Set',
         duration: 3000,
-        variant: 'success'
+        variant: 'success',
       });
     }
   }, [locationSet]);
 
   // useEffect to get the current device location
   React.useEffect(() => {
-    // if User rejects the location access then disallow the scanning
+    // If User rejects the location access, disallow scanning
     if (!navigator.geolocation) {
       alert(
         'Geolocation is not supported by your browser. Please use a modern browser.'
@@ -95,15 +96,14 @@ export const BarcodeScanner = ({
       return;
     }
 
-    // Request the user to allow location access. This call will trigger the browser's prompt if not already granted.
+    // Request the user to allow location access
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        // Permission granted: do nothing here as location fetching is handled later.
+        // Permission granted: do nothing here as location fetching is handled later
       },
       (error) => {
         alert('Please allow location access to scan the QR code');
         setCloseCamera(true);
-        // send a request to the user to allow location access
       },
       { enableHighAccuracy: true, timeout: 5000 }
     );
@@ -115,7 +115,7 @@ export const BarcodeScanner = ({
           return;
         setCurrentLocation({
           latitude: position.coords.latitude,
-          longitude: position.coords.longitude
+          longitude: position.coords.longitude,
         });
         setLocationSet(true);
       },
@@ -124,8 +124,6 @@ export const BarcodeScanner = ({
       },
       { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     );
-
-    // Get the city name from the lat and long
   }, []);
 
   React.useEffect(() => {
@@ -134,19 +132,18 @@ export const BarcodeScanner = ({
         errSound();
         toast({
           title: 'Location Not Set',
-          description: 'Location not set please allow location access',
+          description: 'Location not set, please allow location access',
           duration: 7000,
-          variant: 'destructive'
+          variant: 'destructive',
         });
-
         return;
       }
-      // Get the city name from the lat and long using getLocationType if unknown then use the api
+      // Get the city name from the lat and long using getLocationType
       const preDefinedLocation = getLocationType(
         currentLocation.latitude,
         currentLocation.longitude
       );
-      // if predifined location is unknown then use the api to get the city name
+      // If predefined location is unknown, use the API to get the city name
       if (preDefinedLocation === 'Unknown') {
         fetch(
           `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}&localityLanguage=en`
@@ -172,7 +169,7 @@ export const BarcodeScanner = ({
           title: 'Already Scanned',
           description: `Already Scanned ${result}`,
           duration: 3000,
-          variant: 'destructive'
+          variant: 'destructive',
         });
         return;
       }
@@ -181,7 +178,7 @@ export const BarcodeScanner = ({
         title: 'Scanned',
         description: `Scanned ${result}`,
         duration: 500,
-        variant: 'success'
+        variant: 'success',
       });
       pingSound();
 
@@ -206,10 +203,10 @@ export const BarcodeScanner = ({
             latitude: currentLocation.latitude,
             longitude: currentLocation.longitude,
             vehicle_id: veh_id,
-            created_by: user?.id ?? 'unknown'
+            created_by: user?.id ?? 'unknown',
           };
 
-          // if no current location then return
+          // If no current location, return
           if (
             currentLocation.latitude === 0 ||
             currentLocation.longitude === 0 ||
@@ -222,9 +219,9 @@ export const BarcodeScanner = ({
             errSound();
             toast({
               title: 'Location Not Set',
-              description: 'Location not set please allow location access',
+              description: 'Location not set, please allow location access',
               duration: 7000,
-              variant: 'destructive'
+              variant: 'destructive',
             });
             return;
           }
@@ -253,7 +250,7 @@ export const BarcodeScanner = ({
                       title: 'Vehicle Location Not Updated',
                       description: `Vehicle location not updated for ${true_veh_name} as it is less than 50 meters`,
                       duration: 5000,
-                      variant: 'default'
+                      variant: 'default',
                     });
                     return;
                   } else {
@@ -285,16 +282,16 @@ export const BarcodeScanner = ({
                           title: 'Vehicle Location Updated',
                           description: `Vehicle location updated for ${true_veh_name}`,
                           duration: 5000,
-                          variant: 'success'
+                          variant: 'success',
                         });
                       })
                       .catch((err) => {
                         console.error(err);
                         toast({
-                          title: 'error',
-                          description: 'Error Occured (1) Please Contact Devs',
+                          title: 'Error',
+                          description: 'Error Occurred (1) Please Contact Devs',
                           duration: 5000,
-                          variant: 'destructive'
+                          variant: 'destructive',
                         });
                       });
                   }
@@ -321,18 +318,18 @@ export const BarcodeScanner = ({
                     .then(() => {
                       toast({
                         title: 'First Location Created',
-                        description: `First Vehicle location Created for ${true_veh_name}`,
+                        description: `First Vehicle location created for ${true_veh_name}`,
                         duration: 5000,
-                        variant: 'success'
+                        variant: 'success',
                       });
                     })
                     .catch((err) => {
                       console.error(err);
                       toast({
-                        title: 'error',
-                        description: 'Error Occured (2) Please Contact Devs',
+                        title: 'Error',
+                        description: 'Error Occurred (2) Please Contact Devs',
                         duration: 5000,
-                        variant: 'destructive'
+                        variant: 'destructive',
                       });
                     });
                 }
@@ -340,10 +337,10 @@ export const BarcodeScanner = ({
               .catch((err) => {
                 console.error(err);
                 toast({
-                  title: 'error',
-                  description: 'Error Occured (3) Please Contact Devs',
+                  title: 'Error',
+                  description: 'Error Occurred (3) Please Contact Devs',
                   duration: 5000,
-                  variant: 'destructive'
+                  variant: 'destructive',
                 });
               });
 
@@ -353,18 +350,18 @@ export const BarcodeScanner = ({
                 name: true_veh_name,
                 id: veh_id,
                 status: veh_status,
-                pet_name: pet_name
-              }
+                pet_name: pet_name,
+              },
             ]);
           }
         })
         .catch((err) => {
           console.error(err);
           toast({
-            title: 'error',
-            description: 'Error Occured (4) Please Contact Devs',
+            title: 'Error',
+            description: 'Error Occurred (4) Please Contact Devs',
             duration: 5000,
-            variant: 'destructive'
+            variant: 'destructive',
           });
         });
     }
@@ -379,30 +376,30 @@ export const BarcodeScanner = ({
     pismoShop: { lat: 35.105821, lon: -120.63038 },
     nellis: [
       { lat: 36.288471, lon: -114.970005 },
-      { lat: 36.316064, lon: -114.944085 }
+      { lat: 36.316064, lon: -114.944085 },
     ],
-    pismoBeach: { lat: 35.090735, lon: -120.629598 }, //0.25 from here
+    pismoBeach: { lat: 35.090735, lon: -120.629598 }, // 0.25 from here
     silverlakeShop: { lat: 43.675239, lon: -86.472552 },
-    silverlakeDunes: { lat: 43.686365, lon: -86.508345 }
+    silverlakeDunes: { lat: 43.686365, lon: -86.508345 },
   };
 
   const pismoBeachCoordinates = [
     { lat: 35.095288, lon: -120.63195 },
     { lat: 35.095301, lon: -120.621078 },
     { lat: 35.086092, lon: -120.63192 },
-    { lat: 35.086167, lon: -120.61671 }
+    { lat: 35.086167, lon: -120.61671 },
   ];
   const vofCoordinates = [
     { lat: 36.617272, lon: -114.48814 },
     { lat: 36.620518, lon: -114.526353 },
     { lat: 36.479769, lon: -114.583101 },
-    { lat: 36.479083, lon: -114.514348 }
+    { lat: 36.479083, lon: -114.514348 },
   ];
   const pismoDunesCoordinates = [
     { lat: 35.085717, lon: -120.632317 },
     { lat: 35.091236, lon: -120.583693 },
     { lat: 35.020388, lon: -120.590649 },
-    { lat: 35.022873, lon: -120.635966 }
+    { lat: 35.022873, lon: -120.635966 },
   ];
 
   function deg2rad(deg: number): number {
@@ -427,6 +424,7 @@ export const BarcodeScanner = ({
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
+
   function isPointInPolygon(
     lat: number,
     lon: number,
@@ -495,12 +493,12 @@ export const BarcodeScanner = ({
     if (isNearLocation(lat, lon, 'silverlakeDunes', 0.25))
       return 'Silver Lake Dunes';
     if (isBetweenCoordinates(lat, lon, vofCoordinates))
-      return 'Vegas Valley of fire';
+      return 'Vegas Valley of Fire';
 
     return 'Unknown';
   }
 
-  // Function to save the scanned
+  // Function to save the scanned URL to history
   const saveScannedUrlToHistory = async (
     scannedUrl: string,
     location: string,
@@ -515,8 +513,8 @@ export const BarcodeScanner = ({
         location: location,
         latitude: currentLocation.latitude,
         longitude: currentLocation.longitude,
-        vehicle_id: vehicle_id ?? null
-      }
+        vehicle_id: vehicle_id ?? null,
+      },
     ]);
 
     if (error) {
@@ -524,7 +522,7 @@ export const BarcodeScanner = ({
       toast({
         title: 'Error',
         description: 'Could not save QR scan to history.',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
   };
@@ -533,7 +531,7 @@ export const BarcodeScanner = ({
     const { id, checked } = event.target;
     setSelectedForInventory((prevState) => ({
       ...prevState,
-      [id]: checked
+      [id]: checked,
     }));
   };
 
@@ -549,24 +547,24 @@ export const BarcodeScanner = ({
         level,
         created_at: new Date().toISOString(),
         created_by: user?.id ?? 'unknown',
-        vehicle_id: id
+        vehicle_id: id,
       };
       insertIntoVehicleInventoryLocation(supabase, inventory_location)
         .then((res) => {
           toast({
             title: 'Vehicle Inventory Location Updated',
-            description: `Vehicle Inventory location updated `,
+            description: `Vehicle Inventory location updated`,
             duration: 500,
-            variant: 'success'
+            variant: 'success',
           });
         })
         .catch((err) => {
           console.error(err);
           toast({
-            title: 'error',
-            description: 'Error Occured (5) Please Contact Devs',
+            title: 'Error',
+            description: 'Error Occurred (5) Please Contact Devs',
             duration: 5000,
-            variant: 'destructive'
+            variant: 'destructive',
           });
         });
     });
@@ -595,7 +593,7 @@ export const BarcodeScanner = ({
               <TooltipContent>
                 {locationSet
                   ? 'Location Set'
-                  : ' Allow  location access to scan the QR code'}
+                  : 'Allow location access to scan the QR code'}
                 <br />
                 {/* Show Current Location */}
                 {'Latitude: ' + currentLocation.latitude}
@@ -638,7 +636,7 @@ export const BarcodeScanner = ({
         </div>
         <div className="flex flex-col items-center mb-20">
           <div className="w-[200px] h-[150px]">
-            <video ref={ref} />
+            <video ref={ref as React.RefObject<HTMLVideoElement>} />
           </div>
         </div>
         <div className="flex flex-col items-center mt-10">
@@ -725,7 +723,7 @@ export const BarcodeScanner = ({
                         return;
                       setCurrentLocation({
                         latitude: position.coords.latitude,
-                        longitude: position.coords.longitude
+                        longitude: position.coords.longitude,
                       });
                       setLocationSet(true);
                     },
