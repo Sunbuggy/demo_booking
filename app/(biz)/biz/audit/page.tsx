@@ -1,5 +1,5 @@
 import React from 'react'
-import AuditTabs from './components/AuditTabs'
+// import AuditTabs from './components/AuditTabs'
 
 function AuditPage() {
   return (
