@@ -171,12 +171,12 @@ export function FactoryForm({
 
   useEffect(() => {
     if (initialData) {
-      Object.keys(initialData[0]).forEach((key) => {
-        form.setValue(key, initialData[0][key]);
+      Object.keys(initialData).forEach((key) => {
+        form.setValue(key, initialData[key]);
       });
     }
   }, [initialData, form]);
-
+  
   useEffect(() => {
     if (data) {
       Object.keys(data).forEach((key) => {
