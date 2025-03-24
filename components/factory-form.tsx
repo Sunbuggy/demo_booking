@@ -171,19 +171,14 @@ export function FactoryForm({
 
   useEffect(() => {
     if (initialData) {
-      Object.keys(initialData[0]).forEach((key) => {
-        form.setValue(key, initialData[0][key]);
-      });
+      // Convert to plain object if it's an array with one item
+      const dataToUse = Array.isArray(initialData) && initialData.length === 1 
+        ? initialData[0] 
+        : initialData;
+      
+      form.reset(dataToUse);
     }
   }, [initialData, form]);
-
-  useEffect(() => {
-    if (data) {
-      Object.keys(data).forEach((key) => {
-        form.setValue(key, data[key]);
-      });
-    }
-  }, [data, form]);
 
   const visibleFields = fields.filter(
     (field) => !field.hidden || showAllFields
