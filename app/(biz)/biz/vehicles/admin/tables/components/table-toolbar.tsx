@@ -38,6 +38,10 @@ export function DataTableToolbar<TData>({
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
 
+  const handleGlobalFilterChange = (value: string) => {
+    table.setGlobalFilter(value.toLowerCase());
+  };
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-col items-center space-x-2">
@@ -45,7 +49,7 @@ export function DataTableToolbar<TData>({
           <Input
             placeholder="Search vehicles..."
             value={(table.getState().globalFilter as string) ?? ''}
-            onChange={(event) => table.setGlobalFilter(event.target.value)}
+            onChange={(event) => handleGlobalFilterChange(event.target.value)}
             className="h-8 w-[150px] lg:w-[250px]"
           />
           <DataTableFacetedFilter

@@ -150,7 +150,7 @@ const MainGroups = async ({
                       })}
                     </div>
                   </PopoverGroupEdit>
-                  <GroupPics groupName={group.group_name} />
+                  <GroupPics groupName={group.group_name} /> 
                   <LaunchGroup
                     groupId={groupId}
                     launched={Boolean(launched)}

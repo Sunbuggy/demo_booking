@@ -17,7 +17,7 @@ interface PicFormProps {
 
 const PicForm: React.FC<PicFormProps> = ({ isOpen, onOpenChange, groupName }) => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [pictureNumber, setPictureNumber] = useState(1); // Track the number of pictures uploaded
+  const [pictureNumber, setPictureNumber] = useState(1);
   const { toast } = useToast();
 
   const handleCapture = async (image: string) => {
@@ -29,10 +29,8 @@ const PicForm: React.FC<PicFormProps> = ({ isOpen, onOpenChange, groupName }) =>
       // Upload the file to the bucket with the structured folder path
       await uploadFile(file);
 
-      // Increment the picture number for the next upload
       setPictureNumber((prev) => prev + 1);
 
-      // Close the dialog after capturing the image
       onOpenChange(false);
       setIsCameraOpen(false);
     } catch (error) {
@@ -49,15 +47,12 @@ const PicForm: React.FC<PicFormProps> = ({ isOpen, onOpenChange, groupName }) =>
     const files = event.target.files;
     if (files && files.length > 0) {
       try {
-        // Upload each file sequentially
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           const renamedFile = new File([file], generateFileName(), { type: file.type });
           await uploadFile(renamedFile);
-          setPictureNumber((prev) => prev + 1); // Increment the picture number
+          setPictureNumber((prev) => prev + 1);
         }
-
-        // Close the dialog after uploading all files
         onOpenChange(false);
       } catch (error) {
         console.error('Error uploading file:', error);
@@ -71,27 +66,20 @@ const PicForm: React.FC<PicFormProps> = ({ isOpen, onOpenChange, groupName }) =>
   };
 
   const generateFileName = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-    const day = String(today.getDate()).padStart(2, '0');
-    const dateString = `${year}${month}${day}`; // Format: YYYYMMDD
-    return `${dateString}_${groupName}${pictureNumber}.png`; // Format: YYYYMMDD_GroupName1.png
+    return `${groupName}${pictureNumber}.png`;
   };
 
   const uploadFile = async (file: File) => {
-    // Generate the folder path based on the current date and group name
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const month = String(today.getMonth() + 1).padStart(2, '0'); 
     const day = String(today.getDate()).padStart(2, '0');
     const folderPath = `${year}/${month}/${day}/${groupName}`;
 
-    // Upload the actual file
     const formData = new FormData();
     formData.append('bucket', 'sb-group-pics');
     formData.append('mode', 'single');
-    formData.append('key', `${folderPath}/${file.name}`); // Use the folder path and file name as the key
+    formData.append('key', `${folderPath}/${file.name}`);
     formData.append('files', file);
     formData.append('contentType', file.type);
 
@@ -127,7 +115,7 @@ const PicForm: React.FC<PicFormProps> = ({ isOpen, onOpenChange, groupName }) =>
                 accept="image/*"
                 className="hidden"
                 onChange={handleUploadPicture}
-                multiple // Allow multiple file uploads
+                multiple
               />
             </label>
             <button
