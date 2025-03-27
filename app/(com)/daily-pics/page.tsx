@@ -45,7 +45,7 @@ export default function GalleryPage() {
       // Extract group names from the keys and format the data
       const formattedImages = imageObjects.map((obj: { key: string; url: string }) => {
         const parts = obj.key.split('/');
-        const groupName = parts[3]; // Assuming structure is YEAR/MONTH/DAY/GROUPNAME/filename
+        const groupName = parts[3]; 
         return {
           ...obj,
           groupName,
