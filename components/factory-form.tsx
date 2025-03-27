@@ -60,7 +60,7 @@ case 'select':
   return (
     <Select
       onValueChange={field.onChange}
-      value={field.value}
+      value={String(field.value)}
       disabled={allDisabled}
     >
       <SelectTrigger>
@@ -166,7 +166,10 @@ export function FactoryForm({
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || data || {}
+    defaultValues: {
+      vehicle_status: undefined,
+      ...(initialData || data || {})
+    }
   });
 
   useEffect(() => {

@@ -36,7 +36,9 @@ const formSchema = z.object({
   licenseplate: z.string().optional(),
   state: z.string().optional(),
   pet_name: z.string().optional(),
-  vehicle_status: z.enum(['fine', 'broken', 'maintenance', 'former']).optional()
+vehicle_status: z.enum(['fine', 'broken', 'maintenance', 'former'])
+  .optional()
+  .transform(val => val || undefined), // Convert empty to undefined  
 });
 
 const fields: FieldConfig[] = [
@@ -195,7 +197,7 @@ const EditVehicle = ({ id }: { id: string }) => {
       try {
         const supabase = createClient();
         const data = await fetchVehicleInfo(supabase, id);
-
+        setInitialData(Array.isArray(data) ? data[0] : data);
         console.log('Fetched Data:', data);
          
         setInitialData(data);
