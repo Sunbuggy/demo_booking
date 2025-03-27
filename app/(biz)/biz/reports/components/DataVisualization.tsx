@@ -64,16 +64,6 @@ interface ColumnFilter {
   value: string | number | boolean | Date | null;
 }
 
-const VEHICLE_TAG_COLUMNS = [
-  'created_at',
-  'vehicle_id',
-  'tag_status',
-  'tag_type',
-  'created_by',
-  'closed_by',
-  'closed_by_id'
-];
-
 const DataVisualization: React.FC<DataVisualizationProps> = ({
   data,
   dateRange,
@@ -92,14 +82,10 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
     return Object.keys(data[0]).filter((col) => col !== 'id');
   }, [data]);
 
+  // Set amount of visible columns
   useMemo(() => {
-    if (tableName === 'vehicle_tag') {
-      const filteredColumns = VEHICLE_TAG_COLUMNS.filter(col => columns.includes(col));
-      setVisibleColumns(filteredColumns);
-    } else {
-      setVisibleColumns(columns.slice(0, 15));
-    }
-  }, [columns, tableName]);
+    setVisibleColumns(columns.slice(0, 15));
+  }, [columns]);
 
   const columnTypes: Record<string, ColumnType> = useMemo(() => {
     if (data.length === 0) return {};
@@ -131,23 +117,33 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
 
   const filteredData = useMemo(() => {
     let filtered = data.filter((item) => {
+      // Parse the date from the 'created_at' field and ensure it's within the date range
       const createdAtDate = new Date(item.created_at);
+
       const isInDateRange =
         createdAtDate >= new Date(dateRange.from) &&
         createdAtDate <= new Date(dateRange.to);
+
+      // Optionally check the 'date' field if it's relevant to the filter
       const entryDate = new Date(item.date);
       const isEntryDateInRange =
         entryDate >= new Date(dateRange.from) &&
         entryDate <= new Date(dateRange.to);
+
+      // Combine both checks, as needed
       if (!isInDateRange && !isEntryDateInRange) {
         return false;
       }
+
+      // Apply search term filtering
       const matchesSearch = Object.values(item).some((value) =>
         value
           ?.toString()
           ?.toLowerCase()
           .includes(searchTerm?.toLowerCase() ?? '')
       );
+
+      // Apply column filter logic
       const matchesColumnFilters = columnFilters.every((filter) => {
         const itemValue = item[filter.column];
         switch (filter.type) {
@@ -167,13 +163,16 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
             return true;
         }
       });
+
       return matchesSearch && matchesColumnFilters;
     });
 
+    // Sort filtered data based on the selected column and order
     if (sortColumn) {
       filtered = filtered.sort((a, b) => {
         const aValue = a[sortColumn];
         const bValue = b[sortColumn];
+
         if (aValue < bValue) {
           return sortOrder === 'asc' ? -1 : 1;
         }
@@ -183,6 +182,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
         return 0;
       });
     }
+
     return filtered;
   }, [data, dateRange, searchTerm, columnFilters, sortColumn, sortOrder]);
 
@@ -332,9 +332,6 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   };
 
   const toggleColumnVisibility = (column: string) => {
-    if (tableName === 'vehicle_tag' && VEHICLE_TAG_COLUMNS.includes(column)) {
-      return; // Prevent toggling required columns
-    }
     setVisibleColumns((prev) =>
       prev.includes(column)
         ? prev.filter((col) => col !== column)
@@ -396,14 +393,12 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
               <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
                 {columns.map((column) => {
                   const isVehicleTag = tableName === 'vehicle_tag';
-                  const isRequired = isVehicleTag && VEHICLE_TAG_COLUMNS.includes(column);
                   return (
                     <div key={column} className="flex items-center space-x-2">
                       <Checkbox
                         id={`column-${column}`}
                         checked={visibleColumns.includes(column)}
                         onCheckedChange={() => toggleColumnVisibility(column)}
-                        disabled={isRequired}
                       />
                       <label htmlFor={`column-${column}`}>{column}</label>
                     </div>
