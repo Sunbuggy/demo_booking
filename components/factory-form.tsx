@@ -56,25 +56,25 @@ const FieldComponent = ({
           disabled={allDisabled}
         />
       );
-    case 'select':
-      return (
-        <Select
-          onValueChange={field.onChange}
-          value={field.value}
-          disabled={allDisabled}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={field.value} />
-          </SelectTrigger>
-          <SelectContent>
-            {fieldConfig.options?.map((option, idx) => (
-              <SelectItem key={idx} value={String(option.value)}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
+case 'select':
+  return (
+    <Select
+      onValueChange={field.onChange}
+      value={field.value}
+      disabled={allDisabled}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Select..." />
+      </SelectTrigger>
+      <SelectContent>
+        {fieldConfig.options?.map((option, idx) => (
+          <SelectItem key={idx} value={String(option.value)}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
     case 'checkbox':
       return (
         <>
