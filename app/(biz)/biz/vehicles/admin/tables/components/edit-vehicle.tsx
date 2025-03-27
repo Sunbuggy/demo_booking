@@ -197,13 +197,12 @@ const EditVehicle = ({ id }: { id: string }) => {
       try {
         const supabase = createClient();
         const data = await fetchVehicleInfo(supabase, id);
-        setInitialData(Array.isArray(data) ? data[0] : data);
-        console.log('Fetched Data:', data);
-         
-        setInitialData(data);
+        
+        if (data && data.length > 0) {
+          setInitialData(data[0]); 
+        }
       } catch (error) {
         console.error('Failed to load data', error);
-      } finally {
       }
     };
     loadData();

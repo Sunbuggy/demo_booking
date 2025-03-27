@@ -174,12 +174,7 @@ export function FactoryForm({
 
   useEffect(() => {
     if (initialData) {
-      // Convert to plain object if it's an array with one item
-      const dataToUse = Array.isArray(initialData) && initialData.length === 1 
-        ? initialData[0] 
-        : initialData;
-      
-      form.reset(dataToUse);
+      form.reset(initialData);
     }
   }, [initialData, form]);
 
