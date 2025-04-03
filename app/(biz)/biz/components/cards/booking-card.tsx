@@ -36,10 +36,14 @@ const BookingCard = async ({
       className={`bookingcard ${reservation.is_special_event ? 'text-orange-500 dark:text-orange-500' : ''}`}
     >
       <CardContent className="bookingcardcontent">
-      <Link href={`https://www.sunbuggy.biz/edt_res.php?Id=${reservation.res_id}`} className="hover:underline">
-      <i className=" p-2 text-pink-500 cursor-pointer">
-          {reservation.res_id}
-        </i></Link>
+      <Link 
+  href={`https://www.sunbuggy.biz/edt_res.php?Id=${reservation.res_id}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="p-2 text-pink-500 cursor-pointer hover:underline"
+>
+  {reservation.res_id}
+</Link>
         {reservation.full_name} {/* Total Cost */}
         {display_cost && (
           <i className="text-green-600"> ${reservation.total_cost}</i>
