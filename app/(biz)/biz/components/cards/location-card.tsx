@@ -53,7 +53,7 @@ const LocationCard = ({
               }, 0)
             }-Vehicles
           </span>
-          <span className="text-xs font-light italic text-orange-500">
+          <span className="text-sm font-light italic text-orange-500">
             (
             {
               // Group and count vehicles for the given location. if same vehicle add count and display vehicle with count ignore if count is 0

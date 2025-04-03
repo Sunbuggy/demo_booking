@@ -2,6 +2,7 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { DialogDemo } from '@/components/ui/Dialog';
 import React from 'react';
 import { Reservation } from '../../types';
+import Link from 'next/link';
 
 export type Groups = {
   created_by: string;
@@ -35,9 +36,10 @@ const BookingCard = async ({
       className={`bookingcard ${reservation.is_special_event ? 'text-orange-500 dark:text-orange-500' : ''}`}
     >
       <CardContent className="bookingcardcontent">
-        <i>
-          <DialogDemo reservation={reservation} />
-        </i>{' '}
+      <Link href={`https://www.sunbuggy.biz/edt_res.php?Id=${reservation.res_id}`} className="hover:underline">
+      <i className=" p-2 text-pink-500 cursor-pointer">
+          {reservation.res_id}
+        </i></Link>
         {reservation.full_name} {/* Total Cost */}
         {display_cost && (
           <i className="text-green-600"> ${reservation.total_cost}</i>
@@ -56,11 +58,11 @@ const BookingCard = async ({
               </span>)}
           </p>
           
-          <span className="text-sm text-orange-500">
+          <span className=" text-orange-500">
             {reservation.ppl_count}-PPL:
           </span>
         
-        <span className="flex gap-2 text-sm">
+        <span className="flex gap-2 ">
           {/* Vehicles */}
           {vehiclesList
             .filter(
