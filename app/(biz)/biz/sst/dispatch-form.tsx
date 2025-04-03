@@ -312,7 +312,6 @@ export default function DispatchForm({
               value={resNumber}
               onChange={(e) => setResNumber(e.target.value)}
               className="focus:ring-2 focus:ring-blue-500"
-              required
             />
           </div>
 
