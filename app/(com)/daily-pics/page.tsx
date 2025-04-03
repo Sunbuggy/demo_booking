@@ -2,13 +2,11 @@
 import { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import Image from 'next/image';
 import { useToast } from '@/components/ui/use-toast';
+import Head from 'next/head';
+import { ImageGallery } from './components/imageGallery';
 
-interface ImageData {
+export interface ImageData {
   key: string;
   url: string;
   groupName: string;
@@ -19,6 +17,7 @@ export default function GalleryPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [images, setImages] = useState<ImageData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const { toast } = useToast();
 
   const fetchImages = async () => {
@@ -42,10 +41,9 @@ export default function GalleryPage() {
       const data = await response.json();
       const imageObjects = data.objects || [];
 
-      // Extract group names from the keys and format the data
       const formattedImages = imageObjects.map((obj: { key: string; url: string }) => {
         const parts = obj.key.split('/');
-        const groupName = parts[3]; 
+        const groupName = parts[3] || 'Unknown Group'; 
         return {
           ...obj,
           groupName,
@@ -70,67 +68,82 @@ export default function GalleryPage() {
     fetchImages();
   }, [date]);
 
-  return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6">Group Photos Gallery</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Select Date</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                className="rounded-md border"
-              />
-              <Button onClick={fetchImages} disabled={loading}>
-                {loading ? 'Loading...' : 'Refresh'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+  const handleDateSelect = (selectedDate: Date | undefined) => {
+    setDate(selectedDate);
+    setShowCalendar(false);
+  };
 
-        <div className="md:col-span-2">
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <p>Loading images...</p>
-            </div>
-          ) : images.length === 0 ? (
-            <div className="flex justify-center items-center h-64">
-              <p>No images found for selected date</p>
-            </div>
-          ) : (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">
-                Images for {date?.toLocaleDateString()}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {images.map((image) => (
-                  <div key={image.key} className="border rounded-lg overflow-hidden">
-                    <div className="relative aspect-square">
-                      <Image
-                        src={image.url}
-                        alt={`Group photo from ${image.groupName}`}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      />
-                    </div>
-                    <div className="p-2 bg-muted">
-                      <p className="text-sm font-medium">{image.groupName}</p>
-                      <p className="text-xs text-muted-foreground">{image.date}</p>
-                    </div>
-                  </div>
-                ))}
+  const formattedDate = date?.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long'
+  });
+
+  return (
+    <>
+      <Head>
+        <title>Group Photos Gallery | View Daily Group Pictures</title>
+        <meta 
+          name="description" 
+          content="Browse our collection of group photos organized by date. Find pictures from your group events and activities." 
+        />
+        <meta property="og:title" content="Group Photos Gallery" />
+        <meta 
+          property="og:description" 
+          content="View and browse group photos from various events and activities." 
+        />
+        <meta property="og:type" content="website" />
+      </Head>
+
+      <div className="">
+        <h1 className="text-3xl font-bold text-center mb-2">Group Photos Gallery</h1>
+        <p className="text-muted-foreground text-center mb-8">
+          Browse photos from our group events and activities
+        </p>
+        
+        <div className="flex flex-col items-center mb-8">
+          <div className="relative">
+            <Button 
+              variant="outline"
+              onClick={() => setShowCalendar(!showCalendar)}
+              className="text-lg px-6 py-3"
+            >
+              {formattedDate || 'Select a date'}
+              <svg 
+                className="ml-2 h-4 w-4" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M19 9l-7 7-7-7" 
+                />
+              </svg>
+            </Button>
+            
+            {showCalendar && (
+              <div className="absolute z-10 mt-2 bg-background text-foreground shadow-lg rounded-md border border-border">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={handleDateSelect}
+                  className="rounded-md"
+                />
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        <ImageGallery 
+          images={images} 
+          formattedDate={formattedDate || ''} 
+          loading={loading} 
+        />
       </div>
-    </div>
+    </>
   );
 }
