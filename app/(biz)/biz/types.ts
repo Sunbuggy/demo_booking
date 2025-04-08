@@ -53,6 +53,7 @@ export interface OldDbVehicle {
   GoKart?: number;
 }
 export interface GroupsType {
+  launch_time: string | undefined;
   id: string;
   group_name: string;
   created_at: string;

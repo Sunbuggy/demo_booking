@@ -5,14 +5,13 @@ import { vehiclesList } from '@/utils/old_db/helpers';
 import { createClient } from '@/utils/supabase/server';
 import { fetchGroups, fetchGroupVehicles } from '@/utils/supabase/queries';
 import ReservationsList from './reservations-list';
-import DisplayExistingGroups, {
-  DisplayGroupsInHourCard
-} from './display-existing-groups';
+import {DisplayGroupsInHourCard, DisplayExistingGroups} from './display-existing-groups';
 import { PopoverGroupEdit } from './popover_group_edit';
 import { launchGroup } from '@/utils/old_db/actions';
 import LaunchGroup from './launch-group';
 import PicForm from '../pictures/pic-upload-form';
 import GroupPics from '../pictures/group-pics';
+import dynamic from 'next/dynamic';
 
 const MainGroups = async ({
   groupHr,
@@ -30,9 +29,11 @@ const MainGroups = async ({
     supabase,
     dt
   )) as GroupVehiclesType[];
+
   function filterGroupsByHour(groups: GroupsType[], hr: string) {
     return groups.filter((group) => group.group_name.includes(hr));
   }
+
   function filterGroupVehicleByGroupName(groupName: string) {
     return groupVehicles.filter((group) => {
       if (group.groups === null) {
@@ -63,6 +64,7 @@ const MainGroups = async ({
 
     return result;
   };
+
   return (
     <div className="ml-2 flex">
       <span className="flex items-start text-cyan-500">Groups:</span>{' '}
@@ -72,12 +74,11 @@ const MainGroups = async ({
             return a.group_name.localeCompare(b.group_name);
           })
           .map((group) => {
-            // map through the groupVehicles and filter by group.group_name and group.group_date then return the sum of all quantities
             const groupQty = filterGroupVehicleByGroupName(
               group.group_name
             ).reduce((acc, group) => {
               return acc + Number(group.quantity);
-            }, 0); // Sum of all vehicle's quantities
+            }, 0);
 
             const nameFilteredGroups = filterGroupVehicleByGroupName(
               group.group_name
@@ -87,10 +88,9 @@ const MainGroups = async ({
             const lead = group.lead;
             const sweep = group.sweep;
             const launched = group.launched;
+
             return (
               <span className="text-sm mb-2" key={group.id}>
-                {' '}
-                {/* {groupName}{' '} */}
                 <div className="flex justify-start items-start">
                   <PopoverGroupEdit
                     openText={
@@ -98,6 +98,8 @@ const MainGroups = async ({
                         groupName={groupName}
                         groupQty={groupQty}
                         nameFilteredGroups={nameFilteredGroups}
+                        lead={group.lead}
+                        sweep={group.sweep}
                       />
                     }
                   >
@@ -150,7 +152,7 @@ const MainGroups = async ({
                       })}
                     </div>
                   </PopoverGroupEdit>
-                  <GroupPics groupName={group.group_name} /> 
+                  <GroupPics groupName={group.group_name} />
                   <LaunchGroup
                     groupId={groupId}
                     launched={Boolean(launched)}

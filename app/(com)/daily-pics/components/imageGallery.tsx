@@ -1,6 +1,6 @@
 'use client';
 import Image from 'next/image';
-import { ImageData } from '../page';
+import { ImageData } from '../[date]/page';
 
 interface ImageGalleryProps {
   images: ImageData[];

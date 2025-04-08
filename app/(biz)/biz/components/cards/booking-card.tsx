@@ -42,7 +42,7 @@ const BookingCard = async ({
   rel="noopener noreferrer"
   className="p-2 text-pink-500 cursor-pointer hover:underline"
 >
-  {reservation.res_id}
+  <i>{reservation.res_id} </i>
 </Link>
         {reservation.full_name} {/* Total Cost */}
         {display_cost && (

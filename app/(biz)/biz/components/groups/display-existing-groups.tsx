@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
-const DisplayExistingGroups = ({
+export const DisplayExistingGroups = ({
   groupId,
   groupName,
   groupQty,
@@ -25,8 +25,8 @@ const DisplayExistingGroups = ({
 }) => {
   const supabase = createClient();
   const router = useRouter();
-  const [newLead, setNewLead] = React.useState(lead);
-  const [newSweep, setNewSweep] = React.useState(sweep);
+  const [newLead, setNewLead] = React.useState(lead || '');
+  const [newSweep, setNewSweep] = React.useState(sweep || '');
   const [initiateUpdate, setInitiateUpdate] = React.useState(false);
   const { toast } = useToast();
 
@@ -83,11 +83,15 @@ const DisplayExistingGroups = ({
                 variant: 'success'
               });
           setInitiateUpdate(false);
-          setNewLead('');
-          setNewSweep('');
         });
     }
-  }, [initiateUpdate, newLead, newSweep, groupId, supabase]);
+  }, [initiateUpdate, newLead, newSweep, groupId, supabase, groupName, toast]);
+
+  const handleUpdate = () => {
+    if (newLead !== lead || newSweep !== sweep) {
+      setInitiateUpdate(true);
+    }
+  };
 
   return (
     <div>
@@ -97,14 +101,21 @@ const DisplayExistingGroups = ({
         </h1>
         <div className="flex flex-col gap-2 items-center">
           <Input
-            placeholder={lead || 'Lead'}
+            value={newLead}
+            placeholder="Lead"
             onChange={(e) => setNewLead(e.target.value)}
           />
           <Input
-            placeholder={sweep || 'Sweep'}
+            value={newSweep}
+            placeholder="Sweep"
             onChange={(e) => setNewSweep(e.target.value)}
           />
-          <Button size={'sm'} variant={'secondary'}>
+          <Button 
+            size={'sm'} 
+            variant={'secondary'}
+            onClick={handleUpdate}
+            disabled={!newLead && !newSweep}
+          >
             Update Lead/Sweep
           </Button>
         </div>
@@ -144,11 +155,15 @@ const DisplayExistingGroups = ({
 export const DisplayGroupsInHourCard = ({
   groupName,
   groupQty,
-  nameFilteredGroups
+  nameFilteredGroups,
+  lead,
+  sweep 
 }: {
   groupName: string;
   groupQty: number;
   nameFilteredGroups: GroupVehiclesType[];
+  lead?: string;
+  sweep?: string; 
 }) => {
   const supabase = createClient();
   const router = useRouter();
@@ -178,9 +193,11 @@ export const DisplayGroupsInHourCard = ({
     <div>
       {nameFilteredGroups ? (
         <div className="flex gap-1 w-[190px] items-start">
-          <div className="flex gap-2">
-            <span className="text-cyan-500">{groupName}</span>{' '}
-            <span className="text-orange-500">({groupQty})</span>
+          <div className="flex gap-2 flex-col">
+            <div>
+              <span className="text-cyan-500">{groupName}</span>{' '}
+              <span className="text-orange-500">({groupQty})</span>
+            </div>
           </div>
 
           <div className="flex gap-1 text-sm flex-wrap">
@@ -200,6 +217,20 @@ export const DisplayGroupsInHourCard = ({
                 <span className="text-orange-500">{`${totalQuantity}-${vehicleName}`}</span>
               </div>
             ))}
+
+            {/* Display lead and sweep information */}
+            <div className="pl-4">
+              {lead && (
+                <div className=" text-xs">
+                  Lead: {lead}
+                </div>
+              )}
+              {sweep && (
+                <div className="text-amber-500 text-xs">
+                  Sweep: {sweep}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ) : (
@@ -208,5 +239,3 @@ export const DisplayGroupsInHourCard = ({
     </div>
   );
 };
-
-export default DisplayExistingGroups;
