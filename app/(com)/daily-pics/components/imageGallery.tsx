@@ -31,7 +31,7 @@ export function ImageGallery({ images, formattedDate, loading }: ImageGalleryPro
   }
 
   return (
-    <div>
+    <div className='container mx-auto py-8'>
       <h2 className="text-xl font-semibold mb-6 text-center">
         Photos from {formattedDate}
       </h2>

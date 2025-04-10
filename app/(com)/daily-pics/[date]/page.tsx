@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import Head from 'next/head';
 import { ImageGallery } from '../components/imageGallery';
+import Link from 'next/link';
 
 export interface ImageData {
   key: string;
@@ -19,8 +20,25 @@ export default function DateGalleryPage({ params }: { params: { date: string } }
   const [images, setImages] = useState<ImageData[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [userLevel, setUserLevel] = useState<number | null>(null);
   const { toast } = useToast();
   const router = useRouter();
+
+  // Check user level on mount
+  useEffect(() => {
+    const checkUserLevel = async () => {
+      try {
+        const response = await fetch('/api/auth/level');
+        if (!response.ok) throw new Error('Failed to fetch user level');
+        const { level } = await response.json();
+        setUserLevel(level);
+      } catch (error) {
+        console.error('Error checking user level:', error);
+      }
+    };
+    
+    checkUserLevel();
+  }, []);
 
   // Parse the date from URL
   useEffect(() => {
@@ -94,6 +112,12 @@ export default function DateGalleryPage({ params }: { params: { date: string } }
     router.push(`/daily-pics/${formattedDate}`);
   };
 
+  const handleAdminClick = () => {
+    if (!date) return;
+    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    router.push(`/biz/fetch_pics/admin`);
+  };
+
   const formattedDate = date?.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -113,12 +137,22 @@ export default function DateGalleryPage({ params }: { params: { date: string } }
         />
       </Head>
 
-      <div className="">
+      <div className="container mx-auto py-8"> 
         <h1 className="text-3xl font-bold text-center mb-2">Group Photos Gallery</h1>
-        <p className="text-muted-foreground text-center mb-8">
+        <p className="text-muted-foreground text-center mb-8">       <div>
+        {userLevel !== null && userLevel >= 600 && (
+            <Link 
+            href='/biz/fetch_pics/admin'
+            className='text-orange-500'
+            >
+             <i> Manage Images </i> 
+            </Link>
+          )}</div>  
           Browse photos from our group events and activities
         </p>
-        
+      
+ 
+
         <div className="flex flex-col items-center mb-8">
           <div className="relative">
             <Button 
