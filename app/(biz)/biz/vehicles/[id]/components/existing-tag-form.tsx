@@ -87,13 +87,31 @@ const ExistingTagForm = ({
       };
   
       await updateVehicleTag(supabase, updatedFormValues, tag?.id || '')
-        .then((res) => {
+        .then(async (res) => {
           toast({
             title: 'Success',
             description: 'Tag closed successfully',
             variant: 'success',
             duration: 5000,
           });
+  
+          // Update vehicle status to 'fine'
+          if (tag?.vehicle_id) {
+            const { error: vehicleError } = await supabase
+              .from('vehicles')
+              .update({ vehicle_status: 'fine' })
+              .eq('id', tag.vehicle_id);
+  
+            if (vehicleError) {
+              console.error('Error updating vehicle status:', vehicleError);
+              toast({
+                title: 'Error',
+                description: 'Failed to update vehicle status',
+                variant: 'destructive',
+                duration: 5000,
+              });
+            }
+          }
         })
         .catch((err) => {
           console.error(err);
