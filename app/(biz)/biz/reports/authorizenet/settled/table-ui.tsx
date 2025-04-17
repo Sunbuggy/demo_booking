@@ -54,12 +54,13 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [columns, setColumns] = useState<ColumnDef[]>([
     { key: 'invoiceNumber', label: 'Invoice #', visible: true },
-    { key: 'customer', label: 'Customer', visible: true },
+    { key: 'customer', label: 'Customer', visible: false },
+    { key: 'Book_Name', label: 'Booked By', visible: true },
     { key: 'amount', label: 'Amount', visible: true },
-    { key: 'location', label: 'Location', visible: false },
-    { key: 'resTime', label: 'Reservation Time', visible: false },
-    { key: 'resDate', label: 'Reservation Date', visible: false },
-    { key: 'card', label: 'Card', visible: false }
+    { key: 'Location', label: 'Location', visible: true },
+    { key: 'Res_Time', label: 'Reservation Time', visible: false },
+    { key: 'Res_Date', label: 'Reservation Date', visible: false },
+    { key: 'accountType', label: 'Card Type', visible: true }
   ]);
 
   const filteredData = useMemo(() => {
@@ -275,6 +276,7 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
                           )}
                           {column.key === 'customer' &&
                             `${item.firstName || ''} ${item.lastName || ''}`}
+                          {column.key === 'Book_Name' && item.Book_Name}
                           {column.key === 'amount' && (
                             <span
                               className={`${
@@ -296,13 +298,13 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
                               ${item.settleAmount?.toFixed(2) || '-'}
                             </span>
                           )}
-                          {column.key === 'location' && (item.Location || '-')}
-                          {column.key === 'resTime' && (item.Res_Time || '-')}
-                          {column.key === 'resDate' &&
+                          {column.key === 'Location' && (item.Location || '-')}
+                          {column.key === 'Res_Time' && (item.Res_Time || '-')}
+                          {column.key === 'Res_Date' &&
                             (item.Res_Date
                               ? dayjs(item.Res_Date).format('YYYY-MM-DD')
                               : '-')}
-                          {column.key === 'card' && (item.accountType || '-')}
+                          {column.key === 'accountType' && (item.accountType || '-')}
                         </TableCell>
                       ))}
                   </TableRow>

@@ -34,14 +34,12 @@ const Page = async () => {
     `${process.env.NEXT_PUBLIC_SITE_URL}/api/authorize-net/authorize-vegas`,
     {
       cache: 'no-store',
-      // next: { revalidate: 0 }
     }
   );
   const unsettledResponse2 = await fetch(
     `${process.env.NEXT_PUBLIC_SITE_URL}/api/authorize-net/authorize-vsp`,
     {
       cache: 'no-store',
-      // next: { revalidate: 0 }
     }
   );
 
@@ -60,6 +58,7 @@ const Page = async () => {
   const unsettled_invoiceNumbers = unsettled_superData.map(
     (data) => data.invoiceNumber
   );
+  
   if (unsettled_invoiceNumbers.length === 0) {
     return (
       <div>
@@ -68,12 +67,12 @@ const Page = async () => {
             <BackwardFilled /> Back To Reports Page
           </Button>
         </Link>
-
         <h1>No Transactions For This Day</h1>
       </div>
     );
   }
-  const unsettled_query = `SELECT * FROM vegas_randy_numbers WHERE Res_ID IN (${unsettled_invoiceNumbers.join(`,`)})`;
+
+  const unsettled_query = `SELECT Res_ID, Book_Name, Location, Res_Date, Res_Time FROM vegas_randy_numbers WHERE Res_ID IN (${unsettled_invoiceNumbers.join(`,`)})`;
   const oldDbData = (await fetch_from_old_db(
     unsettled_query
   )) as VegasReservations[];
@@ -84,9 +83,13 @@ const Page = async () => {
     );
     return {
       ...data,
-      ...res
+      Book_Name: res?.Book_Name || '',
+      Location: res?.Location || '',
+      Res_Date: res?.Res_Date || '',
+      Res_Time: res?.Res_Time || ''
     };
   }) as UnsettledCombinedData[];
+
   return (
     <div>
       <TableUI data={unsettled_combinedData} />
