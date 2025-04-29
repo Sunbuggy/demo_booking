@@ -112,11 +112,6 @@ export default function DateGalleryPage({ params }: { params: { date: string } }
     router.push(`/daily-pics/${formattedDate}`);
   };
 
-  const handleAdminClick = () => {
-    if (!date) return;
-    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    router.push(`/biz/fetch_pics/admin`);
-  };
 
   const formattedDate = date?.toLocaleDateString('en-US', {
     year: 'numeric',
@@ -129,7 +124,7 @@ export default function DateGalleryPage({ params }: { params: { date: string } }
 
   return (
     <>
-      <Head>
+    <Head>
         <title>Group Photos Gallery | {formattedDate}</title>
         <meta 
           name="description" 
@@ -139,21 +134,19 @@ export default function DateGalleryPage({ params }: { params: { date: string } }
 
       <div className="container mx-auto py-8"> 
         <h1 className="text-3xl font-bold text-center mb-2">Group Photos Gallery</h1>
-        <p className="text-muted-foreground text-center mb-8">       <div>
-        {userLevel !== null && userLevel >= 600 && (
-            <Link 
-            href='/biz/fetch_pics/admin'
-            className='text-orange-500'
-            >
-             <i> Manage Images </i> 
-            </Link>
-          )}</div>  
+        <p className="text-muted-foreground text-center mb-8">       
+          <div>
+            {userLevel !== null && userLevel >= 600 && (
+              <Link 
+                href='/biz/fetch_pics/admin'
+                className='text-orange-500'>
+                <i> Manage Images </i> 
+              </Link>
+            )}
+          </div>  
           Browse photos from our group events and activities
         </p>
-      
- 
-
-        <div className="flex flex-col items-center mb-8">
+         <div className="flex flex-col items-center mb-8">
           <div className="relative">
             <Button 
               variant="outline"
