@@ -6,6 +6,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Play } from 'lucide-react';
 import { MdOutlineSlideshow } from "react-icons/md";
 import { Button } from '@/components/ui/button';
+import { IoMdDownload } from "react-icons/io";
+
 
 interface ImageGalleryProps {
   images: ImageData[];
@@ -48,6 +50,25 @@ export function ImageGallery({ images, formattedDate, loading }: ImageGalleryPro
   const prevSlide = () => {
     setCurrentSlideIndex((prev) => (prev - 1 + images.length) % images.length);
   };
+
+  const handleDownload = async (imageUrl: string, groupName: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${groupName}-${formattedDate}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+    }
+  };
+
+
 
   if (loading) {
     return (
@@ -95,6 +116,18 @@ export function ImageGallery({ images, formattedDate, loading }: ImageGalleryPro
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 priority={false}
               />
+              {/* Download Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute bottom-2 right-2 bg-background/80 hover:bg-background p-2 rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload(image.url, image.groupName);
+                }}
+              >
+                <IoMdDownload className="h-5 w-5" />
+              </Button>
             </div>
             <div className="p-3 space-y-2">
               <h3 className="font-medium">{image.groupName}</h3>
