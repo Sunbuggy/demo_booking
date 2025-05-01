@@ -66,9 +66,9 @@ const MainGroups = async ({
   };
 
   return (
-    <div className="ml-2 flex">
+    <div className="">
       <span className="flex items-start text-cyan-500">Groups:</span>{' '}
-      <span className="flex flex-col">
+      <span className="flex flex-row">
         {filterGroupsByHour(groups, groupHr)
           .sort((a, b) => {
             return a.group_name.localeCompare(b.group_name);
@@ -155,7 +155,7 @@ const MainGroups = async ({
                   <GroupPics groupName={group.group_name} />
                   <LaunchGroup
                     groupId={groupId}
-                    launched={Boolean(launched)}
+                    launched={group.launch_time || null}
                     groupName={groupName}
                   />
                 </div>

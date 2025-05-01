@@ -3,7 +3,6 @@ import Image from 'next/image';
 import { ImageData } from '../[date]/page';
 import { Card } from '@/components/ui/card';
 import { useState, useEffect, useRef } from 'react';
-import { Play } from 'lucide-react';
 import { MdOutlineSlideshow } from "react-icons/md";
 import { Button } from '@/components/ui/button';
 import { IoMdDownload } from "react-icons/io";

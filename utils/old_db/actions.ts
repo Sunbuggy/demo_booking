@@ -178,13 +178,19 @@ export async function deleteGroup(group_id: string) {
   }
 }
 
-// Improved launch/unlaunch with transaction safety
 async function updateGroupStatus(group_id: string, status: boolean) {
   if (!group_id) return { data: null, error: 'No id provided.' };
 
   const supabase = createClient();
   try {
-    const timestampz = status ? new Date().toISOString() : null;
+    let timestampz = null;
+    if (status) {
+      // Convert to PST time (UTC-8)
+      const now = new Date();
+      const pstTime = new Date(now.getTime() - (8 * 60 * 60 * 1000));
+      timestampz = pstTime.toISOString();
+    }
+
     const { data, error } = await supabase
       .from('groups')
       .update({ launched: timestampz })

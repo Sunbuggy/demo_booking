@@ -14,10 +14,10 @@ const LaunchGroup = ({
   groupName
 }: {
   groupId: string;
-  launched: boolean;
+  launched: string | null; 
   groupName: string;
 }) => {
-  const [initLaunch, setInitLaunch] = React.useState(launched);
+  const [initLaunch, setInitLaunch] = React.useState(false);
   const [unlounch, setUnlaunch] = React.useState(false);
   const { toast } = useToast();
   const supabase = createClient();
@@ -83,11 +83,32 @@ const LaunchGroup = ({
     setInitLaunch(false);
   }, [initLaunch, unlounch]);
 
+  const formatPSTTime = (isoString: string | null) => {
+    if (!isoString) return 'Not launched';
+    
+    try {
+      return new Date(isoString).toLocaleTimeString('en-US', {
+        timeZone: 'America/Los_Angeles',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (e) {
+      return 'Invalid time';
+    }
+  };
+
   return (
     <div>
       <PopoverGroups
         openText={
-          launched ? <span className="text-green-500">Launched</span> : 'Launch'
+          launched ? (
+            <span className="text-green-500">
+              {formatPSTTime(launched)}
+            </span>
+          ) : (
+            'Launch'
+          )
         }
       >
         <h1>
