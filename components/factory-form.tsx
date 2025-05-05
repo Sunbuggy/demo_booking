@@ -162,7 +162,7 @@ export function FactoryForm({
   hideFilterBoxField,
   allDisabled
 }: FactoryFormProps) {
-  const [showAllFields, setShowAllFields] = useState(false);
+  const [showAllFields, setShowAllFields] = useState(true);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
