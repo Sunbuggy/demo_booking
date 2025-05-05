@@ -28,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 export type FieldConfig = {
-  type: 'input' | 'select' | 'checkbox' | 'textarea' | 'radio';
+  type: 'input' | 'select' | 'checkbox' | 'textarea' | 'radio' | 'date';
   name: string;
   label: string;
   placeholder?: string;
@@ -56,6 +56,16 @@ const FieldComponent = ({
           disabled={allDisabled}
         />
       );
+      case 'date':
+        return (
+          <Input
+            {...field}
+            type="date"
+            placeholder={fieldConfig.placeholder}
+            value={field.value || ''}
+            disabled={allDisabled}
+          />
+        );
 case 'select':
   return (
     <Select

@@ -36,7 +36,9 @@ const formSchema = z.object({
   licenseplate: z.string().optional(),
   state: z.string().optional(),
   pet_name: z.string().optional(),
-vehicle_status: z.enum(['fine', 'broken', 'maintenance', 'former'])
+  exp_date: z.coerce.date().optional().transform(date => 
+    date ? date.toISOString().split('T')[0] : undefined),
+  vehicle_status: z.enum(['fine', 'broken', 'maintenance', 'former'])
   .optional()
   .transform(val => val || undefined), // Convert empty to undefined  
 });
@@ -151,7 +153,15 @@ const fields: FieldConfig[] = [
     placeholder: 'Enter the state',
     description: 'The state of the vehicle.',
     hidden: true
-  }
+  },
+  {
+    type: 'input',
+    name: 'exp_date',
+    label: 'EXP Date',
+    placeholder: 'YYYY-MM-DD',
+    description: 'DATE MUST BE YEAR-MONTH-DAY YYYY-MMM-DD.',
+    hidden: true
+  },
 
 ];
 
