@@ -31,7 +31,10 @@ const MainGroups = async ({
   )) as GroupVehiclesType[];
 
   function filterGroupsByHour(groups: GroupsType[], hr: string) {
-    return groups.filter((group) => group.group_name.includes(hr));
+    return groups.filter((group) => {
+      const groupHour = group.group_name.match(/^\d+/)?.[0];
+      return groupHour === hr.split(':')[0];
+    });
   }
 
   function filterGroupVehicleByGroupName(groupName: string) {
@@ -66,9 +69,9 @@ const MainGroups = async ({
   };
 
   return (
-    <div className="">
+    <div className="ml-2 flex max-w-screen">
       <span className="flex items-start text-cyan-500">Groups:</span>{' '}
-      <span className="flex flex-row">
+      <span className="flex flex-col">
         {filterGroupsByHour(groups, groupHr)
           .sort((a, b) => {
             return a.group_name.localeCompare(b.group_name);
@@ -155,7 +158,7 @@ const MainGroups = async ({
                   <GroupPics groupName={group.group_name} />
                   <LaunchGroup
                     groupId={groupId}
-                    launched={group.launch_time || null}
+                    launched={group.launched}
                     groupName={groupName}
                   />
                 </div>

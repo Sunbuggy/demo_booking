@@ -26,7 +26,7 @@ const CreateGroupWizard: React.FC<CreateGroupWizardProps> = ({
   const [createGroup, setCreateGroup] = React.useState(false);
   const [lead, setLead] = React.useState('');
   const [sweep, setSweep] = React.useState('');
-  const [hr] = React.useState(hour);
+  const [hr] = React.useState(hour.padStart(2, '0'));
   const { toast } = useToast();
   React.useEffect(() => {
     setGroupName(`${hr}${selectedAlphabet}${selectedNum}`);

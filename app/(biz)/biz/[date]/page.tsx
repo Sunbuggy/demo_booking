@@ -44,7 +44,7 @@ const BizPage = async ({
     const data = (await fetch_from_old_db(query)) as Reservation[];
     const loadedData = data && (await getTimeSortedData(data));
     return (
-      <div className="">
+      <div className="min-h-screen flex flex-col gap-5">
         {role && role > 299 && (
           <div className="flex gap-2 justify-center items-center">
             <Link

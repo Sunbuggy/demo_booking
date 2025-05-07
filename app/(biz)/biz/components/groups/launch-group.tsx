@@ -82,35 +82,36 @@ const LaunchGroup = ({
     setUnlaunch(false);
     setInitLaunch(false);
   }, [initLaunch, unlounch]);
-
   const formatPSTTime = (isoString: string | null) => {
     if (!isoString) return 'Not launched';
     
     try {
-      return new Date(isoString).toLocaleTimeString('en-US', {
+      const date = new Date(isoString);
+      return date.toLocaleTimeString('en-US', {
         timeZone: 'America/Los_Angeles',
         hour: 'numeric',
         minute: '2-digit',
         hour12: true
-      });
+      }) ;
     } catch (e) {
+      console.error('Invalid date format:', isoString);
       return 'Invalid time';
     }
   };
 
   return (
     <div>
-      <PopoverGroups
-        openText={
-          launched ? (
-            <span className="text-green-500">
-              {formatPSTTime(launched)}
-            </span>
-          ) : (
-            'Launch'
-          )
-        }
-      >
+    <PopoverGroups
+      openText={
+        launched ? (
+          <span className="text-green-500">
+            {formatPSTTime(launched)}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">Launch</span>
+        )
+      }
+    >
         <h1>
           {launched
             ? 'Are you sure you want to remove the launch status from this group?'

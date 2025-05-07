@@ -61,7 +61,7 @@ export interface GroupsType {
   group_date: string;
   lead?: string;
   sweep?: string;
-  launched?: boolean;
+  launched: string | null;
 }
 interface GroupType {
   group_name: string;

@@ -192,7 +192,7 @@ export const DisplayGroupsInHourCard = ({
   return (
     <div>
       {nameFilteredGroups ? (
-        <div className="flex gap-1 w-[180px] ">
+        <div className="flex gap-1 w-[180px] item-start">
           <div className="flex gap-1 flex-col">
             <div>
               <span className="text-cyan-500">{groupName}</span>{' '}

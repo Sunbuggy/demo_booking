@@ -25,7 +25,7 @@ const Landing = ({
 }): JSX.Element => {
   if (data)
     return (
-      <div className="flex flex-col gap-5 w-full">
+      <div className="flex flex-col gap-5 max-w-screen">
         <div className="daytotal">
           {role && role > 899 && display_cost && (
             <p>
