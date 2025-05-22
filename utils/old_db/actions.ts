@@ -15,11 +15,10 @@ const mysqlPool = mysql.createPool({
   connectTimeout: 10000, // 10 seconds timeout
 });
 
-// Reusable database connection handler with retry logic
 async function withDatabaseConnection<T>(fn: (connection: mysql.PoolConnection) => Promise<T>) {
   let connection: mysql.PoolConnection | null = null;
   const maxRetries = 3;
-  let lastError: Error = new Error('Unknown database error'); // Initialize with default error
+  let lastError: Error = new Error('Unknown database error');
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -38,7 +37,6 @@ async function withDatabaseConnection<T>(fn: (connection: mysql.PoolConnection) 
     }
   }
   
-  // Add explicit error information if all retries failed
   lastError.message = `Database operation failed after ${maxRetries} attempts: ${lastError.message}`;
   throw lastError;
 }
@@ -57,12 +55,12 @@ export async function fetch_from_old_db(query: string) {
   });
 }
 
-// Reusable Supabase client handler with error management
 function handleSupabaseError(error: any, context: string) {
   console.error(`Supabase error in ${context}:`, error);
   return { data: null, error: error.message };
 }
 
+//group functions
 export async function createGroups(
   group_name: string,
   group_date: string,
@@ -94,7 +92,6 @@ export async function createGroups(
   }
 }
 
-// Updated insert function with better validation
 export async function insertIntoGroupVehicles(
   group_id: string,
   old_booking_id: number,
@@ -118,7 +115,6 @@ export async function insertIntoGroupVehicles(
   }
 }
 
-// Improved delete function with existence check
 export async function deleteFromGroupVehicles(id: string) {
   if (!id) return { data: null, error: 'No id provided.' };
 
@@ -137,7 +133,6 @@ export async function deleteFromGroupVehicles(id: string) {
   }
 }
 
-// Updated quantity update function
 export async function updateGroupVehicleQuantity(
   id: string,
   quantity: number
@@ -159,7 +154,6 @@ export async function updateGroupVehicleQuantity(
   }
 }
 
-// Enhanced group deletion
 export async function deleteGroup(group_id: string) {
   if (!group_id) return { data: null, error: 'No id provided.' };
 

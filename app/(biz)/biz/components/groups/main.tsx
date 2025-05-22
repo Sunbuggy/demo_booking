@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { GroupsType, GroupVehiclesType, Reservation } from '../../types';
 import { vehiclesList } from '@/utils/old_db/helpers';
 import { createClient } from '@/utils/supabase/server';
@@ -7,11 +6,8 @@ import { fetchGroups, fetchGroupVehicles } from '@/utils/supabase/queries';
 import ReservationsList from './reservations-list';
 import {DisplayGroupsInHourCard, DisplayExistingGroups} from './display-existing-groups';
 import { PopoverGroupEdit } from './popover_group_edit';
-import { launchGroup } from '@/utils/old_db/actions';
 import LaunchGroup from './launch-group';
-import PicForm from '../pictures/pic-upload-form';
 import GroupPics from '../pictures/group-pics';
-import dynamic from 'next/dynamic';
 
 const MainGroups = async ({
   groupHr,
@@ -90,7 +86,6 @@ const MainGroups = async ({
             const groupId = group.id;
             const lead = group.lead;
             const sweep = group.sweep;
-            const launched = group.launched;
 
             return (
               <span className="text-sm mb-2" key={group.id}>

@@ -97,7 +97,7 @@ export const DisplayExistingGroups = ({
     <div>
       <span className="flex justify-between">
         <h1>
-          Update <span className="text-cyan-500"> {groupName}</span>
+          Updates <span className="text-cyan-500"> {groupName}</span>
         </h1>
         <div className="flex flex-col gap-2 items-center">
           <Input
