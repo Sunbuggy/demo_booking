@@ -182,6 +182,9 @@ function changeLocation(data: Reservation[]) {
       case 'comboBajaATV':
         location = 'Dunes Combos (ATV 60min + m.baja 30min)';
         break;
+      case 'DunesATVFR':
+          location = 'Dunes ATV Free Roam';
+          break;
 
       default:
         // Handle any other cases here

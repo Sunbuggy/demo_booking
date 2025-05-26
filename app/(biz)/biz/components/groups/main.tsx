@@ -27,9 +27,15 @@ const MainGroups = async ({
   )) as GroupVehiclesType[];
 
   function filterGroupsByHour(groups: GroupsType[], hr: string) {
+    // Extract just the hour part (remove minutes if present)
+    const targetHour = hr.split(':')[0];
+    
     return groups.filter((group) => {
-      const groupHour = group.group_name.match(/^\d+/)?.[0];
-      return groupHour === hr.split(':')[0];
+      // Extract the numeric part from group name (e.g., "08" from "08A" or "8" from "8A")
+      const groupHour = group.group_name.match(/^(\d+)/)?.[1];
+      
+      // Compare the numeric values (this handles both "08" and "8" cases)
+      return groupHour && parseInt(groupHour) === parseInt(targetHour);
     });
   }
 
@@ -70,7 +76,18 @@ const MainGroups = async ({
       <span className="flex flex-col">
         {filterGroupsByHour(groups, groupHr)
           .sort((a, b) => {
-            return a.group_name.localeCompare(b.group_name);
+            // Sort by the numeric part first, then by letter/number
+            const getSortKey = (name: string) => {
+              const match = name.match(/^(\d+)([A-Za-z]*)(\d*)/);
+              if (!match) return name;
+              const [, num, alpha, numSuffix] = match;
+              return [
+                num.padStart(2, '0'),  // Pad numbers for proper sorting
+                alpha || '',            // Handle empty alpha
+                numSuffix || '0'        // Handle empty suffix
+              ].join('-');
+            };
+            return getSortKey(a.group_name).localeCompare(getSortKey(b.group_name));
           })
           .map((group) => {
             const groupQty = filterGroupVehicleByGroupName(
