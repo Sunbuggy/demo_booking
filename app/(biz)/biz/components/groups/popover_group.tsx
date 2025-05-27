@@ -4,6 +4,7 @@ import {
   PopoverContent,
   PopoverTrigger
 } from '@/components/ui/popover';
+import { Trash2 } from 'lucide-react';
 
 export function PopoverGroups({
   openText,
@@ -16,9 +17,11 @@ export function PopoverGroups({
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          // size={openText === 'Delete Group' ? 'sm' : 'icon'}
           variant={'ghost'}
-          className={`${openText === 'edit' ? 'text-lime-500' : openText === '+Add' ? 'text-green-500' : openText === 'Delete Group' ? 'w-full bg-red-600 hover:text-black' : ''} text-xs p-1 h-[1em]`}
+          className={`${typeof openText !== 'string' ? 'text-red-500 hover:text-red-700' : 
+                    openText === 'edit' ? 'text-lime-500' : 
+                    openText === '+Add' ? 'text-green-500' : ''} 
+                    text-xs p-1 h-[1em]`}
         >
           {openText}
         </Button>

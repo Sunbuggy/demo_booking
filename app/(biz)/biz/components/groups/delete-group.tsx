@@ -5,6 +5,7 @@ import { PopoverClose } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { deleteGroup } from '@/utils/old_db/actions';
 import { useToast } from '@/components/ui/use-toast';
+import { Trash2 } from 'lucide-react';
 
 const DeleteGroup = ({ groupId }: { groupId: string }) => {
   const [yesDelete, setYesDelete] = React.useState(false);
@@ -42,7 +43,7 @@ const DeleteGroup = ({ groupId }: { groupId: string }) => {
   }, [yesDelete]);
 
   return (
-    <PopoverGroups openText="Delete Group">
+    <PopoverGroups openText={<Trash2 className="h-4 w-4" />}>
       <h1>Are you sure you want to delete this group?</h1>
       <div className="flex justify-between">
         <PopoverClose>

@@ -71,9 +71,9 @@ const MainGroups = async ({
   };
 
   return (
-    <div className="ml-2 flex max-w-screen">
+    <div className="ml-2 flex max-w-5xl">
       <span className="flex items-start text-cyan-500">Groups:</span>{' '}
-      <span className="flex flex-col">
+      <span className="flex flex-wrap flex-row">
         {filterGroupsByHour(groups, groupHr)
           .sort((a, b) => {
             // Sort by the numeric part first, then by letter/number

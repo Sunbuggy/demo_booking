@@ -7,6 +7,8 @@ import DeleteGroup from './delete-group';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import {Trash2, Edit } from 'lucide-react';
+import { updateGroupName } from '@/utils/old_db/actions'; 
 
 export const DisplayExistingGroups = ({
   groupId,
@@ -29,6 +31,12 @@ export const DisplayExistingGroups = ({
   const [newSweep, setNewSweep] = React.useState(sweep || '');
   const [initiateUpdate, setInitiateUpdate] = React.useState(false);
   const { toast } = useToast();
+  const [isEditingGroupName, setIsEditingGroupName] = React.useState(false);
+  const [newGroupName, setNewGroupName] = React.useState(groupName);
+
+  React.useEffect(() => {
+    setNewGroupName(groupName);
+  }, [groupName]);
 
   React.useEffect(() => {
     const channel = supabase
@@ -87,6 +95,31 @@ export const DisplayExistingGroups = ({
     }
   }, [initiateUpdate, newLead, newSweep, groupId, supabase, groupName, toast]);
 
+  const handleSaveGroupName = async () => {
+    if (newGroupName.trim() === groupName) {
+      setIsEditingGroupName(false);
+      return;
+    }
+
+    const { error } = await updateGroupName(groupId, newGroupName.trim());
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error,
+        variant: 'destructive',
+        duration: 4000,
+      });
+    } else {
+      toast({
+        title: 'Group Name Updated',
+        description: `Group name has been updated to ${newGroupName}.`,
+        variant: 'success',
+        duration: 2000,
+      });
+      setIsEditingGroupName(false);
+    }
+  };
+  
   const handleUpdate = () => {
     if (newLead !== lead || newSweep !== sweep) {
       setInitiateUpdate(true);
@@ -96,9 +129,41 @@ export const DisplayExistingGroups = ({
   return (
     <div>
       <span className="flex justify-between">
-        <h1>
-          Updates <span className="text-cyan-500"> {groupName}</span>
-        </h1>
+        <div className="flex items-center gap-2">
+          {isEditingGroupName ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                className="w-40"
+              />
+              <Button size="sm" onClick={handleSaveGroupName}>
+                Save
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditingGroupName(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <h1>
+                Updates <span className="text-cyan-500">{groupName}</span>
+              </h1>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditingGroupName(true)}
+              >
+                {/* <Edit></Edit> */}
+                Edit
+              </Button>
+            </div>
+          )}
+        </div>
         <div className="flex flex-col gap-2 items-center">
           <Input
             value={newLead}

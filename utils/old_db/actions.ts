@@ -198,5 +198,42 @@ async function updateGroupStatus(group_id: string, status: boolean) {
   }
 }
 
+export async function updateGroupName(groupId: string, newGroupName: string) {
+  const supabase = createClient();
+  try {
+    const { data: existingGroup, error: fetchError } = await supabase
+      .from('groups')
+      .select('group_date')
+      .eq('id', groupId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const { data: conflictGroup, error: conflictError } = await supabase
+      .from('groups')
+      .select('id')
+      .eq('group_name', newGroupName)
+      .eq('group_date', existingGroup.group_date)
+      .maybeSingle();
+
+    if (conflictError) throw conflictError;
+    if (conflictGroup) {
+      return { data: null, error: 'Group name already exists for this date.' };
+    }
+
+    // Update the group name
+    const { data, error } = await supabase
+      .from('groups')
+      .update({ group_name: newGroupName })
+      .eq('id', groupId)
+      .select()
+      .single();
+
+    return error ? handleSupabaseError(error, 'updateGroupName') : { data, error: null };
+  } catch (error) {
+    return handleSupabaseError(error, 'updateGroupName');
+  }
+}
+
 export const launchGroup = (group_id: string) => updateGroupStatus(group_id, true);
 export const unLaunchGroup = (group_id: string) => updateGroupStatus(group_id, false);
