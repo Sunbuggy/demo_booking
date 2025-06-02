@@ -21,7 +21,7 @@ export function PopoverGroups({
           className={`${typeof openText !== 'string' ? 'text-red-500 hover:text-red-700' : 
                     openText === 'edit' ? 'text-lime-500' : 
                     openText === '+Add' ? 'text-green-500' : ''} 
-                    text-xs p-1 h-[1em]`}
+                    text-sm p-1 h-[1em]`}
         >
           {openText}
         </Button>

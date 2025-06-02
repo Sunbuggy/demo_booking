@@ -179,10 +179,7 @@ async function updateGroupStatus(group_id: string, status: boolean) {
   try {
     let timestampz = null;
     if (status) {
-      // Convert to PST time (UTC-8)
-      const now = new Date();
-      const pstTime = new Date(now.getTime() - (8 * 60 * 60 * 1000));
-      timestampz = pstTime.toISOString();
+      timestampz = new Date().toISOString();
     }
 
     const { data, error } = await supabase

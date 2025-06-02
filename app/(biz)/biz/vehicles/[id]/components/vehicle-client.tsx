@@ -120,7 +120,8 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
       try {
         const data = await fetchVehicleLocations(supabase, vehicleInfo.id);
         if (data && data.length > 0) {
-          setCity(data[0].city);
+          // changes location of vehicle if page loads 
+          // setCity(data[0].city);
         }
       } catch (error) {
         console.error('Failed to fetch vehicle location:', error);
@@ -128,7 +129,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     }
 
     getLocation();
-  }, [vehicleInfo.id, supabase]); // Add dependencies
+  }, [vehicleInfo.id, supabase]); 
 
   React.useEffect(() => {
     const channel = supabase

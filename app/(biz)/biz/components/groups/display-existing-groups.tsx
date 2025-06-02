@@ -151,15 +151,15 @@ export const DisplayExistingGroups = ({
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <h1>
-                Updates <span className="text-cyan-500">{groupName}</span>
+                Update: <span className="text-cyan-500">{groupName}</span>
               </h1>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsEditingGroupName(true)}
               >
-                {/* <Edit></Edit> */}
-                Edit
+                <Edit></Edit>
+                {/* rename */}
               </Button>
             </div>
           )}
@@ -257,7 +257,7 @@ export const DisplayGroupsInHourCard = ({
   return (
     <div>
       {nameFilteredGroups ? (
-        <div className="flex gap-1 w-[180px] item-start">
+        <div className="flex gap-1 w-fit item-start">
           <div className="flex gap-1 flex-col">
             <div>
               <span className="text-cyan-500">{groupName}</span>{' '}
