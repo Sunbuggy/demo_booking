@@ -5,7 +5,6 @@ const ReportsPage = async () => {
   const supabase = createClient();
 
   // Fetch data from the necessary tables and sort by created_at in descending order
-  //
   const { data: tags } = await supabase
     .from('vehicle_tag')
     .select('*')
@@ -29,6 +28,12 @@ const ReportsPage = async () => {
     .order('created_at', { ascending: false });
   const { data: pretrip_trucks } = await supabase
     .from('vehicle_pretrip_truck')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  // Add charges_pismo data fetch
+  const { data: chargesPismo } = await supabase
+    .from('charges_pismo')
     .select('*')
     .order('created_at', { ascending: false });
 
@@ -74,7 +79,9 @@ const ReportsPage = async () => {
         employeeDetails?.find((e) => e.user_id === item.updated_by)?.emp_id ||
         '',
       closed_by_id:
-        employeeDetails?.find((e) => e.user_id === item.closed_by)?.emp_id || ''
+        employeeDetails?.find((e) => e.user_id === item.closed_by)?.emp_id || '',
+      // Format amount as currency if it exists
+      amount: item.amount ? `$${parseFloat(item.amount).toFixed(2)}` : '$0.00'
     }));
   };
 
@@ -86,6 +93,7 @@ const ReportsPage = async () => {
   const mappedBuggyPretrips = mapData(buggy_pretrips || []);
   const mappedPretripShuttles = mapData(pretrip_shuttles || []);
   const mappedPretripTrucks = mapData(pretrip_trucks || []);
+  const mappedChargesPismo = mapData(chargesPismo || []);
 
   // Map time entries
   const mappedTimeEntries = (timeEntries || []).map((entry) => ({
@@ -110,11 +118,12 @@ const ReportsPage = async () => {
     { name: 'Buggy Pre-trips', data: mappedBuggyPretrips },
     { name: 'Shuttle Pre-trips', data: mappedPretripShuttles },
     { name: 'Truck Pre-trips', data: mappedPretripTrucks },
+    { name: 'Pismo Charges', data: mappedChargesPismo }, 
     { name: 'Time Entries', data: mappedTimeEntries }
   ];
 
   return (
-    <div className=" py-8">
+    <div className="py-8">
       <h1 className="text-3xl font-bold mb-8">Reports</h1>
       <ReportsBoard tables={tables} />
     </div>

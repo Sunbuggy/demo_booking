@@ -49,6 +49,12 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 900,
       external: false
     },
+    {
+      href: '/biz/admin/charge_pismo',
+      label: 'Pismo Charge',
+      minLevel: 900,
+      external: false
+    },
     // {
     //   href: '/biz/audit',
     //   label: 'Audit Logs',

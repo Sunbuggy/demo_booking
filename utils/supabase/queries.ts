@@ -1540,3 +1540,29 @@ export const deleteAuditQueue = async (
   }
   return true;
 };
+export const fetchChargesPismo = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('charges_pismo')
+    .select('id, created_at, table')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching audit logs:', error);
+    return [];
+  }
+  return data;
+});
+export const updateChargesPismo = cache(
+  async (
+    supabase: SupabaseClient,
+    audit_log: Database['public']['Tables']['charges_pismo']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase.from('charges_pismo').update(audit_log);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);

@@ -408,6 +408,33 @@ export type Database = {
           },
         ]
       }
+      charges_pismo: {
+        Row: {
+          amount: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          notes: string | null
+          reservation_number: string | null
+        }
+        Insert: {
+          amount?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          reservation_number?: string | null
+        }
+        Update: {
+          amount?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          reservation_number?: string | null
+        }
+        Relationships: []
+      }
       clock_in: {
         Row: {
           clock_in_time: string | null
