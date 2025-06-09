@@ -34,14 +34,12 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 300,
       external: true
     },
-
     {
       href: '/daily-pics',
       label: 'Daily Pics',
       minLevel: 300,
       external: false
     },
-
     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 },
     {
       href: '/biz/reports',
@@ -49,24 +47,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 900,
       external: false
     },
-    {
-      href: '/biz/admin/charge_pismo',
-      label: 'Pismo Charge',
-      minLevel: 900,
-      external: false
-    },
-    // {
-    //   href: '/biz/audit',
-    //   label: 'Audit Logs',
-    //   minLevel: 900,
-    //   external: false
-    // },
-    // {
-    //   href: '/fetchpics',
-    //   label: 'fetch_pics',
-    //   minLevel: 900,
-    //   external: false
-    // },
+
     {
       href: 'tel:+17752060022',
       label: 'Cyber Support: (775) 206-0022',
@@ -107,6 +88,16 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 300,
       external: false
     }
+  ];
+
+  const managerLinks: NavLink[] = [
+    {
+      href: '/biz/admin/charge_pismo',
+      label: 'Pismo Charge',
+      minLevel: 600,
+      external: false
+    },
+    // Add more manager-specific links here as needed
   ];
 
   const renderNavLink = (link: NavLink) => {
@@ -160,6 +151,10 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     ...dashboardLinks,
     ...navLinks.filter((link) => link.minLevel === 300)
   ];
+  const managerLevelLinks = [
+    ...managerLinks,
+    ...navLinks.filter((link) => link.minLevel === 600)
+  ];
   const adminLinks = navLinks.filter((link) => link.minLevel === 900);
 
   return (
@@ -168,6 +163,9 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       {user &&
         user.user_level >= 300 &&
         renderLinkGroup(internalLinks, 'INTERNAL', 300)}
+      {user &&
+        user.user_level >= 600 &&
+        renderLinkGroup(managerLevelLinks, 'MANAGER', 600)}
       {user &&
         user.user_level >= 900 &&
         renderLinkGroup(adminLinks, 'ADMIN', 900)}
