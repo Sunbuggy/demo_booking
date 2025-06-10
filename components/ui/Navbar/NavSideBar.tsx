@@ -87,18 +87,26 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       label: 'QR Generator',
       minLevel: 300,
       external: false
-    }
-  ];
-
-  const managerLinks: NavLink[] = [
+    },
+  
     {
       href: '/biz/admin/charge_pismo',
       label: 'Pismo Charge',
-      minLevel: 600,
+      minLevel: 300,
       external: false
     },
-    // Add more manager-specific links here as needed
+
   ];
+
+  // const managerLinks: NavLink[] = [
+  //   {
+  //     href: '/biz/admin/charge_pismo',
+  //     label: 'Pismo Charge',
+  //     minLevel: 600,
+  //     external: false
+  //   },
+  //   // Add more manager-specific links here as needed
+  // ];
 
   const renderNavLink = (link: NavLink) => {
     const isActive = pathname === link.href;
