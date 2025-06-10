@@ -160,7 +160,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     ...navLinks.filter((link) => link.minLevel === 300)
   ];
   const managerLevelLinks = [
-    ...managerLinks,
+    // ...managerLinks,
     ...navLinks.filter((link) => link.minLevel === 600)
   ];
   const adminLinks = navLinks.filter((link) => link.minLevel === 900);
