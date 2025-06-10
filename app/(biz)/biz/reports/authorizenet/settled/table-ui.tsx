@@ -64,7 +64,17 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
   ]);
 
   const filteredData = useMemo(() => {
-    return data.filter((item) =>
+    const filteredDeposits = data.filter(item => {
+      const invoiceNumber = item.invoiceNumber?.toString() || '';
+      // Skip if it starts with "Deposit" and doesn't contain any numbers
+      if (invoiceNumber.startsWith('Deposit') && !/\d/.test(invoiceNumber)) {
+        return false;
+      }
+      return true;
+    });
+
+    // Then apply the search filter
+    return filteredDeposits.filter((item) =>
       Object.values(item).some((value) =>
         String(value).toLowerCase().includes(filter.toLowerCase())
       )
