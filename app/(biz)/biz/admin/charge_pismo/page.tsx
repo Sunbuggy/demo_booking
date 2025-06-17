@@ -53,7 +53,9 @@ function ChargesPismo() {
         reservation_number: reservationNumber,
         notes: notes,
         created_by: user?.id || 'unknown',
-        created_at: createdAt
+        created_at: createdAt,
+        first_name: firstName,  // Added first_name
+        last_name: lastName      // Added last_name
       });
 
     if (error) {
