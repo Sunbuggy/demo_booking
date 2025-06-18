@@ -1,5 +1,6 @@
 'use client'
 import { createClient } from "@/utils/supabase/client";
+import { Braces } from "lucide-react";
 import React, { useState, useRef, useEffect } from 'react';
 
 function ChargesPismo() {
@@ -176,7 +177,7 @@ function ChargesPismo() {
           </div> */}
         </div>
       </div>
-      
+      <span>Please wait for the 'Thank you for your payment' message after pressing pay to  make sure it went through.</span> <br></br>
       <button 
         onClick={handleGenerate}
         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-6"
