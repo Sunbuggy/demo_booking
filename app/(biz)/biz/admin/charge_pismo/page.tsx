@@ -153,28 +153,7 @@ function ChargesPismo() {
               className="w-full p-2 border rounded"
             />
           </label>
-          
-          {/* <div className="flex items-center mb-2">
-            <input 
-              type="checkbox"
-              id="deposite"
-              checked={isDeposit}
-              onChange={(e) => setIsDeposit(e.target.checked)}
-              className="mr-2"
-            />
-            <label htmlFor="deposite">Damage Deposit</label>
-          </div>
-          
-          <div className="flex items-center">
-            <input 
-              type="checkbox"
-              id="caash"
-              checked={isCash}
-              onChange={(e) => setIsCash(e.target.checked)}
-              className="mr-2"
-            />
-            <label htmlFor="caash">Cash</label>
-          </div> */}
+
         </div>
       </div>
       <span>Please wait for the 'Thank you for your payment' message after pressing pay to  make sure it went through.</span> <br></br>

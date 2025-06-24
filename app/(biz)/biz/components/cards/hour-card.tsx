@@ -29,7 +29,8 @@ const HourCard = async ({
   const groupHr = hr.split(':')[0];
   return (
     <Card key={hr} className="p-0 HourCardStyle">
-      <HourCardTitle hr={hr} data={data} display_cost={display_cost} />
+      <HourCardTitle hr={hr} data={data} display_cost={display_cost} />                      
+      <p>sha tba</p>
       <MainGroups
         date={date}
         groupHr={groupHr}
@@ -47,11 +48,12 @@ const HourCard = async ({
             />
           }
         /> 
-      {/* <p>sha tba</p> */}
 
       </div>
+
       <CardContent className="flex flex-col gap-5 p-3">
         {Object.keys(data[hr]).map((locationKey) => {
+
           return (
             <LocationCard
               key={locationKey}
@@ -59,7 +61,7 @@ const HourCard = async ({
               data={data}
               locationKey={locationKey}
               display_cost={display_cost}
-            />
+            /> 
           );
         })}
       </CardContent>

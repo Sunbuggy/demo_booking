@@ -50,7 +50,12 @@ export default function QRCodeForm({ form, onSubmit, hide }: QRCodeFormProps) {
                 <FormItem>
                   <FormLabel>Top Text</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter top text" {...field} />
+                    <Input 
+                      placeholder="Enter top text" 
+                      {...field} 
+                      value={field.value || ''}
+                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -63,7 +68,12 @@ export default function QRCodeForm({ form, onSubmit, hide }: QRCodeFormProps) {
                 <FormItem>
                   <FormLabel>Bottom Text</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter bottom text" {...field} />
+                    <Input 
+                      placeholder="Enter bottom text" 
+                      {...field} 
+                      value={field.value || ''}
+                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

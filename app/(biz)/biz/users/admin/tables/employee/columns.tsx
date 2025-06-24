@@ -117,6 +117,7 @@ export const columns: ColumnDef<UserType, any>[] = [
     ),
     cell: ({ row }) => {
       const [makeEmployee, setMakeEmployee] = useState(false);
+      const [makeDriver, setMakeDriver] = useState(false);
       const [makeManager, setMakeManager] = useState(false);
       const [makeAdmin, setMakeAdmin] = useState(false);
       const [makeCustomer, setMakeCustomer] = useState(false);
@@ -148,6 +149,21 @@ export const columns: ColumnDef<UserType, any>[] = [
               toast({
                 title: 'Success',
                 description: 'User has been made an employee',
+                duration: 2000,
+                variant: 'success'
+              });
+            })
+            .catch((err) => {
+              console.error(err);
+            });
+        }
+        //Make Driver
+         if (makeDriver) {
+          changeUserRole(supabase, row.original.id, 350)
+            .then((res) => {
+              toast({
+                title: 'Success',
+                description: 'User has been made a driver',
                 duration: 2000,
                 variant: 'success'
               });
@@ -196,10 +212,11 @@ export const columns: ColumnDef<UserType, any>[] = [
         }
         // Clean up
         setMakeEmployee(false);
+        setMakeDriver(false);
         setMakeManager(false);
         setMakeAdmin(false);
         setMakeCustomer(false);
-      }, [makeEmployee, makeManager, makeAdmin, makeCustomer]);
+      }, [makeEmployee, makeDriver, makeManager, makeAdmin, makeCustomer]);
 
       return (
         <div className="w-[40px]">
@@ -217,7 +234,7 @@ export const columns: ColumnDef<UserType, any>[] = [
                 {row.getValue('user_level')}
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className='w-fit'>
               <DialogHeader>
                 <DialogTitle>Change User Level</DialogTitle>
                 <DialogDescription>
@@ -248,6 +265,15 @@ export const columns: ColumnDef<UserType, any>[] = [
                     }}
                   >
                     Employee
+                  </Button>
+                </DialogClose>
+                 <DialogClose asChild>
+                  <Button
+                    onClick={() => {
+                      setMakeDriver(true);
+                    }}
+                  >
+                    Driver
                   </Button>
                 </DialogClose>
                 <DialogClose asChild>
