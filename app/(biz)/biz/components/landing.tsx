@@ -2,6 +2,7 @@ import React from 'react';
 import { Reservation } from '../types';
 import HourCard from './cards/hour-card';
 import { countPeople, vehiclesList } from '@/utils/old_db/helpers';
+import ShaCreate from './shuttle-assignment/create';
 
 /**
  * Renders a landing component that displays reservation data.
@@ -101,6 +102,9 @@ const Landing = ({
               })
               .join(', ')}
           </p>
+          <p >
+          <ShaCreate />
+        </p>
         </div>
         {Object.keys(data).map((key, idx) => {
           return (            

@@ -36,6 +36,7 @@ const BookingCard = async ({
       className={`bookingcard ${reservation.is_special_event ? 'text-orange-500 dark:text-orange-500' : ''}`}
     >
       <CardContent className="bookingcardcontent">
+        {/* shad */}
       <Link 
   href={`https://www.sunbuggy.biz/edt_res.php?Id=${reservation.res_id}`}
   target="_blank"
