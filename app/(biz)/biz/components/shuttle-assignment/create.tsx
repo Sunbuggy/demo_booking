@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchVehicles } from '@/utils/supabase/queries';
-import { getUserDetails } from '@/utils/supabase/queries';
+import { fetchVehicles, getAllUsers,getUserDetails } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/client';
 import {
   Dialog,
@@ -42,11 +41,11 @@ export default function ShaCreate() {
         );
         setAllShuttles(filteredShuttles);
 
-        // Fetch all users with level >= 300
-        const userDetails = await getUserDetails(supabase);
-        const filteredUsers = userDetails?.filter(user => 
-          user.user_level >= 300
-        ) || [];
+        // UPDATED: Fetch all users and filter by level
+        const allUsersData = await getAllUsers(supabase);
+        const filteredUsers = allUsersData.filter(user => 
+          (user.user_level ?? 0) >= 300 // Handle null levels
+        );
         setAllUsers(filteredUsers);
 
       } catch (err) {

@@ -413,7 +413,9 @@ export type Database = {
           amount: string | null
           created_at: string | null
           created_by: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           notes: string | null
           reservation_number: string | null
         }
@@ -421,7 +423,9 @@ export type Database = {
           amount?: string | null
           created_at?: string | null
           created_by?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           notes?: string | null
           reservation_number?: string | null
         }
@@ -429,7 +433,9 @@ export type Database = {
           amount?: string | null
           created_at?: string | null
           created_by?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           notes?: string | null
           reservation_number?: string | null
         }
@@ -630,6 +636,7 @@ export type Database = {
           id: string
           launched: string | null
           lead: string | null
+          shuttle_assignment_id: string | null
           sweep: string | null
         }
         Insert: {
@@ -640,6 +647,7 @@ export type Database = {
           id?: string
           launched?: string | null
           lead?: string | null
+          shuttle_assignment_id?: string | null
           sweep?: string | null
         }
         Update: {
@@ -650,9 +658,18 @@ export type Database = {
           id?: string
           launched?: string | null
           lead?: string | null
+          shuttle_assignment_id?: string | null
           sweep?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "groups_shuttle_assignment_id_fkey"
+            columns: ["shuttle_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "shuttle_assignment"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hotels: {
         Row: {

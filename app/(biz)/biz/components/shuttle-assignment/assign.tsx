@@ -1,6 +1,7 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -8,78 +9,191 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { fetchShuttleAssignment, fetchGroups, updateGroup } from '@/utils/supabase/queries';
 
-interface ShuttleAssignmentButtonProps {
-  reservation: {
-    res_id: string;
-    full_name: string;
-    ppl_count: number;
-    group_name?: string;
-  };
-  onAssignment: (shuttleName: string) => void;
+interface Group {
+  id: string;
+  group_name: string;
+  group_date: string;
+  shuttle_assignment_id: string | null;
 }
 
-export function ShuttleAssignmentButton({ 
-  reservation, 
-  onAssignment 
-}: ShuttleAssignmentButtonProps) {
+interface ShuttleAssignment {
+  id: string;
+  vehicle_id: string;
+  employee_id: string;
+  vehicle_name?: string;
+  employee_name?: string;
+}
+
+export default function GroupShuttleAssignment({ date }: { date: string }) {
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [shuttleAssignments, setShuttleAssignments] = useState<ShuttleAssignment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedGroup, setSelectedGroup] = useState<string>('');
+  const [selectedShuttle, setSelectedShuttle] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [open, setOpen] = useState(false);
-  const [selectedShuttle, setSelectedShuttle] = useState<string | null>(null);
+  
+  const supabase = createClient();
 
-  // Mock shuttle data - replace with your actual data source
-  const shuttles = [
-    { id: 'sh001', name: 'Shuttle 1' },
-    { id: 'sh002', name: 'Shuttle 2' },
-    { id: 'sh003', name: 'Shuttle 3' },
-  ];
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setIsLoading(true);
+        
+        // Fetch groups for the selected date with shuttle assignments
+        const groupsData = await fetchGroups(supabase, new Date(date));
+        setGroups(groupsData || []);
+        
+        // Fetch shuttle assignments with vehicle and user details
+        const { data: assignments, error } = await supabase
+          .from('shuttle_assignment')
+          .select(`
+            id,
+            vehicle_id,
+            employee_id,
+            vehicles:vehicle_id(name),
+            users:employee_id(full_name)
+          `);
+        
+        if (error) throw error;
+        
+        setShuttleAssignments(assignments.map(a => ({
+          id: a.id,
+          vehicle_id: a.vehicle_id,
+          employee_id: a.employee_id,
+          vehicle_name: a.vehicles?.name,
+          // employee_name: a.users?.full_name
+        })) || []);
+        
+      } catch (err) {
+        console.error('Failed to load data', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
 
-  const handleSelect = (shuttle: string) => {
-    setSelectedShuttle(shuttle);
-    onAssignment(shuttle);
-    setOpen(false);
+    if (open) {
+      loadData();
+    }
+  }, [supabase, open, date]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      // Update the group with the shuttle assignment
+      const { error } = await supabase
+        .from('groups')
+        .update({ shuttle_assignment_id: selectedShuttle })
+        .eq('id', selectedGroup);
+      
+      if (error) throw error;
+      
+      // Update local state to reflect the change
+      setGroups(groups.map(group => 
+        group.id === selectedGroup 
+          ? { ...group, shuttle_assignment_id: selectedShuttle } 
+          : group
+      ));
+      
+      setSuccess(true);
+      setTimeout(() => {
+        setOpen(false);
+        setSuccess(false);
+        // Reset selections
+        setSelectedGroup('');
+        setSelectedShuttle('');
+      }, 1500);
+    } catch (err) {
+      console.error('Error assigning shuttle', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="ml-2"
-          >
-            {selectedShuttle 
-              ? `SH-${reservation.group_name || 'GRP'}-${reservation.ppl_count}` 
-              : 'Assign'}
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assign Shuttle for {reservation.full_name}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-medium mb-2">Group: {reservation.group_name || 'No Group'}</h3>
-              <p>People: {reservation.ppl_count}</p>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-medium">Available Shuttles:</h4>
-              <div className="grid grid-cols-2 gap-2">
-                {shuttles.map(shuttle => (
-                  <Button
-                    key={shuttle.id}
-                    variant={selectedShuttle === shuttle.id ? 'default' : 'outline'}
-                    onClick={() => handleSelect(shuttle.id)}
-                  >
-                    {shuttle.name}
-                  </Button>
-                ))}
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="ml-2">
+          Assign Shuttle to Group
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Assign Shuttle to Group</DialogTitle>
+        </DialogHeader>
+        
+        {isLoading ? (
+          <div className="p-4">Loading...</div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {success && (
+              <div className="mb-4 p-2 bg-green-100 text-green-700 rounded">
+                Shuttle assigned successfully!
               </div>
+            )}
+
+            {/* Group Selection */}
+            <div>
+              <label htmlFor="group" className="block mb-2 font-medium">
+                Select Group:
+              </label>
+              <select
+                id="group"
+                value={selectedGroup}
+                onChange={(e) => setSelectedGroup(e.target.value)}
+                className="w-full p-2 border rounded"
+                required
+                disabled={isSubmitting}
+              >
+                <option value="">-- Select a group --</option>
+                {groups.map(group => (
+                  <option key={group.id} value={group.id}>
+                    {group.group_name} ({group.group_date})
+                    {group.shuttle_assignment_id && ' (Already assigned)'}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+
+            {/* Shuttle Assignment Selection */}
+            <div>
+              <label htmlFor="shuttle" className="block mb-2 font-medium">
+                Select Shuttle Assignment:
+              </label>
+              <select
+                id="shuttle"
+                value={selectedShuttle}
+                onChange={(e) => setSelectedShuttle(e.target.value)}
+                className="w-full p-2 border rounded"
+                required
+                disabled={isSubmitting}
+              >
+                <option value="">-- Select a shuttle assignment --</option>
+                {shuttleAssignments.map(assignment => (
+                  <option key={assignment.id} value={assignment.id}>
+                    {assignment.vehicle_name || assignment.vehicle_id} - 
+                    {assignment.employee_name || assignment.employee_id}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting || !selectedGroup || !selectedShuttle}
+            >
+              {isSubmitting ? 'Assigning...' : 'Assign Shuttle to Group'}
+            </Button>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

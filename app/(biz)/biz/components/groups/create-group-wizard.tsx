@@ -91,17 +91,25 @@ const CreateGroupWizard: React.FC<CreateGroupWizardProps> = ({
     const num = parseInt(hourStr);
     return isNaN(num) ? hourStr : num.toString();
   };
+  const formattedHour = displayHour(hour);
+
+  React.useEffect(() => {
+    setGroupName(`${formattedHour}${selectedAlphabet}${selectedNum}`);
+  }, [selectedAlphabet, selectedNum, formattedHour]);
+
+   const dbGroupName = `${formattedHour}${selectedAlphabet}${selectedNum}`;
+
 
   return (
     <div className="flex items-center flex-col">
       <h1 className="mb-5 text-xl">Create a Group</h1>
       <div className="flex gap-4 items-center justify-center">
-        <span className="text-4xl">{displayHour(hr)}</span>{' '}
+        <span className="text-4xl">{formattedHour}</span>{' '}
         <SelectAlphabet setSelectedAlphabet={setSelectedAlphabet} />{' '}
         <SelectNums setSelectedNum={setSelectedNum} selectedNum={selectedNum} />
         {selectedAlphabet && (
-          <div className=" font-bold text-2xl text-green-400 underline">
-            {displayHour(hr)}
+          <div className="font-bold text-2xl text-green-400 underline">
+            {formattedHour}
             {selectedAlphabet}
             {selectedNum}
           </div>

@@ -156,6 +156,25 @@ export const fetchGroups = cache(
     return data;
   }
 );
+export const updateGroup = cache(
+  async (
+    supabase: SupabaseClient,
+    updates: Partial<Database['public']['Tables']['groups']['Update']>,
+    groupId: string
+  ) => {
+    const { data, error } = await supabase
+      .from('groups')
+      .update(updates)
+      .eq('id', groupId)
+      .select();
+    
+    if (error) {
+      console.error('Error updating group:', error);
+      throw error;
+    }
+    return data;
+  }
+);
 export const fetchGroupVehicles = cache(
   async (supabase: SupabaseClient, date: Date) => {
     // Join with groups table with group_id then pull results that match the date
@@ -1559,6 +1578,41 @@ export const updateChargesPismo = cache(
     id: string
   ) => {
     const { data, error } = await supabase.from('charges_pismo').update(audit_log);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+// Add this function to fetch shuttle assignments with details
+export const fetchShuttleAssignment = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('shuttle_assignment')
+    .select(`
+      id,
+      created_at,
+      date_assigned_for,
+      employee_id,
+      vehicle_id,
+      vehicles:vehicle_id (id, name),
+      users:employee_id (id, full_name)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching shuttle assignments:', error);
+    return [];
+  }
+  return data;
+});
+export const updateShuttleAssignment = cache(
+  async (
+    supabase: SupabaseClient,
+    audit_log: Database['public']['Tables']['shuttle_assignment']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase.from('shuttle_assignment').update(audit_log);
     if (error) {
       console.error(error);
       return [];

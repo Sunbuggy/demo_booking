@@ -3,6 +3,7 @@ import { Reservation } from '../types';
 import HourCard from './cards/hour-card';
 import { countPeople, vehiclesList } from '@/utils/old_db/helpers';
 import ShaCreate from './shuttle-assignment/create';
+import GroupShuttleAssignment from './shuttle-assignment/assign';
 
 /**
  * Renders a landing component that displays reservation data.
@@ -30,6 +31,7 @@ const Landing = ({
         <div className="daytotal">
           {role && role > 899 && display_cost && (
             <p>
+              
               Total Today: $
               {
                 // Sum of all reservation.total_cost for the given data
@@ -104,6 +106,8 @@ const Landing = ({
           </p>
           <p >
           <ShaCreate />
+         <GroupShuttleAssignment date={date} />
+
         </p>
         </div>
         {Object.keys(data).map((key, idx) => {
