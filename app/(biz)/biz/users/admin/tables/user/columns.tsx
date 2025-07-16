@@ -37,19 +37,42 @@ export const columns: ColumnDef<UserType, any>[] = [
     accessorKey: 'avatar_url',
     header: ({ column }) => <DataTableColumnHeader column={column} title="" />,
     cell: ({ row }) => {
-      const name = row.getValue('full_name') as string;
-      const initials = name
-        .split(' ')
-        .map((n) => n[0])
-        .join('');
+      const name = row.getValue('full_name') as string | null;
+      const email = row.original.email;
+      const avatarUrl = row.getValue('avatar_url') as string | null;
+
+      // Safely handle name/email for alt text
+      const altText = name || email || 'User Avatar';
+      
+      // Generate initials safely
+      let initials = '?';
+      if (name && name.trim()) {
+        initials = name
+          .trim()
+          .split(/\s+/)
+          .filter(w => w.length > 0)
+          .slice(0, 2)
+          .map(w => w[0])
+          .join('')
+          .toUpperCase();
+      } else if (email) {
+        // Handle email-only case
+        const emailPrefix = email.split('@')[0] || '';
+        const validChars = emailPrefix.match(/[a-zA-Z0-9]/g) || [];
+        initials = validChars.slice(0, 2).join('').toUpperCase();
+      }
+
       return (
         <div className="w-[50px]">
           <Avatar className="h-9 w-9">
             <AvatarImage
-              src={row.getValue('avatar_url')}
-              alt={name || 'no name'}
+              src={avatarUrl || undefined}
+              alt={altText}
+              className="object-cover"
             />
-            <AvatarFallback>{initials}</AvatarFallback>
+            <AvatarFallback className="bg-muted/50">
+              {initials || '?'}
+            </AvatarFallback>
           </Avatar>
         </div>
       );
@@ -62,7 +85,9 @@ export const columns: ColumnDef<UserType, any>[] = [
       <DataTableColumnHeader column={column} title="Name" />
     ),
     cell: ({ row }) => (
-      <div className="w-[180px]">{row.getValue('full_name')}</div>
+      <div className="min-w-[120px] max-w-[180px] truncate">
+        {row.getValue('full_name') || '-'}
+      </div>
     ),
     enableHiding: false
   },
@@ -71,7 +96,11 @@ export const columns: ColumnDef<UserType, any>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Email" />
     ),
-    cell: ({ row }) => <div className="w-[180px]">{row.getValue('email')}</div>
+    cell: ({ row }) => (
+      <div className="min-w-[150px] max-w-[180px] truncate">
+        {row.getValue('email') || '-'}
+      </div>
+    )
   },
   // {
   //   accessorKey: 'user_level',
