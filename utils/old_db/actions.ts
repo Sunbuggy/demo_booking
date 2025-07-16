@@ -2,6 +2,7 @@
 import { revalidateTag } from 'next/cache';
 import mysql from 'mysql2/promise';
 import { createClient } from '../supabase/server';
+import { Reservation } from '@/app/(biz)/biz/types';
 
 // Create a MySQL connection pool instead of individual connections
 const mysqlPool = mysql.createPool({
@@ -229,6 +230,48 @@ export async function updateGroupName(groupId: string, newGroupName: string) {
     return error ? handleSupabaseError(error, 'updateGroupName') : { data, error: null };
   } catch (error) {
     return handleSupabaseError(error, 'updateGroupName');
+  }
+}
+
+export async function getReservationById(res_id: string): Promise<Reservation | null> {
+  const query = `SELECT * FROM reservations_modified WHERE Res_ID = ${res_id}`;
+  const data = await fetch_from_old_db(query) as Reservation[];
+  return data.length > 0 ? data[0] : null;
+}
+
+
+export async function updateReservation(res_id: number, updates: Partial<Reservation>) {
+  try {
+    // Build the SET clause for SQL
+    const setClause = Object.entries(updates)
+      .map(([key, value]) => {
+        // Handle different value types
+        if (value === undefined || value === null) return null;
+        
+        if (typeof value === 'string') {
+          return `\`${key}\` = '${value.replace(/'/g, "''")}'`;
+        }
+        
+        if (value instanceof Date) {
+          return `\`${key}\` = '${value.toISOString().split('T')[0]}'`;
+        }
+        
+        return `\`${key}\` = ${value}`;
+      })
+      .filter(Boolean)
+      .join(', ');
+
+    if (!setClause) {
+      throw new Error('No valid fields to update');
+    }
+
+    const query = `UPDATE reservations_modified SET ${setClause} WHERE Res_ID = ${res_id}`;
+    const result = await fetch_from_old_db(query);
+    
+    return { success: true, result };
+  } catch (error) {
+    console.error('Error updating reservation:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 

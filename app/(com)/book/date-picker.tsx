@@ -22,13 +22,15 @@ const DatePicker = ({
   title,
   isCalendarOpen,
   setIsCalendarOpen,
-  buttonTitle = 'Select a date'
+  buttonTitle = 'Select a date',
+  disabled = false
 }: {
   form: any;
   title: string;
   isCalendarOpen: boolean;
   setIsCalendarOpen: Dispatch<SetStateAction<boolean>>;
   buttonTitle?: string;
+  disabled?: boolean;
 }) => {
   return (
     <>
@@ -38,7 +40,7 @@ const DatePicker = ({
         render={({ field }) => (
           <FormItem className="flex gap-2 items-baseline">
             <FormLabel className="sr-only">{title}</FormLabel>
-            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+            <Popover open={isCalendarOpen} onOpenChange={disabled ? undefined : setIsCalendarOpen}>
               <PopoverTrigger asChild>
                 <FormControl>
                   <Button
@@ -47,6 +49,7 @@ const DatePicker = ({
                       'w-screen md:w-[350px] pl-3 text-left font-normal',
                       !field.value && 'text-muted-foreground'
                     )}
+                    disabled={disabled}
                   >
                     {field.value ? (
                       format(field.value, 'PPP')
@@ -68,8 +71,8 @@ const DatePicker = ({
                   }}
                   disabled={(date) => {
                     const today = new Date();
-                    today.setHours(0, 0, 0, 0); // Set today's date time to start of the day
-                    return date < today || date < new Date('1900-01-01');
+                    today.setHours(0, 0, 0, 0);
+                    return date < today || date < new Date('1900-01-01') || disabled;
                   }}
                 />
               </PopoverContent>

@@ -2,9 +2,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarForm } from '../booking-calendar/mbj';
 import { createId } from '@paralleldrive/cuid2';
-import { minibajachase } from '@/utils/helpers';
+import { mbj_vehicles_list, minibajachase } from '@/utils/helpers';
 import AdventureCard from '../../choose-adventure/cards';
 import AcceptHostedPage from '../../payment/acceptHosted';
+import { Reservation } from '@/app/(biz)/biz/types';
+import Link from 'next/link';
+// import { useRouter } from 'next/router';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -48,7 +51,16 @@ export interface VehicleCounts {
   [vehicleId: number]: VehicleCount;
 }
 
-export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
+export function MiniBajaPage({ 
+  hotels, 
+  initialData, 
+  viewMode = false 
+}: { 
+  hotels: HotelType[];
+  initialData?: Reservation;
+  viewMode?: boolean;
+}) {
+    // const router = useRouter();
   const decodedId = createId();
   const [selectedTabValue, setSelectedTabValue] = useState<
     'mb30' | 'mb60' | 'mb120'
@@ -166,6 +178,74 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
     }
   };
 
+
+  useEffect(() => {
+    if (initialData) {
+      // Parse reservation date
+      const bookingDate = initialData.sch_date ? new Date(initialData.sch_date) : new Date();
+      
+      // Set booking info
+      setBookInfo({
+        bookingDate,
+        howManyPeople: initialData.ppl_count || 1
+      });
+      
+      // Set contact info
+      setContactForm({
+        name: initialData.full_name || '',
+        email: initialData.email || '',
+        phone: initialData.phone || '',
+        groupName: initialData.occasion || ''
+      });
+      
+      // Map vehicle counts from reservation
+      const counts: VehicleCounts = {};
+      mbj_vehicles_list.forEach(vehicle => {
+        const key = vehicle.name.split(' ')[0].toLowerCase().replace('-', '');
+        const count = initialData[key as keyof Reservation];
+        if (count && Number(count) > 0) {
+          counts[vehicle.id] = {
+            isChecked: true,
+            count: Number(count),
+            name: vehicle.name,
+            seats: vehicle.seats,
+            pricing: vehicle.pricing
+          };
+        }
+      });
+      setVehicleCounts(counts);
+      
+      // Set location-based tab
+      const locationTabMap: Record<string, 'mb30' | 'mb60' | 'mb120'> = {
+        'Nellis30': 'mb30',
+        'Nellis60': 'mb60',
+        'Nellis': 'mb120'
+      };
+      
+      if (initialData.location) {
+        const tabValue = locationTabMap[initialData.location] || 'mb60';
+        setSelectedTabValue(tabValue);
+      }
+      
+      // Set time if available
+      if (initialData.sch_time) {
+        // Convert "HH:MM" to "H am/pm" format
+        const [hours, minutes] = initialData.sch_time.split(':');
+        const hour = parseInt(hours, 10);
+        const period = hour >= 12 ? 'pm' : 'am';
+        const displayHour = hour % 12 || 12;
+        setSelectedTimeValue(`${displayHour} ${period}`);
+      }
+      
+      // Automatically progress through form steps
+      if (viewMode) {
+        setHideForm(true);
+        setShowContactForm(false);
+        setShowPricing(true);
+      }
+    }
+  }, [initialData, viewMode]);
+
   return (
     <div className=" font-extrabold dark:text-white sm:text-center flex flex-col justify-center items-center h-fit ">
       <CalendarForm
@@ -198,31 +278,37 @@ export function MiniBajaPage({ hotels }: { hotels: HotelType[] }) {
         showContactForm={showContactForm}
         setShowContactForm={setShowContactForm}
         formToken={formToken}
+        viewMode={viewMode}
+        onEdit={viewMode ? () => <Link href={'/biz/reservations/${initialData?.res_id}'}></Link>: undefined}
       />
-      {totalPrice && selectedTimeValue ? (
-        <AcceptHostedPage formToken={formToken} setResponse={setResponse} />
-      ) : (
-        ''
+      {!viewMode && (
+        <>
+          {totalPrice && selectedTimeValue ? (
+            <AcceptHostedPage formToken={formToken} setResponse={setResponse} />
+          ) : (
+            ''
+          )}
+
+          {formTokenError && selectedTimeValue && (
+            <div>
+              <p>
+                {formTokenError
+                  ? 'Some Problem Occured Please Pick a Different Time or Refresh This Page'
+                  : ''}
+              </p>
+            </div>
+          )}
+          <AdventureCard
+            description={minibajachase.description}
+            title={minibajachase.title}
+            videoId={minibajachase.videoId}
+            playlistId={minibajachase.playlistId}
+            linkHref="/book/minibaja-chase"
+            showBookButton={false}
+          />
+        </>
       )}
 
-      {formTokenError && selectedTimeValue && (
-        <div>
-          <p>
-            {formTokenError
-              ? 'Some Problem Occured Please Pick a Different Time or Refresh This Page'
-              : ''}
-          </p>
-        </div>
-      )}
-      <AdventureCard
-        description={minibajachase.description}
-        title={minibajachase.title}
-        videoId={minibajachase.videoId}
-        playlistId={minibajachase.playlistId}
-        // autoplay={1}
-        linkHref="/book/minibaja-chase"
-        showBookButton={false}
-      />
     </div>
   );
 }

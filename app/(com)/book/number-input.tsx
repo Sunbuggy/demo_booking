@@ -9,10 +9,9 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/utils/cn';
 import React from 'react';
 
-const NumberInput = ({ form }: { form: any }) => {
+const NumberInput = ({ form, disabled = false }: { form: any; disabled?: boolean }) => {
   return (
     <>
-      {' '}
       <FormField
         control={form.control}
         name="howManyPeople"
@@ -31,6 +30,7 @@ const NumberInput = ({ form }: { form: any }) => {
                 placeholder="#Group Size"
                 min={1}
                 max={2000}
+                disabled={disabled}
               />
             </FormControl>
             <FormMessage />

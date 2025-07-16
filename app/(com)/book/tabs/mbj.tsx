@@ -34,7 +34,8 @@ export function BookingTabs({
   vehicleCounts,
   totalPrice,
   setTotalPrice,
-  formToken
+  formToken,
+  viewMode=false,
 }: {
   selectedTimeValue: string;
   setSelectedTimeValue: React.Dispatch<React.SetStateAction<string>>;
@@ -46,6 +47,7 @@ export function BookingTabs({
   totalPrice: number;
   setTotalPrice: React.Dispatch<React.SetStateAction<number>>;
   formToken: string;
+  viewMode?: boolean;
 }) {
   const tabsData = [
     {
@@ -85,12 +87,16 @@ export function BookingTabs({
       <Tabs
         defaultValue={selectedTabValue}
         className="w-screen md:w-[350px]"
-        onValueChange={handleTabChange}
+        onValueChange={viewMode ? undefined : handleTabChange}
         value={selectedTabValue}
       >
         <TabsList className="grid w-full grid-cols-3">
           {tabsData.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value}>
+            <TabsTrigger 
+              key={tab.value} 
+              value={tab.value}
+              disabled={viewMode}
+            >
               {tab.title}
             </TabsTrigger>
           ))}
@@ -103,19 +109,25 @@ export function BookingTabs({
                 <CardDescription>{tab.description}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 flex flex-col items-center">
-                <TimePicker
-                  selectValue={selectedTimeValue}
-                  setSelectValue={(value) => {
-                    setSelectedTimeValue(value);
-                  }}
-                  timeArray={
-                    tab.value === 'mb30'
-                      ? mb30_open_times
-                      : tab.value === 'mb60'
-                        ? mb60_open_times
-                        : mb120_open_times
-                  }
-                />
+                {viewMode ? (
+                  <div className="text-lg font-semibold">
+                    Selected Time: {selectedTimeValue || 'Not specified'}
+                  </div>
+                ) : (
+                  <TimePicker
+                    selectValue={selectedTimeValue}
+                    setSelectValue={(value) => {
+                      setSelectedTimeValue(value);
+                    }}
+                    timeArray={
+                      tab.value === 'mb30'
+                        ? mb30_open_times
+                        : tab.value === 'mb60'
+                          ? mb60_open_times
+                          : mb120_open_times
+                    }
+                  />
+                )}
 
                 {!selectedTimeValue && <p>Pick a time to calculate price</p>}
                 {selectedTimeValue && (
