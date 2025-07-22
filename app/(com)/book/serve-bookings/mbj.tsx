@@ -75,7 +75,9 @@ export function MiniBajaPage({
   const [totalSeats, setTotalSeats] = useState(0);
   const [showPricing, setShowPricing] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
-  const [totalPrice, setTotalPrice] = useState(0);
+  const [totalPrice, setTotalPrice] = useState(
+    initialData?.total_cost ? Number(initialData.total_cost) : 0
+  );
   const [formToken, setFormToken] = useState('');
   const [formTokenError, setFormTokenError] = useState('');
   const [response, setResponse] = useState('');
@@ -145,7 +147,7 @@ export function MiniBajaPage({
   }, [response]);
 
   const handlePricing = (selectedTimeValue: string) => {
-    // Ensure selectedTimeValue is valid
+    if (viewMode) return; 
     // Initialize total price
     let totalPrice = 0;
 
@@ -184,6 +186,27 @@ export function MiniBajaPage({
       // Parse reservation date
       const bookingDate = initialData.sch_date ? new Date(initialData.sch_date) : new Date();
       
+      setTotalPrice(initialData.total_cost ? Number(initialData.total_cost) : 0);
+
+    // Set hotel if exists
+    if (initialData.hotel) {
+      // If hotel is "Drive here", disable shuttle
+      if (initialData.hotel === 'Drive here') {
+        setFreeShuttle(false);
+        setSelectedHotel('');
+      } 
+      // Otherwise, enable shuttle and set hotel
+      else {
+        setFreeShuttle(true);
+        setSelectedHotel(initialData.hotel);
+      }
+    }
+    // Handle case where hotel is not specified
+    else {
+      setFreeShuttle(false);
+      setSelectedHotel('');
+    }
+
       // Set booking info
       setBookInfo({
         bookingDate,
@@ -219,7 +242,7 @@ export function MiniBajaPage({
       const locationTabMap: Record<string, 'mb30' | 'mb60' | 'mb120'> = {
         'Nellis30': 'mb30',
         'Nellis60': 'mb60',
-        'Nellis': 'mb120'
+        'NellisDX': 'mb120'
       };
       
       if (initialData.location) {
@@ -271,8 +294,8 @@ export function MiniBajaPage({
         setSelectedTabValue={setSelectedTabValue}
         selectedTabValue={selectedTabValue}
         selectedTimeValue={selectedTimeValue}
-        totalPrice={totalPrice}
-        setTotalPrice={setTotalPrice}
+        total_cost={totalPrice}
+        settotal_cost={setTotalPrice}
         contactForm={contactForm}
         setContactForm={setContactForm}
         showContactForm={showContactForm}

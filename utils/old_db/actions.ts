@@ -234,11 +234,10 @@ export async function updateGroupName(groupId: string, newGroupName: string) {
 }
 
 export async function getReservationById(res_id: string): Promise<Reservation | null> {
-  const query = `SELECT * FROM reservations_modified WHERE Res_ID = ${res_id}`;
+  const query = `SELECT *, CAST(total_cost AS FLOAT) AS total_cost FROM reservations_modified WHERE Res_ID = ${res_id}`;
   const data = await fetch_from_old_db(query) as Reservation[];
   return data.length > 0 ? data[0] : null;
 }
-
 
 export async function updateReservation(res_id: number, updates: Partial<Reservation>) {
   try {

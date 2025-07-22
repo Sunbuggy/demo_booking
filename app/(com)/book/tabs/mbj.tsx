@@ -17,7 +17,6 @@ import {
 } from '@/utils/helpers';
 import { VehicleCounts } from '../serve-bookings/mbj';
 import { PriceBreakdownDropdown } from '../breakdown-drop-down/mbj';
-import AcceptHostedPage from '../../payment/acceptHosted';
 
 interface TabData {
   value: string;
@@ -35,20 +34,23 @@ export function BookingTabs({
   totalPrice,
   setTotalPrice,
   formToken,
-  viewMode=false,
+  viewMode = false,
 }: {
   selectedTimeValue: string;
   setSelectedTimeValue: React.Dispatch<React.SetStateAction<string>>;
   selectedTabValue: 'mb30' | 'mb60' | 'mb120';
-  setSelectedTabValue: React.Dispatch<
-    React.SetStateAction<'mb30' | 'mb60' | 'mb120'>
-  >;
+  setSelectedTabValue: React.Dispatch<React.SetStateAction<'mb30' | 'mb60' | 'mb120'>>;
   vehicleCounts: VehicleCounts;
   totalPrice: number;
   setTotalPrice: React.Dispatch<React.SetStateAction<number>>;
   formToken: string;
   viewMode?: boolean;
 }) {
+  // Ensure totalPrice is always treated as a number
+  const displayPrice = typeof totalPrice === 'string' ? 
+    parseFloat(totalPrice) : 
+    totalPrice;
+
   const tabsData = [
     {
       value: 'mb30',
@@ -73,7 +75,6 @@ export function BookingTabs({
     }
   ];
 
-  // Wrapper function to ensure type safety
   const handleTabChange = (value: string) => {
     if (value === 'mb30' || value === 'mb60' || value === 'mb120') {
       setSelectedTabValue(value);
@@ -129,7 +130,7 @@ export function BookingTabs({
                   />
                 )}
 
-                {!selectedTimeValue && <p>Pick a time to calculate price</p>}
+                {!selectedTimeValue && !viewMode && <p>Pick a time to calculate price</p>}
                 {selectedTimeValue && (
                   <div>
                     {Number(selectedTimeValue.split(' ')[0]) < 10 &&
@@ -147,10 +148,10 @@ export function BookingTabs({
                   />
                 )}
               </CardContent>
-              {selectedTimeValue && (
+              {(selectedTimeValue || viewMode) && (
                 <CardFooter className="w-full flex justify-between">
                   <p className="text-green-500">
-                    Final Price: ${totalPrice.toFixed(2)}
+                    Final Price: ${displayPrice.toFixed(2)}
                   </p>
                 </CardFooter>
               )}

@@ -21,7 +21,7 @@ export function DialogDemo({ reservation }: { reservation: Reservation }) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Reservation</DialogTitle>
+          {/* <DialogTitle>Edit Reservation</DialogTitle> */}
           <DialogDescription>
             Make changes to the reservation details here. Click save when you're done.
           </DialogDescription>

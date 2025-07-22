@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { RiArrowLeftWideFill, RiArrowRightWideFill } from 'react-icons/ri';
 import dayjs from 'dayjs';
 import { createClient } from '@/utils/supabase/server';
+import LoadingModal from '../components/loading-modal';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,7 +99,7 @@ const BizPage = async ({
           </div>
         ) : (
           <div className="h-screen flex justify-center items-center">
-            Loading ...
+            <LoadingModal />
           </div>
         )}
       </div>

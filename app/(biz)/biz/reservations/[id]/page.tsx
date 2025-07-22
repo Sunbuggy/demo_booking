@@ -35,6 +35,7 @@ export default async function ReservationPage({
   const bookingTypeMap: Record<string, string> = {
     'Nellis30': 'minibaja-chase',
     'Nellis60': 'minibaja-chase',
+    'NellisDX': 'minibaja-chase',
     'FamilyFun': 'family-fun-romp',
     'Valley': 'valley-of-fire',
     'RZR_valley': 'valley-of-fire',

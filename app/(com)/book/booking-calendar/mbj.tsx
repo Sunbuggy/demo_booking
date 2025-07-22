@@ -66,8 +66,8 @@ export function CalendarForm({
   selectedTabValue,
   setSelectedTabValue,
   selectedTimeValue,
-  totalPrice,
-  setTotalPrice,
+  total_cost,
+  settotal_cost,
   contactForm,
   setContactForm,
   showContactForm,
@@ -99,8 +99,8 @@ export function CalendarForm({
   selectedTabValue: 'mb120' | 'mb30' | 'mb60';
   setSelectedTabValue: Dispatch<SetStateAction<'mb30' | 'mb60' | 'mb120'>>;
   selectedTimeValue: string;
-  totalPrice: number;
-  setTotalPrice: Dispatch<SetStateAction<number>>;
+  total_cost: number;
+  settotal_cost: Dispatch<SetStateAction<number>>;
   contactForm: ContactFom;
   setContactForm: Dispatch<SetStateAction<ContactFom>>;
   showContactForm: boolean;
@@ -180,20 +180,34 @@ export function CalendarForm({
       });
       
       // Set hotel if exists
-      if (initialData.hotel && initialData.hotel !== 'Drive here') {
+    if (initialData.hotel) {
+      // If hotel is "Drive here", disable shuttle
+      if (initialData.hotel === 'Drive here') {
+        setFreeShuttle(false);
+        setSelectedHotel('');
+      } 
+      // Otherwise, enable shuttle and set hotel
+      else {
         setFreeShuttle(true);
         setSelectedHotel(initialData.hotel);
       }
     }
-  }, [initialData, form]);
+    // Handle case where hotel is not specified
+    else {
+      setFreeShuttle(false);
+      setSelectedHotel('');
+    }
+  }
+}, [initialData, form]);
+
 
   return (
     <div className="w-screen md:w-[350px]">
       {/* Edit button for view mode */}
       {viewMode && (
-        <div className="mb-4 text-right">
+        <div className="mb-4">
           <Button variant="outline" onClick={onEdit}>
-            Edit Reservation
+            Edit Reservations
           </Button>
         </div>
       )}
@@ -226,16 +240,16 @@ export function CalendarForm({
               Get Free Shuttle Pickup to Your Hotel
             </label>
           </div>
-          {hotelsMemo && freeShuttle && (
-            <ComboBox
-              hotelsMemo={hotelsMemo}
-              open={open}
-              setOpen={viewMode ? undefined : setOpen}
-              selectedHotel={selectedHotel}
-              setSelectedHotel={viewMode ? undefined : setSelectedHotel}
-              disabled={viewMode}
-            />
-          )}
+{hotelsMemo && freeShuttle && (
+  <ComboBox
+    hotelsMemo={hotelsMemo}
+    open={open}
+    setOpen={viewMode ? undefined : setOpen}
+    selectedHotel={selectedHotel}
+    setSelectedHotel={viewMode ? undefined : setSelectedHotel}
+    disabled={viewMode}
+  />
+)}
           {!viewMode && (
             <Button variant="default" className="w-full" type="submit">
               Next
@@ -250,9 +264,11 @@ export function CalendarForm({
             Booking date: {bookInfo.bookingDate.toISOString().split('T')[0]}
           </p>
           <p>How many people: {bookInfo.howManyPeople}</p>
-          <p>
-            Selected Hotel: {(freeShuttle && selectedHotel) || 'Drive here'}
-          </p>
+          {/* Fixed hotel display */}
+<p>
+  Selected Hotel: {selectedHotel ? selectedHotel : 'Drive here'}
+</p>
+
           
           {!viewMode ? (
             <Button
@@ -442,9 +458,10 @@ export function CalendarForm({
                 selectedTimeValue={selectedTimeValue}
                 setSelectedTimeValue={setSelectedTimeValue}
                 vehicleCounts={vehicleCounts}
-                totalPrice={totalPrice}
-                setTotalPrice={setTotalPrice}
+            totalPrice={total_cost}
+            setTotalPrice={settotal_cost}
                 formToken={formToken}
+                // custom_cost={initialData?.custom_cost}  
                 viewMode={viewMode}
               />
             </div>

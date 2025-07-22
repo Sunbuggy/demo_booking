@@ -1,6 +1,5 @@
 'use client';
 import { z } from 'zod';
-
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -14,21 +13,27 @@ import { Input } from '@/components/ui/input';
 import { Dispatch, SetStateAction } from 'react';
 import { ContactFom } from './serve-bookings/mbj';
 
-export function ContactForm({
-  form,
-  FormSchema,
-  setContactForm,
-  setShowPricing,
-  setShowContactForm
-}: {
+interface ContactFormProps {
   form: any;
   FormSchema: any;
   setContactForm: Dispatch<SetStateAction<ContactFom>>;
   contactForm: ContactFom;
   setShowPricing: Dispatch<SetStateAction<boolean>>;
   setShowContactForm: Dispatch<SetStateAction<boolean>>;
-}) {
+  disabled?: boolean; // Add disabled prop
+}
+
+export function ContactForm({
+  form,
+  FormSchema,
+  setContactForm,
+  contactForm,
+  setShowPricing,
+  setShowContactForm,
+  disabled = false // Default to false
+}: ContactFormProps) {
   function onSubmit(data: z.infer<typeof FormSchema>) {
+    if (disabled) return; // Prevent submission if disabled
     setContactForm(data);
     setShowPricing(true);
     setShowContactForm(false);
@@ -50,6 +55,7 @@ export function ContactForm({
                   <Input
                     className="w-full"
                     placeholder="eg: Luke Skywalker"
+                    disabled={disabled}
                     {...field}
                   />
                 </FormControl>
@@ -67,6 +73,7 @@ export function ContactForm({
                   <Input
                     className="w-full"
                     placeholder="eg: luke@theforce.com"
+                    disabled={disabled}
                     {...field}
                   />
                 </FormControl>
@@ -74,7 +81,6 @@ export function ContactForm({
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="phone"
@@ -85,6 +91,7 @@ export function ContactForm({
                   <Input
                     className="w-full"
                     placeholder="eg: 555-555-5555"
+                    disabled={disabled}
                     {...field}
                   />
                 </FormControl>
@@ -92,7 +99,6 @@ export function ContactForm({
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
             name="groupName"
@@ -105,6 +111,7 @@ export function ContactForm({
                   <Input
                     className="w-full"
                     placeholder="eg: Team Jedi"
+                    disabled={disabled}
                     {...field}
                   />
                 </FormControl>
@@ -114,7 +121,7 @@ export function ContactForm({
           />
         </div>
         <div className="flex justify-end">
-          <Button type="submit" className="mt-4">
+          <Button type="submit" className="mt-4" disabled={disabled}>
             Next
           </Button>
         </div>
