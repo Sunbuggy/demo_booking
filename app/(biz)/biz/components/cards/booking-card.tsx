@@ -3,6 +3,8 @@ import { DialogDemo } from '@/components/ui/Dialog';
 import React from 'react';
 import { Reservation } from '../../types';
 import Link from 'next/link';
+import { BsArrowReturnRight } from "react-icons/bs";
+
 
 export type Groups = {
   created_by: string;
@@ -37,58 +39,68 @@ const BookingCard = async ({
     >
       <CardContent className="bookingcardcontent">
 
-<Link 
-  href={`/biz/reservations/${reservation.res_id}`}
-  className="p-2 text-pink-500 cursor-pointer hover:underline"
->
-  <i>{reservation.res_id}</i>
-</Link>
+        <Link
+          href={`/biz/reservations/${reservation.res_id}`}
+          className="p-2 text-pink-500 cursor-pointer hover:underline"
+        >
+          <i>{reservation.res_id}</i>
+        </Link>
+        {/* */}
 
-          {reservation.full_name} {/* Total Cost */}
+
+        {reservation.full_name} {/* Total Cost */}
         {display_cost && (
           <i className="text-green-600"> ${reservation.total_cost}</i>
         )}
-           <div className="flex gap-2 items-center">        
+        <div className="flex gap-2 items-center">
           <p className="occasionbox itembox">
-            {reservation.occasion?.toLowerCase().slice(0, 28) || 'occasion' }
-           </p><p> 
+            {reservation.occasion?.toLowerCase().slice(0, 28) || 'occasion'}
+          </p><p>
             {reservation.hotel?.toLocaleLowerCase() === 'drive here' ? (
               <span className="HotelListing itembox">
-                 {/* OBJECTIVE come back here and add links to call the hotel or get directions, or see pickup location */}
+                {/* OBJECTIVE come back here and add links to call the hotel or get directions, or see pickup location */}
                 {reservation.hotel?.toLowerCase()}
               </span>
             ) : (<span className="HotelListing itembox">
               {reservation.hotel?.toLowerCase().slice(0, 28)}
-              </span>)}
+            </span>)}
           </p>
-          
+
           <span className=" text-orange-500">
             {reservation.ppl_count}-PPL:
           </span>
-        
-        <span className="flex gap-2 ">
-          {/* Vehicles */}
-          {vehiclesList
-            .filter(
-              (key) => Number(reservation[key as keyof typeof reservation]) > 0
-            )
-            .map((key, idx, filteredList) => {
-              const count = Number(
-                reservation[key as keyof typeof reservation]
-              );
-              const full_name=`${count}-${key}`
-              return (
-                <div key={idx}>
-                  <span className="italic font-thin text-orange-500" key={key}>
-                    {full_name} {idx !== filteredList.length - 1 && ', '} 
-                  </span>
-                </div>
-              );
-            })}
-                  </span>
-                  </div>     
+
+          <span className="flex gap-2 ">
+            {/* Vehicles */}
+            {vehiclesList
+              .filter(
+                (key) => Number(reservation[key as keyof typeof reservation]) > 0
+              )
+              .map((key, idx, filteredList) => {
+                const count = Number(
+                  reservation[key as keyof typeof reservation]
+                );
+                const full_name = `${count}-${key}`
+                return (
+                  <div key={idx}>
+                    <span className="italic font-thin text-orange-500" key={key}>
+                      {full_name} {idx !== filteredList.length - 1 && ', '}
+                    </span>
+                  </div>
+                );
+              })}
+          </span>
+          <Link
+            href={`https://www.sunbuggy.biz/edt_res.php?Id=${reservation.res_id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-2 text-pink-500 cursor-pointer hover:underline"
+          >
+            <BsArrowReturnRight className="text-2xl" />
+          </Link>
+        </div>
       </CardContent>
-      
+
     </Card>
   );
 };

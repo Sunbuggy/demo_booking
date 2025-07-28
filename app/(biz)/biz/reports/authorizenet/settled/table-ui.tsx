@@ -277,7 +277,7 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
                         <TableCell key={column.key}>
                           {column.key === 'invoiceNumber' && (
                             <Link
-                              href={`https://sunbuggy.biz/edt_res.php?id=${item.invoiceNumber}`}
+                              href={`https://www.sunbuggy.biz/edt_res.php?Id=${item.invoiceNumber}`}
                               target="_blank"
                               className="text-rose-400 underline"
                             >
