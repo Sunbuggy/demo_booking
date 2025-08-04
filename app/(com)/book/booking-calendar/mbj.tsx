@@ -1,10 +1,9 @@
-'use client'
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
-import { Dispatch, SetStateAction, useEffect } from 'react';
+import { Dispatch, SetStateAction } from 'react';
 import {
   BookInfoType,
   ContactFom,
@@ -19,7 +18,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { mbj_vehicles_list } from '@/utils/helpers';
 import { ContactForm } from '../contact-form';
 import { BookingTabs } from '../tabs/mbj';
-import { Reservation } from '@/app/(biz)/biz/types';
 
 const FormSchema = z.object({
   bookingDate: z.date({
@@ -66,16 +64,13 @@ export function CalendarForm({
   selectedTabValue,
   setSelectedTabValue,
   selectedTimeValue,
-  total_cost,
-  settotal_cost,
+  totalPrice,
+  setTotalPrice,
   contactForm,
   setContactForm,
   showContactForm,
   setShowContactForm,
-  formToken,
-  viewMode = false,
-  onEdit,
-  initialData,
+  formToken
 }: {
   hideForm: boolean;
   isCalendarOpen: boolean;
@@ -99,16 +94,13 @@ export function CalendarForm({
   selectedTabValue: 'mb120' | 'mb30' | 'mb60';
   setSelectedTabValue: Dispatch<SetStateAction<'mb30' | 'mb60' | 'mb120'>>;
   selectedTimeValue: string;
-  total_cost: number;
-  settotal_cost: Dispatch<SetStateAction<number>>;
+  totalPrice: number;
+  setTotalPrice: Dispatch<SetStateAction<number>>;
   contactForm: ContactFom;
   setContactForm: Dispatch<SetStateAction<ContactFom>>;
   showContactForm: boolean;
   setShowContactForm: Dispatch<SetStateAction<boolean>>;
   formToken: string;
-  viewMode?: boolean;
-  onEdit?: () => void;
-  initialData?: Reservation;
 }) {
   const incrementCount = (
     vehicleId: number,
@@ -170,51 +162,11 @@ export function CalendarForm({
     setHideForm(true);
   }
 
-   useEffect(() => {
-    if (initialData) {
-      const bookingDate = initialData.sch_date ? new Date(initialData.sch_date) : new Date();
-      
-      form.reset({
-        bookingDate,
-        howManyPeople: initialData.ppl_count || 1
-      });
-      
-      // Set hotel if exists
-    if (initialData.hotel) {
-      // If hotel is "Drive here", disable shuttle
-      if (initialData.hotel === 'Drive here') {
-        setFreeShuttle(false);
-        setSelectedHotel('');
-      } 
-      // Otherwise, enable shuttle and set hotel
-      else {
-        setFreeShuttle(true);
-        setSelectedHotel(initialData.hotel);
-      }
-    }
-    // Handle case where hotel is not specified
-    else {
-      setFreeShuttle(false);
-      setSelectedHotel('');
-    }
-  }
-}, [initialData, form]);
-
-
   return (
     <div className="w-screen md:w-[350px]">
-      {/* Edit button for view mode */}
-      {viewMode && (
-        <div className="mb-4">
-          <Button variant="outline" onClick={onEdit}>
-            Edit Reservations
-          </Button>
-        </div>
-      )}
-      
       <Form {...form}>
         <form
-          className={`gap-2 mb-7 w-full items-baseline ${hideForm ? 'hidden' : 'flex flex-col'}`}
+          className={` gap-2 mb-7 w-full  items-baseline ${hideForm ? 'hidden' : 'flex flex-col'}`}
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <DatePicker
@@ -223,15 +175,13 @@ export function CalendarForm({
             setIsCalendarOpen={setIsCalendarOpen}
             title="Pick a booking date"
             buttonTitle="Pick a date"
-            disabled={viewMode}
           />
-          <NumberInput form={form} disabled={viewMode} />
+          <NumberInput form={form} />
           <div className="flex items-center space-x-2">
             <Checkbox
               id="free-shuttle"
               checked={freeShuttle}
-              onCheckedChange={viewMode ? undefined : () => setFreeShuttle(!freeShuttle)}
-              disabled={viewMode}
+              onCheckedChange={() => setFreeShuttle(!freeShuttle)}
             />
             <label
               htmlFor="free-shuttle"
@@ -240,62 +190,44 @@ export function CalendarForm({
               Get Free Shuttle Pickup to Your Hotel
             </label>
           </div>
-{hotelsMemo && freeShuttle && (
-  <ComboBox
-    hotelsMemo={hotelsMemo}
-    open={open}
-    setOpen={viewMode ? undefined : setOpen}
-    selectedHotel={selectedHotel}
-    setSelectedHotel={viewMode ? undefined : setSelectedHotel}
-    disabled={viewMode}
-  />
-)}
-          {!viewMode && (
-            <Button variant="default" className="w-full" type="submit">
-              Next
-            </Button>
+          {hotelsMemo && freeShuttle && (
+            <ComboBox
+              hotelsMemo={hotelsMemo}
+              open={open}
+              setOpen={setOpen}
+              selectedHotel={selectedHotel}
+              setSelectedHotel={setSelectedHotel}
+            />
           )}
+          <Button variant="default" className="w-full" type="submit">
+            Next
+          </Button>
         </form>
       </Form>
-      
       {hideForm && (
         <div className="flex flex-col w-full mb-5 items-center gap-2">
           <p>
             Booking date: {bookInfo.bookingDate.toISOString().split('T')[0]}
           </p>
           <p>How many people: {bookInfo.howManyPeople}</p>
-          {/* Fixed hotel display */}
-<p>
-  Selected Hotel: {selectedHotel ? selectedHotel : 'Drive here'}
-</p>
-
-          
-          {!viewMode ? (
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => {
-                setHideForm(false);
-                setSelectedTimeValue('');
-                setVehicleCounts({});
-                setShowPricing(false);
-                setShowContactForm(false);
-              }}
-            >
-              <span>Change Booking Details</span>
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={onEdit}
-            >
-              <span>Edit Reservation</span>
-            </Button>
-          )}
+          <p>
+            Selected Hotel: {(freeShuttle && selectedHotel) || 'Drive here'}
+          </p>
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => {
+              setHideForm(false);
+              setSelectedTimeValue('');
+              setVehicleCounts({});
+              setShowPricing(false);
+              setShowContactForm(false);
+            }}
+          >
+            <span>Change Booking Details</span>
+          </Button>
         </div>
       )}
-      
       {hideForm && (
         <div className="flex flex-col w-full mb-5 items-center gap-2">
           <p>
@@ -311,7 +243,6 @@ export function CalendarForm({
             </span>
             / <span className="text-green-500">{bookInfo.howManyPeople}</span>
           </p>
-          
           {(showContactForm || showPricing) && (
             <>
               <h1>Booking details</h1>
@@ -324,13 +255,13 @@ export function CalendarForm({
                       </h2>
                     </div>
                   );
+                } else {
+                  return null;
                 }
-                return null;
               })}
             </>
           )}
-          
-          {(showContactForm || showPricing) && !viewMode && (
+          {(showContactForm || showPricing) && (
             <Button
               variant="secondary"
               className="my-5 w-full"
@@ -343,7 +274,6 @@ export function CalendarForm({
               Change Chosen Fleet
             </Button>
           )}
-          
           {showPricing && (
             <div className="flex flex-col w-full mb-5 items-center gap-2">
               <div className="flex flex-col items-start">
@@ -369,9 +299,7 @@ export function CalendarForm({
 
           {!showContactForm && !showPricing && (
             <div className="flex flex-col w-full items-center">
-              <p className="text-center text-lg mb-2">
-                {viewMode ? 'Chosen Fleet' : 'Choose Fleet'}
-              </p>
+              <p className="text-center text-lg mb-2 ">Choose Fleet</p>
               {mbj_vehicles_list.map((vehicle) => (
                 <div
                   key={vehicle.id}
@@ -388,45 +316,42 @@ export function CalendarForm({
                     {vehicle.name}
                   </label>
                   <div className="flex gap-2">
-                    {!viewMode && (
-                      <button
-                        onClick={() =>
-                          decrementCount(
-                            vehicle.id,
-                            vehicle.name,
-                            vehicle.seats,
-                            vehicle.pricing
-                          )
-                        }
-                      >
-                        -
-                      </button>
-                    )}
+                    <button
+                      onClick={() =>
+                        decrementCount(
+                          vehicle.id,
+                          vehicle.name,
+                          vehicle.seats,
+                          vehicle.pricing
+                        )
+                      }
+                    >
+                      -
+                    </button>
                     <span>{vehicleCounts[vehicle.id]?.count || 0}</span>
-                    {!viewMode && (
-                      <button
-                        onClick={() =>
-                          incrementCount(
-                            vehicle.id,
-                            true,
-                            vehicle.name,
-                            vehicle.seats,
-                            vehicle.pricing
-                          )
-                        }
-                      >
-                        +
-                      </button>
-                    )}
+                    <button
+                      onClick={() =>
+                        incrementCount(
+                          vehicle.id,
+                          true,
+                          vehicle.name,
+                          vehicle.seats,
+                          vehicle.pricing
+                        )
+                      }
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
               ))}
-              
-              {!showPricing && !viewMode && (
+              {!showPricing && (
                 <div>
                   <Button
                     disabled={totalSeats < bookInfo.howManyPeople}
-                    onClick={() => setShowContactForm(true)}
+                    onClick={() => {
+                      setShowContactForm(true);
+                    }}
                   >
                     Next
                   </Button>
@@ -434,8 +359,7 @@ export function CalendarForm({
               )}
             </div>
           )}
-          
-          {showContactForm && !viewMode && (
+          {showContactForm && (
             <div className="flex flex-col items-center gap-5">
               <h1>Quick Contact Form</h1>
               <ContactForm
@@ -445,11 +369,9 @@ export function CalendarForm({
                 setContactForm={setContactForm}
                 setShowPricing={setShowPricing}
                 setShowContactForm={setShowContactForm}
-                disabled={viewMode}
               />
             </div>
           )}
-          
           {showPricing && (
             <div className="flex flex-col items-center gap-5">
               <BookingTabs
@@ -458,11 +380,9 @@ export function CalendarForm({
                 selectedTimeValue={selectedTimeValue}
                 setSelectedTimeValue={setSelectedTimeValue}
                 vehicleCounts={vehicleCounts}
-            totalPrice={total_cost}
-            setTotalPrice={settotal_cost}
+                totalPrice={totalPrice}
+                setTotalPrice={setTotalPrice}
                 formToken={formToken}
-                // custom_cost={initialData?.custom_cost}  
-                viewMode={viewMode}
               />
             </div>
           )}
