@@ -1,7 +1,7 @@
 import { Label } from '@/components/ui/label';
 import { CameraIcon, UploadIcon, Trash2Icon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import React, { useState, FormEvent, useRef } from 'react';
+import React, { useState, FormEvent, useRef, useEffect } from 'react';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -33,10 +33,85 @@ export default function ResponsiveImageUpload({
 }: ResponsiveImageUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+
+  useEffect(() => {
+    if (cameraActive) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+
+    return () => {
+      stopCamera();
+    };
+  }, [cameraActive]);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      toast({
+        title: 'Camera Error',
+        description: 'Could not access camera. Please check permissions.',
+        variant: 'destructive',
+        duration: 5000
+      });
+      setCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+    mediaStreamRef.current = null;
+  };
+
+  const captureImage = () => {
+    if (!videoRef.current || !canvasRef.current || isCapturing) return;
+
+    setIsCapturing(true);
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob(blob => {
+      if (blob) {
+        const file = new File([blob], `captured-${Date.now()}.png`, {
+          type: 'image/png'
+        });
+        
+        setSelectedFiles(prev => {
+          const updatedFiles = [...prev, file];
+          return updatedFiles.slice(0, maxFiles);
+        });
+        
+        setCameraActive(false);
+      }
+      setIsCapturing(false);
+    }, 'image/png', 0.95);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -46,7 +121,6 @@ export default function ResponsiveImageUpload({
     const errors: {title: string; details: string}[] = [];
 
     files.forEach((file) => {
-      // Check file type against accepted formats
       if (!file.type.match(acceptedFormats.replace('*', '.*'))) {
         errors.push({
           title: 'Invalid File Type',
@@ -55,7 +129,6 @@ export default function ResponsiveImageUpload({
         return;
       }
 
-      // Check if we've reached max files
       if (selectedFiles.length + validFiles.length >= maxFiles) {
         errors.push({
           title: 'Maximum Files Reached',
@@ -94,11 +167,8 @@ export default function ResponsiveImageUpload({
       setSelectedFiles(prev => [...prev, ...validFiles].slice(0, maxFiles));
     }
 
-    // Reset input to allow selecting same files again
     if (e.target === fileInputRef.current) {
       fileInputRef.current.value = '';
-    } else if (e.target === cameraInputRef.current) {
-      cameraInputRef.current.value = '';
     }
   };
 
@@ -109,32 +179,40 @@ export default function ResponsiveImageUpload({
   const clearAllFiles = () => {
     setSelectedFiles([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsUploading(true);
-
-    // Show loading toast
-    const loadingToast = toast({
-      title: 'Uploading Files',
-      description: `Please wait while your ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''} are being uploaded...`,
-      variant: 'default',
-      duration: Infinity // Will stay until manually dismissed
-    });
+    
+    // Check if we're still capturing an image
+    if (isCapturing) {
+      toast({
+        title: 'Please wait',
+        description: 'Still processing your captured image...',
+        variant: 'default',
+        duration: 2000
+      });
+      return;
+    }
 
     if (selectedFiles.length === 0) {
       toast({
         title: 'No Files Selected',
-        description: 'Please select at least one file to upload.',
+        description: 'Please select or capture at least one image to upload.',
         variant: 'destructive',
         duration: 5000
       });
-      setIsUploading(false);
-      loadingToast.dismiss();
       return;
     }
+
+    setIsUploading(true);
+
+    const loadingToast = toast({
+      title: 'Uploading Files',
+      description: `Please wait while your ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''} are being uploaded...`,
+      variant: 'default',
+      duration: Infinity
+    });
 
     const formData = new FormData();
     formData.append('bucket', bucket);
@@ -170,10 +248,8 @@ export default function ResponsiveImageUpload({
 
       const data = await response.json();
       
-      // Dismiss loading toast
       loadingToast.dismiss();
       
-      // Show success toast (green)
       toast({
         title: 'Upload Successful',
         description: (
@@ -186,7 +262,7 @@ export default function ResponsiveImageUpload({
             )}
           </div>
         ),
-        variant: 'success', // This will make it green
+        variant: 'success',
         duration: 5000
       });
 
@@ -201,7 +277,6 @@ export default function ResponsiveImageUpload({
     } catch (error) {
       console.error('Error uploading files:', error);
       
-      // Dismiss loading toast
       loadingToast.dismiss();
       
       let errorMessage = 'Failed to upload files. Please try again.';
@@ -229,6 +304,33 @@ export default function ResponsiveImageUpload({
 
   return (
     <form onSubmit={handleSubmit} ref={formRef} className="space-y-4">
+      {cameraActive ? (
+        <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
+          <video 
+            ref={videoRef} 
+            autoPlay 
+            playsInline 
+            className="w-full max-w-3xl"
+          />
+          <div className="flex gap-4 mt-4">
+            <Button 
+              variant="destructive" 
+              onClick={() => setCameraActive(false)}
+              disabled={isCapturing}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={captureImage}
+              disabled={isCapturing}
+            >
+              {isCapturing ? 'Capturing...' : 'Capture Photo'}
+            </Button>
+          </div>
+          <canvas ref={canvasRef} className="hidden" />
+        </div>
+      ) : null}
+
       {selectedFiles.length === 0 ? (
         <div className="space-y-2">
           <Label
@@ -253,23 +355,17 @@ export default function ResponsiveImageUpload({
               ref={fileInputRef}
             />
           </Label>
-          <Label
-            htmlFor="camera-upload"
-            className="flex items-center justify-center gap-2 text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-4 text-center cursor-pointer hover:border-primary transition-colors lg:hidden"
+          <Button
+            type="button"
+            className="flex items-center justify-center gap-2 text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-4 w-full hover:border-primary transition-colors"
+            onClick={() => setCameraActive(true)}
+            disabled={isCapturing}
           >
             <CameraIcon className="h-6 w-6 text-gray-400" />
-            <span className="font-semibold">Take a picture</span>
-            <Input
-              id="camera-upload"
-              name="files"
-              type="file"
-              className="sr-only"
-              capture="environment"
-              onChange={handleFileChange}
-              accept="image/*"
-              ref={cameraInputRef}
-            />
-          </Label>
+            <span className="font-semibold">
+              {isCapturing ? 'Processing...' : 'Take a picture'}
+            </span>
+          </Button>
         </div>
       ) : (
         <div className="space-y-4">
@@ -283,6 +379,7 @@ export default function ResponsiveImageUpload({
               size="sm"
               onClick={clearAllFiles}
               className="text-red-500 hover:text-red-600"
+              disabled={isCapturing}
             >
               <Trash2Icon className="h-4 w-4 mr-2" />
               Clear All
@@ -308,6 +405,7 @@ export default function ResponsiveImageUpload({
                     onClick={() => removeFile(index)}
                     className="bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
                     aria-label={`Remove file ${index + 1}`}
+                    disabled={isCapturing}
                   >
                     <Trash2Icon className="h-4 w-4" />
                   </button>
@@ -318,22 +416,11 @@ export default function ResponsiveImageUpload({
           </div>
 
           <div className="flex gap-3">
-            {/* <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={() => {
-                clearAllFiles();
-                fileInputRef.current?.click();
-              }}
-            >
-              Add More
-            </Button> */}
             <DialogClose asChild>
               <Button
                 type="submit"
                 className="flex-1"
-                disabled={isUploading}
+                disabled={isUploading || isCapturing}
               >
                 {isUploading ? (
                   <>
