@@ -1,10 +1,10 @@
 import { createClient } from '@/utils/supabase/server';
-import { fetchHotels } from '@/utils/supabase/queries';
-import { MiniBajaPage } from '../components/booking-type/mbj/server-booking';
-import { getReservationById, updateReservation } from '@/utils/old_db/actions'; 
+import { MiniBajaEditPage } from '../components/booking-type/mbj/server-booking';
+import { getReservationById } from '@/utils/old_db/actions'; // Add getHotels import
 import { redirect } from 'next/navigation';
-import { Reservation } from '@/app/(biz)/biz/types';
-
+import { updateFullReservation } from '@/utils/old_db/actions';
+import { Reservation } from '../../types';
+import { fetchHotels } from '@/utils/supabase/queries';
 export default async function ReservationPage({
   params
 }: {
@@ -18,6 +18,7 @@ export default async function ReservationPage({
   }
   
   const reservation = await getReservationById(params.id);
+  const [hotels] = await Promise.all([fetchHotels(supabase)]);
   
   if (!reservation) {
     return (
@@ -27,53 +28,71 @@ export default async function ReservationPage({
       </div>
     );
   }
-
-  // Handle form submission for editing reservation
-  async function handleEditReservation(formData: FormData) {
+  
+  async function updateReservationHandler(formData: FormData) {
     'use server';
+    const res_id = parseInt(params.id);
     
-    // Collect all form data
-    const updates: Partial<Reservation> = {
-      sch_date: new Date(formData.get('bookingDate') as string),
-      sch_time: formData.get('time') as string,
-      location: formData.get('location') as string,
-      full_name: formData.get('name') as string,
-      email: formData.get('email') as string,
-      phone: formData.get('phone') as string,
-      occasion: formData.get('groupName') as string,
-      hotel: formData.get('hotel') as string || 'Drive here',
-      ppl_count: parseInt(formData.get('howManyPeople') as string),
-      total_cost: parseFloat(formData.get('total_cost') as string),
-      notes: formData.get('notes') as string,
-      // Vehicle counts
-      twoSeat4wd: parseInt(formData.get('twoSeat4wd') as string) || 0,
-      UZ2: parseInt(formData.get('UZ2') as string) || 0,
-      UZ4: parseInt(formData.get('UZ4') as string) || 0,
-      RWG: parseInt(formData.get('RWG') as string) || 0,
-      GoKartplus: parseInt(formData.get('GoKartplus') as string) || 0,
-      GoKart: parseInt(formData.get('GoKart') as string) || 0,
+    // Safe number parsing function
+    const safeParseInt = (value: FormDataEntryValue | null) => {
+      if (!value) return 0;
+      const num = parseInt(value.toString());
+      return isNaN(num) ? 0 : num;
     };
 
-    const result = await updateReservation(reservation.res_id, updates);
+    // Extract all fields from form data
+    const updates: Partial<Reservation> = {
+      full_name: formData.get('full_name') as string,
+      sch_date: new Date(formData.get('sch_date') as string),
+      sch_time: formData.get('sch_time') as string || '',
+      agent: formData.get('agent') as string || '',
+      location: formData.get('location') as string || '',
+      occasion: formData.get('occasion') as string || '',
+      ppl_count: safeParseInt(formData.get('ppl_count')),
+      phone: formData.get('phone') as string || '',
+      email: formData.get('email') as string || '',
+      hotel: formData.get('hotel') as string || '',
+      notes: formData.get('notes') as string || '',
+      // Add vehicle counts
+      QA: safeParseInt(formData.get('QA')),
+      QB: safeParseInt(formData.get('QB')),
+      QU: safeParseInt(formData.get('QU')),
+      QL: safeParseInt(formData.get('QL')),
+      SB1: safeParseInt(formData.get('SB1')),
+      SB2: safeParseInt(formData.get('SB2')),
+      SB4: safeParseInt(formData.get('SB4')),
+      SB5: safeParseInt(formData.get('SB5')),
+      SB6: safeParseInt(formData.get('SB6')),
+      twoSeat4wd: safeParseInt(formData.get('twoSeat4wd')),
+      UZ2: safeParseInt(formData.get('UZ2')),
+      UZ4: safeParseInt(formData.get('UZ4')),
+      RWG: safeParseInt(formData.get('RWG')),
+      GoKartplus: safeParseInt(formData.get('GoKartplus')),
+      GoKart: safeParseInt(formData.get('GoKart')),
+    };
+
+    const result = await updateFullReservation(res_id, updates);
     
-    if (result.success) {
-      redirect(`/biz/reservations/${params.id}?success=true`);
-    } else {
+    if (!result.success) {
       console.error('Failed to update reservation:', result.error);
     }
+    
+    redirect(`/biz/reservations/${params.id}`);
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">
         Reservation #{reservation.res_id} - {reservation.full_name}
       </h1>
       
-      <form action={handleEditReservation} className="space-y-6">
-        <MiniBajaPage 
-          hotels={[]} 
+      <form action={updateReservationHandler} className="space-y-6">
+        <input type="hidden" name="res_id" value={reservation.res_id} />
+        
+        <MiniBajaEditPage 
+          hotels={hotels} // Pass the fetched hotels instead of empty array
           initialData={reservation} 
-          editMode={true} 
+          viewMode={false} 
         />
         
         {/* Notes Section */}
@@ -87,19 +106,12 @@ export default async function ReservationPage({
           />
         </div>
         
-        <div className="flex justify-end gap-4">
-          <button
-            type="button"
-            className="px-4 py-2 bg-gray-300 rounded-lg"
-            onClick={() => window.history.back()}
-          >
-            Cancel
-          </button>
+        <div className="mt-6 flex justify-end">
           <button
             type="submit"
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Save Changes
+            Save All Changes
           </button>
         </div>
       </form>

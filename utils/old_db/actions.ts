@@ -273,6 +273,42 @@ export async function updateReservation(res_id: number, updates: Partial<Reserva
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
+export async function updateFullReservation(
+  res_id: number,
+  updates: Partial<Reservation>
+) {
+  try {
+    // Build the SET clause for SQL
+    const setClause = Object.entries(updates)
+      .map(([key, value]) => {
+        if (value === undefined || value === null) return null;
+        
+        if (typeof value === 'string') {
+          return `\`${key}\` = '${value.replace(/'/g, "''")}'`;
+        }
+        
+        if (value instanceof Date) {
+          return `\`${key}\` = '${value.toISOString().split('T')[0]}'`;
+        }
+        
+        return `\`${key}\` = ${value}`;
+      })
+      .filter(Boolean)
+      .join(', ');
+
+    if (!setClause) {
+      throw new Error('No valid fields to update');
+    }
+
+    const query = `UPDATE reservations_modified SET ${setClause} WHERE Res_ID = ${res_id}`;
+    const result = await fetch_from_old_db(query);
+    
+    return { success: true, result };
+  } catch (error) {
+    console.error('Error updating reservation:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
 
 export const launchGroup = (group_id: string) => updateGroupStatus(group_id, true);
 export const unLaunchGroup = (group_id: string) => updateGroupStatus(group_id, false);

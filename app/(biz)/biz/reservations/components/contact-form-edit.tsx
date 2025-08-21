@@ -30,9 +30,8 @@ export function ContactForm({
   contactForm,
   setShowPricing,
   setShowContactForm,
-  disabled = false, // Default to false
-  editMode = false
-}: ContactFormProps & { editMode?: boolean }) {
+  disabled = false // Default to false
+}: ContactFormProps) {
   function onSubmit(data: z.infer<typeof FormSchema>) {
     if (disabled) return; // Prevent submission if disabled
     setContactForm(data);
@@ -120,22 +119,12 @@ export function ContactForm({
               </FormItem>
             )}
           />
-       {editMode && (
-            <>
-              <input type="hidden" name="name" value={contactForm.name} />
-              <input type="hidden" name="email" value={contactForm.email} />
-              <input type="hidden" name="phone" value={contactForm.phone} />
-              <input type="hidden" name="groupName" value={contactForm.groupName || ''} />
-            </>
-          )}
         </div>
-        {!editMode && (
-          <div className="flex justify-end">
-            <Button type="submit" className="mt-4" disabled={disabled}>
-              Next
-            </Button>
-          </div>
-        )}
+        <div className="flex justify-end">
+          <Button type="submit" className="mt-4" disabled={disabled}>
+            Next
+          </Button>
+        </div>
       </form>
     </Form>
   );
