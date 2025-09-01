@@ -5,7 +5,7 @@ import { Reservation } from '@/app/(biz)/biz/types';
 import { BookInfoType, ContactFom, HotelType, VehicleCounts, VehiclePricingType } from './server-booking';
 import ComboBox from '@/components/hotel-combo-box';
 import { Checkbox } from '@/components/ui/checkbox';
-import { BookingTabs } from './tabs';
+import { BookingTabs } from './booking-type/mbj/tabs';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -275,7 +275,7 @@ export function CalendarFormEdit({
         
         <div className="mb-3">
           <p>
-            Assigned Seats: 
+          Assigned Seats:{' '}
             <span className={totalSeats >= bookInfo.howManyPeople ? 'text-green-500' : 'text-red-500'}>
               {totalSeats}
             </span> / 

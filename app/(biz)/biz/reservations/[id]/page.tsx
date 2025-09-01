@@ -1,10 +1,11 @@
 import { createClient } from '@/utils/supabase/server';
-import { MiniBajaEditPage } from '../components/booking-type/mbj/server-booking';
-import { getReservationById } from '@/utils/old_db/actions'; // Add getHotels import
+import { MiniBajaEditPage } from '../components/server-booking';
+import { getReservationById } from '@/utils/old_db/actions';
 import { redirect } from 'next/navigation';
 import { updateFullReservation } from '@/utils/old_db/actions';
 import { Reservation } from '../../types';
 import { fetchHotels } from '@/utils/supabase/queries';
+
 export default async function ReservationPage({
   params
 }: {
