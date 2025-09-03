@@ -4,8 +4,7 @@ import Button from '@/components/ui/Button';
 import { signInWithOAuth } from '@/utils/auth-helpers/client';
 import { type Provider } from '@supabase/supabase-js';
 import { FcGoogle } from 'react-icons/fc';
-import { FaFacebook, FaMicrosoft } from 'react-icons/fa';
-import { SiApple } from 'react-icons/si';
+import { FaFacebook, FaMicrosoft, FaTwitter } from 'react-icons/fa';
 import { useState } from 'react';
 
 type OAuthProviders = {
@@ -27,15 +26,15 @@ export default function OauthSignIn() {
       icon: <FaFacebook className="h-5 w-5 text-blue-600" />
     },
     {
-      name: 'apple',
-      displayName: 'Apple',
-      icon: <SiApple className="h-5 w-5 text-black" />
+      name: 'twitter',
+      displayName: 'X/Twitter',
+      icon: <FaTwitter className="h-5 w-5 text-[#1DA1F2]" />
     },
-    {
-      name: 'azure',
-      displayName: 'Microsoft',
-      icon: <FaMicrosoft className="h-5 w-5 text-blue-500" />
-    }
+    // {
+    //   name: 'azure',
+    //   displayName: 'Microsoft',
+    //   icon: <FaMicrosoft className="h-5 w-5 text-blue-500" />
+    // }
   ];
   const [isSubmitting, setIsSubmitting] = useState(false);
 
