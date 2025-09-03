@@ -1,6 +1,6 @@
 'use client'
-import { Dispatch, SetStateAction, useEffect, useMemo } from 'react';
-import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list } from '@/utils/helpers';
+import { Dispatch, SetStateAction, useEffect } from 'react';
+import { mbj_vehicles_list } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
 import { BookInfoType, ContactFom, HotelType, VehicleCounts, VehiclePricingType } from './server-booking';
 import ComboBox from '@/components/hotel-combo-box';
@@ -18,24 +18,6 @@ const DateFormSchema = z.object({
     required_error: 'A reservation date is required.'
   })
 });
-
-// Helper function to get the appropriate vehicle list based on location
-const getVehicleListByLocation = (location: string) => {
-  switch (location) {
-    case 'Nellis30':
-    case 'Nellis60':
-    case 'NellisDX':
-      return mbj_vehicles_list;
-    case 'DunesATV':
-      return atv_vehicles_list;
-    case 'ValleyOfFire':
-      return vof_vehicles_list;
-    case 'FamilyFun':
-      return ffr_vehicles_list;
-    default:
-      return mbj_vehicles_list;
-  }
-};
 
 export function CalendarFormEdit({
   isCalendarOpen,
@@ -97,12 +79,6 @@ export function CalendarFormEdit({
       bookingDate: bookInfo.bookingDate
     }
   });
-
-  // Get the location from initialData or default to Nellis60
-  const location = initialData?.location || 'Nellis60';
-  
-  // Get the appropriate vehicle list based on location
-  const currentVehicleList = useMemo(() => getVehicleListByLocation(location), [location]);
 
   // Update the form when bookInfo changes
   useEffect(() => {
@@ -308,7 +284,7 @@ export function CalendarFormEdit({
         </div>
         
         <div className="space-y-3">
-          {currentVehicleList.map((vehicle) => {
+          {mbj_vehicles_list.map((vehicle) => {
             const fieldName = vehicle.name.split(' ')[0].toLowerCase().replace('-', '');
             return (
               <div key={vehicle.id} className="flex justify-between items-center py-2 border-b">
