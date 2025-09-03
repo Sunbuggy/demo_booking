@@ -15,7 +15,7 @@ import {
   mb30_open_times,
   mb60_open_times
 } from '@/utils/helpers';
-import { VehicleCounts } from './server-booking';
+import { VehicleCounts } from '../../server-booking';
 import { PriceBreakdownDropdown } from '@/app/(com)/book/breakdown-drop-down/mbj';
 
 interface TabData {
