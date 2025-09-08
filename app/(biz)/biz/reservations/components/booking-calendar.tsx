@@ -1,6 +1,6 @@
 'use client'
-import { Dispatch, SetStateAction, useEffect } from 'react';
-import { mbj_vehicles_list } from '@/utils/helpers';
+import { Dispatch, SetStateAction, useEffect, useMemo } from 'react';
+import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
 import { BookInfoType, ContactFom, HotelType, VehicleCounts, VehiclePricingType } from './server-booking';
 import ComboBox from '@/components/hotel-combo-box';
@@ -18,6 +18,47 @@ const DateFormSchema = z.object({
     required_error: 'A reservation date is required.'
   })
 });
+
+// Define a more flexible pricing type
+type FlexiblePricingType = {
+  [key: string]: number | string | undefined;
+  mb30?: number;
+  mb60?: number;
+  mb120?: number;
+  full_atv?: number;
+  desert_racer?: number;
+  price?: number;
+  name?: string;
+};
+
+// Update the VehicleCounts type to use FlexiblePricingType
+interface FlexibleVehicleCounts {
+  [key: number]: {
+    count: number;
+    isChecked: boolean;
+    name: string;
+    seats: number;
+    pricing: FlexiblePricingType;
+  };
+}
+
+// Helper function to get the appropriate vehicle list based on location
+const getVehicleListByLocation = (location: string) => {
+  switch (location) {
+    case 'Nellis30':
+    case 'Nellis60':
+    case 'NellisDX':
+      return mbj_vehicles_list;
+    case 'DunesATV':
+      return atv_vehicles_list;
+    case 'ValleyOfFire':
+      return vof_vehicles_list;
+    case 'FamilyFun':
+      return ffr_vehicles_list;
+    default:
+      return mbj_vehicles_list;
+  }
+};
 
 export function CalendarFormEdit({
   isCalendarOpen,
@@ -58,8 +99,8 @@ export function CalendarFormEdit({
   setSelectedHotel: Dispatch<SetStateAction<string>>;
   setFreeShuttle: Dispatch<SetStateAction<boolean>>;
   setSelectedTimeValue: Dispatch<SetStateAction<string>>;
-  setVehicleCounts: Dispatch<SetStateAction<VehicleCounts>>;
-  vehicleCounts: VehicleCounts;
+  setVehicleCounts: Dispatch<SetStateAction<FlexibleVehicleCounts>>;
+  vehicleCounts: FlexibleVehicleCounts;
   totalSeats: number;
   setSelectedTabValue: Dispatch<SetStateAction<'mb30' | 'mb60' | 'mb120'>>;
   selectedTabValue: 'mb120' | 'mb30' | 'mb60';
@@ -80,6 +121,12 @@ export function CalendarFormEdit({
     }
   });
 
+  // Get the location from initialData or default to Nellis60
+  const location = initialData?.location || 'Nellis60';
+  
+  // Get the appropriate vehicle list based on location
+  const currentVehicleList = useMemo(() => getVehicleListByLocation(location), [location]);
+
   // Update the form when bookInfo changes
   useEffect(() => {
     dateForm.setValue('bookingDate', bookInfo.bookingDate);
@@ -90,7 +137,7 @@ export function CalendarFormEdit({
     isChecked: boolean,
     name: string,
     seats: number,
-    pricing: VehiclePricingType
+    pricing: FlexiblePricingType
   ) => {
     setVehicleCounts((prevCounts) => ({
       ...prevCounts,
@@ -109,14 +156,14 @@ export function CalendarFormEdit({
     vehicleId: number,
     name: string,
     seats: number,
-    pricing: VehiclePricingType
+    pricing: FlexiblePricingType
   ) => {
     setVehicleCounts((prevCounts) => ({
       ...prevCounts,
       [vehicleId]: {
         ...prevCounts[vehicleId],
-        count: Math.max(0, prevCounts[vehicleId].count - 1),
-        isChecked: prevCounts[vehicleId]?.count > 1 ? true : false,
+        count: Math.max(0, (prevCounts[vehicleId]?.count ?? 0) - 1),
+        isChecked: (prevCounts[vehicleId]?.count ?? 0) > 1 ? true : false,
         name,
         seats,
         pricing
@@ -284,7 +331,7 @@ export function CalendarFormEdit({
         </div>
         
         <div className="space-y-3">
-          {mbj_vehicles_list.map((vehicle) => {
+          {currentVehicleList.map((vehicle) => {
             const fieldName = vehicle.name.split(' ')[0].toLowerCase().replace('-', '');
             return (
               <div key={vehicle.id} className="flex justify-between items-center py-2 border-b">
