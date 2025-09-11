@@ -329,6 +329,18 @@ export const atv_vehicles_list = [
   }
 ];
 
+export const atvfr_vehicles_list = [
+  {
+    id: 1,
+    name: 'Medium Size ATVs',
+    vehicle_id: 1,
+    seats: 1,
+    pricing: {
+      full_atv: 69
+    }
+  },
+
+];
 const vehicles = [
   {
     id: 1,
