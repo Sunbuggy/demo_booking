@@ -30,12 +30,15 @@ const ReportsPage = async () => {
     .from('vehicle_pretrip_truck')
     .select('*')
     .order('created_at', { ascending: false });
-  
-  // Add charges_pismo data fetch
-  const { data: chargesPismo } = await supabase
+    const { data: chargesPismo } = await supabase
     .from('charges_pismo')
     .select('*')
     .order('created_at', { ascending: false });
+    const { data: vehicleLocations } = await supabase
+    .from('vehicle_locations')
+    .select('*')
+    .order('created_at', { ascending: false });
+
 
   const { data: timeEntries, error } = await supabase
     .from('time_entries')
@@ -94,6 +97,8 @@ const ReportsPage = async () => {
   const mappedPretripShuttles = mapData(pretrip_shuttles || []);
   const mappedPretripTrucks = mapData(pretrip_trucks || []);
   const mappedChargesPismo = mapData(chargesPismo || []);
+  const mappedVehicleLocations = mapData(vehicleLocations || []);
+
 
   // Map time entries
   const mappedTimeEntries = (timeEntries || []).map((entry) => ({
@@ -119,6 +124,8 @@ const ReportsPage = async () => {
     { name: 'Shuttle Pre-trips', data: mappedPretripShuttles },
     { name: 'Truck Pre-trips', data: mappedPretripTrucks },
     { name: 'Pismo Charges', data: mappedChargesPismo }, 
+    { name: 'Vehicle Locations', data: mappedVehicleLocations }, 
+
     { name: 'Time Entries', data: mappedTimeEntries }
   ];
 
