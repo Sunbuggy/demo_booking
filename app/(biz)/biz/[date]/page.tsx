@@ -31,6 +31,7 @@ const BizPage = async ({
   const full_name = user[0]?.full_name;
   const yesterday = dayjs(date).subtract(1, 'day').format('YYYY-MM-DD');
   const tomorrow = dayjs(date).add(1, 'day').format('YYYY-MM-DD');
+  
   // Regular expression to match the date format yyyy-dd-mm
   const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -43,6 +44,49 @@ const BizPage = async ({
     const query = `SELECT * FROM reservations_modified WHERE sch_date = '${date}'`;
     // Proceed with your query execution
     const data = (await fetch_from_old_db(query)) as Reservation[];
+    
+    // Handle case where there are no reservations
+    if (!data || data.length === 0) {
+      return (
+        <div className="min-h-screen w-full flex flex-col gap-5 justify-center items-center">
+          {role && role > 299 && (
+            <div className="flex gap-2 justify-center items-center">
+              <Link
+                href={`/biz/${yesterday}${dcos == true ? '/dcos=true' : ''}`}
+                passHref
+              >
+                <RiArrowLeftWideFill />
+              </Link>
+              <Link href="/biz/calendar" passHref>
+                <Button>{date}</Button>
+              </Link>
+              <Link
+                href={`/biz/${tomorrow}${dcos == true ? '/dcos=true' : ''}`}
+                passHref
+              >
+                <RiArrowRightWideFill />
+              </Link>
+            </div>
+          )}
+          
+          {role && role > 650 && (
+            <PanelSelector
+              role={role}
+              admin={
+                <AdminPanel display_cost={dcos} full_name={full_name || ''} />
+              }
+              torch={<TorchPanel full_name={full_name || ''} />}
+            />
+          )}
+
+          <div className="text-center">
+            <h2 className="text-xl font-semibold mb-4">No reservations for {date}</h2>
+            <p>There are no bookings scheduled for this date.</p>
+          </div>
+        </div>
+      );
+    }
+    
     const loadedData = data && (await getTimeSortedData(data));
     return (
       <div className="min-h-screen w-full flex flex-col gap-5">
