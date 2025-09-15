@@ -5,6 +5,7 @@ import React, { useState, FormEvent } from 'react';
 import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 interface TitleUploadProps {
   url_key: string;
@@ -14,6 +15,17 @@ interface TitleUploadProps {
   bucket?: string;
 }
 
+// Initialize S3 client on the client side
+const s3Client = new S3Client({
+  region: process.env.NEXT_PUBLIC_STORAGE_REGION!,
+  forcePathStyle: true,
+  endpoint: process.env.NEXT_PUBLIC_STORAGE_ENDPOINT!,
+  credentials: {
+    accessKeyId: process.env.NEXT_PUBLIC_STORAGE_ACCESSKEY!,
+    secretAccessKey: process.env.NEXT_PUBLIC_STORAGE_SECRETKEY!
+  }
+});
+
 export default function TitleUpload({
   url_key,
   updatePic = false,
@@ -22,6 +34,7 @@ export default function TitleUpload({
   bucket = 'sb-fleet'
 }: TitleUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const formRef = React.useRef<HTMLFormElement>(null);
 
@@ -37,8 +50,22 @@ export default function TitleUpload({
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const uploadFileDirectlyToS3 = async (file: File, key: string) => {
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: file,
+      ContentType: file.type,
+      ACL: 'public-read'
+    });
+    
+    await s3Client.send(command);
+    return `${process.env.NEXT_PUBLIC_STORAGE_ENDPOINT}/${bucket}/${key}`;
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsUploading(true);
 
     if (!url_key || !bucket) {
       toast({
@@ -46,6 +73,7 @@ export default function TitleUpload({
         description: 'Missing required URL key or bucket name.',
         variant: 'destructive'
       });
+      setIsUploading(false);
       return;
     }
 
@@ -55,44 +83,57 @@ export default function TitleUpload({
         description: 'Please select files to upload.',
         variant: 'destructive'
       });
+      setIsUploading(false);
       return;
     }
 
-    const formData = new FormData();
-    formData.append('bucket', bucket);
-    formData.append('mode', single ? 'single' : 'multiple');
-    formData.append('key', url_key);
-
-    // Rename PDF files to the current date
-    selectedFiles.forEach((file) => {
-      let newFile = file;
-      if (file.type === 'application/pdf') {
-        const today = new Date().toISOString().split('T')[0];
-        newFile = new File([file], `${today}.pdf`, { type: file.type });
-      }
-      formData.append('files', newFile);
-      formData.append('contentType', newFile.type);
-    });
-
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
-        {
-          method: updatePic ? 'PUT' : 'POST',
-          body: formData
+      if (single) {
+        // Handle single file upload
+        const file = selectedFiles[0];
+        let uploadKey = url_key;
+        
+        // Rename PDF files to the current date
+        if (file.type === 'application/pdf') {
+          const today = new Date().toISOString().split('T')[0];
+          uploadKey = `${url_key}/${today}.pdf`;
+        } else {
+          uploadKey = `${url_key}/${file.name}`;
         }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Upload failed.');
+        
+        const url = await uploadFileDirectlyToS3(file, uploadKey);
+        
+        toast({
+          title: 'Success',
+          description: 'File uploaded successfully!',
+          variant: 'success'
+        });
+      } else {
+        // Handle multiple file uploads
+        const uploadPromises = selectedFiles.map(async (file) => {
+          let fileName = file.name;
+          
+          // Rename PDF files to the current date with index if multiple PDFs
+          if (file.type === 'application/pdf') {
+            const today = new Date().toISOString().split('T')[0];
+            const index = selectedFiles.indexOf(file);
+            fileName = `${today}-${index}.pdf`;
+          }
+          
+          const uploadKey = `${url_key}/${fileName}`;
+          const url = await uploadFileDirectlyToS3(file, uploadKey);
+          return { key: uploadKey, url };
+        });
+        
+        const results = await Promise.all(uploadPromises);
+        
+        toast({
+          title: 'Success',
+          description: `${results.length} files uploaded successfully!`,
+          variant: 'success'
+        });
       }
-
-      toast({
-        title: 'Success',
-        description: 'Files uploaded successfully!',
-        variant: 'success'
-      });
+      
       setSelectedFiles([]);
       if (formRef.current) formRef.current.reset();
       window.location.reload();
@@ -103,6 +144,8 @@ export default function TitleUpload({
         description: error.message || 'Upload failed. Please try again.',
         variant: 'destructive'
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -162,8 +205,8 @@ export default function TitleUpload({
             ))}
           </div>
           <DialogClose asChild>
-            <Button type="submit" className="w-full">
-              Upload {selectedFiles.length} {selectedFiles.length === 1 ? 'file' : 'files'}
+            <Button type="submit" className="w-full" disabled={isUploading}>
+              {isUploading ? 'Uploading...' : `Upload ${selectedFiles.length} ${selectedFiles.length === 1 ? 'file' : 'files'}`}
             </Button>
           </DialogClose>
         </div>
