@@ -82,7 +82,7 @@ export default async function ReservationPage({
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="">
       <h1 className="text-2xl font-bold mb-6">
         Reservation #{reservation.res_id} - {reservation.full_name}
       </h1>

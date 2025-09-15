@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import DatePicker from '@/app/(com)/book/date-picker';
 import { Form } from '@/components/ui/form';
+import BookingSelection from './booking-selection';
 
 // Define the form schema for the date field
 const DateFormSchema = z.object({
@@ -319,16 +320,30 @@ export function CalendarFormEdit({
       {/* Fleet Selection */}
       <div className="p-4 border rounded-lg shadow-sm">
         <h2 className="text-lg font-bold mb-3">Fleet Selection</h2>
-        
-        <div className="mb-3">
-          <p>
-          Assigned Seats:{' '}
-            <span className={totalSeats >= bookInfo.howManyPeople ? 'text-green-500' : 'text-red-500'}>
-              {totalSeats}
-            </span> / 
-            <span className="text-green-500">{bookInfo.howManyPeople}</span>
-          </p>
-        </div>
+        <BookingSelection
+  selectedVehicles={Object.fromEntries(
+    Object.entries(vehicleCounts).map(([id, data]) => [id, { 
+      count: data.count, 
+      isChecked: data.isChecked 
+    }])
+  )}
+  onVehicleSelect={(vehicleId, count, isChecked) => {
+    const vehicle = currentVehicleList.find(v => v.id === vehicleId);
+    if (vehicle) {
+      setVehicleCounts(prev => ({
+        ...prev,
+        [vehicleId]: {
+          count,
+          isChecked,
+          name: vehicle.name,
+          seats: vehicle.seats,
+          pricing: vehicle.pricing
+        }
+      }));
+    }
+  }}
+  viewMode={viewMode}
+/>
         
         <div className="space-y-3">
           {currentVehicleList.map((vehicle) => {
