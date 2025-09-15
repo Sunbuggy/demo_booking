@@ -1,3 +1,5 @@
+'use client';
+
 import { Label } from '@/components/ui/label';
 import { UploadIcon, FileTextIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
