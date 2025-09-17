@@ -66,7 +66,7 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           <div className="flex flex-col gap-5 min-h-screen relative">
             <Navbar />
             <NavigationButtons />
-            <main className="p-2 max-w-11/12 flex mx-auto flex-grow">
+            <main className="p-2 flex mx-auto flex-grow">
               <Providers>{children}</Providers>
             </main>
             <Footer />

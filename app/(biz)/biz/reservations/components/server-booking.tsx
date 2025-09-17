@@ -155,7 +155,7 @@ export function MiniBajaEditPage({
   }, [initialData]);
 
   return (
-    <div className="font-extrabold dark:text-white sm:text-center flex flex-col justify-center items-center h-fit">
+    <div className="font-extrabold dark:text-white sm:text-center flex flex-col justify-center w-full items-center h-fit">
       <CalendarFormEdit
         bookInfo={bookInfo}
         freeShuttle={freeShuttle}

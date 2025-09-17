@@ -11,7 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import DatePicker from '@/app/(com)/book/date-picker';
 import { Form } from '@/components/ui/form';
-import BookingSelection from './booking-selection';
+import { FleetCarousel } from './booking-selection';
 
 // Define the form schema for the date field
 const DateFormSchema = z.object({
@@ -124,7 +124,7 @@ export function CalendarFormEdit({
 
   // Get the location from initialData or default to Nellis60
   const location = initialData?.location || 'Nellis60';
-  
+
   // Get the appropriate vehicle list based on location
   const currentVehicleList = useMemo(() => getVehicleListByLocation(location), [location]);
 
@@ -184,12 +184,12 @@ export function CalendarFormEdit({
   useEffect(() => {
     if (initialData) {
       const bookingDate = initialData.sch_date ? new Date(initialData.sch_date) : new Date();
-      
+
       setBookInfo({
         bookingDate,
         howManyPeople: initialData.ppl_count || 1
       });
-      
+
       // Set hotel if exists
       if (initialData.hotel) {
         if (initialData.hotel === 'Drive here') {
@@ -210,19 +210,19 @@ export function CalendarFormEdit({
     if (!timeStr) return '';
     const [time, period] = timeStr.split(' ');
     let hour = parseInt(time, 10);
-    
+
     if (period === 'pm' && hour !== 12) {
       hour += 12;
     } else if (period === 'am' && hour === 12) {
       hour = 0;
     }
-    
+
     return `${hour.toString().padStart(2, '0')}:00`;
   };
 
   const getLocationFromTab = () => {
-    return selectedTabValue === 'mb30' ? 'Nellis30' : 
-           selectedTabValue === 'mb60' ? 'Nellis60' : 'NellisDX';
+    return selectedTabValue === 'mb30' ? 'Nellis30' :
+      selectedTabValue === 'mb60' ? 'Nellis60' : 'NellisDX';
   };
 
   // Handle hotel checkbox change
@@ -235,11 +235,11 @@ export function CalendarFormEdit({
 
   return (
     <div className="w-screen md:w-[350px] space-y-4">
-      
+
       {/* Booking Section */}
       <div className="p-4 border rounded-lg shadow-sm">
         <h2 className="text-lg font-bold mb-3">Booking Details</h2>
-        
+
         <div className="space-y-3">
           <div>
             <label className="block mb-1">Booking Date</label>
@@ -259,7 +259,7 @@ export function CalendarFormEdit({
               value={bookInfo.bookingDate.toISOString().split('T')[0]}
             />
           </div>
-          
+
           <div>
             <label className="block mb-1">Number of People</label>
             <input
@@ -272,7 +272,7 @@ export function CalendarFormEdit({
               disabled={viewMode}
             />
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <Checkbox
               id="free-shuttle"
@@ -287,7 +287,7 @@ export function CalendarFormEdit({
               Get Free Shuttle Pickup to Your Hotel
             </label>
           </div>
-          
+
           {hotelsMemo && freeShuttle && (
             <div>
               <ComboBox
@@ -316,36 +316,19 @@ export function CalendarFormEdit({
           )}
         </div>
       </div>
-      
+
       {/* Fleet Selection */}
-      <div className="p-4 border rounded-lg shadow-sm">
+      <div className="p-4 border rounded-lg shadow-sm w-auto">
         <h2 className="text-lg font-bold mb-3">Fleet Selection</h2>
-        <BookingSelection
-  selectedVehicles={Object.fromEntries(
-    Object.entries(vehicleCounts).map(([id, data]) => [id, { 
-      count: data.count, 
-      isChecked: data.isChecked 
-    }])
-  )}
-  onVehicleSelect={(vehicleId, count, isChecked) => {
-    const vehicle = currentVehicleList.find(v => v.id === vehicleId);
-    if (vehicle) {
-      setVehicleCounts(prev => ({
-        ...prev,
-        [vehicleId]: {
-          count,
-          isChecked,
-          name: vehicle.name,
-          seats: vehicle.seats,
-          pricing: vehicle.pricing
-        }
-      }));
-    }
-  }}
-  viewMode={viewMode}
-/>
-        
-        <div className="space-y-3">
+        <FleetCarousel
+          vehicleCounts={vehicleCounts}
+          setVehicleCounts={setVehicleCounts}
+          totalSeats={totalSeats}
+          howManyPeople={bookInfo.howManyPeople}
+          viewMode={viewMode}
+        />
+
+        {/* <div className="space-y-3">
           {currentVehicleList.map((vehicle) => {
             const fieldName = vehicle.name.split(' ')[0].toLowerCase().replace('-', '');
             return (
@@ -400,13 +383,13 @@ export function CalendarFormEdit({
               </div>
             );
           })}
-        </div>
+        </div> */}
       </div>
-      
+
       {/* Contact Information */}
       <div className="p-4 border rounded-lg shadow-sm">
         <h2 className="text-lg font-bold mb-3">Contact Information</h2>
-        
+
         <div className="space-y-3">
           <div>
             <label className="block mb-1">Full Name</label>
@@ -419,7 +402,7 @@ export function CalendarFormEdit({
               disabled={viewMode}
             />
           </div>
-          
+
           <div>
             <label className="block mb-1">Email</label>
             <input
@@ -431,7 +414,7 @@ export function CalendarFormEdit({
               disabled={viewMode}
             />
           </div>
-          
+
           <div>
             <label className="block mb-1">Phone</label>
             <input
@@ -443,7 +426,7 @@ export function CalendarFormEdit({
               disabled={viewMode}
             />
           </div>
-          
+
           <div>
             <label className="block mb-1">Group Name (Optional)</label>
             <input
@@ -457,7 +440,7 @@ export function CalendarFormEdit({
           </div>
         </div>
       </div>
-      
+
       {/* Pricing Section */}
       <div className="flex flex-col items-center gap-5">
         <BookingTabs

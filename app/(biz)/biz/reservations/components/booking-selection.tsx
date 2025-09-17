@@ -1,184 +1,203 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
+import * as React from "react";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselPrevious,
   CarouselNext,
-} from "@/components/ui/carousel"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { 
-  mbj_vehicles_list, 
-  atv_vehicles_list, 
-  vof_vehicles_list, 
-  ffr_vehicles_list 
-} from '@/utils/helpers'
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list } from '@/utils/helpers';
 
-interface Vehicle {
-  id: number
-  name: string
-  seats: number
-  pricing: {
-    [key: string]: number | string | undefined
-    mb30?: number
-    mb60?: number
-    mb120?: number
-    full_atv?: number
-    desert_racer?: number
-    price?: number
-  }
-  image?: string
-  description?: string
+// Update the interface to be more flexible
+interface VehiclePricing {
+  [key: string]: number | string | undefined;
+  mb30?: number;
+  mb60?: number;
+  mb120?: number;
+  full_atv?: number;
+  desert_racer?: number;
+  price?: number;
+  name?: string;
 }
 
-interface BookingSelectionProps {
-  selectedVehicles: { [key: number]: { count: number; isChecked: boolean } }
-  onVehicleSelect: (vehicleId: number, count: number, isChecked: boolean) => void
-  viewMode?: boolean
+interface VehicleCounts {
+  [vehicleId: number]: {
+    isChecked: boolean;
+    count: number;
+    name: string;
+    seats: number;
+    pricing: VehiclePricing;
+  };
 }
 
-type FleetType = 'mbj' | 'atv' | 'vof' | 'ffr'
+interface FleetCarouselProps {
+  vehicleCounts: VehicleCounts;
+  setVehicleCounts: React.Dispatch<React.SetStateAction<VehicleCounts>>;
+  totalSeats: number;
+  howManyPeople: number;
+  viewMode?: boolean;
+}
 
-export default function BookingSelection({ 
-  selectedVehicles, 
-  onVehicleSelect, 
-  viewMode = false 
-}: BookingSelectionProps) {
-  const [activeFleet, setActiveFleet] = useState<FleetType>('mbj')
-  
-  const fleetData: Record<FleetType, { name: string; vehicles: Vehicle[] }> = {
-    mbj: {
-      name: "Mini Baja",
-      vehicles: mbj_vehicles_list
-    },
-    atv: {
-      name: "ATV Adventures",
-      vehicles: atv_vehicles_list
-    },
-    vof: {
-      name: "Valley of Fire",
-      vehicles: vof_vehicles_list
-    },
-    ffr: {
-      name: "Family Fun Rides",
-      vehicles: ffr_vehicles_list
-    }
-  }
+const vehicleCategories = [
+  {
+    name: "Mini Baja",
+    list: mbj_vehicles_list,
+  },
+  {
+    name: "ATV",
+    list: atv_vehicles_list,
+  },
+  {
+    name: "Valley of Fire",
+    list: vof_vehicles_list,
+  },
+  {
+    name: "Family Fun",
+    list: ffr_vehicles_list,
+  },
+];
 
-  const handleIncrement = (vehicleId: number) => {
-    const currentCount = selectedVehicles[vehicleId]?.count || 0
-    onVehicleSelect(vehicleId, currentCount + 1, true)
-  }
+export function FleetCarousel({
+  vehicleCounts,
+  setVehicleCounts,
+  totalSeats,
+  howManyPeople,
+  viewMode = false,
+}: FleetCarouselProps) {
+  const incrementCount = (
+    vehicleId: number,
+    isChecked: boolean,
+    name: string,
+    seats: number,
+    pricing: VehiclePricing
+  ) => {
+    setVehicleCounts((prevCounts) => ({
+      ...prevCounts,
+      [vehicleId]: {
+        ...prevCounts[vehicleId],
+        count: (prevCounts[vehicleId]?.count ?? 0) + 1,
+        isChecked,
+        name,
+        seats,
+        pricing
+      }
+    }));
+  };
 
-  const handleDecrement = (vehicleId: number) => {
-    const currentCount = selectedVehicles[vehicleId]?.count || 0
-    if (currentCount > 0) {
-      onVehicleSelect(vehicleId, currentCount - 1, currentCount - 1 > 0)
-    }
-  }
+  const decrementCount = (
+    vehicleId: number,
+    name: string,
+    seats: number,
+    pricing: VehiclePricing
+  ) => {
+    setVehicleCounts((prevCounts) => ({
+      ...prevCounts,
+      [vehicleId]: {
+        ...prevCounts[vehicleId],
+        count: Math.max(0, (prevCounts[vehicleId]?.count ?? 0) - 1),
+        isChecked: (prevCounts[vehicleId]?.count ?? 0) > 1 ? true : false,
+        name,
+        seats,
+        pricing
+      }
+    }));
+  };
 
   return (
-    <div className="w-full space-y-4">
-      {/* Fleet Selection Tabs */}
-      <div className="flex space-x-2 overflow-x-auto pb-2">
-        {Object.entries(fleetData).map(([key, fleet]) => (
-          <Button
-            key={key}
-            variant={activeFleet === key ? "default" : "outline"}
-            onClick={() => setActiveFleet(key as FleetType)}
-            className="min-w-max"
-          >
-            {fleet.name}
-          </Button>
-        ))}
+    <div className="relative">
+      {/* <h2 className="text-lg font-bold mb-3">Fleet Selection</h2> */}
+      
+      <div className="mb-3">
+        <p>
+          Assigned Seats:{' '}
+          <span className={totalSeats >= howManyPeople ? 'text-green-500' : 'text-red-500'}>
+            {totalSeats}
+          </span> / 
+          <span className="text-green-500">{howManyPeople}</span>
+        </p>
       </div>
-
-      {/* Carousel for Selected Fleet */}
-      <div className="px-8">
-        <Carousel opts={{ align: "start", loop: true }}>
+      
+      <div className="relative">
+        <Carousel
+          opts={{
+            align: "start",
+            loop: false,
+          }}
+          className="w-full"
+        >
           <CarouselContent>
-            {fleetData[activeFleet].vehicles.map((vehicle) => {
-              const count = selectedVehicles[vehicle.id]?.count || 0
-              const isSelected = selectedVehicles[vehicle.id]?.isChecked || false
-              
-              return (
-                <CarouselItem key={vehicle.id} className="md:basis-1/2 lg:basis-1/3">
-                  <Card className={`h-full ${isSelected ? 'border-2 border-primary' : ''}`}>
-                    <CardContent className="flex flex-col p-4">
-                      {/* Vehicle Image Placeholder */}
-                      <div className="h-40 bg-muted rounded-md mb-3 flex items-center justify-center">
-                        {vehicle.image ? (
-                          <img 
-                            src={vehicle.image} 
-                            alt={vehicle.name} 
-                            className="h-full w-full object-cover rounded-md"
-                          />
-                        ) : (
-                          <div className="text-muted-foreground">Vehicle Image</div>
-                        )}
-                      </div>
-                      
-                      {/* Vehicle Info */}
-                      <div className="flex-grow">
-                        <h3 className="font-bold text-lg">{vehicle.name}</h3>
-                        {vehicle.description && (
-                          <p className="text-sm text-muted-foreground mt-1">{vehicle.description}</p>
-                        )}
-                        <div className="flex items-center mt-2">
-                          <Badge variant="secondary" className="mr-2">
-                            {vehicle.seats} {vehicle.seats === 1 ? 'seat' : 'seats'}
-                          </Badge>
-                          <Badge variant="outline">
-                            ${vehicle.pricing.mb30 || vehicle.pricing.full_atv || vehicle.pricing.price}
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      {/* Selection Controls */}
-                      {!viewMode && (
-                        <div className="flex items-center justify-between mt-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDecrement(vehicle.id)}
-                            disabled={count === 0}
-                          >
-                            -
-                          </Button>
+            {vehicleCategories.map((category, index) => (
+              <CarouselItem key={index}>
+                <div className="p-2">
+                  <h3 className="text-md font-semibold mb-2">{category.name}</h3>
+                  <div className="space-y-3">
+                    {category.list.map((vehicle) => {
+                      const fieldName = vehicle.name.split(' ')[0].toLowerCase().replace('-', '');
+                      return (
+                        <div key={vehicle.id} className="flex justify-between items-center py-2 border-b">
+                          <div className="flex items-center">
+                            <span className={vehicleCounts[vehicle.id]?.isChecked ? 'text-green-500 font-medium' : ''}>
+                              {vehicle.name}
+                            </span>
+                          </div>
                           
-                          <span className="font-bold">{count}</span>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleIncrement(vehicle.id)}
-                          >
-                            +
-                          </Button>
+                          <div className="flex items-center">
+                            <button
+                              onClick={viewMode ? undefined : () => decrementCount(vehicle.id, vehicle.name, vehicle.seats, vehicle.pricing)}
+                              className="px-3 py-1 rounded-l border"
+                              disabled={viewMode || !vehicleCounts[vehicle.id]?.count}
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              name={fieldName}
+                              value={vehicleCounts[vehicle.id]?.count || 0}
+                              onChange={viewMode ? undefined : (e) => {
+                                const count = Math.max(0, parseInt(e.target.value) || 0);
+                                setVehicleCounts(prev => ({
+                                  ...prev,
+                                  [vehicle.id]: {
+                                    ...prev[vehicle.id],
+                                    count,
+                                    isChecked: count > 0
+                                  }
+                                }));
+                              }}
+                              min="0"
+                              className="w-12 text-center border-y"
+                              disabled={viewMode}
+                            />
+                            <button
+                              onClick={viewMode ? undefined : () => incrementCount(
+                                vehicle.id,
+                                true,
+                                vehicle.name,
+                                vehicle.seats,
+                                vehicle.pricing
+                              )}
+                              className="px-3 py-1 rounded-r border"
+                              disabled={viewMode}
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
-                      )}
-                      
-                      {viewMode && count > 0 && (
-                        <div className="text-center mt-2">
-                          <Badge className="bg-green-500">
-                            Selected: {count}
-                          </Badge>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </CarouselItem>
-              )
-            })}
+                      );
+                    })}
+                  </div>
+                </div>
+              </CarouselItem>
+            ))}
           </CarouselContent>
-          <CarouselPrevious />
-          <CarouselNext />
+          
+          {/* Updated arrow positioning with more spacing */}
+          <CarouselPrevious className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-full" />
+          <CarouselNext className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-full" />
         </Carousel>
       </div>
     </div>
-  )
+  );
 }
