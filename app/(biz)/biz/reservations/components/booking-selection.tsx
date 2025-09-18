@@ -145,6 +145,7 @@ export function FleetCarousel({
                           
                           <div className="flex items-center">
                             <button
+                              type="button" // Add this to prevent form submission
                               onClick={viewMode ? undefined : () => decrementCount(vehicle.id, vehicle.name, vehicle.seats, vehicle.pricing)}
                               className="px-3 py-1 rounded-l border"
                               disabled={viewMode || !vehicleCounts[vehicle.id]?.count}
@@ -171,6 +172,7 @@ export function FleetCarousel({
                               disabled={viewMode}
                             />
                             <button
+                              type="button" // Add this to prevent form submission
                               onClick={viewMode ? undefined : () => incrementCount(
                                 vehicle.id,
                                 true,
@@ -194,8 +196,14 @@ export function FleetCarousel({
           </CarouselContent>
           
           {/* Updated arrow positioning with more spacing */}
-          <CarouselPrevious className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-full" />
-          <CarouselNext className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-full" />
+          <CarouselPrevious 
+            type="button" // Add this to prevent form submission
+            className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-full" 
+          />
+          <CarouselNext 
+            type="button" // Add this to prevent form submission
+            className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-full" 
+          />
         </Carousel>
       </div>
     </div>
