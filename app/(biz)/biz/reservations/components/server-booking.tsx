@@ -3,6 +3,7 @@ import { SetStateAction, useEffect, useMemo, useState } from 'react';
 import { CalendarFormEdit } from './booking-calendar';
 import { mbj_vehicles_list } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
+import { TabValue } from './booking-tabs';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -53,7 +54,7 @@ export function MiniBajaEditPage({
   initialData?: Reservation;
   viewMode?: boolean;
 }) {
-  const [selectedTabValue, setSelectedTabValue] = useState<'mb30' | 'mb60' | 'mb120'>('mb60');
+  const [selectedTabValue, setSelectedTabValue] = useState<TabValue>('mb60');
   const [selectedTimeValue, setSelectedTimeValue] = useState('');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [open, setOpen] = useState(false);
@@ -133,7 +134,7 @@ export function MiniBajaEditPage({
       });
       setVehicleCounts(counts);
       
-      const locationTabMap: Record<string, 'mb30' | 'mb60' | 'mb120'> = {
+      const locationTabMap: Record<string, TabValue> = {
         'Nellis30': 'mb30',
         'Nellis60': 'mb60',
         'NellisDX': 'mb120'

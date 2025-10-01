@@ -38,6 +38,8 @@ interface FleetCarouselProps {
   totalSeats: number;
   howManyPeople: number;
   viewMode?: boolean;
+  activeCategory: string;
+  setActiveCategory: (category: string) => void;
 }
 
 const vehicleCategories = [
@@ -65,7 +67,21 @@ export function FleetCarousel({
   totalSeats,
   howManyPeople,
   viewMode = false,
+  activeCategory,
+  setActiveCategory,
 }: FleetCarouselProps) {
+  // Find the initial active index based on the activeCategory prop
+  const initialActiveIndex = vehicleCategories.findIndex(cat => cat.name === activeCategory);
+  const [activeIndex, setActiveIndex] = React.useState(initialActiveIndex >= 0 ? initialActiveIndex : 0);
+
+  // Sync local activeIndex with parent's activeCategory
+  React.useEffect(() => {
+    const newIndex = vehicleCategories.findIndex(cat => cat.name === activeCategory);
+    if (newIndex >= 0 && newIndex !== activeIndex) {
+      setActiveIndex(newIndex);
+    }
+  }, [activeCategory]);
+
   const incrementCount = (
     vehicleId: number,
     isChecked: boolean,
@@ -105,10 +121,25 @@ export function FleetCarousel({
     }));
   };
 
+  const nextCategory = () => {
+    const newIndex = (activeIndex + 1) % vehicleCategories.length;
+    setActiveIndex(newIndex);
+    setActiveCategory(vehicleCategories[newIndex].name);
+  };
+
+  const prevCategory = () => {
+    const newIndex = (activeIndex - 1 + vehicleCategories.length) % vehicleCategories.length;
+    setActiveIndex(newIndex);
+    setActiveCategory(vehicleCategories[newIndex].name);
+  };
+
+  const handleCategoryChange = (index: number) => {
+    setActiveIndex(index);
+    setActiveCategory(vehicleCategories[index].name);
+  };
+
   return (
     <div className="relative">
-      {/* <h2 className="text-lg font-bold mb-3">Fleet Selection</h2> */}
-      
       <div className="mb-3">
         <p>
           Assigned Seats:{' '}
@@ -119,92 +150,115 @@ export function FleetCarousel({
         </p>
       </div>
       
-      <div className="relative">
-        <Carousel
-          opts={{
-            align: "start",
-            loop: false,
-          }}
-          className="w-full"
-        >
-          <CarouselContent>
-            {vehicleCategories.map((category, index) => (
-              <CarouselItem key={index}>
-                <div className="p-2">
-                  <h3 className="text-md font-semibold mb-2">{category.name}</h3>
-                  <div className="space-y-3">
-                    {category.list.map((vehicle) => {
-                      const fieldName = vehicle.name.split(' ')[0].toLowerCase().replace('-', '');
-                      return (
-                        <div key={vehicle.id} className="flex justify-between items-center py-2 border-b">
-                          <div className="flex items-center">
-                            <span className={vehicleCounts[vehicle.id]?.isChecked ? 'text-green-500 font-medium' : ''}>
-                              {vehicle.name}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center">
-                            <button
-                              type="button" // Add this to prevent form submission
-                              onClick={viewMode ? undefined : () => decrementCount(vehicle.id, vehicle.name, vehicle.seats, vehicle.pricing)}
-                              className="px-3 py-1 rounded-l border"
-                              disabled={viewMode || !vehicleCounts[vehicle.id]?.count}
-                            >
-                              -
-                            </button>
-                            <input
-                              type="number"
-                              name={fieldName}
-                              value={vehicleCounts[vehicle.id]?.count || 0}
-                              onChange={viewMode ? undefined : (e) => {
-                                const count = Math.max(0, parseInt(e.target.value) || 0);
-                                setVehicleCounts(prev => ({
-                                  ...prev,
-                                  [vehicle.id]: {
-                                    ...prev[vehicle.id],
-                                    count,
-                                    isChecked: count > 0
-                                  }
-                                }));
-                              }}
-                              min="0"
-                              className="w-12 text-center border-y"
-                              disabled={viewMode}
-                            />
-                            <button
-                              type="button" // Add this to prevent form submission
-                              onClick={viewMode ? undefined : () => incrementCount(
-                                vehicle.id,
-                                true,
-                                vehicle.name,
-                                vehicle.seats,
-                                vehicle.pricing
-                              )}
-                              className="px-3 py-1 rounded-r border"
-                              disabled={viewMode}
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
+      <div className="border rounded-lg p-4">
+        {/* Category Header with Navigation Arrows */}
+        <div className="flex items-center justify-between mb-4">
+          <button
+            type="button"
+            onClick={prevCategory}
+            disabled={viewMode}
+            className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Previous category"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
           
-          {/* Updated arrow positioning with more spacing */}
-          <CarouselPrevious 
-            type="button" // Add this to prevent form submission
-            className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-full" 
-          />
-          <CarouselNext 
-            type="button" // Add this to prevent form submission
-            className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-full" 
-          />
-        </Carousel>
+          <h3 className="text-lg font-semibold text-center flex-1 mx-4">
+            {vehicleCategories[activeIndex].name}
+          </h3>
+          
+          <button
+            type="button"
+            onClick={nextCategory}
+            disabled={viewMode}
+            className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Next category"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Category Indicator Dots */}
+        <div className="flex justify-center space-x-2 mb-4">
+          {vehicleCategories.map((category, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => handleCategoryChange(index)}
+              disabled={viewMode}
+              className={`w-2 h-2 rounded-full transition-all ${
+                index === activeIndex 
+                  ? 'bg-blue-500 scale-125' 
+                  : 'bg-gray-300 hover:bg-gray-400'
+              } ${viewMode ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+              aria-label={`Go to ${category.name}`}
+            />
+          ))}
+        </div>
+
+        {/* Vehicle List for Current Category */}
+        <div className="space-y-3">
+          {vehicleCategories[activeIndex].list.map((vehicle) => {
+            const fieldName = vehicle.name.split(' ')[0].toLowerCase().replace('-', '');
+            return (
+              <div key={vehicle.id} className="flex justify-between items-center py-2 border-b">
+                <div className="flex items-center">
+                  <span className={vehicleCounts[vehicle.id]?.isChecked ? 'text-green-500 font-medium' : ''}>
+                    {vehicle.name}
+                  </span>
+                </div>
+                
+                <div className="flex items-center">
+                  <button
+                    type="button" 
+                    onClick={viewMode ? undefined : () => decrementCount(vehicle.id, vehicle.name, vehicle.seats, vehicle.pricing)}
+                    className="px-3 py-1 rounded-l border border-r-0 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={viewMode || !vehicleCounts[vehicle.id]?.count}
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    name={fieldName}
+                    value={vehicleCounts[vehicle.id]?.count || 0}
+                    onChange={viewMode ? undefined : (e) => {
+                      const count = Math.max(0, parseInt(e.target.value) || 0);
+                      setVehicleCounts(prev => ({
+                        ...prev,
+                        [vehicle.id]: {
+                          ...prev[vehicle.id],
+                          count,
+                          isChecked: count > 0
+                        }
+                      }));
+                    }}
+                    min="0"
+                    className="w-12 text-center border-y px-0 disabled:opacity-50"
+                    disabled={viewMode}
+                  />
+                  <button
+                    type="button"
+                    onClick={viewMode ? undefined : () => incrementCount(
+                      vehicle.id,
+                      true,
+                      vehicle.name,
+                      vehicle.seats,
+                      vehicle.pricing
+                    )}
+                    className="px-3 py-1 rounded-r border border-l-0 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={viewMode}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

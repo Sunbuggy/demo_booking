@@ -1,17 +1,16 @@
-'use client'
-import { Dispatch, SetStateAction, useEffect, useMemo } from 'react';
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
 import { BookInfoType, ContactFom, HotelType, VehicleCounts, VehiclePricingType } from './server-booking';
 import ComboBox from '@/components/hotel-combo-box';
 import { Checkbox } from '@/components/ui/checkbox';
-import { BookingTabs } from './booking-type/mbj-tabs';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import DatePicker from '@/app/(com)/book/date-picker';
 import { Form } from '@/components/ui/form';
 import { FleetCarousel } from './booking-selection';
+import { BookingTabs, TabValue, VehicleCategory } from './booking-tabs';
 
 // Define the form schema for the date field
 const DateFormSchema = z.object({
@@ -58,7 +57,7 @@ const getVehicleListByLocation = (location: string) => {
       return ffr_vehicles_list;
     default:
       return mbj_vehicles_list;
-  }
+  };
 };
 
 export function CalendarFormEdit({
@@ -103,8 +102,8 @@ export function CalendarFormEdit({
   setVehicleCounts: Dispatch<SetStateAction<FlexibleVehicleCounts>>;
   vehicleCounts: FlexibleVehicleCounts;
   totalSeats: number;
-  setSelectedTabValue: Dispatch<SetStateAction<'mb30' | 'mb60' | 'mb120'>>;
-  selectedTabValue: 'mb120' | 'mb30' | 'mb60';
+  setSelectedTabValue: Dispatch<SetStateAction<TabValue>>;
+  selectedTabValue: TabValue;
   selectedTimeValue: string;
   total_cost: number;
   settotal_cost: Dispatch<SetStateAction<number>>;
@@ -114,6 +113,9 @@ export function CalendarFormEdit({
   initialData?: Reservation;
   viewMode?: boolean;
 }) {
+  // State to track the active vehicle category
+  const [activeVehicleCategory, setActiveVehicleCategory] = useState<VehicleCategory>('Mini Baja');
+  
   // Initialize react-hook-form for the date field
   const dateForm = useForm<z.infer<typeof DateFormSchema>>({
     resolver: zodResolver(DateFormSchema),
@@ -132,6 +134,19 @@ export function CalendarFormEdit({
   useEffect(() => {
     dateForm.setValue('bookingDate', bookInfo.bookingDate);
   }, [bookInfo.bookingDate, dateForm]);
+
+  // Create a wrapper function that accepts string and validates it's a VehicleCategory
+  const handleCategoryChange = (category: string) => {
+    // Validate that the category is a valid VehicleCategory
+    if (isVehicleCategory(category)) {
+      setActiveVehicleCategory(category);
+    }
+  };
+
+  // Type guard to check if a string is a valid VehicleCategory
+  const isVehicleCategory = (category: string): category is VehicleCategory => {
+    return ['Mini Baja', 'ATV', 'Valley of Fire', 'Family Fun'].includes(category);
+  };
 
   const incrementCount = (
     vehicleId: number,
@@ -203,8 +218,34 @@ export function CalendarFormEdit({
         setFreeShuttle(false);
         setSelectedHotel('');
       }
+
+      // Set initial vehicle category based on location
+      const locationToCategoryMap: Record<string, VehicleCategory> = {
+        'Nellis30': 'Mini Baja',
+        'Nellis60': 'Mini Baja',
+        'NellisDX': 'Mini Baja',
+        'DunesATV': 'ATV',
+        'ValleyOfFire': 'Valley of Fire',
+        'FamilyFun': 'Family Fun'
+      };
+      
+      const initialCategory = locationToCategoryMap[initialData.location] || 'Mini Baja';
+      setActiveVehicleCategory(initialCategory);
+
+      // Set initial tab value based on location
+      const locationToTabMap: Record<string, TabValue> = {
+        'Nellis30': 'mb30',
+        'Nellis60': 'mb60',
+        'NellisDX': 'mb120',
+        'DunesATV': 'Premium ATV Tours',
+        'ValleyOfFire': 'Valley of Fire',
+        'FamilyFun': 'Family Fun Romp'
+      };
+      
+      const initialTabValue = locationToTabMap[initialData.location] || 'mb60';
+      setSelectedTabValue(initialTabValue);
     }
-  }, [initialData]);
+  }, [initialData, setSelectedTabValue, setFreeShuttle, setSelectedHotel, setBookInfo]);
 
   const convertTo24HourFormat = (timeStr: string): string => {
     if (!timeStr) return '';
@@ -218,11 +259,6 @@ export function CalendarFormEdit({
     }
 
     return `${hour.toString().padStart(2, '0')}:00`;
-  };
-
-  const getLocationFromTab = () => {
-    return selectedTabValue === 'mb30' ? 'Nellis30' :
-      selectedTabValue === 'mb60' ? 'Nellis60' : 'NellisDX';
   };
 
   // Handle hotel checkbox change
@@ -319,71 +355,16 @@ export function CalendarFormEdit({
 
       {/* Fleet Selection */}
       <div className="p-4 border rounded-lg shadow-sm w-auto">
-        <h2 className="text-lg font-bold mb-3">Fleet Selection</h2>
+        <h2 className="text-lg font-bold mb-3">Choose Your Adventure</h2>
         <FleetCarousel
           vehicleCounts={vehicleCounts}
           setVehicleCounts={setVehicleCounts}
           totalSeats={totalSeats}
           howManyPeople={bookInfo.howManyPeople}
           viewMode={viewMode}
+          activeCategory={activeVehicleCategory}
+          setActiveCategory={handleCategoryChange}
         />
-
-        {/* <div className="space-y-3">
-          {currentVehicleList.map((vehicle) => {
-            const fieldName = vehicle.name.split(' ')[0].toLowerCase().replace('-', '');
-            return (
-              <div key={vehicle.id} className="flex justify-between items-center py-2 border-b">
-                <div className="flex items-center">
-                  <span className={vehicleCounts[vehicle.id]?.isChecked ? 'text-green-500 font-medium' : ''}>
-                    {vehicle.name}
-                  </span>
-                </div>
-                
-                <div className="flex items-center">
-                  <button
-                    onClick={viewMode ? undefined : () => decrementCount(vehicle.id, vehicle.name, vehicle.seats, vehicle.pricing)}
-                    className="px-3 py-1 rounded-l"
-                    disabled={viewMode}
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    name={fieldName}
-                    value={vehicleCounts[vehicle.id]?.count || 0}
-                    onChange={viewMode ? undefined : (e) => {
-                      const count = Math.max(0, parseInt(e.target.value) || 0);
-                      setVehicleCounts(prev => ({
-                        ...prev,
-                        [vehicle.id]: {
-                          ...prev[vehicle.id],
-                          count,
-                          isChecked: count > 0
-                        }
-                      }));
-                    }}
-                    min="0"
-                    className="w-12 text-center border-y"
-                    disabled={viewMode}
-                  />
-                  <button
-                    onClick={viewMode ? undefined : () => incrementCount(
-                      vehicle.id,
-                      true,
-                      vehicle.name,
-                      vehicle.seats,
-                      vehicle.pricing
-                    )}
-                    className="px-3 py-1 rounded-r"
-                    disabled={viewMode}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div> */}
       </div>
 
       {/* Contact Information */}
@@ -441,13 +422,14 @@ export function CalendarFormEdit({
         </div>
       </div>
 
-      {/* Pricing Section */}
+      {/* Pricing Section - Use only BookingTabs component */}
       <div className="flex flex-col items-center gap-5">
         <BookingTabs
-          selectedTabValue={selectedTabValue}
-          setSelectedTabValue={setSelectedTabValue}
+          activeVehicleCategory={activeVehicleCategory}
           selectedTimeValue={selectedTimeValue}
           setSelectedTimeValue={setSelectedTimeValue}
+          selectedTabValue={selectedTabValue}
+          setSelectedTabValue={setSelectedTabValue}
           vehicleCounts={vehicleCounts}
           totalPrice={total_cost}
           setTotalPrice={settotal_cost}

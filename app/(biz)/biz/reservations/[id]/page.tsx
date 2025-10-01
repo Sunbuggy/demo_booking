@@ -1,8 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { MiniBajaEditPage } from '../components/server-booking';
-import { getReservationById } from '@/utils/old_db/actions';
+import { getReservationById, updateFullReservation } from '@/utils/old_db/actions';
 import { redirect } from 'next/navigation';
-import { updateFullReservation } from '@/utils/old_db/actions';
 import { Reservation } from '../../types';
 import { fetchHotels } from '@/utils/supabase/queries';
 
