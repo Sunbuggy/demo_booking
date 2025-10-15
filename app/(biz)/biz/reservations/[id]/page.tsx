@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
-import { MiniBajaEditPage } from '../components/server-booking';
+import { BookingEditPage } from '../components/server-booking';
 import { getReservationById, updateFullReservation } from '@/utils/old_db/actions';
 import { redirect } from 'next/navigation';
 import { Reservation } from '../../types';
@@ -89,8 +89,8 @@ export default async function ReservationPage({
       <form action={updateReservationHandler} className="space-y-6">
         <input type="hidden" name="res_id" value={reservation.res_id} />
         
-        <MiniBajaEditPage 
-          hotels={hotels} // Pass the fetched hotels instead of empty array
+        <BookingEditPage 
+          hotels={hotels}
           initialData={reservation} 
           viewMode={false} 
         />

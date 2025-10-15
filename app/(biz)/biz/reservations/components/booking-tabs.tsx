@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/card';
 import TimePicker from '@/components/time-picker';
 import {
-  atv_open_times,
+  atv30_open_times,
+  atv60_open_times,
   ffr_open_times,
   mb120_open_times,
   mb30_open_times,
@@ -20,10 +21,13 @@ import {
 import { PriceBreakdownDropdown } from '@/app/(com)/book/breakdown-drop-down/mbj';
 
 // Define all possible tab values
-export type TabValue = 'mb30' | 'mb60' | 'mb120' | 'Premium ATV Tours' | 'Family Fun Romp' | 'Valley of Fire';
+export type TabValue = 'mb30' | 'mb60' | 'mb120' | 'atv30' | 'atv60' | 'Valley of Fire' | 'Family Fun Romp';
 
 // Mini Baja specific tab values (for PriceBreakdownDropdown)
 export type MiniBajaTabValue = 'mb30' | 'mb60' | 'mb120';
+
+// ATV specific tab values
+export type ATVTabValue = 'atv30' | 'atv60';
 
 // Define vehicle categories
 export type VehicleCategory = 'Mini Baja' | 'ATV' | 'Valley of Fire' | 'Family Fun';
@@ -43,7 +47,7 @@ interface BookingTabsProps {
   setSelectedTimeValue: React.Dispatch<React.SetStateAction<string>>;
   selectedTabValue: TabValue;
   setSelectedTabValue: React.Dispatch<React.SetStateAction<TabValue>>;
-  vehicleCounts: any; // Updated to match what's being passed from parent
+  vehicleCounts: any;
   totalPrice: number;
   setTotalPrice: React.Dispatch<React.SetStateAction<number>>;
   formToken: string;
@@ -80,11 +84,19 @@ const tabConfigs: Record<VehicleCategory, TabConfig[]> = {
   ],
   'ATV': [
     {
-      value: 'Premium ATV Tours',
-      title: 'Premium ATV Tours',
-      name: 'Premium ATV Tours',
-      description: 'A special package for those wishing to take the kids Off-Road on a buggy ride but not get thrown in the mix of wild and crazy patrons',
-      timeArray: atv_open_times,
+      value: 'atv30',
+      title: '30 minutes',
+      name: 'ATV Adventure - 30 min',
+      description: '30 minutes of thrilling ATV riding',
+      timeArray: atv30_open_times,
+      showDiscount: false
+    },
+    {
+      value: 'atv60',
+      title: '60 minutes',
+      name: 'ATV Adventure - 60 min',
+      description: '60 minutes of extended ATV fun',
+      timeArray: atv60_open_times,
       showDiscount: false
     }
   ],
@@ -113,7 +125,7 @@ const tabConfigs: Record<VehicleCategory, TabConfig[]> = {
 // Default tab values for each category
 const defaultTabValues: Record<VehicleCategory, TabValue> = {
   'Mini Baja': 'mb60',
-  'ATV': 'Premium ATV Tours',
+  'ATV': 'atv60',
   'Valley of Fire': 'Valley of Fire',
   'Family Fun': 'Family Fun Romp'
 };
@@ -121,6 +133,11 @@ const defaultTabValues: Record<VehicleCategory, TabValue> = {
 // Type guard to check if a tab value is a Mini Baja tab value
 const isMiniBajaTabValue = (value: TabValue): value is MiniBajaTabValue => {
   return value === 'mb30' || value === 'mb60' || value === 'mb120';
+};
+
+// Type guard to check if a tab value is an ATV tab value
+const isATVTabValue = (value: TabValue): value is ATVTabValue => {
+  return value === 'atv30' || value === 'atv60';
 };
 
 export function BookingTabs({
@@ -222,8 +239,15 @@ export function BookingTabs({
                   />
                 )}
                 
-                {/* For other vehicle categories, you might want to add different pricing components */}
-                {selectedTimeValue && !isMiniBajaTabValue(selectedTabValue) && (
+                {/* For ATV tabs, show ATV pricing info */}
+                {selectedTimeValue && isATVTabValue(selectedTabValue) && (
+                  <div className="text-sm text-gray-600">
+                    ATV pricing varies by vehicle type (Full ATV / Medium ATV) and duration
+                  </div>
+                )}
+                
+                {/* For other vehicle categories */}
+                {selectedTimeValue && !isMiniBajaTabValue(selectedTabValue) && !isATVTabValue(selectedTabValue) && (
                   <div className="text-sm text-gray-600">
                     Pricing calculated based on selected vehicles and time
                   </div>

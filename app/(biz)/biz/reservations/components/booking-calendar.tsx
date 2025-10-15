@@ -86,6 +86,8 @@ export function CalendarFormEdit({
   formToken,
   viewMode = false,
   initialData,
+  activeVehicleCategory,
+  setActiveVehicleCategory,
 }: {
   isCalendarOpen: boolean;
   freeShuttle: boolean;
@@ -112,10 +114,9 @@ export function CalendarFormEdit({
   formToken: string;
   initialData?: Reservation;
   viewMode?: boolean;
+  activeVehicleCategory: VehicleCategory;
+  setActiveVehicleCategory: Dispatch<SetStateAction<VehicleCategory>>;
 }) {
-  // State to track the active vehicle category
-  const [activeVehicleCategory, setActiveVehicleCategory] = useState<VehicleCategory>('Mini Baja');
-  
   // Initialize react-hook-form for the date field
   const dateForm = useForm<z.infer<typeof DateFormSchema>>({
     resolver: zodResolver(DateFormSchema),
@@ -134,6 +135,24 @@ export function CalendarFormEdit({
   useEffect(() => {
     dateForm.setValue('bookingDate', bookInfo.bookingDate);
   }, [bookInfo.bookingDate, dateForm]);
+
+  // Function to convert display time back to 24-hour format for form submission
+  const convertTo24HourFormat = (displayTime: string): string => {
+    if (!displayTime) return '';
+    
+    // Extract the time part (remove discount info)
+    const timePart = displayTime.split(' (')[0];
+    const [time, period] = timePart.split(' ');
+    let hour = parseInt(time, 10);
+
+    if (period === 'pm' && hour !== 12) {
+      hour += 12;
+    } else if (period === 'am' && hour === 12) {
+      hour = 0;
+    }
+
+    return `${hour.toString().padStart(2, '0')}:00`;
+  };
 
   // Create a wrapper function that accepts string and validates it's a VehicleCategory
   const handleCategoryChange = (category: string) => {
@@ -196,71 +215,6 @@ export function CalendarFormEdit({
     setContactForm(prev => ({ ...prev, [field]: value }));
   };
 
-  useEffect(() => {
-    if (initialData) {
-      const bookingDate = initialData.sch_date ? new Date(initialData.sch_date) : new Date();
-
-      setBookInfo({
-        bookingDate,
-        howManyPeople: initialData.ppl_count || 1
-      });
-
-      // Set hotel if exists
-      if (initialData.hotel) {
-        if (initialData.hotel === 'Drive here') {
-          setFreeShuttle(false);
-          setSelectedHotel('');
-        } else {
-          setFreeShuttle(true);
-          setSelectedHotel(initialData.hotel);
-        }
-      } else {
-        setFreeShuttle(false);
-        setSelectedHotel('');
-      }
-
-      // Set initial vehicle category based on location
-      const locationToCategoryMap: Record<string, VehicleCategory> = {
-        'Nellis30': 'Mini Baja',
-        'Nellis60': 'Mini Baja',
-        'NellisDX': 'Mini Baja',
-        'DunesATV': 'ATV',
-        'ValleyOfFire': 'Valley of Fire',
-        'FamilyFun': 'Family Fun'
-      };
-      
-      const initialCategory = locationToCategoryMap[initialData.location] || 'Mini Baja';
-      setActiveVehicleCategory(initialCategory);
-
-      // Set initial tab value based on location
-      const locationToTabMap: Record<string, TabValue> = {
-        'Nellis30': 'mb30',
-        'Nellis60': 'mb60',
-        'NellisDX': 'mb120',
-        'DunesATV': 'Premium ATV Tours',
-        'ValleyOfFire': 'Valley of Fire',
-        'FamilyFun': 'Family Fun Romp'
-      };
-      
-      const initialTabValue = locationToTabMap[initialData.location] || 'mb60';
-      setSelectedTabValue(initialTabValue);
-    }
-  }, [initialData, setSelectedTabValue, setFreeShuttle, setSelectedHotel, setBookInfo]);
-
-  const convertTo24HourFormat = (timeStr: string): string => {
-    if (!timeStr) return '';
-    const [time, period] = timeStr.split(' ');
-    let hour = parseInt(time, 10);
-
-    if (period === 'pm' && hour !== 12) {
-      hour += 12;
-    } else if (period === 'am' && hour === 12) {
-      hour = 0;
-    }
-
-    return `${hour.toString().padStart(2, '0')}:00`;
-  };
-
   // Handle hotel checkbox change
   const handleShuttleChange = (checked: boolean) => {
     setFreeShuttle(checked);
@@ -271,6 +225,31 @@ export function CalendarFormEdit({
 
   return (
     <div className="w-screen md:w-[350px] space-y-4">
+
+      {/* Hidden inputs for form submission */}
+      <input
+        type="hidden"
+        name="sch_date"
+        value={bookInfo.bookingDate.toISOString().split('T')[0]}
+      />
+      <input
+        type="hidden"
+        name="sch_time"
+        value={convertTo24HourFormat(selectedTimeValue)}
+      />
+<input 
+  type="hidden" 
+  name="location" 
+  value={
+    selectedTabValue === 'mb30' ? 'Nellis30' :
+    selectedTabValue === 'mb60' ? 'Nellis60' :
+    selectedTabValue === 'mb120' ? 'NellisDX' :
+    selectedTabValue === 'atv30' ? 'DunesATV30' : 
+    selectedTabValue === 'atv60' ? 'DunesATV60' :
+    selectedTabValue === 'Valley of Fire' ? 'Valley' :
+    selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' : 'Nellis60'
+  } 
+/>
 
       {/* Booking Section */}
       <div className="p-4 border rounded-lg shadow-sm">
@@ -289,11 +268,6 @@ export function CalendarFormEdit({
                 disabled={viewMode}
               />
             </Form>
-            <input
-              type="hidden"
-              name="sch_date"
-              value={bookInfo.bookingDate.toISOString().split('T')[0]}
-            />
           </div>
 
           <div>
@@ -334,22 +308,15 @@ export function CalendarFormEdit({
                 setSelectedHotel={viewMode ? undefined : setSelectedHotel}
                 disabled={viewMode}
               />
-              {/* Hidden input to capture hotel value for form submission */}
-              <input
-                type="hidden"
-                name="hotel"
-                value={selectedHotel}
-              />
             </div>
           )}
-          {/* Hidden input for hotel when freeShuttle is false */}
-          {!freeShuttle && (
-            <input
-              type="hidden"
-              name="hotel"
-              value=""
-            />
-          )}
+          
+          {/* Hidden input for hotel value */}
+          <input
+            type="hidden"
+            name="hotel"
+            value={freeShuttle ? selectedHotel : ''}
+          />
         </div>
       </div>
 
@@ -422,7 +389,7 @@ export function CalendarFormEdit({
         </div>
       </div>
 
-      {/* Pricing Section - Use only BookingTabs component */}
+      {/* Pricing Section */}
       <div className="flex flex-col items-center gap-5">
         <BookingTabs
           activeVehicleCategory={activeVehicleCategory}

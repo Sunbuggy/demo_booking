@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import TimePicker from '@/components/time-picker';
-import { atv_open_times } from '@/utils/helpers';
+import { atv30_open_times, atv60_open_times } from '@/utils/helpers';
 import { VehicleCounts } from '../serve-bookings/atv';
 import { PriceBreakdownDropdown } from '../breakdown-drop-down/atv';
 import AcceptHostedPage from '../../payment/acceptHosted';
@@ -91,7 +91,7 @@ export function BookingTabs({
                   setSelectValue={(value) => {
                     setSelectedTimeValue(value);
                   }}
-                  timeArray={atv_open_times}
+                  timeArray={atv30_open_times}
                 />
 
                 {!selectedTimeValue && <p>Pick a time to calculate price</p>}

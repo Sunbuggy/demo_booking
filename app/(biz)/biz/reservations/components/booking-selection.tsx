@@ -1,13 +1,6 @@
 'use client';
 
 import * as React from "react";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
 import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list } from '@/utils/helpers';
 
 // Update the interface to be more flexible
@@ -60,6 +53,32 @@ const vehicleCategories = [
     list: ffr_vehicles_list,
   },
 ];
+
+// Map vehicle names to database field names
+const getVehicleFieldMapping = (): Record<string, string> => {
+  return {
+    // Mini Baja vehicles
+    '1 seat desert racer': 'SB1',
+    '2 seat desert racer': 'SB2',
+    '4 seat desert racer': 'SB4',
+    '6 seat desert racer': 'SB6',
+    'Ride with Guide': 'RWG',
+    
+    // ATV vehicles  
+    'Valley of fire 180 mins': 'QB',
+    'Amargosa 240 mins': 'QB',
+    'Vegas dunes 60 mins': 'QA',
+    'Vegas dunes 30 mins': 'QB',
+    '1 Seat full ATV': 'QB',
+    
+    // Valley of Fire vehicles
+     '2 seat UTV': 'twoSeat4wd', 
+    // '4 seat desert racer': 'UZ2',
+    // '6 seat desert racer': 'UZ4',
+    
+
+  };
+};
 
 export function FleetCarousel({
   vehicleCounts,
@@ -138,6 +157,12 @@ export function FleetCarousel({
     setActiveCategory(vehicleCategories[index].name);
   };
 
+  // Get the database field name for a vehicle
+  const getFieldNameForVehicle = (vehicleName: string): string => {
+    const fieldMapping = getVehicleFieldMapping();
+    return fieldMapping[vehicleName] || vehicleName.split(' ')[0].toLowerCase().replace('-', '');
+  };
+
   return (
     <div className="relative">
       <div className="mb-3">
@@ -203,7 +228,7 @@ export function FleetCarousel({
         {/* Vehicle List for Current Category */}
         <div className="space-y-3">
           {vehicleCategories[activeIndex].list.map((vehicle) => {
-            const fieldName = vehicle.name.split(' ')[0].toLowerCase().replace('-', '');
+            const fieldName = getFieldNameForVehicle(vehicle.name);
             return (
               <div key={vehicle.id} className="flex justify-between items-center py-2 border-b">
                 <div className="flex items-center">

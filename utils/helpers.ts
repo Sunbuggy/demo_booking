@@ -118,16 +118,13 @@ export const getErrorRedirect = (
   );
 
 export const mb30_open_times = ['9 am (20% discount)', '11 am', '1 pm'];
-export const mb60_open_times = [
-  '8 am (20% discount)',
-  '10 am',
-  '12 pm',
-  '2 pm'
-];
+export const mb60_open_times = [ '8 am (20% discount)','10 am', '12 pm', '2 pm'];
 export const ffr_open_times = ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
 export const mb120_open_times = ['8 am ', '10 am'];
 export const vof_open_times = ['8 am'];
-export const atv_open_times = ['8 am'];
+export const atv30_open_times = ['8 am', '10 am', '12 pm'];
+export const atv60_open_times = ['8 am', '10 am', '12 pm'];
+
 export type MbjVehicle = {
   id: number;
   name: string;
@@ -281,7 +278,7 @@ export const vof_vehicles_list = [
   {
     id: 6,
     vehicle_id: 4,
-    name: '2 seat UTV $WD',
+    name: '2 seat UTV',
     seats: 2,
     pricing: {
       price: 799,
@@ -291,52 +288,47 @@ export const vof_vehicles_list = [
 ];
 
 export const atv_vehicles_list = [
+  // Full ATV vehicles
   {
     id: 1,
+    name: 'Full size ATV',
+    vehicle_id: 1,
+    seats: 1,
+    pricing: {
+      full_atv_30: 133,
+      full_atv_60: 209
+    }
+  },
+
+  // Medium ATV vehicles
+  {
+    id: 2,
+    name: 'Medium size ATV',
+    vehicle_id: 2,
+    seats: 1,
+    pricing: {
+      medium_atv_30: 107,
+      medium_atv_60: 159
+    }
+  },
+
+  // Legacy vehicles (keep for backward compatibility)
+  {
+    id: 3,
     name: 'Valley of fire 180 mins',
     vehicle_id: 1,
     seats: 1,
     pricing: {
-      full_atv: 399
+      full_atv: 798
     }
   },
   {
-    id: 2,
+    id: 4,
     name: 'Amargosa 240 mins',
     vehicle_id: 2,
     seats: 1,
     pricing: {
       full_atv: 499
-    }
-  },
-  {
-    id: 3,
-    name: 'Vegas dunes 60 mins',
-    vehicle_id: 2,
-    seats: 1,
-    pricing: {
-      full_atv: 159
-    }
-  },
-  {
-    id: 4,
-    name: 'Vegas dunes 30 mins',
-    vehicle_id: 2,
-    seats: 1,
-    pricing: {
-      full_atv: 99
-    }
-  }
-];
-
-export const atvfr_vehicles_list = [
-  {
-    id: 1,
-    name: 'Medium Size ATVs',
-    vehicle_id: 1,
-    seats: 1,
-    pricing: {
-      full_atv: 69
     }
   },
 
