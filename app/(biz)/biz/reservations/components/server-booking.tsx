@@ -1,5 +1,5 @@
 'use client';
-import { SetStateAction, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CalendarFormEdit } from './booking-calendar';
 import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list, atv30_open_times, atv60_open_times } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
@@ -132,7 +132,6 @@ export function BookingEditPage({
       mb30_open_times, 
       mb60_open_times, 
       mb120_open_times, 
-      atv_open_times, 
       vof_open_times, 
       ffr_open_times 
     } = require('@/utils/helpers');
@@ -185,9 +184,9 @@ export function BookingEditPage({
       'SB6': '6 seat desert racer',
       'RWG': 'Ride with Guide',
       
-      // ATV vehicles - fixed syntax for QB mapping
-      'QB': 'Full ATV',
-      'QA': 'Medium ATV',
+      // ATV vehicles - use the correct mapping that worked before
+      'QB': 'Full size ATV', // Both 'Full ATV' and '1 Seat full ATV' map to QB field
+      'QA': 'Medium size ATV',
       
       // Valley of Fire vehicles
       'twoSeat4wd': '2 seat UTV',
@@ -255,13 +254,11 @@ export function BookingEditPage({
         const count = initialData[field as keyof Reservation];
         
         if (count !== undefined && count !== null && Number(count) > 0) {
-          // Find the vehicle by name
+          // Find the vehicle by name - check for both vehicle names that map to QB
           let vehicle;
           if (field === 'QB') {
-            // For QB field, check for both possible vehicle names
-            vehicle = allVehicles.find(v => 
-              v.name === 'Full ATV' || v.name === 'Full size ATV' || v.name === '1 Seat full ATV'
-            );
+            // For QB field, check for both vehicle names
+            vehicle = allVehicles.find(v => v.name === 'Full ATV' || v.name === '1 Seat full ATV');
           } else {
             vehicle = allVehicles.find(v => v.name === vehicleName);
           }
