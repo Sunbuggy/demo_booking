@@ -40,6 +40,13 @@ export default async function ReservationPage({
       return isNaN(num) ? 0 : num;
     };
 
+    // Safe float parsing function for total_cost
+    const safeParseFloat = (value: FormDataEntryValue | null) => {
+      if (!value) return 0;
+      const num = parseFloat(value.toString());
+      return isNaN(num) ? 0 : num;
+    };
+
     // Extract all fields from form data
     const updates: Partial<Reservation> = {
       full_name: formData.get('full_name') as string,
@@ -69,19 +76,24 @@ export default async function ReservationPage({
       RWG: safeParseInt(formData.get('RWG')),
       GoKartplus: safeParseInt(formData.get('GoKartplus')),
       GoKart: safeParseInt(formData.get('GoKart')),
+      total_cost: safeParseFloat(formData.get('total_cost')),
     };
+
+    console.log('Updating reservation with data:', updates);
 
     const result = await updateFullReservation(res_id, updates);
     
     if (!result.success) {
       console.error('Failed to update reservation:', result.error);
+      // You might want to handle this error more gracefully
+      throw new Error(`Failed to update reservation: ${result.error}`);
     }
     
     redirect(`/biz/reservations/${params.id}`);
   }
 
   return (
-    <div className="">
+    <div className="container mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">
         Reservation #{reservation.res_id} - {reservation.full_name}
       </h1>

@@ -10,7 +10,7 @@ export interface Reservation {
   ppl_count: number;
   fname?: string;
   lname?: string;
-  total_cost?: string;
+  total_cost?: number;
   phone?: string;
   email?: string;
   hotel?: string;

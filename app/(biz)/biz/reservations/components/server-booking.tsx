@@ -350,7 +350,7 @@ export function BookingEditPage({
         initialData={initialData}
         activeVehicleCategory={activeVehicleCategory}
         setActiveVehicleCategory={setActiveVehicleCategory}
-      />
+/>
     </div>
   );
 }

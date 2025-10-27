@@ -1,7 +1,7 @@
 import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react';
 import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
-import { BookInfoType, ContactFom, HotelType, VehicleCounts, VehiclePricingType } from './server-booking';
+import { BookInfoType, ContactFom, HotelType } from './server-booking';
 import ComboBox from '@/components/hotel-combo-box';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useForm } from 'react-hook-form';
@@ -58,6 +58,33 @@ const getVehicleListByLocation = (location: string) => {
     default:
       return mbj_vehicles_list;
   };
+};
+
+// Function to convert 24-hour format to display format
+const convertToDisplayFormat = (time24: string): string => {
+  if (!time24) return '';
+  
+  // Handle time strings like "08:00" or "8:00"
+  const [hours, minutes] = time24.split(':');
+  let hour = parseInt(hours, 10);
+  const minute = parseInt(minutes, 10);
+  
+  const period = hour >= 12 ? 'pm' : 'am';
+  const displayHour = hour % 12 || 12;
+  
+  return `${displayHour} ${period}`;
+};
+
+// Function to find matching display time with discount consideration
+const findMatchingDisplayTime = (time24: string, timeArray: string[]): string => {
+  const displayTime = convertToDisplayFormat(time24);
+  
+  // First try exact match
+  const exactMatch = timeArray.find(time => time.startsWith(displayTime));
+  if (exactMatch) return exactMatch;
+  
+  // If no exact match, return the display time without discount info
+  return displayTime;
 };
 
 export function CalendarFormEdit({
@@ -131,10 +158,80 @@ export function CalendarFormEdit({
   // Get the appropriate vehicle list based on location
   const currentVehicleList = useMemo(() => getVehicleListByLocation(location), [location]);
 
+  // Initialize selectedTabValue based on location
+  useEffect(() => {
+    if (initialData?.location) {
+      let tab: TabValue = 'mb60';
+      switch (initialData.location) {
+        case 'Nellis30':
+          tab = 'mb30';
+          break;
+        case 'Nellis60':
+          tab = 'mb60';
+          break;
+        case 'NellisDX':
+          tab = 'mb120';
+          break;
+        case 'DunesATV30':
+          tab = 'atv30';
+          break;
+        case 'DunesATV60':
+          tab = 'atv60';
+          break;
+        case 'ValleyOfFire':
+          tab = 'Valley of Fire';
+          break;
+        case 'FamilyFun':
+          tab = 'Family Fun Romp';
+          break;
+      }
+      setSelectedTabValue(tab);
+    }
+  }, [initialData?.location, setSelectedTabValue]);
+
+  // Initialize selectedTimeValue based on initial data
+  useEffect(() => {
+    if (initialData?.sch_time) {
+      // Get the appropriate time array based on current tab
+      const getTimeArrayForTab = (tab: TabValue): string[] => {
+        switch (tab) {
+          case 'mb30':
+            return ['9 am (20% discount)', '11 am', '1 pm'];
+          case 'mb60':
+            return ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
+          case 'mb120':
+            return ['8 am', '10 am'];
+          case 'atv30':
+            return ['8 am', '10 am', '12 pm'];
+          case 'atv60':
+            return ['8 am', '10 am', '12 pm'];
+          case 'Valley of Fire':
+            return ['8 am'];
+          case 'Family Fun Romp':
+            return ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
+          default:
+            return ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
+        }
+      };
+
+      const timeArray = getTimeArrayForTab(selectedTabValue);
+      const displayTime = findMatchingDisplayTime(initialData.sch_time, timeArray);
+      setSelectedTimeValue(displayTime);
+    }
+  }, [initialData?.sch_time, selectedTabValue, setSelectedTimeValue]);
+
   // Update the form when bookInfo changes
   useEffect(() => {
     dateForm.setValue('bookingDate', bookInfo.bookingDate);
   }, [bookInfo.bookingDate, dateForm]);
+
+  // Update the total_cost hidden input whenever total_cost changes
+  useEffect(() => {
+    const totalCostInput = document.getElementById('total_cost') as HTMLInputElement;
+    if (totalCostInput) {
+      totalCostInput.value = total_cost.toString();
+    }
+  }, [total_cost]);
 
   // Function to convert display time back to 24-hour format for form submission
   const convertTo24HourFormat = (displayTime: string): string => {
@@ -223,6 +320,14 @@ export function CalendarFormEdit({
     }
   };
 
+  // Helper function to get vehicle count by vehicle name
+const getVehicleCountByName = (vehicleName: string): number => {
+  const vehicle = Object.values(vehicleCounts).find(
+    v => v.name === vehicleName
+  );
+  return vehicle ? vehicle.count : 0;
+};
+
   return (
     <div className="w-screen md:w-[350px] space-y-4">
 
@@ -237,19 +342,19 @@ export function CalendarFormEdit({
         name="sch_time"
         value={convertTo24HourFormat(selectedTimeValue)}
       />
-<input 
-  type="hidden" 
-  name="location" 
-  value={
-    selectedTabValue === 'mb30' ? 'Nellis30' :
-    selectedTabValue === 'mb60' ? 'Nellis60' :
-    selectedTabValue === 'mb120' ? 'NellisDX' :
-    selectedTabValue === 'atv30' ? 'DunesATV30' : 
-    selectedTabValue === 'atv60' ? 'DunesATV60' :
-    selectedTabValue === 'Valley of Fire' ? 'Valley' :
-    selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' : 'Nellis60'
-  } 
-/>
+      <input 
+        type="hidden" 
+        name="location" 
+        value={
+          selectedTabValue === 'mb30' ? 'Nellis30' :
+          selectedTabValue === 'mb60' ? 'Nellis60' :
+          selectedTabValue === 'mb120' ? 'NellisDX' :
+          selectedTabValue === 'atv30' ? 'DunesATV30' : 
+          selectedTabValue === 'atv60' ? 'DunesATV60' :
+          selectedTabValue === 'Valley of Fire' ? 'ValleyOfFire' :
+          selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' : 'Nellis60'
+        } 
+      />
 
       {/* Booking Section */}
       <div className="p-4 border rounded-lg shadow-sm">
@@ -317,6 +422,25 @@ export function CalendarFormEdit({
             name="hotel"
             value={freeShuttle ? selectedHotel : ''}
           />
+<input type="hidden" name="QA" value={getVehicleCountByName('Medium size ATV')} />
+<input type="hidden" name="QB" value={getVehicleCountByName('Full size ATV')} />
+<input type="hidden" name="QU" value={0} /> {/* Not currently used */}
+<input type="hidden" name="QL" value={0} /> {/* Not currently used */}
+<input type="hidden" name="SB1" value={getVehicleCountByName('1 seat desert racer')} />
+<input type="hidden" name="SB2" value={getVehicleCountByName('2 seat desert racer')} />
+<input type="hidden" name="SB4" value={getVehicleCountByName('4 seat desert racer')} />
+<input type="hidden" name="SB5" value={0} /> {/* Not currently used */}
+<input type="hidden" name="SB6" value={getVehicleCountByName('6 seat desert racer')} />
+<input type="hidden" name="twoSeat4wd" value={getVehicleCountByName('2 seat UTV')} />
+<input type="hidden" name="UZ2" value={0} /> {/* Not currently used */}
+<input type="hidden" name="UZ4" value={0} /> {/* Not currently used */}
+<input type="hidden" name="RWG" value={getVehicleCountByName('Ride with Guide')} />
+<input type="hidden" name="GoKartplus" value={0} /> {/* Not currently used */}
+<input type="hidden" name="GoKart" value={0} /> {/* Not currently used */}
+
+{/* Total cost hidden input */}
+<input type="hidden" name="total_cost" value={total_cost} />
+
         </div>
       </div>
 
@@ -402,6 +526,7 @@ export function CalendarFormEdit({
           setTotalPrice={settotal_cost}
           formToken={formToken}
           viewMode={viewMode}
+          initialData={initialData}
         />
       </div>
     </div>

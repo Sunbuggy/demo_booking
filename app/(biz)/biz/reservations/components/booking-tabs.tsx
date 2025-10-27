@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Card,
@@ -19,6 +19,7 @@ import {
   vof_open_times
 } from '@/utils/helpers';
 import { PriceBreakdownDropdown } from '@/app/(com)/book/breakdown-drop-down/mbj';
+import { Reservation } from '@/app/(biz)/biz/types';
 
 // Define all possible tab values
 export type TabValue = 'mb30' | 'mb60' | 'mb120' | 'atv30' | 'atv60' | 'Valley of Fire' | 'Family Fun Romp';
@@ -52,6 +53,7 @@ interface BookingTabsProps {
   setTotalPrice: React.Dispatch<React.SetStateAction<number>>;
   formToken: string;
   viewMode?: boolean;
+  initialData?: Reservation;
 }
 
 // Tab configurations for each vehicle category
@@ -140,6 +142,61 @@ const isATVTabValue = (value: TabValue): value is ATVTabValue => {
   return value === 'atv30' || value === 'atv60';
 };
 
+// Calculate total price based on vehicle counts and selected tab
+const calculateTotalPrice = (vehicleCounts: any, selectedTabValue: TabValue, selectedTimeValue: string): number => {
+  let total = 0;
+
+  // Check if we should apply discount (for Mini Baja morning times)
+  const shouldApplyDiscount = (tabValue: TabValue, timeValue: string): boolean => {
+    if (!timeValue) return false;
+    
+    const timeNumber = Number(timeValue.split(' ')[0]);
+    const period = timeValue.split(' ')[1];
+    
+    return (tabValue === 'mb30' || tabValue === 'mb60') 
+      ? timeNumber < 10 && period === 'am'
+      : false;
+  };
+
+  const discountMultiplier = shouldApplyDiscount(selectedTabValue, selectedTimeValue) ? 0.8 : 1;
+
+  // Calculate total based on vehicle counts and pricing
+  Object.values(vehicleCounts).forEach((vehicle: any) => {
+    if (vehicle.count > 0) {
+      let price = 0;
+
+      // Mini Baja pricing
+      if (isMiniBajaTabValue(selectedTabValue)) {
+        const duration = selectedTabValue.replace('mb', '');
+        price = vehicle.pricing[`mb${duration}`] || 0;
+      }
+      // ATV pricing
+      else if (isATVTabValue(selectedTabValue)) {
+        const duration = selectedTabValue.replace('atv', '');
+        if (vehicle.pricing[`full_atv_${duration}`]) {
+          price = vehicle.pricing[`full_atv_${duration}`];
+        } else if (vehicle.pricing[`medium_atv_${duration}`]) {
+          price = vehicle.pricing[`medium_atv_${duration}`];
+        } else {
+          price = vehicle.pricing.full_atv || vehicle.pricing.medium_atv || 0;
+        }
+      }
+      // Valley of Fire pricing
+      else if (selectedTabValue === 'Valley of Fire') {
+        price = vehicle.pricing.price || 0;
+      }
+      // Family Fun pricing
+      else if (selectedTabValue === 'Family Fun Romp') {
+        price = vehicle.pricing.desert_racer || 0;
+      }
+
+      total += price * vehicle.count;
+    }
+  });
+
+  return total * discountMultiplier;
+};
+
 export function BookingTabs({
   activeVehicleCategory,
   selectedTimeValue,
@@ -150,12 +207,23 @@ export function BookingTabs({
   totalPrice,
   setTotalPrice,
   viewMode = false,
+  initialData,
 }: BookingTabsProps) {
   const currentTabs = tabConfigs[activeVehicleCategory] || tabConfigs['Mini Baja'];
   const displayPrice = typeof totalPrice === 'string' ? parseFloat(totalPrice) : totalPrice;
 
+  // Calculate total price whenever vehicle counts, tab, or time changes
+  useEffect(() => {
+    if (selectedTimeValue) {
+      const calculatedTotal = calculateTotalPrice(vehicleCounts, selectedTabValue, selectedTimeValue);
+      setTotalPrice(calculatedTotal);
+    } else {
+      setTotalPrice(0);
+    }
+  }, [vehicleCounts, selectedTabValue, selectedTimeValue, setTotalPrice]);
+
   // Ensure selectedTabValue is valid for current category
-  React.useEffect(() => {
+  useEffect(() => {
     const validTabValues = currentTabs.map(tab => tab.value);
     if (!validTabValues.includes(selectedTabValue)) {
       setSelectedTabValue(defaultTabValues[activeVehicleCategory]);
@@ -165,7 +233,6 @@ export function BookingTabs({
   const handleTabChange = (value: string) => {
     if (currentTabs.some(tab => tab.value === value)) {
       setSelectedTabValue(value as TabValue);
-      setTotalPrice(0);
       setSelectedTimeValue('');
     }
   };
@@ -256,7 +323,7 @@ export function BookingTabs({
               
               {(selectedTimeValue || viewMode) && (
                 <CardFooter className="w-full flex justify-between">
-                  <p className="text-green-500">
+                  <p className="text-green-500 font-bold text-lg">
                     Final Price: ${displayPrice.toFixed(2)}
                   </p>
                 </CardFooter>
