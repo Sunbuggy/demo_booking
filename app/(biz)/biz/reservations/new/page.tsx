@@ -1,15 +1,11 @@
 import { createClient } from '@/utils/supabase/server';
 import { BookingEditPage } from '../components/server-booking';
-import { getReservationById, updateFullReservation } from '@/utils/old_db/actions';
+import { createReservation } from '@/utils/old_db/actions';
 import { redirect } from 'next/navigation';
 import { Reservation } from '../../types';
 import { fetchHotels, getUserDetails } from '@/utils/supabase/queries';
 
-export default async function ReservationPage({
-  params
-}: {
-  params: { id: string };
-}) {
+export default async function NewReservationPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -17,25 +13,14 @@ export default async function ReservationPage({
     return redirect('/signin');
   }
   
-  // Get user details for agent name if needed
+  // Get user details to access full_name
   const userDetails = await getUserDetails(supabase);
   const userFullName = userDetails?.[0]?.full_name || 'SunbuggyNet';
   
-  const reservation = await getReservationById(params.id);
   const [hotels] = await Promise.all([fetchHotels(supabase)]);
   
-  if (!reservation) {
-    return (
-      <div className="max-w-2xl mx-auto my-12 text-center">
-        <h1 className="text-2xl font-bold">Reservation Not Found</h1>
-        <p className="mt-4">The reservation with ID #{params.id} could not be found.</p>
-      </div>
-    );
-  }
-  
-  async function updateReservationHandler(formData: FormData) {
+  async function createReservationHandler(formData: FormData) {
     'use server';
-    const res_id = parseInt(params.id);
     
     // Safe number parsing function
     const safeParseInt = (value: FormDataEntryValue | null) => {
@@ -52,19 +37,19 @@ export default async function ReservationPage({
     };
 
     // Extract all fields from form data
-    const updates: Partial<Reservation> = {
+    const newReservation: Partial<Reservation> = {
       full_name: formData.get('full_name') as string,
-      sch_date: new Date(formData.get('sch_date') as string),
+      sch_date: new Date(formData.get('sch_date') as string), // This becomes Res_Date
       sch_time: formData.get('sch_time') as string || '',
-      agent: userFullName, // Use current user's full name when updating
-      location: formData.get('location') as string || '',
+      agent: userFullName, // Use user's full_name or 'SunbuggyNet' as fallback
+      location: formData.get('location') as string || 'Nellis60',
       occasion: formData.get('occasion') as string || '',
       ppl_count: safeParseInt(formData.get('ppl_count')),
       phone: formData.get('phone') as string || '',
       email: formData.get('email') as string || '',
       hotel: formData.get('hotel') as string || '',
       notes: formData.get('notes') as string || '',
-      // Add vehicle counts
+      // Add vehicle counts - ensure all are included even if 0
       QA: safeParseInt(formData.get('QA')),
       QB: safeParseInt(formData.get('QB')),
       QU: safeParseInt(formData.get('QU')),
@@ -83,33 +68,50 @@ export default async function ReservationPage({
       total_cost: safeParseFloat(formData.get('total_cost')),
     };
 
-    console.log('Updating reservation with data:', updates);
-    console.log('Agent updated by:', userFullName);
+    console.log('Creating new reservation with data:', newReservation);
+    console.log('Agent set to:', userFullName);
+    console.log('Booking date (Res_Date):', newReservation.sch_date);
 
-    const result = await updateFullReservation(res_id, updates);
+    // Validate required fields
+    if (!newReservation.full_name || !newReservation.sch_date) {
+      throw new Error('Full name and booking date are required');
+    }
+
+    // Ensure the booking date is not one of the filtered dates
+    const bookingDate = newReservation.sch_date;
+    const filteredDates = [
+      '1999-12-31',
+      '1970-01-01', 
+      '1969-12-31',
+      '1980-01-01'
+    ];
+    
+    const bookingDateStr = bookingDate.toISOString().split('T')[0];
+    if (filteredDates.includes(bookingDateStr)) {
+      throw new Error('Invalid booking date');
+    }
+
+    const result = await createReservation(newReservation);
     
     if (!result.success) {
-      console.error('Failed to update reservation:', result.error);
-      throw new Error(`Failed to update reservation: ${result.error}`);
+      console.error('Failed to create reservation:', result.error);
+      throw new Error(`Failed to create reservation: ${result.error}`);
     }
     
-    redirect(`/biz/reservations/${params.id}`);
+    // Redirect to the new reservation's edit page
+    redirect(`/biz/reservations/${result.reservationId}`);
   }
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">
-        Reservation #{reservation.res_id} - {reservation.full_name}
-      </h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Create New Reservation</h1>
+      </div>
       
-
-      
-      <form action={updateReservationHandler} className="space-y-6">
-        <input type="hidden" name="res_id" value={reservation.res_id} />
-        
+      <form action={createReservationHandler} className="space-y-6">
         <BookingEditPage 
           hotels={hotels}
-          initialData={reservation} 
+          initialData={undefined}
           viewMode={false} 
         />
         
@@ -118,25 +120,23 @@ export default async function ReservationPage({
           <h2 className="text-xl font-semibold mb-4">Notes</h2>
           <textarea
             name="notes"
-            defaultValue={reservation.notes || ''}
             className="w-full p-3 border rounded-lg min-h-[150px]"
             placeholder="Add notes about this reservation..."
           />
         </div>
-              <div className="">
-        <p className="">
-          Last updated by: <strong>{reservation.agent || 'Unknown'}</strong>
-          {reservation.agent !== userFullName && (
-            <span> • Current editor: <strong>{userFullName}</strong></span>
-          )}
-        </p>
-      </div>
-        <div className="mt-6 flex justify-end">
+        
+        <div className="mt-6 flex justify-end space-x-4">
+          <a 
+            href="/biz/reservations"
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Cancel
+          </a>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
-            Save All Changes
+            Create Reservation
           </button>
         </div>
       </form>

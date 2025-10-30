@@ -278,20 +278,104 @@ export async function updateFullReservation(
   updates: Partial<Reservation>
 ) {
   try {
+    // Format time to 12-hour format without leading zeros
+    const formatTimeTo12Hour = (time: string): string => {
+      if (!time) return '';
+      
+      if (time.includes('am') || time.includes('pm')) {
+        const timePart = time.split(' ')[0];
+        const hasColon = timePart.includes(':');
+        return hasColon ? timePart : `${timePart}:00`;
+      }
+      
+      if (time.includes(':')) {
+        const [hours, minutes] = time.split(':');
+        let hour = parseInt(hours, 10);
+        const period = hour >= 12 ? 'pm' : 'am';
+        
+        hour = hour % 12 || 12;
+        
+        return `${hour}:${minutes || '00'}`;
+      }
+      
+      return time;
+    };
+
+    // Split full name into first and last name
+    const splitName = (fullName: string): { fname: string, lname: string } => {
+      if (!fullName) return { fname: '', lname: '' };
+      
+      const names = fullName.trim().split(' ');
+      if (names.length === 1) {
+        return { fname: names[0], lname: '' };
+      }
+      
+      const fname = names[0];
+      const lname = names.slice(1).join(' ');
+      return { fname, lname };
+    };
+
+    // Format the time and split the name
+    const formattedTime = formatTimeTo12Hour(updates.sch_time || '');
+    const { fname, lname } = splitName(updates.full_name || '');
+
+    // Add formatted fields to updates
+    const processedUpdates = {
+      ...updates,
+      sch_time: formattedTime,
+      fname,
+      lname
+    };
+
     // Build the SET clause for SQL
-    const setClause = Object.entries(updates)
+    const setClause = Object.entries(processedUpdates)
       .map(([key, value]) => {
         if (value === undefined || value === null) return null;
         
+        // Map field names to database columns
+        const fieldMapping: Record<string, string> = {
+          full_name: 'Renter',
+          sch_date: 'Res_Date',
+          sch_time: 'Res_Time',
+          agent: 'Book_Name',
+          location: 'Location',
+          occasion: 'occasion',
+          ppl_count: 'Res_Group',
+          phone: 'Cell_Ph',
+          email: 'Email',
+          hotel: 'Hotel',
+          notes: 'Notes',
+          fname: 'fname',
+          lname: 'lname',
+          QA: 'ATV_2wd',
+          QB: 'ATVs',
+          QU: 'med_ATV_2wd',
+          QL: 'LuxuryATV',
+          SB1: 'OneSeaters',
+          SB2: 'TwoSeaters',
+          SB4: 'FourSeaters',
+          SB5: 'FiveSeaters',
+          SB6: 'Sixseaters',
+          twoSeat4wd: 'TwoSeat_4wd',
+          UZ2: 'TwoSeatrzr',
+          UZ4: 'FourSeatrzr',
+          RWG: 'RideGuide',
+          GoKartplus: 'GoKartAdd',
+          GoKart: 'GoKart',
+          total_cost: 'Cost'
+        };
+
+        const dbColumn = fieldMapping[key] || key;
+        
         if (typeof value === 'string') {
-          return `\`${key}\` = '${value.replace(/'/g, "''")}'`;
+          return `\`${dbColumn}\` = '${value.replace(/'/g, "''")}'`;
         }
         
         if (value instanceof Date) {
-          return `\`${key}\` = '${value.toISOString().split('T')[0]}'`;
+          return `\`${dbColumn}\` = '${value.toISOString().split('T')[0]}'`;
         }
         
-        return `\`${key}\` = ${value}`;
+        return `\`${dbColumn}\` = ${value}`;
       })
       .filter(Boolean)
       .join(', ');
@@ -300,7 +384,9 @@ export async function updateFullReservation(
       throw new Error('No valid fields to update');
     }
 
-    const query = `UPDATE reservations_modified SET ${setClause} WHERE Res_ID = ${res_id}`;
+    const query = `UPDATE Reservations SET ${setClause} WHERE Res_ID = ${res_id}`;
+    console.log('Updating reservation with query:', query);
+    
     const result = await fetch_from_old_db(query);
     
     return { success: true, result };
@@ -310,5 +396,165 @@ export async function updateFullReservation(
   }
 }
 
+export async function createReservation(updates: Partial<Reservation>) {
+  try {
+    // Format time to 12-hour format without leading zeros (8:00 instead of 08:00)
+    const formatTimeTo12Hour = (time: string): string => {
+      if (!time) return '';
+      
+      // If time is already in 12-hour format with AM/PM, extract just the time part
+      if (time.includes('am') || time.includes('pm')) {
+        const timePart = time.split(' ')[0]; // Get "8" from "8 am"
+        const hasColon = timePart.includes(':');
+        return hasColon ? timePart : `${timePart}:00`; // Add :00 if no minutes
+      }
+      
+      // If time is in 24-hour format, convert to 12-hour
+      if (time.includes(':')) {
+        const [hours, minutes] = time.split(':');
+        let hour = parseInt(hours, 10);
+        const period = hour >= 12 ? 'pm' : 'am';
+        
+        // Convert to 12-hour format without leading zeros
+        hour = hour % 12 || 12;
+        
+        return `${hour}:${minutes || '00'}`;
+      }
+      
+      return time;
+    };
+
+    // Split full name into first and last name
+    const splitName = (fullName: string): { fname: string, lname: string } => {
+      if (!fullName) return { fname: '', lname: '' };
+      
+      const names = fullName.trim().split(' ');
+      if (names.length === 1) {
+        return { fname: names[0], lname: '' };
+      }
+      
+      const fname = names[0];
+      const lname = names.slice(1).join(' ');
+      return { fname, lname };
+    };
+
+    // Format the time
+    const formattedTime = formatTimeTo12Hour(updates.sch_time || '');
+    
+    // Split the name
+    const { fname, lname } = splitName(updates.full_name || '');
+
+    // Build the INSERT query for the Reservations table
+    const columns: string[] = [];
+    const values: any[] = [];
+    const placeholders: string[] = [];
+
+    // Map our form fields to the actual database columns
+    const fieldMapping: Record<string, string> = {
+      full_name: 'Renter',
+      sch_date: 'Res_Date', // This will be the selected booking date
+      sch_time: 'Res_Time',
+      agent: 'Book_Name',
+      location: 'Location',
+      occasion: 'occasion',
+      ppl_count: 'Res_Group',
+      phone: 'Cell_Ph',
+      email: 'Email',
+      hotel: 'Hotel',
+      notes: 'Notes',
+      fname: 'fname',
+      lname: 'lname',
+      // Vehicle mappings
+      QA: 'ATV_2wd',
+      QB: 'ATVs',
+      QU: 'med_ATV_2wd',
+      QL: 'LuxuryATV',
+      SB1: 'OneSeaters',
+      SB2: 'TwoSeaters',
+      SB4: 'FourSeaters',
+      SB5: 'FiveSeaters',
+      SB6: 'Sixseaters',
+      twoSeat4wd: 'TwoSeat_4wd',
+      UZ2: 'TwoSeatrzr',
+      UZ4: 'FourSeatrzr',
+      RWG: 'RideGuide',
+      GoKartplus: 'GoKartAdd',
+      GoKart: 'GoKart',
+      total_cost: 'Cost'
+    };
+
+    // Add current date/time for booking (Book_Date and Book_Time) - this is when the booking was created
+    columns.push('Book_Date', 'Book_Time');
+    placeholders.push('?', '?');
+    const now = new Date();
+    values.push(now.toISOString().split('T')[0]); // Current date as YYYY-MM-DD
+    values.push(now.toTimeString().split(' ')[0].substring(0, 8)); // Current time as HH:MM:SS
+
+    // Process each field from updates
+    const processedUpdates = {
+      ...updates,
+      sch_time: formattedTime, // Use formatted time
+      fname, // Add first name
+      lname  // Add last name
+    };
+
+    Object.entries(processedUpdates).forEach(([key, value]) => {
+      const dbColumn = fieldMapping[key];
+      if (dbColumn && value !== undefined && value !== null) {
+        columns.push(`\`${dbColumn}\``);
+        placeholders.push('?');
+        
+        // Handle different value types
+        if (value instanceof Date) {
+          // Store the selected booking date as Res_Date
+          values.push(value.toISOString().split('T')[0]); // Store as YYYY-MM-DD
+        } else if (typeof value === 'string') {
+          values.push(value);
+        } else {
+          values.push(value);
+        }
+      }
+    });
+
+    if (columns.length === 0) {
+      throw new Error('No valid fields to insert');
+    }
+
+    const query = `INSERT INTO Reservations (${columns.join(', ')}) VALUES (${placeholders.join(', ')})`;
+    
+    console.log('Creating reservation with query:', query);
+    console.log('Values:', values);
+    console.log('Formatted time:', formattedTime);
+    console.log('Split name:', { fname, lname });
+    console.log('Res_Date (booking date):', updates.sch_date);
+    console.log('Book_Date (creation date):', now.toISOString().split('T')[0]);
+
+    // Use your existing database connection
+    const result = await withDatabaseConnection(async (connection) => {
+      const [rows] = await connection.execute(query, values);
+      return rows;
+    });
+
+    // Get the inserted ID
+    const insertId = (result as any).insertId;
+    
+    if (!insertId) {
+      throw new Error('Failed to get reservation ID after insertion');
+    }
+
+    return { 
+      success: true, 
+      reservationId: insertId,
+      error: null 
+    };
+  } catch (error) {
+    console.error('Error creating reservation:', error);
+    return { 
+      success: false, 
+      reservationId: null,
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}
 export const launchGroup = (group_id: string) => updateGroupStatus(group_id, true);
 export const unLaunchGroup = (group_id: string) => updateGroupStatus(group_id, false);

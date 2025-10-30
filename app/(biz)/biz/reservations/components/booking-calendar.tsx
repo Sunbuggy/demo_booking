@@ -234,23 +234,25 @@ export function CalendarFormEdit({
   }, [total_cost]);
 
   // Function to convert display time back to 24-hour format for form submission
-  const convertTo24HourFormat = (displayTime: string): string => {
-    if (!displayTime) return '';
-    
-    // Extract the time part (remove discount info)
-    const timePart = displayTime.split(' (')[0];
-    const [time, period] = timePart.split(' ');
-    let hour = parseInt(time, 10);
+const convertTo12HourFormat = (displayTime: string): string => {
+  if (!displayTime) return '';
+  
+  // Extract the time part (remove discount info)
+  const timePart = displayTime.split(' (')[0];
+  const [time, period] = timePart.split(' ');
+  let hour = parseInt(time, 10);
 
-    if (period === 'pm' && hour !== 12) {
-      hour += 12;
-    } else if (period === 'am' && hour === 12) {
-      hour = 0;
-    }
+  // If it's PM and not 12, add 12 to convert to 24-hour temporarily
+  // But we'll format it back to 12-hour in the server action
+  if (period === 'pm' && hour !== 12) {
+    hour += 12;
+  } else if (period === 'am' && hour === 12) {
+    hour = 0;
+  }
 
-    return `${hour.toString().padStart(2, '0')}:00`;
-  };
-
+  // Return in 24-hour format for consistent processing, server will convert to 12-hour
+  return `${hour.toString().padStart(2, '0')}:00`;
+};
   // Create a wrapper function that accepts string and validates it's a VehicleCategory
   const handleCategoryChange = (category: string) => {
     // Validate that the category is a valid VehicleCategory
@@ -340,7 +342,7 @@ const getVehicleCountByName = (vehicleName: string): number => {
       <input
         type="hidden"
         name="sch_time"
-        value={convertTo24HourFormat(selectedTimeValue)}
+        value={convertTo12HourFormat(selectedTimeValue)}
       />
       <input 
         type="hidden" 

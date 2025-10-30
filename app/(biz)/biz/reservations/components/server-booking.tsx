@@ -50,11 +50,11 @@ export interface VehicleCounts {
   [vehicleId: number]: VehicleCount;
 }
 
-export function BookingEditPage({ 
-  hotels, 
-  initialData, 
-  viewMode = false 
-}: { 
+export function BookingEditPage({
+  hotels,
+  initialData,
+  viewMode = false
+}: {
   hotels: HotelType[];
   initialData?: Reservation;
   viewMode?: boolean;
@@ -106,38 +106,38 @@ export function BookingEditPage({
   // Function to convert 24-hour time to display format (like "9 am", "2 pm")
   const convertToDisplayTime = (time24: string): string => {
     if (!time24) return '';
-    
+
     // Handle cases where time might already be in display format
     if (time24.includes('am') || time24.includes('pm')) {
       return time24;
     }
-    
+
     // Convert HH:MM to display format
     const [hours, minutes] = time24.split(':');
     const hour = parseInt(hours, 10);
     const period = hour >= 12 ? 'pm' : 'am';
     const displayHour = hour % 12 || 12;
-    
+
     return `${displayHour} ${period}`;
   };
 
   // Function to find the exact time string from time arrays that matches the reservation time
   const findMatchingTimeString = (time24: string, tabValue: TabValue): string => {
     if (!time24) return '';
-    
+
     const displayTime = convertToDisplayTime(time24);
-    
+
     // Import time arrays
-    const { 
-      mb30_open_times, 
-      mb60_open_times, 
-      mb120_open_times, 
-      vof_open_times, 
-      ffr_open_times 
+    const {
+      mb30_open_times,
+      mb60_open_times,
+      mb120_open_times,
+      vof_open_times,
+      ffr_open_times
     } = require('@/utils/helpers');
-    
+
     let timeArray: string[] = [];
-    
+
     switch (tabValue) {
       case 'mb30':
         timeArray = mb30_open_times;
@@ -163,14 +163,14 @@ export function BookingEditPage({
       default:
         timeArray = mb60_open_times;
     }
-    
+
     // Try to find exact match first
-    const exactMatch = timeArray.find(time => 
+    const exactMatch = timeArray.find(time =>
       time.toLowerCase().includes(displayTime.toLowerCase())
     );
-    
+
     if (exactMatch) return exactMatch;
-    
+
     // If no exact match, return the display time
     return displayTime;
   };
@@ -179,15 +179,15 @@ export function BookingEditPage({
     return {
       // Mini Baja vehicles
       'SB1': '1 seat desert racer',
-      'SB2': '2 seat desert racer', 
+      'SB2': '2 seat desert racer',
       'SB4': '4 seat desert racer',
       'SB6': '6 seat desert racer',
       'RWG': 'Ride with Guide',
-      
+
       // ATV vehicles - use the correct mapping that worked before
-      'QB': 'Full size ATV', // Both 'Full ATV' and '1 Seat full ATV' map to QB field
+      'QB': 'Full size ATV',
       'QA': 'Medium size ATV',
-      
+
       // Valley of Fire vehicles
       'twoSeat4wd': '2 seat UTV',
     };
@@ -197,20 +197,20 @@ export function BookingEditPage({
   const getReverseFieldMapping = () => {
     const mapping: { [key: string]: string } = {};
     const fieldMapping = getVehicleFieldMapping();
-    
+
     Object.entries(fieldMapping).forEach(([field, vehicleName]) => {
       mapping[vehicleName] = field;
     });
-    
+
     return mapping;
   };
 
   useEffect(() => {
     if (initialData) {
       console.log('Initial data loaded:', initialData);
-      
+
       const bookingDate = initialData.sch_date ? new Date(initialData.sch_date) : new Date();
-      
+
       setTotalPrice(initialData.total_cost ? Number(initialData.total_cost) : 0);
 
       // Hotel/shuttle logic
@@ -232,7 +232,7 @@ export function BookingEditPage({
         bookingDate,
         howManyPeople: initialData.ppl_count || 1
       });
-      
+
       // Contact information
       setContactForm({
         name: initialData.full_name || '',
@@ -240,29 +240,29 @@ export function BookingEditPage({
         phone: initialData.phone || '',
         groupName: initialData.occasion || ''
       });
-      
+
       // Map vehicle counts from reservation data using field mapping
       const counts: VehicleCounts = {};
       const allVehicles = getAllVehicles();
       const fieldMapping = getVehicleFieldMapping();
       const reverseMapping = getReverseFieldMapping();
-      
+
       console.log('Mapping vehicle counts from reservation...');
-      
+
       // First, map database fields to vehicles
       Object.entries(fieldMapping).forEach(([field, vehicleName]) => {
         const count = initialData[field as keyof Reservation];
-        
+
         if (count !== undefined && count !== null && Number(count) > 0) {
           // Find the vehicle by name - check for both vehicle names that map to QB
           let vehicle;
           if (field === 'QB') {
-            // For QB field, check for both vehicle names
+            // Both 'Full ATV' and '1 Seat full ATV' map to QB field
             vehicle = allVehicles.find(v => v.name === 'Full ATV' || v.name === '1 Seat full ATV');
           } else {
             vehicle = allVehicles.find(v => v.name === vehicleName);
           }
-          
+
           if (vehicle) {
             counts[vehicle.id] = {
               isChecked: true,
@@ -275,10 +275,10 @@ export function BookingEditPage({
           }
         }
       });
-      
+
       console.log('Final vehicle counts:', counts);
       setVehicleCounts(counts);
-      
+
       // Set location-based tab and category
       const locationTabMap: Record<string, TabValue> = {
         'Nellis30': 'mb30',
@@ -289,7 +289,7 @@ export function BookingEditPage({
         'ValleyOfFire': 'Valley of Fire',
         'FamilyFun': 'Family Fun Romp'
       };
-      
+
       const locationCategoryMap: Record<string, VehicleCategory> = {
         'Nellis30': 'Mini Baja',
         'Nellis60': 'Mini Baja',
@@ -299,15 +299,15 @@ export function BookingEditPage({
         'ValleyOfFire': 'Valley of Fire',
         'FamilyFun': 'Family Fun'
       };
-      
+
       if (initialData.location) {
         const tabValue = locationTabMap[initialData.location] || 'mb60';
         const category = locationCategoryMap[initialData.location] || 'Mini Baja';
         console.log(`Setting tab to ${tabValue} and category to ${category} based on location ${initialData.location}`);
-        
+
         setSelectedTabValue(tabValue);
         setActiveVehicleCategory(category);
-        
+
         // Set the time using the exact format from time arrays
         if (initialData.sch_time) {
           const matchingTime = findMatchingTimeString(initialData.sch_time, tabValue);
@@ -350,7 +350,7 @@ export function BookingEditPage({
         initialData={initialData}
         activeVehicleCategory={activeVehicleCategory}
         setActiveVehicleCategory={setActiveVehicleCategory}
-/>
+      />
     </div>
   );
 }

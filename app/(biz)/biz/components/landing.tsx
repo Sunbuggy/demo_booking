@@ -4,6 +4,9 @@ import HourCard from './cards/hour-card';
 import { countPeople, vehiclesList } from '@/utils/old_db/helpers';
 import ShaCreate from './shuttle-assignment/create';
 import GroupShuttleAssignment from './shuttle-assignment/assign';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+
 
 /**
  * Renders a landing component that displays reservation data.
@@ -107,7 +110,9 @@ const Landing = ({
           <p >
           <ShaCreate />
          <GroupShuttleAssignment date={date} />
-
+          <Button className="ml-2">
+          <Link href="/biz/reservations/new">Create Reservation</Link>
+         </Button>
         </p>
         </div>
         {Object.keys(data).map((key, idx) => {
