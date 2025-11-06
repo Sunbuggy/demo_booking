@@ -63,26 +63,26 @@ const getVehicleListByLocation = (location: string) => {
 // Function to convert 24-hour format to display format
 const convertToDisplayFormat = (time24: string): string => {
   if (!time24) return '';
-  
+
   // Handle time strings like "08:00" or "8:00"
   const [hours, minutes] = time24.split(':');
   let hour = parseInt(hours, 10);
   const minute = parseInt(minutes, 10);
-  
+
   const period = hour >= 12 ? 'pm' : 'am';
   const displayHour = hour % 12 || 12;
-  
+
   return `${displayHour} ${period}`;
 };
 
 // Function to find matching display time with discount consideration
 const findMatchingDisplayTime = (time24: string, timeArray: string[]): string => {
   const displayTime = convertToDisplayFormat(time24);
-  
+
   // First try exact match
   const exactMatch = timeArray.find(time => time.startsWith(displayTime));
   if (exactMatch) return exactMatch;
-  
+
   // If no exact match, return the display time without discount info
   return displayTime;
 };
@@ -220,9 +220,24 @@ export function CalendarFormEdit({
     }
   }, [initialData?.sch_time, selectedTabValue, setSelectedTimeValue]);
 
-  // Update the form when bookInfo changes
+  // CRITICAL FIX: Watch for date changes in react-hook-form and update bookInfo
+  const watchedDate = dateForm.watch('bookingDate');
   useEffect(() => {
-    dateForm.setValue('bookingDate', bookInfo.bookingDate);
+    if (watchedDate && watchedDate !== bookInfo.bookingDate) {
+      console.log('CalendarFormEdit: Date changed from react-hook-form:', watchedDate);
+      console.log('CalendarFormEdit: Formatted date:', watchedDate.toISOString().split('T')[0]);
+      setBookInfo(prev => ({ 
+        ...prev, 
+        bookingDate: watchedDate 
+      }));
+    }
+  }, [watchedDate, bookInfo.bookingDate, setBookInfo]);
+
+  // Update the form when bookInfo changes (for initial load)
+  useEffect(() => {
+    if (bookInfo.bookingDate && bookInfo.bookingDate !== dateForm.getValues('bookingDate')) {
+      dateForm.setValue('bookingDate', bookInfo.bookingDate);
+    }
   }, [bookInfo.bookingDate, dateForm]);
 
   // Update the total_cost hidden input whenever total_cost changes
@@ -234,25 +249,26 @@ export function CalendarFormEdit({
   }, [total_cost]);
 
   // Function to convert display time back to 24-hour format for form submission
-const convertTo12HourFormat = (displayTime: string): string => {
-  if (!displayTime) return '';
-  
-  // Extract the time part (remove discount info)
-  const timePart = displayTime.split(' (')[0];
-  const [time, period] = timePart.split(' ');
-  let hour = parseInt(time, 10);
+  const convertTo12HourFormat = (displayTime: string): string => {
+    if (!displayTime) return '';
 
-  // If it's PM and not 12, add 12 to convert to 24-hour temporarily
-  // But we'll format it back to 12-hour in the server action
-  if (period === 'pm' && hour !== 12) {
-    hour += 12;
-  } else if (period === 'am' && hour === 12) {
-    hour = 0;
-  }
+    // Extract the time part (remove discount info)
+    const timePart = displayTime.split(' (')[0];
+    const [time, period] = timePart.split(' ');
+    let hour = parseInt(time, 10);
 
-  // Return in 24-hour format for consistent processing, server will convert to 12-hour
-  return `${hour.toString().padStart(2, '0')}:00`;
-};
+    // If it's PM and not 12, add 12 to convert to 24-hour temporarily
+    // But we'll format it back to 12-hour in the server action
+    if (period === 'pm' && hour !== 12) {
+      hour += 12;
+    } else if (period === 'am' && hour === 12) {
+      hour = 0;
+    }
+
+    // Return in 24-hour format for consistent processing, server will convert to 12-hour
+    return `${hour.toString().padStart(2, '0')}:00`;
+  };
+
   // Create a wrapper function that accepts string and validates it's a VehicleCategory
   const handleCategoryChange = (category: string) => {
     // Validate that the category is a valid VehicleCategory
@@ -323,12 +339,12 @@ const convertTo12HourFormat = (displayTime: string): string => {
   };
 
   // Helper function to get vehicle count by vehicle name
-const getVehicleCountByName = (vehicleName: string): number => {
-  const vehicle = Object.values(vehicleCounts).find(
-    v => v.name === vehicleName
-  );
-  return vehicle ? vehicle.count : 0;
-};
+  const getVehicleCountByName = (vehicleName: string): number => {
+    const vehicle = Object.values(vehicleCounts).find(
+      v => v.name === vehicleName
+    );
+    return vehicle ? vehicle.count : 0;
+  };
 
   return (
     <div className="w-screen md:w-[350px] space-y-4">
@@ -337,25 +353,26 @@ const getVehicleCountByName = (vehicleName: string): number => {
       <input
         type="hidden"
         name="sch_date"
-        value={bookInfo.bookingDate.toISOString().split('T')[0]}
+        value={bookInfo.bookingDate.toISOString().split('T')[0]} //YYYY-MM-DD
       />
+
       <input
         type="hidden"
         name="sch_time"
         value={convertTo12HourFormat(selectedTimeValue)}
       />
-      <input 
-        type="hidden" 
-        name="location" 
+      <input
+        type="hidden"
+        name="location"
         value={
           selectedTabValue === 'mb30' ? 'Nellis30' :
-          selectedTabValue === 'mb60' ? 'Nellis60' :
-          selectedTabValue === 'mb120' ? 'NellisDX' :
-          selectedTabValue === 'atv30' ? 'DunesATV30' : 
-          selectedTabValue === 'atv60' ? 'DunesATV60' :
-          selectedTabValue === 'Valley of Fire' ? 'ValleyOfFire' :
-          selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' : 'Nellis60'
-        } 
+            selectedTabValue === 'mb60' ? 'Nellis60' :
+              selectedTabValue === 'mb120' ? 'NellisDX' :
+                selectedTabValue === 'atv30' ? 'DunesATV30' :
+                  selectedTabValue === 'atv60' ? 'DunesATV60' :
+                    selectedTabValue === 'Valley of Fire' ? 'ValleyOfFire' :
+                      selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' : 'Nellis60'
+        }
       />
 
       {/* Booking Section */}
@@ -417,31 +434,31 @@ const getVehicleCountByName = (vehicleName: string): number => {
               />
             </div>
           )}
-          
+
           {/* Hidden input for hotel value */}
           <input
             type="hidden"
             name="hotel"
             value={freeShuttle ? selectedHotel : ''}
           />
-<input type="hidden" name="QA" value={getVehicleCountByName('Medium size ATV')} />
-<input type="hidden" name="QB" value={getVehicleCountByName('Full size ATV')} />
-<input type="hidden" name="QU" value={0} /> {/* Not currently used */}
-<input type="hidden" name="QL" value={0} /> {/* Not currently used */}
-<input type="hidden" name="SB1" value={getVehicleCountByName('1 seat desert racer')} />
-<input type="hidden" name="SB2" value={getVehicleCountByName('2 seat desert racer')} />
-<input type="hidden" name="SB4" value={getVehicleCountByName('4 seat desert racer')} />
-<input type="hidden" name="SB5" value={0} /> {/* Not currently used */}
-<input type="hidden" name="SB6" value={getVehicleCountByName('6 seat desert racer')} />
-<input type="hidden" name="twoSeat4wd" value={getVehicleCountByName('2 seat UTV')} />
-<input type="hidden" name="UZ2" value={0} /> {/* Not currently used */}
-<input type="hidden" name="UZ4" value={0} /> {/* Not currently used */}
-<input type="hidden" name="RWG" value={getVehicleCountByName('Ride with Guide')} />
-<input type="hidden" name="GoKartplus" value={0} /> {/* Not currently used */}
-<input type="hidden" name="GoKart" value={0} /> {/* Not currently used */}
+          <input type="hidden" name="QA" value={getVehicleCountByName('Medium size ATV')} />
+          <input type="hidden" name="QB" value={getVehicleCountByName('Full size ATV')} />
+          <input type="hidden" name="QU" value={0} /> {/* Not currently used */}
+          <input type="hidden" name="QL" value={0} /> {/* Not currently used */}
+          <input type="hidden" name="SB1" value={getVehicleCountByName('1 seat desert racer')} />
+          <input type="hidden" name="SB2" value={getVehicleCountByName('2 seat desert racer')} />
+          <input type="hidden" name="SB4" value={getVehicleCountByName('4 seat desert racer')} />
+          <input type="hidden" name="SB5" value={0} /> {/* Not currently used */}
+          <input type="hidden" name="SB6" value={getVehicleCountByName('6 seat desert racer')} />
+          <input type="hidden" name="twoSeat4wd" value={getVehicleCountByName('2 seat UTV')} />
+          <input type="hidden" name="UZ2" value={0} /> {/* Not currently used */}
+          <input type="hidden" name="UZ4" value={0} /> {/* Not currently used */}
+          <input type="hidden" name="RWG" value={getVehicleCountByName('Ride with Guide')} />
+          <input type="hidden" name="GoKartplus" value={0} /> {/* Not currently used */}
+          <input type="hidden" name="GoKart" value={0} /> {/* Not currently used */}
 
-{/* Total cost hidden input */}
-<input type="hidden" name="total_cost" value={total_cost} />
+          {/* Total cost hidden input */}
+          <input type="hidden" name="total_cost" value={total_cost} />
 
         </div>
       </div>

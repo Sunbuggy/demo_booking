@@ -398,24 +398,21 @@ export async function updateFullReservation(
 
 export async function createReservation(updates: Partial<Reservation>) {
   try {
-    // Format time to 12-hour format without leading zeros (8:00 instead of 08:00)
+    // Format time to 12-hour format without leading zeros
     const formatTimeTo12Hour = (time: string): string => {
       if (!time) return '';
       
-      // If time is already in 12-hour format with AM/PM, extract just the time part
       if (time.includes('am') || time.includes('pm')) {
-        const timePart = time.split(' ')[0]; // Get "8" from "8 am"
+        const timePart = time.split(' ')[0];
         const hasColon = timePart.includes(':');
-        return hasColon ? timePart : `${timePart}:00`; // Add :00 if no minutes
+        return hasColon ? timePart : `${timePart}:00`;
       }
       
-      // If time is in 24-hour format, convert to 12-hour
       if (time.includes(':')) {
         const [hours, minutes] = time.split(':');
         let hour = parseInt(hours, 10);
         const period = hour >= 12 ? 'pm' : 'am';
         
-        // Convert to 12-hour format without leading zeros
         hour = hour % 12 || 12;
         
         return `${hour}:${minutes || '00'}`;
@@ -452,7 +449,7 @@ export async function createReservation(updates: Partial<Reservation>) {
     // Map our form fields to the actual database columns
     const fieldMapping: Record<string, string> = {
       full_name: 'Renter',
-      sch_date: 'Res_Date', // This will be the selected booking date
+      sch_date: 'Res_Date', // User-selected booking date goes here
       sch_time: 'Res_Time',
       agent: 'Book_Name',
       location: 'Location',
@@ -484,11 +481,11 @@ export async function createReservation(updates: Partial<Reservation>) {
     };
 
     // Add current date/time for booking (Book_Date and Book_Time) - this is when the booking was created
+    const now = new Date();
     columns.push('Book_Date', 'Book_Time');
     placeholders.push('?', '?');
-    const now = new Date();
-    values.push(now.toISOString().split('T')[0]); // Current date as YYYY-MM-DD
-    values.push(now.toTimeString().split(' ')[0].substring(0, 8)); // Current time as HH:MM:SS
+    values.push(now.toISOString().split('T')[0]); // Current date as YYYY-MM-DD for Book_Date
+    values.push(now.toTimeString().split(' ')[0].substring(0, 8)); // Current time as HH:MM:SS for Book_Time
 
     // Process each field from updates
     const processedUpdates = {
@@ -498,6 +495,10 @@ export async function createReservation(updates: Partial<Reservation>) {
       lname  // Add last name
     };
 
+    console.log('=== DATABASE INSERTION DEBUG ===');
+    console.log('User selected booking date (Res_Date):', updates.sch_date);
+    console.log('Creation date (Book_Date):', now.toISOString().split('T')[0]);
+
     Object.entries(processedUpdates).forEach(([key, value]) => {
       const dbColumn = fieldMapping[key];
       if (dbColumn && value !== undefined && value !== null) {
@@ -506,8 +507,10 @@ export async function createReservation(updates: Partial<Reservation>) {
         
         // Handle different value types
         if (value instanceof Date) {
-          // Store the selected booking date as Res_Date
-          values.push(value.toISOString().split('T')[0]); // Store as YYYY-MM-DD
+          // CRITICAL: Store the selected booking date as Res_Date in YYYY-MM-DD format
+          const dateString = value.toISOString().split('T')[0];
+          console.log(`Setting ${dbColumn} to:`, dateString);
+          values.push(dateString);
         } else if (typeof value === 'string') {
           values.push(value);
         } else {
@@ -522,12 +525,9 @@ export async function createReservation(updates: Partial<Reservation>) {
 
     const query = `INSERT INTO Reservations (${columns.join(', ')}) VALUES (${placeholders.join(', ')})`;
     
-    console.log('Creating reservation with query:', query);
-    console.log('Values:', values);
-    console.log('Formatted time:', formattedTime);
-    console.log('Split name:', { fname, lname });
-    console.log('Res_Date (booking date):', updates.sch_date);
-    console.log('Book_Date (creation date):', now.toISOString().split('T')[0]);
+    console.log('Final SQL Query:', query);
+    console.log('Final Values:', values);
+    console.log('=== END DEBUG ===');
 
     // Use your existing database connection
     const result = await withDatabaseConnection(async (connection) => {

@@ -312,26 +312,6 @@ export const atv_vehicles_list = [
     }
   },
 
-  // Legacy vehicles (keep for backward compatibility)
-  {
-    id: 3,
-    name: 'Valley of fire 180 mins',
-    vehicle_id: 1,
-    seats: 1,
-    pricing: {
-      full_atv: 798
-    }
-  },
-  {
-    id: 4,
-    name: 'Amargosa 240 mins',
-    vehicle_id: 2,
-    seats: 1,
-    pricing: {
-      full_atv: 499
-    }
-  },
-
 ];
 const vehicles = [
   {

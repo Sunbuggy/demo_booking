@@ -16,6 +16,7 @@ import {
   TruckIcon
 } from 'lucide-react';
 import AddVehicle from './add-vehicle';
+import { FaSearch } from 'react-icons/fa';
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
@@ -52,6 +53,7 @@ export function DataTableToolbar<TData>({
             onChange={(event) => handleGlobalFilterChange(event.target.value)}
             className="h-8 w-full sm:w-[150px] lg:w-[250px]"
           />
+          
           <DataTableFacetedFilter
             column={table.getColumn('type')}
             title="fleet type"

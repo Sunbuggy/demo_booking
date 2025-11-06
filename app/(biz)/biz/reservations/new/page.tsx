@@ -22,6 +22,8 @@ export default async function NewReservationPage() {
   async function createReservationHandler(formData: FormData) {
     'use server';
     
+    console.log('=== FORM SUBMISSION DEBUG ===');
+    
     // Safe number parsing function
     const safeParseInt = (value: FormDataEntryValue | null) => {
       if (!value) return 0;
@@ -36,12 +38,31 @@ export default async function NewReservationPage() {
       return isNaN(num) ? 0 : num;
     };
 
+    // Extract date and ensure it's in YYYY-MM-DD format
+    const schDateValue = formData.get('sch_date') as string;
+    let bookingDate: Date;
+    
+    console.log('Raw sch_date from form:', schDateValue);
+    
+    try {
+      // Parse the date string (should already be in YYYY-MM-DD format from the form)
+      bookingDate = new Date(schDateValue + 'T00:00:00'); // Add time to avoid timezone issues
+      
+      // Validate the date
+      if (isNaN(bookingDate.getTime())) {
+        throw new Error('Invalid date format');
+      }
+    } catch (error) {
+      console.error('Date parsing error:', error);
+      throw new Error('Invalid booking date format');
+    }
+
     // Extract all fields from form data
     const newReservation: Partial<Reservation> = {
       full_name: formData.get('full_name') as string,
-      sch_date: new Date(formData.get('sch_date') as string), // This becomes Res_Date
+      sch_date: bookingDate, // This is the user-selected date from calendar
       sch_time: formData.get('sch_time') as string || '',
-      agent: userFullName, // Use user's full_name or 'SunbuggyNet' as fallback
+      agent: userFullName,
       location: formData.get('location') as string || 'Nellis60',
       occasion: formData.get('occasion') as string || '',
       ppl_count: safeParseInt(formData.get('ppl_count')),
@@ -49,7 +70,7 @@ export default async function NewReservationPage() {
       email: formData.get('email') as string || '',
       hotel: formData.get('hotel') as string || '',
       notes: formData.get('notes') as string || '',
-      // Add vehicle counts - ensure all are included even if 0
+      // Add vehicle counts
       QA: safeParseInt(formData.get('QA')),
       QB: safeParseInt(formData.get('QB')),
       QU: safeParseInt(formData.get('QU')),
@@ -68,9 +89,12 @@ export default async function NewReservationPage() {
       total_cost: safeParseFloat(formData.get('total_cost')),
     };
 
-    console.log('Creating new reservation with data:', newReservation);
-    console.log('Agent set to:', userFullName);
-    console.log('Booking date (Res_Date):', newReservation.sch_date);
+    console.log('Reservation data being sent to createReservation:');
+    console.log('User selected booking date (sch_date):', newReservation.sch_date);
+    console.log('Date type:', typeof newReservation.sch_date);
+    console.log('Date toISOString:', newReservation.sch_date?.toISOString());
+    console.log('Agent:', userFullName);
+    console.log('=== END FORM DEBUG ===');
 
     // Validate required fields
     if (!newReservation.full_name || !newReservation.sch_date) {
@@ -78,7 +102,6 @@ export default async function NewReservationPage() {
     }
 
     // Ensure the booking date is not one of the filtered dates
-    const bookingDate = newReservation.sch_date;
     const filteredDates = [
       '1999-12-31',
       '1970-01-01', 
@@ -115,28 +138,12 @@ export default async function NewReservationPage() {
           viewMode={false} 
         />
         
-        {/* Notes Section */}
-        <div className="mt-8 border-t pt-6">
-          <h2 className="text-xl font-semibold mb-4">Notes</h2>
-          <textarea
-            name="notes"
-            className="w-full p-3 border rounded-lg min-h-[150px]"
-            placeholder="Add notes about this reservation..."
-          />
-        </div>
-        
-        <div className="mt-6 flex justify-end space-x-4">
-          <a 
-            href="/biz/reservations"
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            Cancel
-          </a>
+        <div className="mt-6 flex justify-center space-x-4">
           <button
             type="submit"
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
           >
-            Create Reservation
+            Book Now
           </button>
         </div>
       </form>
