@@ -73,16 +73,32 @@ export function BookingEditPage({
   const [formToken, setFormToken] = useState('');
   const [activeVehicleCategory, setActiveVehicleCategory] = useState<VehicleCategory>('Mini Baja');
 
+  // FIX: Initialize contactForm with empty values first, then update with initialData
   const [contactForm, setContactForm] = useState<ContactFom>({
     name: '',
     email: '',
     phone: '',
     groupName: ''
   });
-  const [bookInfo, setBookInfo] = useState({
-    bookingDate: new Date(),
-    howManyPeople: 1
+
+  // FIX: Initialize bookInfo with proper date from initialData or current date
+  const [bookInfo, setBookInfo] = useState<BookInfoType>(() => {
+    // Use the reservation date if available, otherwise use current date
+    const bookingDate = initialData?.sch_date ? new Date(initialData.sch_date) : new Date();
+    const howManyPeople = initialData?.ppl_count || 1;
+    
+    console.log('Initializing bookInfo with:', {
+      bookingDate,
+      howManyPeople,
+      initialDataSchDate: initialData?.sch_date
+    });
+    
+    return {
+      bookingDate,
+      howManyPeople
+    };
   });
+
   const hotelsMemo = useMemo(() => hotels, [hotels]);
 
   useEffect(() => {
@@ -209,7 +225,11 @@ export function BookingEditPage({
     if (initialData) {
       console.log('Initial data loaded:', initialData);
 
+      // FIX: Ensure we use the reservation date
       const bookingDate = initialData.sch_date ? new Date(initialData.sch_date) : new Date();
+      
+      console.log('Setting booking date to:', bookingDate);
+      console.log('Original sch_date from reservation:', initialData.sch_date);
 
       setTotalPrice(initialData.total_cost ? Number(initialData.total_cost) : 0);
 
@@ -227,7 +247,7 @@ export function BookingEditPage({
         setSelectedHotel('');
       }
 
-      // Booking info
+      // FIX: Update bookInfo with reservation data
       setBookInfo({
         bookingDate,
         howManyPeople: initialData.ppl_count || 1

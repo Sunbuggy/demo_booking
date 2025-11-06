@@ -89,12 +89,12 @@ export default async function NewReservationPage() {
       total_cost: safeParseFloat(formData.get('total_cost')),
     };
 
-    console.log('Reservation data being sent to createReservation:');
-    console.log('User selected booking date (sch_date):', newReservation.sch_date);
-    console.log('Date type:', typeof newReservation.sch_date);
-    console.log('Date toISOString:', newReservation.sch_date?.toISOString());
-    console.log('Agent:', userFullName);
-    console.log('=== END FORM DEBUG ===');
+    // console.log('Reservation data being sent to createReservation:');
+    // console.log('User selected booking date (sch_date):', newReservation.sch_date);
+    // console.log('Date type:', typeof newReservation.sch_date);
+    // console.log('Date toISOString:', newReservation.sch_date?.toISOString());
+    // console.log('Agent:', userFullName);
+    // console.log('=== END FORM DEBUG ===');
 
     // Validate required fields
     if (!newReservation.full_name || !newReservation.sch_date) {

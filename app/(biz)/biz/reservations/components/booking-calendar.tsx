@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react';
+import { Dispatch, SetStateAction, useEffect, useMemo, useState, useRef } from 'react';
 import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
 import { BookInfoType, ContactFom, HotelType } from './server-booking';
@@ -144,6 +144,9 @@ export function CalendarFormEdit({
   activeVehicleCategory: VehicleCategory;
   setActiveVehicleCategory: Dispatch<SetStateAction<VehicleCategory>>;
 }) {
+  // Use a ref to track the initial render and prevent infinite loops
+  const isInitialRender = useRef(true);
+  
   // Initialize react-hook-form for the date field
   const dateForm = useForm<z.infer<typeof DateFormSchema>>({
     resolver: zodResolver(DateFormSchema),
@@ -220,10 +223,15 @@ export function CalendarFormEdit({
     }
   }, [initialData?.sch_time, selectedTabValue, setSelectedTimeValue]);
 
-  // CRITICAL FIX: Watch for date changes in react-hook-form and update bookInfo
+  // Watch for date changes in react-hook-form and update bookInfo
   const watchedDate = dateForm.watch('bookingDate');
   useEffect(() => {
-    if (watchedDate && watchedDate !== bookInfo.bookingDate) {
+    if (isInitialRender.current) {
+      isInitialRender.current = false;
+      return;
+    }
+
+    if (watchedDate && watchedDate.getTime() !== bookInfo.bookingDate.getTime()) {
       console.log('CalendarFormEdit: Date changed from react-hook-form:', watchedDate);
       console.log('CalendarFormEdit: Formatted date:', watchedDate.toISOString().split('T')[0]);
       setBookInfo(prev => ({ 
@@ -231,14 +239,13 @@ export function CalendarFormEdit({
         bookingDate: watchedDate 
       }));
     }
-  }, [watchedDate, bookInfo.bookingDate, setBookInfo]);
+  }, [watchedDate]); 
 
-  // Update the form when bookInfo changes (for initial load)
   useEffect(() => {
-    if (bookInfo.bookingDate && bookInfo.bookingDate !== dateForm.getValues('bookingDate')) {
+    if (bookInfo.bookingDate && bookInfo.bookingDate.getTime() !== dateForm.getValues('bookingDate')?.getTime()) {
       dateForm.setValue('bookingDate', bookInfo.bookingDate);
     }
-  }, [bookInfo.bookingDate, dateForm]);
+  }, []);
 
   // Update the total_cost hidden input whenever total_cost changes
   useEffect(() => {
