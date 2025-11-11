@@ -19,6 +19,15 @@ const s3Client = new S3Client({
   }
 });
 
+// Add this configuration for the specific route
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+  },
+};
+
 export async function POST(req: NextRequest) {
   if (
     !process.env.STORAGE_ACCESSKEY ||
@@ -48,6 +57,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Add file size validation (50MB limit)
+    const maxFileSize = 50 * 1024 * 1024;
+    const oversizedFiles = files.filter(file => file.size > maxFileSize);
+    
+    if (oversizedFiles.length > 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: `The following files exceed the 50MB size limit: ${oversizedFiles.map(f => f.name).join(', ')}` 
+        },
+        { status: 413 }
+      );
+    }
+
     if (mode === 'single') {
       const file = files[0];
       const buffer = await file.arrayBuffer();
@@ -71,7 +94,7 @@ export async function POST(req: NextRequest) {
       const uploadResults = [];
       for (const file of files) {
         const buffer = await file.arrayBuffer();
-        const fileKey = `${key}/${file.name}`;
+        const fileKey = `${key}/${Date.now()}-${file.name}`;
         const command = new PutObjectCommand({
           Bucket: bucket,
           Key: fileKey,
@@ -102,11 +125,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: Request) {
-  // if no s3 client throw an error
   const url = new URL(req.url);
   const bucket = url.searchParams.get('bucket') as string;
   const fetchOne = url.searchParams.get('fetchOne') as Boolean | null;
   const key = url.searchParams.get('key') as string;
+  
   if (fetchOne) {
     if (!bucket || !key) {
       return NextResponse.json(
@@ -115,10 +138,7 @@ export async function GET(req: Request) {
       );
     }
     try {
-      // Check if the object exists
       await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
-
-      // If the object exists, generate a signed URL
       const signedUrl = await getSignedUrl(
         s3Client,
         new GetObjectCommand({ Bucket: bucket, Key: key }),
@@ -131,7 +151,6 @@ export async function GET(req: Request) {
     } catch (error) {
       console.error('Error fetching object:', error);
       if (error instanceof Error && error.name === 'NotFound') {
-        // If the object does not exist, return null
         return NextResponse.json({
           key,
           url: null
@@ -160,7 +179,7 @@ export async function GET(req: Request) {
             Key: object.Key
           }),
           { expiresIn: 3600 }
-        ); // URL expires in 1 hour
+        );
         return {
           key: object.Key,
           url: signedUrl
@@ -168,7 +187,6 @@ export async function GET(req: Request) {
       })
     );
 
-    // Return the list of pictures with their URLs
     return NextResponse.json({
       objects
     });
@@ -180,7 +198,9 @@ export async function GET(req: Request) {
     );
   }
 }
+
 export async function DELETE(req: NextRequest) {
+  // Your existing DELETE implementation
   if (
     !process.env.STORAGE_ACCESSKEY ||
     !process.env.STORAGE_SECRETKEY ||
@@ -206,7 +226,6 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Check if the file exists
     try {
       await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
     } catch (error) {
@@ -219,7 +238,6 @@ export async function DELETE(req: NextRequest) {
       throw error;
     }
 
-    // Delete the file
     const deleteCommand = new DeleteObjectCommand({
       Bucket: bucket,
       Key: key
@@ -239,6 +257,7 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
+
 export async function PUT(req: NextRequest) {
   if (
     !process.env.STORAGE_ACCESSKEY ||
@@ -258,13 +277,28 @@ export async function PUT(req: NextRequest) {
     const contentType = formData.get('contentType') as string;
     const key = formData.get('key') as string;
     const bucket = formData.get('bucket') as string;
+    
     if (files.length === 0 || !contentType || !key) {
       return NextResponse.json(
         { success: false, message: 'Missing required fields' },
         { status: 400 }
       );
     }
+
+    // Add size validation for PUT as well
+    const maxFileSize = 50 * 1024 * 1024;
     const file = files[0];
+    
+    if (file.size > maxFileSize) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: `File "${file.name}" exceeds the 50MB size limit` 
+        },
+        { status: 413 }
+      );
+    }
+
     const buffer = await file.arrayBuffer();
     const command = new PutObjectCommand({
       Bucket: bucket,

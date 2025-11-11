@@ -4,6 +4,7 @@ import { CalendarFormEdit } from './booking-calendar';
 import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list, atv30_open_times, atv60_open_times } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
 import { TabValue, VehicleCategory } from './booking-tabs';
+import AcceptHostedPage from '@/app/(com)/payment/acceptHosted';
 
 export interface HotelType {
   Hotel_ID: number;
