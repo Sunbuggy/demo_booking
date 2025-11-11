@@ -19,14 +19,9 @@ const s3Client = new S3Client({
   }
 });
 
-// Add this configuration for the specific route
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-  },
-};
+// Use the new Route Segment Config instead of export const config
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30; // 30 seconds max for uploads
 
 export async function POST(req: NextRequest) {
   if (
@@ -200,7 +195,6 @@ export async function GET(req: Request) {
 }
 
 export async function DELETE(req: NextRequest) {
-  // Your existing DELETE implementation
   if (
     !process.env.STORAGE_ACCESSKEY ||
     !process.env.STORAGE_SECRETKEY ||
