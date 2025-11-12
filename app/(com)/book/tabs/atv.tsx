@@ -8,12 +8,10 @@ import {
   CardContent,
   CardFooter
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import TimePicker from '@/components/time-picker';
-import { atv30_open_times, atv60_open_times } from '@/utils/helpers';
+import { atv30_open_times } from '@/utils/helpers';
 import { VehicleCounts } from '../serve-bookings/atv';
 import { PriceBreakdownDropdown } from '../breakdown-drop-down/atv';
-import AcceptHostedPage from '../../payment/acceptHosted';
 
 interface TabData {
   value: string;

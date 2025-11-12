@@ -8,7 +8,6 @@ import {
   CardContent,
   CardFooter
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import TimePicker from '@/components/time-picker';
 import {
   mb120_open_times,
@@ -17,7 +16,6 @@ import {
 } from '@/utils/helpers';
 import { VehicleCounts } from '../serve-bookings/mbj';
 import { PriceBreakdownDropdown } from '../breakdown-drop-down/mbj';
-import AcceptHostedPage from '../../payment/acceptHosted';
 
 interface TabData {
   value: string;
