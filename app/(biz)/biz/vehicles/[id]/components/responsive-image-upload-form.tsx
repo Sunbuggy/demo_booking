@@ -305,12 +305,12 @@ export default function ResponsiveImageUpload({
   return (
     <form onSubmit={handleSubmit} ref={formRef} className="space-y-4">
       {cameraActive ? (
-        <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
+        <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center h-full">
           <video 
             ref={videoRef} 
             autoPlay 
             playsInline 
-            className="w-full max-w-3xl"
+            className="w-full h-full max-w-3xl"
           />
           <div className="flex gap-4 mt-4">
             <Button 
