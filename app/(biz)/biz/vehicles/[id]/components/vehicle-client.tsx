@@ -374,7 +374,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="show-images">
-                <AccordionTrigger>Show Images</AccordionTrigger>
+                <AccordionTrigger>Images</AccordionTrigger>
                 <AccordionContent>
                   <div className="flex flex-col gap-5">
                     <div>
@@ -406,7 +406,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
               </AccordionItem>
 
               <AccordionItem value="show-badges">
-                <AccordionTrigger>Show Badge</AccordionTrigger>
+                <AccordionTrigger>Badge</AccordionTrigger>
                 <AccordionContent>
                   <div className="flex flex-col gap-5">
                     <div>
@@ -557,7 +557,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="show-registration">
-                <AccordionTrigger>Show Registration</AccordionTrigger>
+                <AccordionTrigger>Registration</AccordionTrigger>
                 <AccordionContent>
                   <div className="flex flex-col gap-5">
                     <Button onClick={() => setIsUploadRegDialogOpen(true)}>
@@ -579,7 +579,7 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="show-title">
-                <AccordionTrigger>Show Title</AccordionTrigger>
+                <AccordionTrigger>Title</AccordionTrigger>
                 <AccordionContent>
                   <div className="flex flex-col gap-5">
                     <Button onClick={() => setIsUploadTitleDialogOpen(true)}>
