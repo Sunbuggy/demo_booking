@@ -23,7 +23,7 @@ import ImageGrid from './image-grid';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
 import { Button } from '@/components/ui/button';
 import DialogFactory from '@/components/dialog-factory';
-import ResponsiveImageUpload from './responsive-image-upload-form';
+import ResponsiveFileUpload from './responsive-file-upload';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { sendEmail } from '../actions/sendEmail';
@@ -379,7 +379,7 @@ const ExistingTagForm = ({
                   isDialogOpen={isNewUploadDialogOpen}
                   description="Upload a profile picture for the vehicle."
                   children={
-                    <ResponsiveImageUpload
+                    <ResponsiveFileUpload
                       url_key={`vehicle_damage/${tag?.vehicle_id}/${tag?.id}`}
                     />
                   }
