@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PDFListProps {
   pdfList: VehiclePdf[]; // Generic prop for PDF list
-  type: 'registration' | 'title'; // Add a type to differentiate between registration and title
+  type: 'registration' | 'title' | 'insurance'; // Added 'insurance' type
 }
 const PDFList: React.FC<PDFListProps> = ({ pdfList = [], type }) => {
   const [pdfs, setPdfs] = useState<VehiclePdf[]>(pdfList);

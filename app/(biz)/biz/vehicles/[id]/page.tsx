@@ -63,14 +63,21 @@ async function getVehicleData(id: string) {
     );
     const normalTitle = normalTitleResponse?.objects as VehiclePdf[];
 
+    const normalInsuranceResponse = await fetchObjects(
+      bucket,
+      false,
+      `insurance/${id}`
+    );
+    const normalInsurance = normalInsuranceResponse?.objects as VehiclePdf[];
+
     return {
       vehicleInfo: vehicleInfo[0] as VehicleType,
       normalImages: normalImages || [],
       normalBadges: normalBadges || [],
       vehicleTags,
       registrationPdf: normalReg || [],
-      titlePdf: normalTitle || []
-
+      titlePdf: normalTitle || [],
+      insurancePdf: normalInsurance || []
     };
   } catch (error) {
     console.error(`Error fetching objects for ${id} `, error);
@@ -80,12 +87,11 @@ async function getVehicleData(id: string) {
       normalBadges: [],
       vehicleTags: [],
       registrationPdf: [],
-      titlePdf: []
+      titlePdf: [],
+      insurancePdf: [] 
     };
   }
 }
-
-
 
 export default async function VehiclePage({
   params
@@ -102,18 +108,28 @@ export default async function VehiclePage({
     `profile_pic/${params.id}`
   );
   const profilePic = String(profilePicResponse?.url);
-  const { vehicleInfo, normalImages, normalBadges,vehicleTags, registrationPdf, titlePdf } = await getVehicleData(
-    params.id
-  );
+  
+  // Destructure insurancePdf from getVehicleData
+  const { 
+    vehicleInfo, 
+    normalImages, 
+    normalBadges, 
+    vehicleTags, 
+    registrationPdf, 
+    titlePdf, 
+    insurancePdf 
+  } = await getVehicleData(params.id);
 
   const vehicleLocations = (await fetchVehicleLocations(
     supabase,
     params.id
   )) as VehicleLocation[];
+  
   const inventoryLocations = (await fetchVehicleInventoryLocation(
     supabase,
     params.id
   )) as InventoryLocation[];
+  
   return (
     <>
       {user ? (
@@ -127,9 +143,10 @@ export default async function VehiclePage({
           user={user}
           vehicleLocations={vehicleLocations}
           inventoryLocations={inventoryLocations}
-          registrationPdf={registrationPdf} 
+          registrationPdf={registrationPdf}
           titlePdf={titlePdf}
-          />
+          insurancePdf={insurancePdf} 
+        />
       ) : (
         <div>No User</div>
       )}
