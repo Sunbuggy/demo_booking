@@ -49,21 +49,21 @@ export function BookingTabs({
     {
       value: 'mb30',
       title: '30 minutes',
-      name: 'MiniBaja 1/4 Chase',
+      name: 'Mini Baja Chase X (30 min)',
       description: 'Chase in the dunes for 30 minutes',
       content: '30 minutes content'
     },
     {
       value: 'mb60',
       title: '60 minutes',
-      name: 'MiniBaja 1/2 Chase',
+      name: 'Mini Baja Chase XX (60 min)',
       description: 'Chase in the dunes for 1 hour',
       content: 'MB60 content'
     },
     {
       value: 'mb120',
       title: '120 minutes',
-      name: 'MiniBaja Full Chase',
+      name: 'Mini Baja Chase XXX (120 min)',
       description: 'Chase in the dunes for 2 hours',
       content: 'MB120 content'
     }

@@ -62,7 +62,7 @@ const tabConfigs: Record<VehicleCategory, TabConfig[]> = {
     {
       value: 'mb30',
       title: '30 minutes',
-      name: 'MiniBaja 1/4 Chase',
+      name: 'Mini Baja Chase X (30 min)',
       description: 'Chase in the dunes for 30 minutes',
       timeArray: mb30_open_times,
       showDiscount: true
@@ -70,7 +70,7 @@ const tabConfigs: Record<VehicleCategory, TabConfig[]> = {
     {
       value: 'mb60',
       title: '60 minutes',
-      name: 'MiniBaja 1/2 Chase',
+      name: 'Mini Baja Chase XX (60 min)',
       description: 'Chase in the dunes for 1 hour',
       timeArray: mb60_open_times,
       showDiscount: true
@@ -78,7 +78,7 @@ const tabConfigs: Record<VehicleCategory, TabConfig[]> = {
     {
       value: 'mb120',
       title: '120 minutes',
-      name: 'MiniBaja Full Chase',
+      name: 'Mini Baja Chase XXX (120 min)',
       description: 'Chase in the dunes for 2 hours',
       timeArray: mb120_open_times,
       showDiscount: false
@@ -88,7 +88,7 @@ const tabConfigs: Record<VehicleCategory, TabConfig[]> = {
     {
       value: 'atv30',
       title: '30 minutes',
-      name: 'ATV Adventure - 30 min',
+      name: 'Dunes ATV X (30 min)',
       description: '30 minutes of thrilling ATV riding',
       timeArray: atv30_open_times,
       showDiscount: false
@@ -96,7 +96,7 @@ const tabConfigs: Record<VehicleCategory, TabConfig[]> = {
     {
       value: 'atv60',
       title: '60 minutes',
-      name: 'ATV Adventure - 60 min',
+      name: 'Dunes ATV XX (60 min)',
       description: '60 minutes of extended ATV fun',
       timeArray: atv60_open_times,
       showDiscount: false
@@ -106,7 +106,7 @@ const tabConfigs: Record<VehicleCategory, TabConfig[]> = {
     {
       value: 'Valley of Fire',
       title: 'Valley of Fire',
-      name: 'Valley of Fire Tour',
+      name: 'Valley of Fire Tour ',
       description: 'Experience the stunning Valley of Fire',
       timeArray: vof_open_times,
       showDiscount: false
