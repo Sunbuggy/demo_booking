@@ -93,34 +93,34 @@ function changeLocation(data: Reservation[]) {
     let location = itm.location;
     switch (location) {
       case 'Nellis30':
-        location = 'Mini Baja DS (30 min)';
+        location = 'Mini Baja X (30 min)';
         break;
       case 'Nellis60':
-        location = 'Mini Baja X (60 min)';
+        location = 'Mini Baja XX (60 min)';
         break;
       case 'Nellis':
-        location = 'Mini Baja XX (90 min)';
+        location = 'Mini Baja (90 min)';
         break;
       case 'NellisDX':
-        location = 'Mini Baja DX (120 min)';
+        location = 'Mini Baja XXX (120 min)';
         break;
       case 'FamilyFun':
-        location = 'Family Fun';
+        location = 'Family Fun XX';
         break;
       case 'NellisTram60':
-        location = 'Nellis Tram X (60 min)';
+        location = 'Nellis Tram XX (60 min)';
         break;
       case 'DunesRZR30':
-        location = 'Dunes RZR (30 min)';
+        location = 'Dunes RZR X (30 min)';
         break;
       case 'DunesRZR':
-        location = 'Dunes RZR (60 min)';
+        location = 'Dunes RZR XX (60 min)';
         break;
       case 'DunesATV30':
-        location = 'Dunes ATV (30 min)';
+        location = 'Dunes ATV X (30 min)';
         break;
       case 'DunesATV':
-        location = 'Dunes ATV (60 min)';
+        location = 'Dunes ATV XX (60 min)';
         break;
       case 'DuneATVpack':
         location = 'ATV XL pack (60 min)';
@@ -129,10 +129,10 @@ function changeLocation(data: Reservation[]) {
         location = 'ATV XL Intro pack (30 min)';
         break;
       case 'DunesUTV30':
-        location = 'Dunes UTV (30 min)';
+        location = 'Dunes UTV X (30 min)';
         break;
       case 'Dakar':
-        location = 'Mini-Dakar';
+        location = 'Mini-Dakar XX';
         break;
       case 'Amargosa':
         location = 'Amargosa';
@@ -147,22 +147,22 @@ function changeLocation(data: Reservation[]) {
         location = 'Dune-n-Drift';
         break;
       case 'NellisDunes30':
-        location = 'Nellis Dunes (30 min)';
+        location = 'Nellis Dunes X (30 min)';
         break;
       case 'NellisDunes60':
-        location = 'Nellis Dunes X (60 min)';
+        location = 'Nellis Dunes XX (60 min)';
         break;
       case 'NellisDunes':
-        location = 'Nellis Dunes XX (90 min)';
+        location = 'Nellis Dunes XXX (90 min)';
         break;
       case 'NellisAD30':
-        location = 'Mini Baja AD (30 min)';
+        location = 'Mini Baja AD X (30 min)';
         break;
       case 'RZR_valley':
         location = 'RZR Valley';
         break;
       case 'TrackBaja1':
-        location = 'Track-n-Baja (60 min)';
+        location = 'Track-n-Baja XX (60 min)';
         break;
       case 'TrackBaja2':
         location = 'Track-n-Baja (120 min)';
@@ -183,11 +183,10 @@ function changeLocation(data: Reservation[]) {
         location = 'Dunes Combos (ATV 60min + m.baja 30min)';
         break;
       case 'DunesATVFR':
-          location = 'Dunes ATV Free Roam';
+          location = 'Dunes ATV Free Roam XX';
           break;
 
       default:
-        // Handle any other cases here
         break;
     }
     return {
