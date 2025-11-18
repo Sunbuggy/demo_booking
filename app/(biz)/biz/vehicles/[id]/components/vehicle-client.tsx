@@ -112,6 +112,9 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
   const [isPretripFormOpen, setIsPretripFormOpen] = React.useState(false);
   const [islocationSchedulingDialogOpen, setIsLocationSchedulingDialogOpen] =
     React.useState(false);
+  // Add new state for the tag management dialog
+  const [isTagManagementDialogOpen, setIsTagManagementDialogOpen] =
+    React.useState(false);
 
   React.useEffect(() => {
     async function getLocation() {
@@ -303,6 +306,15 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
     <div>
       <p>
         Upload More Insurance for{' '}
+        <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
+      </p>
+    </div>
+  );
+
+  const tagManagementTitle = (
+    <div>
+      <p>
+        Tag Management for{' '}
         <span className="text-xl text-orange-500">{vehicleInfo.name}</span>
       </p>
     </div>
@@ -661,11 +673,29 @@ const VehicleClientComponent: React.FC<VehicleClientComponentProps> = ({
           </Accordion>
         </CardContent>
       </Card>
-      <div
-        className={`absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md  text-white px-6 py-1 font-bold ${vehicleInfo.vehicle_status === 'maintenance' ? 'bg-yellow-600' : vehicleInfo.vehicle_status === 'broken' ? 'bg-red-600' : vehicleInfo.vehicle_status === 'former' ? 'bg-gray-600' : 'bg-green-600'}`}
+
+      {/* Updated vehicle status indicator - now clickable */}
+      <button
+        onClick={() => setIsTagManagementDialogOpen(true)}
+        className={`absolute top-12 right-6 transform rotate-45 translate-x-1/2 -translate-y-1/2 border-1 rounded-md text-white px-6 py-1 font-bold cursor-pointer transition-all hover:scale-105 ${vehicleInfo.vehicle_status === 'maintenance' ? 'bg-yellow-600' : vehicleInfo.vehicle_status === 'broken' ? 'bg-red-600' : vehicleInfo.vehicle_status === 'former' ? 'bg-gray-600' : 'bg-green-600'}`}
       >
         {vehicleInfo.vehicle_status}
-      </div>
+      </button>
+
+      {/* Tag Management Dialog */}
+      <DialogFactory
+        title={tagManagementTitle}
+        setIsDialogOpen={setIsTagManagementDialogOpen}
+        isDialogOpen={isTagManagementDialogOpen}
+        description="Manage tags and status for the vehicle."
+      >
+        <TagManagement
+          tags={vehicleTags}
+          id={vehicleInfo.id}
+          user={user}
+          vehicle_name={vehicleInfo.name}
+        />
+      </DialogFactory>
     </div>
   );
 };
