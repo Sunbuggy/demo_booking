@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction, useEffect, useMemo, useState, useRef } from 'react';
-import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list } from '@/utils/helpers';
+import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list, ama_vehicles_list } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
 import { BookInfoType, ContactFom, HotelType } from './server-booking';
 import ComboBox from '@/components/hotel-combo-box';
@@ -55,6 +55,8 @@ const getVehicleListByLocation = (location: string) => {
       return vof_vehicles_list;
     case 'FamilyFun':
       return ffr_vehicles_list;
+    case 'Amargosa':
+      return ama_vehicles_list;
     default:
       return mbj_vehicles_list;
   };
@@ -115,6 +117,8 @@ export function CalendarFormEdit({
   initialData,
   activeVehicleCategory,
   setActiveVehicleCategory,
+  onGeneratePayment,
+  showPayment = false,
 }: {
   isCalendarOpen: boolean;
   freeShuttle: boolean;
@@ -143,6 +147,8 @@ export function CalendarFormEdit({
   viewMode?: boolean;
   activeVehicleCategory: VehicleCategory;
   setActiveVehicleCategory: Dispatch<SetStateAction<VehicleCategory>>;
+  onGeneratePayment?: () => void;
+  showPayment?: boolean;
 }) {
   // Use a ref to track the initial render and prevent infinite loops
   const isInitialRender = useRef(true);
@@ -186,6 +192,9 @@ export function CalendarFormEdit({
           break;
         case 'FamilyFun':
           tab = 'Family Fun Romp';
+          break;
+        case 'Amargosa':
+          tab = 'Amargosa';
           break;
       }
       setSelectedTabValue(tab);
@@ -378,7 +387,8 @@ export function CalendarFormEdit({
                 selectedTabValue === 'atv30' ? 'DunesATV30' :
                   selectedTabValue === 'atv60' ? 'DunesATV60' :
                     selectedTabValue === 'Valley of Fire' ? 'ValleyOfFire' :
-                      selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' : 'Nellis60'
+                      selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' :
+                        selectedTabValue === 'Amargosa' ? 'Amargosa' : 'Nellis60'
         }
       />
 
@@ -554,6 +564,16 @@ export function CalendarFormEdit({
           viewMode={viewMode}
           initialData={initialData}
         />
+        {/* {!viewMode && total_cost > 0 && selectedTimeValue && (
+          <button
+            type="button"
+            onClick={onGeneratePayment}
+            disabled={showPayment}
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {showPayment ? 'Processing Payment...' : 'Proceed to Payment'}
+          </button>
+        )} */}
       </div>
     </div>
   );

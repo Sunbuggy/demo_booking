@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from "react";
-import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list } from '@/utils/helpers';
+import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list, ama_vehicles_list } from '@/utils/helpers';
 
 // Update the interface to be more flexible
 interface VehiclePricing {
@@ -52,6 +52,10 @@ const vehicleCategories = [
     name: "Family Fun",
     list: ffr_vehicles_list,
   },
+  {
+    name: "Amargosa",
+    list: ama_vehicles_list,
+  }
 ];
 
 // Map vehicle names to database field names

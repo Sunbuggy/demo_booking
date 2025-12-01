@@ -55,8 +55,8 @@ function ChargesPismo() {
         notes: notes,
         created_by: user?.id || 'unknown',
         created_at: createdAt,
-        first_name: firstName,  // Added first_name
-        last_name: lastName      // Added last_name
+        first_name: firstName,  
+        last_name: lastName 
       });
 
     if (error) {

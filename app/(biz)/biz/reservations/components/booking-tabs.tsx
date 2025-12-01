@@ -16,13 +16,14 @@ import {
   mb120_open_times,
   mb30_open_times,
   mb60_open_times,
-  vof_open_times
+  vof_open_times,
+  ama_open_times
 } from '@/utils/helpers';
 import { PriceBreakdownDropdown } from '@/app/(com)/book/breakdown-drop-down/mbj';
 import { Reservation } from '@/app/(biz)/biz/types';
 
 // Define all possible tab values
-export type TabValue = 'mb30' | 'mb60' | 'mb120' | 'atv30' | 'atv60' | 'Valley of Fire' | 'Family Fun Romp';
+export type TabValue = 'mb30' | 'mb60' | 'mb120' | 'atv30' | 'atv60' | 'Valley of Fire' | 'Family Fun Romp' | 'Amargosa';
 
 // Mini Baja specific tab values (for PriceBreakdownDropdown)
 export type MiniBajaTabValue = 'mb30' | 'mb60' | 'mb120';
@@ -31,7 +32,7 @@ export type MiniBajaTabValue = 'mb30' | 'mb60' | 'mb120';
 export type ATVTabValue = 'atv30' | 'atv60';
 
 // Define vehicle categories
-export type VehicleCategory = 'Mini Baja' | 'ATV' | 'Valley of Fire' | 'Family Fun';
+export type VehicleCategory = 'Mini Baja' | 'ATV' | 'Valley of Fire' | 'Family Fun' | 'Amargosa';
 
 interface TabConfig {
   value: TabValue;
@@ -121,7 +122,18 @@ const tabConfigs: Record<VehicleCategory, TabConfig[]> = {
       timeArray: ffr_open_times,
       showDiscount: false
     }
+  ],
+    'Amargosa': [
+    {
+      value: 'Amargosa',
+      title: 'Amargosa',
+      name: 'Amargosa',
+      description: 'Amargosa',
+      timeArray: ama_open_times,
+      showDiscount: false
+    }
   ]
+
 };
 
 // Default tab values for each category
@@ -129,7 +141,8 @@ const defaultTabValues: Record<VehicleCategory, TabValue> = {
   'Mini Baja': 'mb60',
   'ATV': 'atv60',
   'Valley of Fire': 'Valley of Fire',
-  'Family Fun': 'Family Fun Romp'
+  'Family Fun': 'Family Fun Romp',
+  'Amargosa': 'Amargosa',
 };
 
 // Type guard to check if a tab value is a Mini Baja tab value
@@ -188,6 +201,10 @@ const calculateTotalPrice = (vehicleCounts: any, selectedTabValue: TabValue, sel
       // Family Fun pricing
       else if (selectedTabValue === 'Family Fun Romp') {
         price = vehicle.pricing.desert_racer || 0;
+      }
+      // Amargosa pricing
+      else if (selectedTabValue === 'Amargosa') {
+        price = vehicle.pricing.price || 0;
       }
 
       total += price * vehicle.count;

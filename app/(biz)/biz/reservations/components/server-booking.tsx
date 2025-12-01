@@ -1,10 +1,10 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarFormEdit } from './booking-calendar';
-import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list, atv30_open_times, atv60_open_times } from '@/utils/helpers';
+import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list, ama_vehicles_list ,atv30_open_times, atv60_open_times, ama_open_times } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
 import { TabValue, VehicleCategory } from './booking-tabs';
-import AcceptHostedPage from '@/app/(com)/payment/acceptHosted';
+import BookingPay from './booking-payment';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -20,7 +20,6 @@ export interface BookInfoType {
   howManyPeople: number;
 }
 
-// More flexible pricing type that can handle all vehicle categories
 export type VehiclePricingType = {
   [key: string]: number | string | undefined;
   mb30?: number;
@@ -73,8 +72,10 @@ export function BookingEditPage({
   );
   const [formToken, setFormToken] = useState('');
   const [activeVehicleCategory, setActiveVehicleCategory] = useState<VehicleCategory>('Mini Baja');
+  const [paymentResponse, setPaymentResponse] = useState('');
+  const [showPayment, setShowPayment] = useState(false);
+  const [isGeneratingToken, setIsGeneratingToken] = useState(false);
 
-  // FIX: Initialize contactForm with empty values first, then update with initialData
   const [contactForm, setContactForm] = useState<ContactFom>({
     name: '',
     email: '',
@@ -82,9 +83,7 @@ export function BookingEditPage({
     groupName: ''
   });
 
-  // FIX: Initialize bookInfo with proper date from initialData or current date
   const [bookInfo, setBookInfo] = useState<BookInfoType>(() => {
-    // Use the reservation date if available, otherwise use current date
     const bookingDate = initialData?.sch_date ? new Date(initialData.sch_date) : new Date();
     const howManyPeople = initialData?.ppl_count || 1;
     
@@ -110,26 +109,23 @@ export function BookingEditPage({
     setTotalSeats(total);
   }, [vehicleCounts]);
 
-  // Get all vehicle lists combined for mapping reservation data
   const getAllVehicles = () => {
     return [
       ...mbj_vehicles_list,
       ...atv_vehicles_list,
       ...vof_vehicles_list,
-      ...ffr_vehicles_list
+      ...ffr_vehicles_list,
+      ...ama_vehicles_list
     ];
   };
 
-  // Function to convert 24-hour time to display format (like "9 am", "2 pm")
   const convertToDisplayTime = (time24: string): string => {
     if (!time24) return '';
 
-    // Handle cases where time might already be in display format
     if (time24.includes('am') || time24.includes('pm')) {
       return time24;
     }
 
-    // Convert HH:MM to display format
     const [hours, minutes] = time24.split(':');
     const hour = parseInt(hours, 10);
     const period = hour >= 12 ? 'pm' : 'am';
@@ -138,19 +134,18 @@ export function BookingEditPage({
     return `${displayHour} ${period}`;
   };
 
-  // Function to find the exact time string from time arrays that matches the reservation time
   const findMatchingTimeString = (time24: string, tabValue: TabValue): string => {
     if (!time24) return '';
 
     const displayTime = convertToDisplayTime(time24);
 
-    // Import time arrays
     const {
       mb30_open_times,
       mb60_open_times,
       mb120_open_times,
       vof_open_times,
-      ffr_open_times
+      ffr_open_times,
+      ama_open_times
     } = require('@/utils/helpers');
 
     let timeArray: string[] = [];
@@ -177,40 +172,35 @@ export function BookingEditPage({
       case 'Family Fun Romp':
         timeArray = ffr_open_times;
         break;
+      case 'Amargosa':
+        timeArray = ama_open_times;
+        break;
       default:
         timeArray = mb60_open_times;
     }
 
-    // Try to find exact match first
     const exactMatch = timeArray.find(time =>
       time.toLowerCase().includes(displayTime.toLowerCase())
     );
 
     if (exactMatch) return exactMatch;
 
-    // If no exact match, return the display time
     return displayTime;
   };
 
   const getVehicleFieldMapping = () => {
     return {
-      // Mini Baja vehicles
       'SB1': '1 seat desert racer',
       'SB2': '2 seat desert racer',
       'SB4': '4 seat desert racer',
       'SB6': '6 seat desert racer',
       'RWG': 'Ride with Guide',
-
-      // ATV vehicles - use the correct mapping that worked before
       'QB': 'Full size ATV',
       'QA': 'Medium size ATV',
-
-      // Valley of Fire vehicles
       'twoSeat4wd': '2 seat UTV',
     };
   };
 
-  // Reverse mapping: vehicle name to database field
   const getReverseFieldMapping = () => {
     const mapping: { [key: string]: string } = {};
     const fieldMapping = getVehicleFieldMapping();
@@ -222,11 +212,88 @@ export function BookingEditPage({
     return mapping;
   };
 
+  // Generate form token using the real API
+  const generateFormToken = async () => {
+    if (!contactForm.name || !contactForm.phone || totalPrice <= 0) {
+      alert('Please complete all contact information and ensure total price is calculated.');
+      return;
+    }
+
+    setIsGeneratingToken(true);
+    try {
+      // Use the existing reservation ID if available, otherwise create a temporary one
+      // For new reservations, we'll use a temporary ID that can be updated later
+      const invoiceNumber = initialData?.res_id 
+        ? `RES-${initialData.res_id}`
+        : `TEMP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Split name into first and last name (simple split)
+      const nameParts = contactForm.name.trim().split(' ');
+      const firstName = nameParts[0] || 'Customer';
+      const lastName = nameParts.slice(1).join(' ') || 'Guest';
+
+      console.log('Generating payment token with:', {
+        amount: totalPrice,
+        invoiceNumber,
+        firstName,
+        lastName,
+        phone: contactForm.phone
+      });
+
+      // Call your payment API endpoint - FIXED PATH
+      const response = await fetch(
+        `/api/authorize-net/acceptHosted/token?amt=${totalPrice}&invoiceNumber=${invoiceNumber}&fname=${encodeURIComponent(firstName)}&lname=${encodeURIComponent(lastName)}&phone=${encodeURIComponent(contactForm.phone)}&lastpage=booking`
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API response error:', response.status, errorText);
+        throw new Error(`API call failed: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.formToken) {
+        setFormToken(data.formToken);
+        setShowPayment(true);
+        console.log('Form token generated successfully');
+      } else {
+        console.error('No form token in response:', data);
+        throw new Error('No form token received from API');
+      }
+    } catch (error) {
+      console.error('Error generating form token:', error);
+      alert('Error initializing payment. Please try again or contact support.');
+    } finally {
+      setIsGeneratingToken(false);
+    }
+  };
+
+  const handlePaymentResponse = (response: string) => {
+    setPaymentResponse(response);
+    console.log('Payment response:', response);
+    
+    // Parse the response to check if payment was successful
+    try {
+      const responseObj = JSON.parse(response);
+      if (responseObj.messages?.resultCode === 'Ok') {
+        // Payment successful - you can redirect to success page or show confirmation
+        console.log('Payment completed successfully!');
+        alert('Payment successful! Your booking has been confirmed.');
+        
+        // Optionally redirect or refresh the page
+        // window.location.reload();
+      }
+    } catch (e) {
+      // Response is not JSON, but we'll still show it
+      console.log('Payment response (non-JSON):', response);
+    }
+  };
+
   useEffect(() => {
     if (initialData) {
       console.log('Initial data loaded:', initialData);
 
-      // FIX: Ensure we use the reservation date
       const bookingDate = initialData.sch_date ? new Date(initialData.sch_date) : new Date();
       
       console.log('Setting booking date to:', bookingDate);
@@ -234,7 +301,6 @@ export function BookingEditPage({
 
       setTotalPrice(initialData.total_cost ? Number(initialData.total_cost) : 0);
 
-      // Hotel/shuttle logic
       if (initialData.hotel) {
         if (initialData.hotel === 'Drive here') {
           setFreeShuttle(false);
@@ -248,13 +314,11 @@ export function BookingEditPage({
         setSelectedHotel('');
       }
 
-      // FIX: Update bookInfo with reservation data
       setBookInfo({
         bookingDate,
         howManyPeople: initialData.ppl_count || 1
       });
 
-      // Contact information
       setContactForm({
         name: initialData.full_name || '',
         email: initialData.email || '',
@@ -262,7 +326,6 @@ export function BookingEditPage({
         groupName: initialData.occasion || ''
       });
 
-      // Map vehicle counts from reservation data using field mapping
       const counts: VehicleCounts = {};
       const allVehicles = getAllVehicles();
       const fieldMapping = getVehicleFieldMapping();
@@ -270,15 +333,12 @@ export function BookingEditPage({
 
       console.log('Mapping vehicle counts from reservation...');
 
-      // First, map database fields to vehicles
       Object.entries(fieldMapping).forEach(([field, vehicleName]) => {
         const count = initialData[field as keyof Reservation];
 
         if (count !== undefined && count !== null && Number(count) > 0) {
-          // Find the vehicle by name - check for both vehicle names that map to QB
           let vehicle;
           if (field === 'QB') {
-            // Both 'Full ATV' and '1 Seat full ATV' map to QB field
             vehicle = allVehicles.find(v => v.name === 'Full ATV' || v.name === '1 Seat full ATV');
           } else {
             vehicle = allVehicles.find(v => v.name === vehicleName);
@@ -300,7 +360,6 @@ export function BookingEditPage({
       console.log('Final vehicle counts:', counts);
       setVehicleCounts(counts);
 
-      // Set location-based tab and category
       const locationTabMap: Record<string, TabValue> = {
         'Nellis30': 'mb30',
         'Nellis60': 'mb60',
@@ -308,7 +367,8 @@ export function BookingEditPage({
         'DunesATV30': 'atv30',
         'DunesATV60': 'atv60',
         'ValleyOfFire': 'Valley of Fire',
-        'FamilyFun': 'Family Fun Romp'
+        'FamilyFun': 'Family Fun Romp',
+        'Amargosa': 'Amargosa',
       };
 
       const locationCategoryMap: Record<string, VehicleCategory> = {
@@ -318,7 +378,8 @@ export function BookingEditPage({
         'DunesATV30': 'ATV',
         'DunesATV60': 'ATV',
         'ValleyOfFire': 'Valley of Fire',
-        'FamilyFun': 'Family Fun'
+        'FamilyFun': 'Family Fun',
+        'Amargosa': 'Amargosa',
       };
 
       if (initialData.location) {
@@ -329,7 +390,6 @@ export function BookingEditPage({
         setSelectedTabValue(tabValue);
         setActiveVehicleCategory(category);
 
-        // Set the time using the exact format from time arrays
         if (initialData.sch_time) {
           const matchingTime = findMatchingTimeString(initialData.sch_time, tabValue);
           console.log(`Setting time: ${initialData.sch_time} -> ${matchingTime}`);
@@ -371,7 +431,37 @@ export function BookingEditPage({
         initialData={initialData}
         activeVehicleCategory={activeVehicleCategory}
         setActiveVehicleCategory={setActiveVehicleCategory}
+        onGeneratePayment={generateFormToken}
+        showPayment={showPayment}
+        // isGeneratingToken={isGeneratingToken}
       />
+
+      {/* Payment Section */}
+      {showPayment && formToken && (
+        <div className="w-full max-w-4xl mt-8 p-6 border rounded-lg shadow-lg bg-white">
+          <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Complete Your Payment</h2>
+          
+          {/* Payment Response Display */}
+          {paymentResponse && (
+            <div className="mb-4 p-4 bg-gray-100 rounded border">
+              <h3 className="font-semibold mb-2">Payment Response:</h3>
+              <pre className="whitespace-pre-wrap text-sm">{paymentResponse}</pre>
+            </div>
+          )}
+
+          {/* Payment Iframe Container */}
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <BookingPay 
+              formToken={formToken}
+              setResponse={handlePaymentResponse}
+            />
+          </div>
+
+          <div className="mt-6 text-center text-sm text-gray-600">
+            <p>Having trouble with the payment form? Contact us at (702) 123-4567</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

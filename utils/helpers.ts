@@ -124,6 +124,7 @@ export const mb120_open_times = ['8 am ', '10 am'];
 export const vof_open_times = ['8 am'];
 export const atv30_open_times = ['8 am', '10 am', '12 pm'];
 export const atv60_open_times = ['8 am', '10 am', '12 pm'];
+export const ama_open_times = ['8 am'];
 
 export type MbjVehicle = {
   id: number;
@@ -313,6 +314,78 @@ export const atv_vehicles_list = [
   },
 
 ];
+
+export const ama_vehicles_list = [
+  {
+    id: 1,
+    name: 'Full size ATV',
+    vehicle_id: 5,
+    seats: 1,
+    pricing: {
+      full_atv: 499,
+    }
+  },
+    {
+    id: 1,
+    name: '1 seat desert racer',
+    vehicle_id: 1,
+    seats: 1,
+    pricing: {
+      price: 699,
+    }
+  },
+  {
+    id: 2,
+    name: '2 seat desert racer',
+    vehicle_id: 1,
+    seats: 2,
+    pricing: {
+      price: 999,
+    }
+  },
+  {
+    id: 3,
+    name: '4 seat desert racer',
+    vehicle_id: 1,
+    seats: 4,
+    pricing: {
+      price: 1199,
+    }
+  },
+  {
+    id: 4,
+    name: '6 seat desert racer',
+    vehicle_id: 1,
+    seats: 6,
+    pricing: {
+      price: 1399,
+    }
+  },
+  {
+    id: 6,
+    vehicle_id: 7,
+    name: '2 seat UTV',
+    seats: 2,
+    pricing: {
+      price: 999,
+      name: '2 seat UTV'
+    }
+  },
+    {
+    id: 7,
+    vehicle_id: 8,
+    name: '4 seat UTV',
+    seats: 4,
+    pricing: {
+      price: 1199,
+      name: '4 seat UTV'
+    }
+  }
+
+]
+
+
+
 const vehicles = [
   {
     id: 1,
