@@ -221,7 +221,9 @@ export function CalendarFormEdit({
             return ['8 am'];
           case 'Family Fun Romp':
             return ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
-          default:
+          case 'Amargosa':
+             return ['8 am'];
+            default:
             return ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
         }
       };
@@ -295,7 +297,7 @@ export function CalendarFormEdit({
 
   // Type guard to check if a string is a valid VehicleCategory
   const isVehicleCategory = (category: string): category is VehicleCategory => {
-    return ['Mini Baja', 'ATV', 'Valley of Fire', 'Family Fun'].includes(category);
+    return ['Mini Baja', 'ATV', 'Valley of Fire', 'Family Fun', 'Amargosa'].includes(category);
   };
 
   const incrementCount = (
@@ -388,7 +390,7 @@ export function CalendarFormEdit({
                   selectedTabValue === 'atv60' ? 'DunesATV60' :
                     selectedTabValue === 'Valley of Fire' ? 'ValleyOfFire' :
                       selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' :
-                        selectedTabValue === 'Amargosa' ? 'Amargosa' : 'Nellis60'
+                        selectedTabValue === 'Amargosa' ? 'Amargosa' : ''
         }
       />
 

@@ -326,7 +326,7 @@ export const ama_vehicles_list = [
     }
   },
     {
-    id: 1,
+    id: 2,
     name: '1 seat desert racer',
     vehicle_id: 1,
     seats: 1,
@@ -335,7 +335,7 @@ export const ama_vehicles_list = [
     }
   },
   {
-    id: 2,
+    id: 3,
     name: '2 seat desert racer',
     vehicle_id: 1,
     seats: 2,
@@ -344,7 +344,7 @@ export const ama_vehicles_list = [
     }
   },
   {
-    id: 3,
+    id: 4,
     name: '4 seat desert racer',
     vehicle_id: 1,
     seats: 4,
@@ -353,7 +353,7 @@ export const ama_vehicles_list = [
     }
   },
   {
-    id: 4,
+    id: 5,
     name: '6 seat desert racer',
     vehicle_id: 1,
     seats: 6,
@@ -437,3 +437,11 @@ export const lasvegas_atv_tours = {
   title: 'Las Vegas Premium ATV Tours',
   src: '/atv-image.jpg'
 };
+
+export const amargosa = {
+  description: `You'll have 4 hours to EXPLORE the BIG SAND DUNES with SunBuggy Support staff on hand to show you around this sandy playground, ensuring that you have a great time and know where environmentally sensitive no-go areas are `,
+  title: 'Amargosa',
+  videoId: 'nwzufdhTZWw',
+  playlistId: 'PLrCmFi7dP5HwAWXYtkEUD09d6744ugRh0'
+};
+

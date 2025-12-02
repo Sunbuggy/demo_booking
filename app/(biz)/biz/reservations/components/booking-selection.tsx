@@ -70,7 +70,6 @@ const getVehicleFieldMapping = (): Record<string, string> => {
     
     // ATV vehicles  
     'Valley of fire 180 mins': 'QB',
-    'Amargosa 240 mins': 'QB',
     'Vegas dunes 60 mins': 'QA',
     'Vegas dunes 30 mins': 'QB',
     '1 Seat full ATV': 'QB',

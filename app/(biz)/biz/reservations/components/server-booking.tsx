@@ -240,7 +240,7 @@ export function BookingEditPage({
         phone: contactForm.phone
       });
 
-      // Call your payment API endpoint - FIXED PATH
+      // Call api endpoint
       const response = await fetch(
         `/api/authorize-net/acceptHosted/token?amt=${totalPrice}&invoiceNumber=${invoiceNumber}&fname=${encodeURIComponent(firstName)}&lname=${encodeURIComponent(lastName)}&phone=${encodeURIComponent(contactForm.phone)}&lastpage=booking`
       );
