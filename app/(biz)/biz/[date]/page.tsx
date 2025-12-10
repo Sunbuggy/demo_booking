@@ -25,7 +25,11 @@ const BizPage = async ({
   const date = params.date;
   const dcos = searchParams.dcos;
   const supabase = createClient();
-  const user = await getUserDetails(supabase);
+  
+  // Type assertion to fix the type mismatch
+  const typedSupabase = supabase as any;
+  const user = await getUserDetails(typedSupabase);
+
   if (!user) return null;
   const role = user[0]?.user_level;
   const full_name = user[0]?.full_name;

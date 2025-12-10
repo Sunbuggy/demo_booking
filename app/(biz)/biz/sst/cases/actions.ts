@@ -13,7 +13,7 @@ export async function updateSSTClaimed(
   userId: string,
   userPhone: string
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // First update the claim status
   const { error } = await supabase
@@ -98,7 +98,7 @@ export async function updateSSTClaimed(
 }
 
 export async function fetchCasesData() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user }

@@ -12,7 +12,7 @@ import {
 } from '@/utils/supabase/queries';
 import React from 'react';
 import { z } from 'zod';
-// import UserImage from './components/user-image';
+
 type EmpDetails = Database['public']['Tables']['employee_details']['Row'][];
 type User = Database['public']['Tables']['users']['Row'];
 type enumLocation = ('NV' | 'CA' | 'MI' | null)[];
@@ -138,7 +138,7 @@ const UserForm = ({
   empDetails: EmpDetails;
   userDispatchLocation: enumLocation;
 }) => {
-  const supabase = createClient();
+  const supabase = createClient(); // Remove await - createClient is synchronous for client components
   const [formData, setFormData] = React.useState<
     z.infer<typeof formSchema> | undefined
   >(undefined);
@@ -182,6 +182,7 @@ const UserForm = ({
         primary_work_location,
         user_id
       };
+      
       updateUser(supabase, userTableData, user_id).then(() => {
         toast({
           title: 'User updated',
@@ -212,7 +213,7 @@ const UserForm = ({
 
             const currentLocations = res.data
               ? res.data
-                  .map((item) => item.location)
+                  .map((item: any) => item.location) // Add type annotation
                   .filter(
                     (location): location is 'NV' | 'CA' | 'MI' =>
                       location !== null
@@ -264,6 +265,7 @@ const UserForm = ({
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     setFormData(data);
   };
+  
   if (!user) return null;
 
   if (user)

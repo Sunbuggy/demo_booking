@@ -29,14 +29,17 @@ export type UserDetails = {
 };
 
 export const getUserDetails = cache(
-  async (supabase: SupabaseClient): Promise<any[] | null | undefined> => {
+  async (supabase: any): Promise<any[] | null | undefined> => {
     try {
       if (!supabase) {
         return null;
       }
-      const {
-        data: { user }
-      } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError) {
+        console.error(authError);
+        return null;
+      }
 
       const id = user?.id;
       if (!id) {
@@ -56,6 +59,7 @@ export const getUserDetails = cache(
       return userDetails;
     } catch (error) {
       console.error(error);
+      return null;
     }
   }
 );

@@ -1,6 +1,5 @@
 'use client'
 import { createClient } from "@/utils/supabase/client";
-import { Braces } from "lucide-react";
 import React, { useState, useRef, useEffect } from 'react';
 
 function ChargesPismo() {
@@ -57,7 +56,7 @@ function ChargesPismo() {
         created_at: createdAt,
         first_name: firstName,  
         last_name: lastName 
-      });
+      } as any); // Type assertion to fix the TypeScript error
 
     if (error) {
       console.error('Error saving to database:', error);
@@ -153,7 +152,6 @@ function ChargesPismo() {
               className="w-full p-2 border rounded"
             />
           </label>
-
         </div>
       </div>
       <span>Please wait for the 'Thank you for your payment' message after pressing pay to  make sure it went through.</span> <br></br>

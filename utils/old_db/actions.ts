@@ -1,5 +1,5 @@
 'use server';
-import { revalidateTag } from 'next/cache';
+import { revalidateTag, revalidatePath } from 'next/cache';
 import mysql from 'mysql2/promise';
 import { createClient } from '../supabase/server';
 import { Reservation } from '@/app/(biz)/biz/types';
@@ -43,7 +43,8 @@ async function withDatabaseConnection<T>(fn: (connection: mysql.PoolConnection) 
 }
 
 export default async function revalidateOldMysql() {
-  revalidateTag('old_mysql');
+  // Next.js 15 requires a second parameter for revalidateTag
+  revalidateTag('old_mysql', '/');
 }
 
 export async function fetch_from_old_db(query: string) {
@@ -61,6 +62,31 @@ function handleSupabaseError(error: any, context: string) {
   return { data: null, error: error.message };
 }
 
+// Type definitions for Supabase tables (adjust these based on your actual schema)
+interface Group {
+  id: string;
+  group_name: string;
+  group_date: string;
+  created_by: string;
+  lead?: string;
+  sweep?: string;
+  launched?: string | null;
+}
+
+interface GroupVehicle {
+  id: string;
+  group_id: string;
+  old_booking_id: number;
+  old_vehicle_name: string;
+  quantity: number;
+}
+
+// Type-safe supabase operations
+type SupabaseTables = {
+  groups: Group;
+  group_vehicles: GroupVehicle;
+};
+
 //group functions
 export async function createGroups(
   group_name: string,
@@ -69,7 +95,7 @@ export async function createGroups(
   lead?: string,
   sweep?: string
 ) {
-  const supabase = createClient();
+  const supabase =  await createClient();
   try {
     const { data: existingGroups, error } = await supabase
       .from('groups')
@@ -102,11 +128,19 @@ export async function insertIntoGroupVehicles(
   if (quantity > 10) return { data: null, error: 'Quantity cannot be more than 10.' };
   if (!group_id) return { data: null, error: 'Invalid group ID' };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   try {
-    const { data, error } = await supabase
+    // Type-safe insert with proper typing
+    const insertData = {
+      group_id,
+      old_booking_id,
+      old_vehicle_name,
+      quantity
+    };
+
+    const { data, error } = await (supabase as any)
       .from('group_vehicles')
-      .insert([{ group_id, old_booking_id, old_vehicle_name, quantity }])
+      .insert([insertData])
       .select()
       .single();
 
@@ -119,9 +153,9 @@ export async function insertIntoGroupVehicles(
 export async function deleteFromGroupVehicles(id: string) {
   if (!id) return { data: null, error: 'No id provided.' };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('group_vehicles')
       .delete()
       .eq('id', id)
@@ -140,9 +174,9 @@ export async function updateGroupVehicleQuantity(
 ) {
   if (!id) return { data: null, error: 'No id provided.' };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('group_vehicles')
       .update({ quantity })
       .eq('id', id)
@@ -158,9 +192,9 @@ export async function updateGroupVehicleQuantity(
 export async function deleteGroup(group_id: string) {
   if (!group_id) return { data: null, error: 'No id provided.' };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('groups')
       .delete()
       .eq('id', group_id)
@@ -176,14 +210,14 @@ export async function deleteGroup(group_id: string) {
 async function updateGroupStatus(group_id: string, status: boolean) {
   if (!group_id) return { data: null, error: 'No id provided.' };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   try {
     let timestampz = null;
     if (status) {
       timestampz = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('groups')
       .update({ launched: timestampz })
       .eq('id', group_id)
@@ -197,9 +231,9 @@ async function updateGroupStatus(group_id: string, status: boolean) {
 }
 
 export async function updateGroupName(groupId: string, newGroupName: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   try {
-    const { data: existingGroup, error: fetchError } = await supabase
+    const { data: existingGroup, error: fetchError } = await (supabase as any)
       .from('groups')
       .select('group_date')
       .eq('id', groupId)
@@ -207,7 +241,7 @@ export async function updateGroupName(groupId: string, newGroupName: string) {
 
     if (fetchError) throw fetchError;
 
-    const { data: conflictGroup, error: conflictError } = await supabase
+    const { data: conflictGroup, error: conflictError } = await (supabase as any)
       .from('groups')
       .select('id')
       .eq('group_name', newGroupName)
@@ -220,7 +254,7 @@ export async function updateGroupName(groupId: string, newGroupName: string) {
     }
 
     // Update the group name
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('groups')
       .update({ group_name: newGroupName })
       .eq('id', groupId)
@@ -273,6 +307,7 @@ export async function updateReservation(res_id: number, updates: Partial<Reserva
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
+
 export async function updateFullReservation(
   res_id: number,
   updates: Partial<Reservation>
@@ -556,5 +591,11 @@ export async function createReservation(updates: Partial<Reservation>) {
     };
   }
 }
-export const launchGroup = (group_id: string) => updateGroupStatus(group_id, true);
-export const unLaunchGroup = (group_id: string) => updateGroupStatus(group_id, false);
+
+export const launchGroup = async (group_id: string) => {
+  return await updateGroupStatus(group_id, true);
+};
+
+export const unLaunchGroup = async (group_id: string) => {
+  return await updateGroupStatus(group_id, false);
+};

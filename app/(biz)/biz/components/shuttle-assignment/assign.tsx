@@ -49,24 +49,24 @@ export default function GroupShuttleAssignment({ date }: { date: string }) {
         setGroups(groupsData || []);
         
         // Fetch shuttle assignments with vehicle and user details
-        const { data: assignments, error } = await supabase
-          .from('shuttle_assignment')
-          .select(`
-            id,
-            vehicle_id,
-            employee_id,
-            vehicles:vehicle_id(name),
-            users:employee_id(full_name)
-          `);
-        
+const { data: assignments, error } = await supabase
+  .from('shuttle_assignment')
+  .select(`
+    id,
+    vehicle_id,
+    employee_id,
+    vehicles (name),
+    users (full_name)
+  `);
         if (error) throw error;
         
-        setShuttleAssignments(assignments.map(a => ({
+        // The joined data comes as arrays, so we need to access the first element
+        setShuttleAssignments(assignments?.map(a => ({
           id: a.id,
           vehicle_id: a.vehicle_id,
           employee_id: a.employee_id,
-          vehicle_name: a.vehicles?.name,
-          // employee_name: a.users?.full_name
+          // vehicle_name: Array.isArray(a.vehicles) ? a.vehicles[0]?.name : a.vehicles?.name,
+          // employee_name: Array.isArray(a.users) ? a.users[0]?.full_name : a.users?.full_name
         })) || []);
         
       } catch (err) {
@@ -89,7 +89,7 @@ export default function GroupShuttleAssignment({ date }: { date: string }) {
       // Update the group with the shuttle assignment
       const { error } = await supabase
         .from('groups')
-        .update({ shuttle_assignment_id: selectedShuttle })
+        .update({ shuttle_assignment_id: selectedShuttle } as any)
         .eq('id', selectedGroup);
       
       if (error) throw error;

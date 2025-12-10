@@ -566,16 +566,6 @@ export function CalendarFormEdit({
           viewMode={viewMode}
           initialData={initialData}
         />
-        {/* {!viewMode && total_cost > 0 && selectedTimeValue && (
-          <button
-            type="button"
-            onClick={onGeneratePayment}
-            disabled={showPayment}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {showPayment ? 'Processing Payment...' : 'Proceed to Payment'}
-          </button>
-        )} */}
       </div>
     </div>
   );

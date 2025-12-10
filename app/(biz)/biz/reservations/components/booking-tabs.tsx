@@ -156,6 +156,7 @@ const isATVTabValue = (value: TabValue): value is ATVTabValue => {
 };
 
 // Calculate total price based on vehicle counts and selected tab
+// In BookingTabs.tsx, update the calculateTotalPrice function:
 const calculateTotalPrice = (vehicleCounts: any, selectedTabValue: TabValue, selectedTimeValue: string): number => {
   let total = 0;
 
@@ -163,8 +164,9 @@ const calculateTotalPrice = (vehicleCounts: any, selectedTabValue: TabValue, sel
   const shouldApplyDiscount = (tabValue: TabValue, timeValue: string): boolean => {
     if (!timeValue) return false;
     
-    const timeNumber = Number(timeValue.split(' ')[0]);
-    const period = timeValue.split(' ')[1];
+    const timePart = timeValue.split(' (')[0]; // Remove discount info
+    const timeNumber = Number(timePart.split(' ')[0]);
+    const period = timePart.split(' ')[1];
     
     return (tabValue === 'mb30' || tabValue === 'mb60') 
       ? timeNumber < 10 && period === 'am'
@@ -211,7 +213,9 @@ const calculateTotalPrice = (vehicleCounts: any, selectedTabValue: TabValue, sel
     }
   });
 
-  return total * discountMultiplier;
+  // Round to 2 decimal places to avoid floating point issues
+  const discountedTotal = total * discountMultiplier;
+  return Math.round(discountedTotal * 100) / 100;
 };
 
 export function BookingTabs({

@@ -12,7 +12,7 @@ export default async function Bookings({
   params: { id: string };
   // searchParams: {};
 }) {
-  const supabase = createClient();
+  const supabase =  await createClient();
   const [hotels] = await Promise.all([fetchHotels(supabase)]);
   const viewProp = params.id;
   if (viewProp === 'minibaja-chase') return <MiniBajaPage hotels={hotels} />;

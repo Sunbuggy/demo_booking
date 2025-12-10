@@ -16,7 +16,7 @@ import { VehiclePdf } from '../admin/tables/components/row-action-pdf';
 
 const bucket = 'sb-fleet';
 async function getVehicleData(id: string) {
-  const supabase = createClient();
+  const supabase =  await createClient();
   const vehicleInfo = await fetchVehicleInfo(supabase, id);
 
   const fetchVehicleTagInfo = async () => {
@@ -99,7 +99,7 @@ export default async function VehiclePage({
   params: { id: string };
 }) {
   // debug id going undefined
-  const supabase = createClient();
+  const supabase = await createClient();
   const user = await getUser(supabase);
 
   const profilePicResponse = await fetchObjects(

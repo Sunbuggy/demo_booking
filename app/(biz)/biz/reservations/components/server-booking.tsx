@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarFormEdit } from './booking-calendar';
-import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list, ama_vehicles_list ,atv30_open_times, atv60_open_times, ama_open_times } from '@/utils/helpers';
+import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list, ama_vehicles_list ,atv30_open_times, atv60_open_times } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
 import { TabValue, VehicleCategory } from './booking-tabs';
 import BookingPay from './booking-payment';
+import { createReservation, updateFullReservation } from '@/utils/old_db/actions';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -213,82 +214,197 @@ export function BookingEditPage({
   };
 
   // Generate form token using the real API
-  const generateFormToken = async () => {
-    if (!contactForm.name || !contactForm.phone || totalPrice <= 0) {
-      alert('Please complete all contact information and ensure total price is calculated.');
-      return;
-    }
+// const generateFormToken = async () => {
+//   if (!contactForm.name || !contactForm.phone || !contactForm.email || totalPrice <= 0) {
+//     alert('Please complete all contact information and ensure total price is calculated.');
+//     return;
+//   }
 
-    setIsGeneratingToken(true);
-    try {
-      // Use the existing reservation ID if available, otherwise create a temporary one
-      // For new reservations, we'll use a temporary ID that can be updated later
-      const invoiceNumber = initialData?.res_id 
-        ? `RES-${initialData.res_id}`
-        : `TEMP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+//   if (!selectedTimeValue) {
+//     alert('Please select a time for your booking.');
+//     return;
+//   }
+
+//   setIsGeneratingToken(true);
+//   try {
+//     // Check if we're editing an existing reservation or creating a new one
+//     let invoiceNumber: string;
+//     let finalReservationId: number | null = null;
+
+//     if (initialData?.res_id) {
+//       // For existing reservation - update it first
+//       console.log('Updating existing reservation:', initialData.res_id);
       
-      // Split name into first and last name (simple split)
-      const nameParts = contactForm.name.trim().split(' ');
-      const firstName = nameParts[0] || 'Customer';
-      const lastName = nameParts.slice(1).join(' ') || 'Guest';
+//       // Prepare reservation data for update
+//       const reservationData = {
+//         full_name: contactForm.name,
+//         email: contactForm.email,
+//         phone: contactForm.phone,
+//         occasion: contactForm.groupName || '',
+//         sch_date: bookInfo.bookingDate.toISOString().split('T')[0],
+//         sch_time: selectedTimeValue.split(' (')[0], // Remove discount info
+//         location: selectedTabValue === 'mb30' ? 'Nellis30' :
+//                  selectedTabValue === 'mb60' ? 'Nellis60' :
+//                  selectedTabValue === 'mb120' ? 'NellisDX' :
+//                  selectedTabValue === 'atv30' ? 'DunesATV30' :
+//                  selectedTabValue === 'atv60' ? 'DunesATV60' :
+//                  selectedTabValue === 'Valley of Fire' ? 'ValleyOfFire' :
+//                  selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' :
+//                  'Amargosa',
+//         ppl_count: bookInfo.howManyPeople,
+//         hotel: freeShuttle ? selectedHotel : '',
+//         total_cost: totalPrice,
+//         // Add vehicle counts
+//         QA: getVehicleCountByName('Medium size ATV'),
+//         QB: getVehicleCountByName('Full size ATV'),
+//         SB1: getVehicleCountByName('1 seat desert racer'),
+//         SB2: getVehicleCountByName('2 seat desert racer'),
+//         SB4: getVehicleCountByName('4 seat desert racer'),
+//         SB6: getVehicleCountByName('6 seat desert racer'),
+//         twoSeat4wd: getVehicleCountByName('2 seat UTV'),
+//         RWG: getVehicleCountByName('Ride with Guide'),
+//       };
 
-      console.log('Generating payment token with:', {
-        amount: totalPrice,
-        invoiceNumber,
-        firstName,
-        lastName,
-        phone: contactForm.phone
-      });
-
-      // Call api endpoint
-      const response = await fetch(
-        `/api/authorize-net/acceptHosted/token?amt=${totalPrice}&invoiceNumber=${invoiceNumber}&fname=${encodeURIComponent(firstName)}&lname=${encodeURIComponent(lastName)}&phone=${encodeURIComponent(contactForm.phone)}&lastpage=booking`
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API response error:', response.status, errorText);
-        throw new Error(`API call failed: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
+//       // Update the reservation
+//       const updateResult = await updateFullReservation(initialData.res_id, reservationData);
       
-      if (data.formToken) {
-        setFormToken(data.formToken);
-        setShowPayment(true);
-        console.log('Form token generated successfully');
-      } else {
-        console.error('No form token in response:', data);
-        throw new Error('No form token received from API');
-      }
-    } catch (error) {
-      console.error('Error generating form token:', error);
-      alert('Error initializing payment. Please try again or contact support.');
-    } finally {
-      setIsGeneratingToken(false);
-    }
-  };
+//       if (updateResult.success) {
+//         invoiceNumber = `${initialData.res_id}`;
+//         finalReservationId = initialData.res_id;
+//         console.log('Reservation updated successfully:', initialData.res_id);
+//       } else {
+//         throw new Error('Failed to update reservation: ' + updateResult.error);
+//       }
+//     } else {
+//       // For new reservation - create it first
+//       console.log('Creating new reservation');
+      
+//       // Prepare reservation data for creation
+//       const reservationData = {
+//         full_name: contactForm.name,
+//         email: contactForm.email,
+//         phone: contactForm.phone,
+//         occasion: contactForm.groupName || '',
+//         sch_date: bookInfo.bookingDate.toISOString().split('T')[0],
+//         sch_time: selectedTimeValue.split(' (')[0], // Remove discount info
+//         location: selectedTabValue === 'mb30' ? 'Nellis30' :
+//                  selectedTabValue === 'mb60' ? 'Nellis60' :
+//                  selectedTabValue === 'mb120' ? 'NellisDX' :
+//                  selectedTabValue === 'atv30' ? 'DunesATV30' :
+//                  selectedTabValue === 'atv60' ? 'DunesATV60' :
+//                  selectedTabValue === 'Valley of Fire' ? 'ValleyOfFire' :
+//                  selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' :
+//                  'Amargosa',
+//         ppl_count: bookInfo.howManyPeople,
+//         hotel: freeShuttle ? selectedHotel : '',
+//         total_cost: totalPrice,
+//         // Add vehicle counts
+//         QA: getVehicleCountByName('Medium size ATV'),
+//         QB: getVehicleCountByName('Full size ATV'),
+//         SB1: getVehicleCountByName('1 seat desert racer'),
+//         SB2: getVehicleCountByName('2 seat desert racer'),
+//         SB4: getVehicleCountByName('4 seat desert racer'),
+//         SB6: getVehicleCountByName('6 seat desert racer'),
+//         twoSeat4wd: getVehicleCountByName('2 seat UTV'),
+//         RWG: getVehicleCountByName('Ride with Guide'),
+//       };
 
-  const handlePaymentResponse = (response: string) => {
-    setPaymentResponse(response);
-    console.log('Payment response:', response);
+//       // Create the reservation
+//       const createResult = await createReservation(reservationData);
+      
+//       if (createResult.success && createResult.reservationId) {
+//         invoiceNumber = `${createResult.reservationId}`;
+//         finalReservationId = createResult.reservationId;
+//         console.log('Reservation created successfully:', createResult.reservationId);
+//       } else {
+//         throw new Error('Failed to create reservation: ' + createResult.error);
+//       }
+//     }
+
+//     // Split name into first and last name
+//     const nameParts = contactForm.name.trim().split(' ');
+//     const firstName = nameParts[0] || 'Customer';
+//     const lastName = nameParts.slice(1).join(' ') || 'Guest';
+
+//     console.log('Generating payment token with:', {
+//       amount: totalPrice,
+//       invoiceNumber,
+//       firstName,
+//       lastName,
+//       phone: contactForm.phone,
+//       reservationId: finalReservationId
+//     });
+
+//     // Call API endpoint to generate payment token
+//     const response = await fetch(
+//       `/api/authorize-net/acceptHosted/?amt=${totalPrice}&invoiceNumber=${encodeURIComponent(invoiceNumber)}&fname=${encodeURIComponent(firstName)}&lname=${encodeURIComponent(lastName)}&phone=${encodeURIComponent(contactForm.phone)}&lastpage=booking`
+//     );
+
+//     if (!response.ok) {
+//       const errorText = await response.text();
+//       console.error('API response error:', response.status, errorText);
+//       throw new Error(`API call failed: ${response.status} - ${errorText}`);
+//     }
+
+//     const data = await response.json();
     
-    // Parse the response to check if payment was successful
-    try {
-      const responseObj = JSON.parse(response);
-      if (responseObj.messages?.resultCode === 'Ok') {
-        // Payment successful - you can redirect to success page or show confirmation
-        console.log('Payment completed successfully!');
-        alert('Payment successful! Your booking has been confirmed.');
-        
-        // Optionally redirect or refresh the page
-        // window.location.reload();
-      }
-    } catch (e) {
-      // Response is not JSON, but we'll still show it
-      console.log('Payment response (non-JSON):', response);
-    }
-  };
+//     if (data.formToken) {
+//       setFormToken(data.formToken);
+//       setShowPayment(true);
+//       console.log('Form token generated successfully');
+//     } else {
+//       console.error('No form token in response:', data);
+//       throw new Error('No form token received from API');
+//     }
+//   } catch (error) {
+//     console.error('Error generating form token:', error);
+//     alert('Error initializing payment. Please try again or contact support.');
+//   } finally {
+//     setIsGeneratingToken(false);
+//   }
+// };
+
+// // Add this helper function to get vehicle counts by name
+// const getVehicleCountByName = (vehicleName: string): number => {
+//   const vehicle = Object.values(vehicleCounts).find(
+//     v => v.name === vehicleName
+//   );
+//   return vehicle ? vehicle.count : 0;
+// };
+
+// const handlePaymentResponse = (response: string) => {
+//   setPaymentResponse(response);
+//   console.log('Payment response:', response);
+  
+//   try {
+//     const responseObj = JSON.parse(response);
+//     if (responseObj.messages?.resultCode === 'Ok') {
+//       // Payment successful
+//       console.log('Payment completed successfully!');
+      
+//       // Extract transaction details
+//       const transId = responseObj.transactionResponse?.transId;
+//       const authCode = responseObj.transactionResponse?.authCode;
+      
+//       // You can update the reservation with payment info here
+//       alert('Payment successful! Your booking has been confirmed.');
+      
+//       // Optionally redirect to success page
+//       // window.location.href = `/booking/success?transaction=${transId}`;
+      
+//     } else if (responseObj.messages?.resultCode === 'Error') {
+//       // Payment failed
+//       const errorMessages = responseObj.messages.message || [];
+//       const errorText = errorMessages.map((msg: any) => msg.text).join(', ');
+//       console.error('Payment failed:', errorText);
+//       alert(`Payment failed: ${errorText}`);
+//     }
+//   } catch (e) {
+//     // Response is not JSON, but we'll still show it
+//     console.log('Payment response (non-JSON):', response);
+//     alert('Payment processed. Please check your email for confirmation.');
+//   }
+// };
 
   useEffect(() => {
     if (initialData) {
@@ -402,7 +518,7 @@ export function BookingEditPage({
   }, [initialData]);
 
   return (
-    <div className="font-extrabold dark:text-white sm:text-center flex flex-col justify-center w-full items-center h-fit">
+    <div className="font-extrabold dark:text-white sm:text-center flex flex-col justify-center w-fit items-center h-fit">
       <CalendarFormEdit
         bookInfo={bookInfo}
         freeShuttle={freeShuttle}
@@ -431,37 +547,62 @@ export function BookingEditPage({
         initialData={initialData}
         activeVehicleCategory={activeVehicleCategory}
         setActiveVehicleCategory={setActiveVehicleCategory}
-        onGeneratePayment={generateFormToken}
+        // onGeneratePayment={generateFormToken}
         showPayment={showPayment}
-        // isGeneratingToken={isGeneratingToken}
       />
 
-      {/* Payment Section */}
-      {showPayment && formToken && (
-        <div className="w-full max-w-4xl mt-8 p-6 border rounded-lg shadow-lg bg-white">
-          <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Complete Your Payment</h2>
-          
-          {/* Payment Response Display */}
-          {paymentResponse && (
-            <div className="mb-4 p-4 bg-gray-100 rounded border">
-              <h3 className="font-semibold mb-2">Payment Response:</h3>
-              <pre className="whitespace-pre-wrap text-sm">{paymentResponse}</pre>
+      Payment Section
+{showPayment && formToken ? (
+  <div className="w-full max-w-4xl mt-8 p-6 border rounded-lg shadow-lg bg-white">
+    <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Complete Your Payment</h2>
+    
+    {/* Payment Response Display */}
+    {paymentResponse && (
+      <div className="mb-4 p-4 bg-gray-100 rounded border">
+        <h3 className="font-semibold mb-2">Payment Status:</h3>
+        <div className="whitespace-pre-wrap text-sm">
+          {paymentResponse.includes('"resultCode":"Ok"') ? (
+            <div className="text-green-600 font-bold">
+              ✅ Payment Successful! Your booking is confirmed.
             </div>
+          ) : paymentResponse.includes('Error') ? (
+            <div className="text-red-600 font-bold">
+              ❌ Payment Failed. Please try again.
+            </div>
+          ) : (
+            <pre>{paymentResponse}</pre>
           )}
-
-          {/* Payment Iframe Container */}
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <BookingPay 
-              formToken={formToken}
-              setResponse={handlePaymentResponse}
-            />
-          </div>
-
-          <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Having trouble with the payment form? Contact us at (702) 123-4567</p>
-          </div>
         </div>
-      )}
+      </div>
+    )}
+
+    {/* Payment Iframe Container */}
+    {/* <div className="border rounded-lg p-4 bg-gray-50">
+      <BookingPay 
+        formToken={formToken}
+        setResponse={handlePaymentResponse}
+      />
+    </div> */}
+
+    <div className="mt-6 text-center text-sm text-gray-600">
+      <p>Having trouble with the payment form? Contact us at (702) 123-4567</p>
+    </div>
+  </div>
+) : (
+  // Show payment button in the main form area if not showing payment iframe
+  !viewMode && totalPrice > 0 && selectedTimeValue && (
+    <div className="mt-6 w-full max-w-4xl">
+      <button
+        type="button"
+        // onClick={generateFormToken}
+        disabled={isGeneratingToken}
+        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed text-lg"
+      >
+        {isGeneratingToken ? 'Processing Payment...' : 'Proceed to Secure Payment'}
+      </button>
+    </div>
+  )
+)}
     </div>
   );
 }

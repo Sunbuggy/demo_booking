@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 async function getBackgroundStyles() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();

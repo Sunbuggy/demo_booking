@@ -11,7 +11,7 @@ export default async function ReservationPage({
   params: { id: string };
 }) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await (await supabase).auth.getUser();
   
   if (!user) {
     return redirect('/signin');
@@ -22,7 +22,7 @@ export default async function ReservationPage({
   const userFullName = userDetails?.[0]?.full_name || 'SunbuggyNet';
   
   const reservation = await getReservationById(params.id);
-  const [hotels] = await Promise.all([fetchHotels(supabase)]);
+  const [hotels] = await Promise.all([fetchHotels(await supabase)]);
   
   if (!reservation) {
     return (
