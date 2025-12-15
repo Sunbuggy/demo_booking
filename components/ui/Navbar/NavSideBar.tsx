@@ -27,7 +27,11 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   const date = new Date().toLocaleDateString('en-CA');
 
   const navLinks: NavLink[] = [
-    { href: '/', label: 'Home Page', minLevel: 0 },
+    { href: '/', label: 'Las Vegas', minLevel: 0 },  // Relabeled from "Home Page"
+  { href: '/pismo', label: 'Pismo Beach', minLevel: 0 },  // New public link
+  { href: '/pismo/book', label: 'Pismo Booking', minLevel: 0 },  // New public link
+  { href: '/biz/pismo-times', label: 'Pismo Times', minLevel: 600 },
+  { href: '/biz/pismo-pricing', label: 'Pismo Pricing', minLevel: 600 },
     {
       href: 'https://www.sunbuggy.biz/',
       label: 'Old Biz',
@@ -95,8 +99,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 300,
       external: false
     },
-
-  ];
+   ];
 
   // const managerLinks: NavLink[] = [
   //   {

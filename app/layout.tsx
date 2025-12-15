@@ -1,3 +1,4 @@
+// app/layout.tsx - Server component (no 'use client')
 import { Metadata } from 'next';
 import Footer from '@/components/ui/Footer';
 import Navbar from '@/components/ui/Navbar';
@@ -11,18 +12,18 @@ import { Toster } from '@/components/ui/toaster';
 import { createClient } from '@/utils/supabase/server';
 import { getUserBgImage, getUserBgProperties } from '@/utils/supabase/queries';
 import NavigationButtons from '@/components/NavigationButtons';
+// import ClientApplePayLoader from '@/components/ClientApplePayLoader'; // New import
 
 const title = 'Sunbuggy Fun Rentals';
-const description =
-  'Sunbuggy Fun Rentals is the ultimate off-road adventure experience.';
+const description = 'Sunbuggy Fun Rentals is the ultimate off-road adventure experience.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(getURL()),
-  title: title,
-  description: description,
+  title,
+  description,
   openGraph: {
-    title: title,
-    description: description
+    title,
+    description
   }
 };
 
@@ -48,9 +49,13 @@ async function getBackgroundStyles() {
 
 export default async function RootLayout({ children }: PropsWithChildren) {
   const backgroundStyles = await getBackgroundStyles();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
+        {/* <ClientApplePayLoader /> Load Apple Pay SDK safely (client-side only) */}
+         
+
         {/* Fixed background */}
         <div style={backgroundStyles} className="fixed inset-0 z-[-1]" />
 

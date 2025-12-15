@@ -1,5 +1,6 @@
 import HomepageSelector from '@/components/Homepage';
 import { default as InstallSunbuggy } from '@/components/add-to-screen/page';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
