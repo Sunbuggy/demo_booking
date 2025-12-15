@@ -8,7 +8,7 @@ import {
 import { TimeEntry } from '@/app/account/page';
 
 export async function getServerSideProps() {
-  const supabase = createClient();
+  const supabase =  await createClient();
   const user = await getUserDetails(supabase);
 
   return {
@@ -17,7 +17,7 @@ export async function getServerSideProps() {
 }
 
 export default async function Navbar() {
-  const supabase = createClient();
+  const supabase =  await createClient();
   const user = await getUserDetails(supabase); // Expecting user to be of type UserType | null
   const usr = await getUser(supabase);
   const clockinStatus =

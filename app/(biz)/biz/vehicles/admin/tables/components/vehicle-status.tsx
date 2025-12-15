@@ -24,7 +24,7 @@ const VehicleStatus = async ({
   vehicles: VehicleWithLocation[];
 }) => {
   //   Look at vehicle_status of each vehicle then inside my groupsAndCounts object add another key value pair where the key is the vehicle_status and the value is the count of vehicles with that status
-  const supabase = createClient();
+  const supabase = await createClient();
   const vehicleLocations = (await fetchAllVehicleLocations(supabase)
     .then((data) => data)
     .catch((error) => {

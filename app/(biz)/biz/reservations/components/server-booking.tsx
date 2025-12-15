@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarFormEdit } from './booking-calendar';
-import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list, ama_vehicles_list ,atv30_open_times, atv60_open_times, ama_open_times } from '@/utils/helpers';
+import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list, ama_vehicles_list ,atv30_open_times, atv60_open_times } from '@/utils/helpers';
 import { Reservation } from '@/app/(biz)/biz/types';
 import { TabValue, VehicleCategory } from './booking-tabs';
+import { createReservation, updateFullReservation } from '@/utils/old_db/actions';
 import BookingPay from './booking-payment';
 
 export interface HotelType {
@@ -70,11 +71,11 @@ export function BookingEditPage({
   const [totalPrice, setTotalPrice] = useState(
     initialData?.total_cost ? Number(initialData.total_cost) : 0
   );
-  const [formToken, setFormToken] = useState('');
+  const [paymentIframeSrc, setPaymentIframeSrc] = useState<string>('');
   const [activeVehicleCategory, setActiveVehicleCategory] = useState<VehicleCategory>('Mini Baja');
-  const [paymentResponse, setPaymentResponse] = useState('');
   const [showPayment, setShowPayment] = useState(false);
-  const [isGeneratingToken, setIsGeneratingToken] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [reservationId, setReservationId] = useState<number | null>(initialData?.res_id || null);
 
   const [contactForm, setContactForm] = useState<ContactFom>({
     name: '',
@@ -212,81 +213,106 @@ export function BookingEditPage({
     return mapping;
   };
 
-  // Generate form token using the real API
-  const generateFormToken = async () => {
-    if (!contactForm.name || !contactForm.phone || totalPrice <= 0) {
+  const getVehicleCountByName = (vehicleName: string): number => {
+    const vehicle = Object.values(vehicleCounts).find(
+      v => v.name === vehicleName
+    );
+    return vehicle ? vehicle.count : 0;
+  };
+
+  // Generate payment iframe URL
+  const generatePaymentIframe = async () => {
+    if (!contactForm.name || !contactForm.phone || !contactForm.email || totalPrice <= 0) {
       alert('Please complete all contact information and ensure total price is calculated.');
       return;
     }
 
-    setIsGeneratingToken(true);
+    if (!selectedTimeValue) {
+      alert('Please select a time for your booking.');
+      return;
+    }
+
+    setIsProcessing(true);
+    
     try {
-      // Use the existing reservation ID if available, otherwise create a temporary one
-      // For new reservations, we'll use a temporary ID that can be updated later
-      const invoiceNumber = initialData?.res_id 
-        ? `RES-${initialData.res_id}`
-        : `TEMP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Split name into first and last name (simple split)
+      // Split name into first and last name
       const nameParts = contactForm.name.trim().split(' ');
       const firstName = nameParts[0] || 'Customer';
       const lastName = nameParts.slice(1).join(' ') || 'Guest';
 
-      console.log('Generating payment token with:', {
-        amount: totalPrice,
-        invoiceNumber,
-        firstName,
-        lastName,
-        phone: contactForm.phone
-      });
+      let finalReservationId: number;
+      let invoiceNumber: string;
 
-      // Call api endpoint
-      const response = await fetch(
-        `/api/authorize-net/acceptHosted/token?amt=${totalPrice}&invoiceNumber=${invoiceNumber}&fname=${encodeURIComponent(firstName)}&lname=${encodeURIComponent(lastName)}&phone=${encodeURIComponent(contactForm.phone)}&lastpage=booking`
-      );
+      // Prepare reservation data
+      const reservationData = {
+        full_name: contactForm.name,
+        email: contactForm.email,
+        phone: contactForm.phone,
+        occasion: contactForm.groupName || '',
+        sch_date: bookInfo.bookingDate,
+        sch_time: selectedTimeValue.split(' (')[0], // Remove discount info
+        location: selectedTabValue === 'mb30' ? 'Nellis30' :
+                 selectedTabValue === 'mb60' ? 'Nellis60' :
+                 selectedTabValue === 'mb120' ? 'NellisDX' :
+                 selectedTabValue === 'atv30' ? 'DunesATV30' :
+                 selectedTabValue === 'atv60' ? 'DunesATV60' :
+                 selectedTabValue === 'Valley of Fire' ? 'ValleyOfFire' :
+                 selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' :
+                 'Amargosa',
+        ppl_count: bookInfo.howManyPeople,
+        hotel: freeShuttle ? selectedHotel : '',
+        total_cost: totalPrice,
+        // Add vehicle counts
+        QA: getVehicleCountByName('Medium size ATV'),
+        QB: getVehicleCountByName('Full size ATV'),
+        SB1: getVehicleCountByName('1 seat desert racer'),
+        SB2: getVehicleCountByName('2 seat desert racer'),
+        SB4: getVehicleCountByName('4 seat desert racer'),
+        SB6: getVehicleCountByName('6 seat desert racer'),
+        twoSeat4wd: getVehicleCountByName('2 seat UTV'),
+        RWG: getVehicleCountByName('Ride with Guide'),
+      };
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API response error:', response.status, errorText);
-        throw new Error(`API call failed: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.formToken) {
-        setFormToken(data.formToken);
-        setShowPayment(true);
-        console.log('Form token generated successfully');
-      } else {
-        console.error('No form token in response:', data);
-        throw new Error('No form token received from API');
-      }
-    } catch (error) {
-      console.error('Error generating form token:', error);
-      alert('Error initializing payment. Please try again or contact support.');
-    } finally {
-      setIsGeneratingToken(false);
-    }
-  };
-
-  const handlePaymentResponse = (response: string) => {
-    setPaymentResponse(response);
-    console.log('Payment response:', response);
-    
-    // Parse the response to check if payment was successful
-    try {
-      const responseObj = JSON.parse(response);
-      if (responseObj.messages?.resultCode === 'Ok') {
-        // Payment successful - you can redirect to success page or show confirmation
-        console.log('Payment completed successfully!');
-        alert('Payment successful! Your booking has been confirmed.');
+      if (initialData?.res_id) {
+        // Update existing reservation
+        const updateResult = await updateFullReservation(initialData.res_id, reservationData);
         
-        // Optionally redirect or refresh the page
-        // window.location.reload();
+        if (updateResult.success) {
+          finalReservationId = initialData.res_id;
+          invoiceNumber = `${initialData.res_id}`;
+          setReservationId(initialData.res_id);
+        } else {
+          throw new Error('Failed to update reservation: ' + updateResult.error);
+        }
+      } else {
+        // Create new reservation
+        const createResult = await createReservation(reservationData);
+        
+        if (createResult.success && createResult.reservationId) {
+          finalReservationId = createResult.reservationId;
+          invoiceNumber = `${createResult.reservationId}`;
+          setReservationId(createResult.reservationId);
+        } else {
+          throw new Error('Failed to create reservation: ' + createResult.error);
+        }
       }
-    } catch (e) {
-      // Response is not JSON, but we'll still show it
-      console.log('Payment response (non-JSON):', response);
+
+      // Generate timestamp for cache busting
+      const timestamp = Date.now();
+      
+      // Build the payment iframe URL - same as ChargesPismo
+      const paymentUrl = `https://oceanoatvrentals.com/lib/oauthorizetestPP.php?invoiceNumber=${invoiceNumber}&cacke=${timestamp}&qost=${totalPrice}&fname=${encodeURIComponent(firstName)}&lname=${encodeURIComponent(lastName)}`;
+      
+      console.log('Payment URL generated:', paymentUrl);
+      
+      setPaymentIframeSrc(paymentUrl);
+      setShowPayment(true);
+      
+    } catch (error) {
+      console.error('Error generating payment:', error);
+      alert('Error setting up payment. Please try again or contact support.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -402,66 +428,101 @@ export function BookingEditPage({
   }, [initialData]);
 
   return (
-    <div className="font-extrabold dark:text-white sm:text-center flex flex-col justify-center w-full items-center h-fit">
-      <CalendarFormEdit
-        bookInfo={bookInfo}
-        freeShuttle={freeShuttle}
-        hotelsMemo={hotelsMemo}
-        isCalendarOpen={isCalendarOpen}
-        open={open}
-        selectedHotel={selectedHotel}
-        setBookInfo={setBookInfo}
-        setFreeShuttle={setFreeShuttle}
-        setIsCalendarOpen={setIsCalendarOpen}
-        setOpen={setOpen}
-        setSelectedHotel={setSelectedHotel}
-        setSelectedTimeValue={setSelectedTimeValue}
-        setVehicleCounts={setVehicleCounts}
-        vehicleCounts={vehicleCounts}
-        totalSeats={totalSeats}
-        setSelectedTabValue={setSelectedTabValue}
-        selectedTabValue={selectedTabValue}
-        selectedTimeValue={selectedTimeValue}
-        total_cost={totalPrice}
-        settotal_cost={setTotalPrice}
-        contactForm={contactForm}
-        setContactForm={setContactForm}
-        formToken={formToken}
-        viewMode={viewMode}
-        initialData={initialData}
-        activeVehicleCategory={activeVehicleCategory}
-        setActiveVehicleCategory={setActiveVehicleCategory}
-        onGeneratePayment={generateFormToken}
-        showPayment={showPayment}
-        // isGeneratingToken={isGeneratingToken}
-      />
+    <div className="font-extrabold dark:text-white sm:text-center flex flex-col justify-center items-center w-full">
+      <div className="w-full max-w-4xl">
+        <CalendarFormEdit
+          bookInfo={bookInfo}
+          freeShuttle={freeShuttle}
+          hotelsMemo={hotelsMemo}
+          isCalendarOpen={isCalendarOpen}
+          open={open}
+          selectedHotel={selectedHotel}
+          setBookInfo={setBookInfo}
+          setFreeShuttle={setFreeShuttle}
+          setIsCalendarOpen={setIsCalendarOpen}
+          setOpen={setOpen}
+          setSelectedHotel={setSelectedHotel}
+          setSelectedTimeValue={setSelectedTimeValue}
+          setVehicleCounts={setVehicleCounts}
+          vehicleCounts={vehicleCounts}
+          totalSeats={totalSeats}
+          setSelectedTabValue={setSelectedTabValue}
+          selectedTabValue={selectedTabValue}
+          selectedTimeValue={selectedTimeValue}
+          total_cost={totalPrice}
+          settotal_cost={setTotalPrice}
+          contactForm={contactForm}
+          setContactForm={setContactForm}
+          viewMode={viewMode}
+          initialData={initialData}
+          activeVehicleCategory={activeVehicleCategory}
+          setActiveVehicleCategory={setActiveVehicleCategory}
+          onGeneratePayment={generatePaymentIframe}
+          showPayment={showPayment}
+          formToken={''}
+        />
 
-      {/* Payment Section */}
-      {showPayment && formToken && (
-        <div className="w-full max-w-4xl mt-8 p-6 border rounded-lg shadow-lg bg-white">
-          <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Complete Your Payment</h2>
-          
-          {/* Payment Response Display */}
-          {paymentResponse && (
-            <div className="mb-4 p-4 bg-gray-100 rounded border">
-              <h3 className="font-semibold mb-2">Payment Response:</h3>
-              <pre className="whitespace-pre-wrap text-sm">{paymentResponse}</pre>
+        {/* Payment Section */}
+        <div id="payment-section" className="w-full mt-6">
+          {/* Payment Button (shown when ready for payment) */}
+          {!showPayment && !viewMode && totalPrice > 0 && selectedTimeValue && (
+            <div className="mt-6 p-6 border rounded-lg shadow-lg bg-white">
+              <div className="text-center">
+                <h3 className="text-xl font-bold mb-4 text-gray-800">Ready to Complete Your Booking</h3>
+                <p className="text-gray-600 mb-2">
+                  Total Amount: <span className="font-bold text-green-600">${totalPrice.toFixed(2)}</span>
+                </p>
+                <p className="text-gray-500 text-sm mb-6">
+                  Reservation will be created before payment
+                </p>
+                <button
+                  type="button"
+                  onClick={generatePaymentIframe}
+                  disabled={isProcessing}
+                  className="w-full max-w-md mx-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed text-lg shadow-md hover:shadow-lg"
+                >
+                  {isProcessing ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Creating Reservation...
+                    </span>
+                  ) : (
+                    'Proceed to Secure Payment'
+                  )}
+                </button>
+                <p className="mt-4 text-sm text-gray-500">
+                  Secure payment processed by Authorize.net
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Payment Iframe Container */}
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <BookingPay 
-              formToken={formToken}
-              setResponse={handlePaymentResponse}
-            />
-          </div>
-
-          <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Having trouble with the payment form? Contact us at (702) 123-4567</p>
-          </div>
+{showPayment && paymentIframeSrc && reservationId && (
+  <div className="mt-6 p-4 border rounded-lg shadow-lg bg-white">
+    <div className="flex justify-between items-center mb-4">
+      <h2 className="text-xl font-bold text-gray-800">Complete Your Payment</h2>
+      <button
+        onClick={() => setShowPayment(false)}
+        className="text-gray-500 hover:text-gray-700 text-2xl"
+        title="Close payment"
+      >
+        ×
+      </button>
+    </div>
+    
+    <BookingPay 
+      reservationId={reservationId}
+      totalPrice={totalPrice}
+      firstName={contactForm.name.split(' ')[0]}
+      lastName={contactForm.name.split(' ').slice(1).join(' ') || 'Guest'}
+    />
+  </div>
+)}
         </div>
-      )}
+      </div>
     </div>
   );
 }

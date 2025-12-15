@@ -1,165 +1,167 @@
 // app/(biz)/biz/[date]/page.tsx
+
 import Landing from '../components/landing';
 import { getTimeSortedData } from '@/utils/old_db/helpers';
 import { Reservation } from '../types';
 import { getUserDetails } from '@/utils/supabase/queries';
 import AdminPanel from '../components/panels/admin-panel';
-import Link from 'next/link';
 import TorchPanel from '../components/panels/torch-panel';
 import PanelSelector from '../components/panels/panel-selector';
-import { fetch_from_old_db } from '@/utils/old_db/actions';
+import LoadingModal from '../components/loading-modal';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { RiArrowLeftWideFill, RiArrowRightWideFill } from 'react-icons/ri';
 import dayjs from 'dayjs';
 import { createClient } from '@/utils/supabase/server';
-import LoadingModal from '../components/loading-modal';
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 
+// Force dynamic rendering (we fetch fresh data for each date)
 export const dynamic = 'force-dynamic';
 
-const BizPage = async ({
-  params,
-  searchParams
-}: {
-  params: { date: string };
-  searchParams: { dcos: boolean; torchc: boolean; admc: boolean };
-}) => {
-  const date = params.date;
-  const dcos = searchParams.dcos;
+// Isolated server action for DB fetch
+async function fetchReservationsForDate(date: string): Promise<Reservation[]> {
+  'use server';
 
-  const supabase = createClient();
-  const user = await getUserDetails(supabase);
-  if (!user) return null;
-
-  const role = user[0]?.user_level;
-  const full_name = user[0]?.full_name;
-
-  const yesterday = dayjs(date).subtract(1, 'day').format('YYYY-MM-DD');
-  const tomorrow = dayjs(date).add(1, 'day').format('YYYY-MM-DD');
-
-  // FIXED: Accept correct YYYY-MM-DD format (Next.js standard)
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    console.error('Invalid date format received in /biz/[date]:', date);
-    console.error('Expected YYYY-MM-DD (e.g., 2025-12-14)');
-    redirect('/biz');
-  }
-
-  // Optional extra safety
-  const dateObj = new Date(date);
-  if (isNaN(dateObj.getTime())) {
-    console.error('Invalid date value:', date);
-    redirect('/biz');
-  }
-
-  // Use the date directly — it's now validated and safe
+  const { fetch_from_old_db } = await import('@/utils/old_db/actions');
   const query = `SELECT * FROM reservations_modified WHERE sch_date = '${date}'`;
 
-  const data = (await fetch_from_old_db(query)) as Reservation[];
-
-  // Handle no reservations
-  if (!data || data.length === 0) {
-    return (
-      <div className="min-h-screen w-full flex flex-col gap-5 justify-center items-center">
-        {role && role > 299 && (
-          <div className="flex gap-2 justify-center items-center">
-            <Link
-              href={`/biz/${yesterday}${dcos == true ? '?dcos=true' : ''}`}
-              passHref
-            >
-              <RiArrowLeftWideFill />
-            </Link>
-            <Link href="/biz/calendar" passHref>
-              <Button>{date}</Button>
-            </Link>
-            <Link
-              href={`/biz/${tomorrow}${dcos == true ? '?dcos=true' : ''}`}
-              passHref
-            >
-              <RiArrowRightWideFill />
-            </Link>
-          </div>
-        )}
-
-        {role && role > 650 && (
-          <PanelSelector
-            role={role}
-            admin={
-              <AdminPanel display_cost={dcos} full_name={full_name || ''} />
-            }
-            torch={<TorchPanel full_name={full_name || ''} />}
-          />
-        )}
-
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-4">No reservations for {date}</h2>
-          <p>There are no bookings scheduled for this date.</p>
-        </div>
-      </div>
-    );
+  try {
+    const data = (await fetch_from_old_db(query)) as Reservation[];
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching reservations for date:', date, error);
+    return [];
   }
+}
 
-  const loadedData = data && (await getTimeSortedData(data));
+// Client-side content (receives pre-fetched data)
+function BizContent({
+  date,
+  dcos,
+  role,
+  full_name,
+  reservations,
+  yesterday,
+  tomorrow,
+}: {
+  date: string;
+  dcos: boolean;
+  role: number;
+  full_name: string;
+  reservations: Reservation[];
+  yesterday: string;
+  tomorrow: string;
+}) {
+  const hasReservations = reservations.length > 0;
+  const sortedData = hasReservations ? getTimeSortedData(reservations) : null;
 
   return (
     <div className="min-h-screen w-full flex flex-col gap-5">
-      {role && role > 299 && (
-        <div className="flex gap-2 justify-center items-center">
-          <Link
-            href={`/biz/${yesterday}${dcos == true ? '?dcos=true' : ''}`}
-            passHref
-          >
-            <RiArrowLeftWideFill />
+      {/* Navigation arrows + calendar button */}
+      {role > 299 && (
+        <div className="flex gap-4 justify-center items-center pt-6">
+          <Link href={`/biz/${yesterday}${dcos ? '?dcos=true' : ''}`}>
+            <RiArrowLeftWideFill className="text-4xl hover:text-gray-600 transition" />
           </Link>
-          <Link href="/biz/calendar" passHref>
-            <Button>{date}</Button>
+          <Link href="/biz/calendar">
+            <Button variant="outline" size="lg">
+              {dayjs(date).format('dddd, MMMM D, YYYY')}
+            </Button>
           </Link>
-          <Link
-            href={`/biz/${tomorrow}${dcos == true ? '?dcos=true' : ''}`}
-            passHref
-          >
-            <RiArrowRightWideFill />
+          <Link href={`/biz/${tomorrow}${dcos ? '?dcos=true' : ''}`}>
+            <RiArrowRightWideFill className="text-4xl hover:text-gray-600 transition" />
           </Link>
         </div>
       )}
-      {role && role > 650 && (
+
+      {/* Admin / Torch control panels */}
+      {role > 650 && (
         <PanelSelector
           role={role}
-          admin={
-            <AdminPanel display_cost={dcos} full_name={full_name || ''} />
-          }
-          torch={<TorchPanel full_name={full_name || ''} />}
+          admin={<AdminPanel display_cost={dcos} full_name={full_name} />}
+          torch={<TorchPanel full_name={full_name} />}
         />
       )}
 
-      {loadedData && role && role > 299 ? (
+      {/* Main content */}
+      {hasReservations && sortedData ? (
         <Landing
-          data={loadedData}
+          data={sortedData}
           display_cost={dcos}
           role={role}
           date={date}
-          full_name={full_name || ''}
+          full_name={full_name}
         />
-      ) : role && role < 299 ? (
-        <div className="h-screen flex justify-center items-center">
-          unauthorized
-        </div>
-      ) : !role ? (
-        <div className="h-screen flex justify-center items-center gap-2">
-          Please{' '}
-          <Link
-            href="/signin"
-            className={`inline-flex items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md h-[36px] underline`}
-          >
-            Sign In
-          </Link>
-        </div>
       ) : (
-        <div className="h-screen flex justify-center items-center">
-          <LoadingModal />
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+          <h2 className="text-3xl font-semibold mb-4">
+            No reservations for {dayjs(date).format('MMMM D, YYYY')}
+          </h2>
+          <p className="text-lg text-gray-600">
+            There are no bookings scheduled for this date.
+          </p>
         </div>
       )}
     </div>
   );
-};
+}
 
-export default BizPage;
+// Main server component
+export default async function BizPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ date: string }>;
+  searchParams: Promise<{ dcos?: string }>;
+}) {
+  const { date } = await params;
+  const search = await searchParams;
+  const dcos = search.dcos === 'true';
+
+  // Validate date format
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    console.error('Invalid date format in /biz/[date]:', date);
+    redirect('/biz/calendar');
+  }
+
+  // Auth + user details
+  const supabase = await createClient();
+  const user = await getUserDetails(supabase);
+
+  if (!user || !user[0]) {
+    redirect('/signin');
+  }
+
+  const role = user[0].user_level;
+  const full_name = user[0].full_name || '';
+
+  // Permission check
+  if (role < 299) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-2xl text-red-600">Unauthorized - Insufficient permissions</p>
+      </div>
+    );
+  }
+
+  const yesterday = dayjs(date).subtract(1, 'day').format('YYYY-MM-DD');
+  const tomorrow = dayjs(date).add(1, 'day').format('YYYY-MM-DD');
+
+  // Fetch reservations
+  const reservations = await fetchReservationsForDate(date);
+
+  return (
+    <Suspense fallback={<LoadingModal />}>
+      <BizContent
+        date={date}
+        dcos={dcos}
+        role={role}
+        full_name={full_name}
+        reservations={reservations}
+        yesterday={yesterday}
+        tomorrow={tomorrow}
+      />
+    </Suspense>
+  );
+}

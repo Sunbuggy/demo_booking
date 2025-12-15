@@ -20,9 +20,9 @@ const MainGroups = async ({
 }) => {
   const dt = new Date(date);
   const supabase = createClient();
-  const groups = (await fetchGroups(supabase, dt)) as GroupsType[];
+  const groups = (await fetchGroups(await supabase, dt)) as GroupsType[];
   const groupVehicles = (await fetchGroupVehicles(
-    supabase,
+    await supabase,
     dt
   )) as GroupVehiclesType[];
 

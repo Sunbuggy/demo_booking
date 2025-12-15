@@ -12,7 +12,7 @@ export async function updateSSTClaimed(
   userPhone: string,
   close_notes: string
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from('vehicle_locations')
@@ -56,7 +56,7 @@ export async function updateSSTClaimed(
 }
 
 export async function fetchCasesData(id: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {
     data: { user }

@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import ReportsBoard from './components/ReportsBoard';
 
 const ReportsPage = async () => {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Fetch data from the necessary tables and sort by created_at in descending order
   const { data: tags } = await supabase

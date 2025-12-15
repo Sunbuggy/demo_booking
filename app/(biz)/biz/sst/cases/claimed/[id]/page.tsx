@@ -12,13 +12,15 @@ export default async function CasesPage({
   if ('error' in data) {
     return <div>{data.error}</div>;
   }
+  
+  // Use type assertions to fix the compilation error
   return (
     <div>
       <Suspense fallback={<div>Loading...</div>}>
         <CasesTable
           initialSsts={data.ssts}
-          userMap={data.userMap}
-          vehicleMap={data.vehicleMap}
+          userMap={data.userMap as Map<string, string | null>}  // Type assertion
+          vehicleMap={data.vehicleMap as Map<string, string>}   // Type assertion
           userId={data.userId}
           userPhone={data.userPhone || ''}
         />

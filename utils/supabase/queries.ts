@@ -28,18 +28,30 @@ export type UserDetails = {
   homepage?: string | null;
 };
 
+
 export const getUserDetails = cache(
-  async (supabase: SupabaseClient): Promise<any[] | null | undefined> => {
+  async (supabase: any): Promise<any[] | null | undefined> => {
     try {
       if (!supabase) {
+        console.error('getUserDetails: No supabase client provided');
         return null;
       }
-      const {
-        data: { user }
-      } = await supabase.auth.getUser();
+
+      // Check if auth is available
+      if (!supabase.auth) {
+        return null;
+      }
+
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError) {
+        console.error(authError);
+        return null;
+      }
 
       const id = user?.id;
       if (!id) {
+        console.log('getUserDetails: No user ID found');
         return null;
       }
 
@@ -55,7 +67,8 @@ export const getUserDetails = cache(
 
       return userDetails;
     } catch (error) {
-      console.error(error);
+      console.error('getUserDetails error:', error);
+      return null;
     }
   }
 );

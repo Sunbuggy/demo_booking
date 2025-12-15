@@ -319,7 +319,7 @@ export const ama_vehicles_list = [
   {
     id: 1,
     name: 'Full size ATV',
-    vehicle_id: 5,
+    vehicle_id: 2,
     seats: 1,
     pricing: {
       full_atv: 499,

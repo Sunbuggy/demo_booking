@@ -6,8 +6,9 @@ import Page from '@/app/(biz)/biz/reports/authorizenet/unsettled/page';
 import { getUserDetails } from '@/utils/supabase/queries';
 import { createClient } from '@/utils/supabase/server';
 import dayjs from 'dayjs';
+import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic'; // Ensures the page fetches fresh data on every request
+export const dynamic = 'force-dynamic';
 
 const HomepageSelector = async () => {
   const supabase = createClient();
@@ -18,33 +19,24 @@ const HomepageSelector = async () => {
   const userHomepage = userDetails?.[0]?.homepage ?? 'ChooseAdventure';
   const currentDate = dayjs().format('YYYY-MM-DD');
 
-if (userLevel >= 300){
-  if (userHomepage === 'VehiclesManagementPage') {
-    return <VehiclesManagementPage />;
-  }
+  // If user level is 300 or above, handle their homepage preference
+  if (userLevel >= 300) {
+    // Use redirect for pages that expect params - cleaner solution
+    if (userHomepage === 'VehiclesManagementPage') {
+      return <VehiclesManagementPage />;
+    }
 
-  if (userHomepage === 'BizPage') {
-    return (
-      <BizPage
-        params={{ date: currentDate }}
-        searchParams={{ dcos: false, torchc: false, admc: false }}
-      />
-    );
-  }
+    if (userHomepage === 'BizPage') {
+      // Redirect to the biz page instead of rendering it directly
+      redirect(`/biz/${currentDate}`);
+    }
 
-  if (userLevel >= 800){
-    if (userHomepage === 'UnsettledPage') {
-    return (
-      <Page
-      />
-    );
-  }
-  }
-
-} 
+    if (userLevel >= 800 && userHomepage === 'UnsettledPage') {
+      return <Page />;
+    }
+  } 
+  
   return <ChooseAdventure />;
-
 }
-
 
 export default HomepageSelector;

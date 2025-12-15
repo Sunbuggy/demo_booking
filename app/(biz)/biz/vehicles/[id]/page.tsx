@@ -13,11 +13,47 @@ import { VehicleTagType, VehicleType } from '../admin/page';
 import VehicleClientComponent from './components/vehicle-client';
 import { InventoryLocation, VehicleLocation } from '../types';
 import { VehiclePdf } from '../admin/tables/components/row-action-pdf';
+import { notFound } from 'next/navigation';
 
 const bucket = 'sb-fleet';
+
+// Helper to validate UUID format
+function isValidUUID(uuid: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+}
+
 async function getVehicleData(id: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
+  
+  // Validate UUID format
+  if (!isValidUUID(id)) {
+    console.error(`Invalid UUID format: ${id}`);
+    return {
+      vehicleInfo: null,
+      normalImages: [],
+      normalBadges: [],
+      vehicleTags: [],
+      registrationPdf: [],
+      titlePdf: [],
+      insurancePdf: []
+    };
+  }
+
   const vehicleInfo = await fetchVehicleInfo(supabase, id);
+
+  // If no vehicle found, return null
+  if (!vehicleInfo || vehicleInfo.length === 0) {
+    return {
+      vehicleInfo: null,
+      normalImages: [],
+      normalBadges: [],
+      vehicleTags: [],
+      registrationPdf: [],
+      titlePdf: [],
+      insurancePdf: []
+    };
+  }
 
   const fetchVehicleTagInfo = async () => {
     const { data, error } = await supabase
@@ -96,60 +132,130 @@ async function getVehicleData(id: string) {
 export default async function VehiclePage({
   params
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>; // ✅ params is a Promise in Next.js 15
 }) {
-  // debug id going undefined
-  const supabase = createClient();
-  const user = await getUser(supabase);
+  try {
+    // ✅ Await the params promise to unwrap it
+    const { id } = await params;
+    
+    console.log('Vehicle Page - ID:', id); // Debug log
+    
+    // Validate ID exists
+    if (!id || id === 'undefined') {
+      console.error('Vehicle ID is undefined or empty');
+      return notFound();
+    }
 
-  const profilePicResponse = await fetchObjects(
-    bucket,
-    true,
-    `profile_pic/${params.id}`
-  );
-  const profilePic = String(profilePicResponse?.url);
-  
-  // Destructure insurancePdf from getVehicleData
-  const { 
-    vehicleInfo, 
-    normalImages, 
-    normalBadges, 
-    vehicleTags, 
-    registrationPdf, 
-    titlePdf, 
-    insurancePdf 
-  } = await getVehicleData(params.id);
+    // Validate UUID format
+    if (!isValidUUID(id)) {
+      console.error(`Invalid vehicle ID format: ${id}`);
+      return notFound();
+    }
 
-  const vehicleLocations = (await fetchVehicleLocations(
-    supabase,
-    params.id
-  )) as VehicleLocation[];
-  
-  const inventoryLocations = (await fetchVehicleInventoryLocation(
-    supabase,
-    params.id
-  )) as InventoryLocation[];
-  
-  return (
-    <>
-      {user ? (
-        <VehicleClientComponent
-          id={params.id}
-          initialVehicleInfo={vehicleInfo}
-          profilePic={profilePic}
-          images={normalImages}
-          gif={normalBadges}
-          vehicleTags={vehicleTags}
-          user={user}
-          vehicleLocations={vehicleLocations}
-          inventoryLocations={inventoryLocations}
-          registrationPdf={registrationPdf}
-          titlePdf={titlePdf}
-          insurancePdf={insurancePdf} 
-        />
-      ) : (
-        <div>No User</div>
-      )}
-    </>
-  );
+    const supabase = await createClient();
+    const user = await getUser(supabase);
+
+    if (!user) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
+            <p className="text-gray-600">Please sign in to view vehicle details.</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Get profile picture
+    let profilePic = '';
+    try {
+      const profilePicResponse = await fetchObjects(
+        bucket,
+        true,
+        `profile_pic/${id}`
+      );
+      profilePic = String(profilePicResponse?.url || '');
+    } catch (error) {
+      console.warn('Error fetching profile picture:', error);
+      profilePic = '';
+    }
+    
+    // Get vehicle data
+    const { 
+      vehicleInfo, 
+      normalImages, 
+      normalBadges, 
+      vehicleTags, 
+      registrationPdf, 
+      titlePdf, 
+      insurancePdf 
+    } = await getVehicleData(id);
+
+    // If no vehicle info found, show 404
+    if (!vehicleInfo) {
+      return notFound();
+    }
+
+    let vehicleLocations: VehicleLocation[] = [];
+    let inventoryLocations: InventoryLocation[] = [];
+    
+    try {
+      vehicleLocations = (await fetchVehicleLocations(
+        supabase,
+        id
+      )) as VehicleLocation[];
+    } catch (error) {
+      console.warn('Error fetching vehicle locations:', error);
+    }
+    
+    try {
+      inventoryLocations = (await fetchVehicleInventoryLocation(
+        supabase,
+        id
+      )) as InventoryLocation[];
+    } catch (error) {
+      console.warn('Error fetching inventory locations:', error);
+    }
+    
+    return (
+      <>
+        {user ? (
+          <VehicleClientComponent
+            id={id}
+            initialVehicleInfo={vehicleInfo}
+            profilePic={profilePic}
+            images={normalImages}
+            gif={normalBadges}
+            vehicleTags={vehicleTags}
+            user={user}
+            vehicleLocations={vehicleLocations}
+            inventoryLocations={inventoryLocations}
+            registrationPdf={registrationPdf}
+            titlePdf={titlePdf}
+            insurancePdf={insurancePdf} 
+          />
+        ) : (
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
+              <p className="text-gray-600">Please sign in to view vehicle details.</p>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  } catch (error) {
+    console.error('Error in VehiclePage:', error);
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4 text-red-600">Error Loading Vehicle</h1>
+          <p className="text-gray-600">Could not load vehicle details. Please try again.</p>
+          <p className="text-sm text-gray-500 mt-2">
+            Error: {error instanceof Error ? error.message : 'Unknown error'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 }

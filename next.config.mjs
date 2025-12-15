@@ -1,13 +1,9 @@
 const config = {
-  experimental: {
-    serverComponentsExternalPackages: ['@aws-sdk/client-s3'],
-  },
-  api: {
+  serverExternalPackages: ['@aws-sdk/client-s3'],
     bodyParser: {
-      sizeLimit: '500mb',
-    },
-    responseLimit: '500mb',
+    sizeLimit: '500mb',
   },
+  responseLimit: '500mb',
 
   images: {
     remotePatterns: [

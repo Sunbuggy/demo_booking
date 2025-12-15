@@ -1,3 +1,4 @@
+// app/(biz)/biz/reservations/[id]/page.tsx
 import { createClient } from '@/utils/supabase/server';
 import { BookingEditPage } from '../components/server-booking';
 import { getReservationById, updateFullReservation } from '@/utils/old_db/actions';
@@ -8,10 +9,13 @@ import { fetchHotels, getUserDetails } from '@/utils/supabase/queries';
 export default async function ReservationPage({
   params
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>; // params is a Promise in Next.js 15
 }) {
+  // UNWRAP THE PARAMS PROMISE
+  const { id } = await params;
+  
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await (await supabase).auth.getUser();
   
   if (!user) {
     return redirect('/signin');
@@ -21,21 +25,23 @@ export default async function ReservationPage({
   const userDetails = await getUserDetails(supabase);
   const userFullName = userDetails?.[0]?.full_name || 'SunbuggyNet';
   
-  const reservation = await getReservationById(params.id);
-  const [hotels] = await Promise.all([fetchHotels(supabase)]);
+  // Use the unwrapped id
+  const reservation = await getReservationById(id);
+  const [hotels] = await Promise.all([fetchHotels(await supabase)]);
   
   if (!reservation) {
     return (
       <div className="max-w-2xl mx-auto my-12 text-center">
         <h1 className="text-2xl font-bold">Reservation Not Found</h1>
-        <p className="mt-4">The reservation with ID #{params.id} could not be found.</p>
+        <p className="mt-4">The reservation with ID #{id} could not be found.</p>
       </div>
     );
   }
   
   async function updateReservationHandler(formData: FormData) {
     'use server';
-    const res_id = parseInt(params.id);
+    // Use the unwrapped id from the closure
+    const res_id = parseInt(id);
     
     // Safe number parsing function
     const safeParseInt = (value: FormDataEntryValue | null) => {
@@ -93,7 +99,7 @@ export default async function ReservationPage({
       throw new Error(`Failed to update reservation: ${result.error}`);
     }
     
-    redirect(`/biz/reservations/${params.id}`);
+    redirect(`/biz/reservations/${id}`);
   }
 
   return (
