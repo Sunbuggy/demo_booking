@@ -5,7 +5,7 @@ import { getAllUsers, getUser } from '@/utils/supabase/queries';
 import { UserType } from '../types';
 
 const UserManagementPage = async () => {
-  const supabase =  await createClient();
+  const supabase =  await await createClient();
   const users = (await getAllUsers(supabase)) as UserType[];
   const loggedInUser = await getUser(supabase);
   return (

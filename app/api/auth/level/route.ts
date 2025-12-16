@@ -3,7 +3,7 @@ import { createClient } from '@/utils/supabase/server';
 import { getUserDetails } from '@/utils/supabase/queries';
 
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = await await createClient();
   
   try {
     const userDetails = await getUserDetails(supabase);

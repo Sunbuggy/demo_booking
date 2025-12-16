@@ -34,7 +34,7 @@ export default function EditDispatchGroups() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const supabase = await createClient();
   const router = useRouter();
 
   useEffect(() => {

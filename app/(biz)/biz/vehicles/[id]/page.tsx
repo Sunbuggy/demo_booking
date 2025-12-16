@@ -24,7 +24,7 @@ function isValidUUID(uuid: string): boolean {
 }
 
 async function getVehicleData(id: string) {
-  const supabase = await createClient();
+  const supabase = await await createClient();
   
   // Validate UUID format
   if (!isValidUUID(id)) {
@@ -152,7 +152,7 @@ export default async function VehiclePage({
       return notFound();
     }
 
-    const supabase = await createClient();
+    const supabase = await await createClient();
     const user = await getUser(supabase);
 
     if (!user) {

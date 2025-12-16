@@ -16,7 +16,7 @@ import { getClockedInTime, insertIntoClockIn } from '@/utils/supabase/queries';
 import { UserType } from '../../../../types';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 const ClockIn = ({ user }: { user?: UserType }) => {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { toast } = useToast();
   const [clockIn, setClockIn] = React.useState<boolean>(false);
   const [clockedInTime, setClockedInTime] = React.useState<Date | undefined>(

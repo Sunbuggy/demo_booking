@@ -13,7 +13,7 @@ import ChooseAdventure from '@/app/(com)/choose-adventure/page';
 export type VehicleType = Database['public']['Tables']['vehicles']['Row'];
 export type VehicleTagType = Database['public']['Tables']['vehicle_tag']['Row'];
 const VehiclesManagementPage = async () => {
-  const supabase =  await createClient();
+  const supabase =  await await createClient();
   const vehicles = (await fetchVehicles(supabase)) as unknown as VehicleType[];
   const loggedInUser = await getUser(supabase);
   const userDetails = await getUserDetails(supabase);

@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import Loading from './loading';
 
 const CalendarPage = async () => {
-  const supabase = await createClient();
+  const supabase = await await createClient();
   const user = await getUserDetails(supabase);
   if (!user) return <Loading />;
   const role = user[0]?.user_level;

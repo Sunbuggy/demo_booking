@@ -1,11 +1,10 @@
-// app/biz/pismo-params/page.tsx - Manager tool for Pismo rental parameters
-
+// app/biz/pismo-params/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';  // Client-side, sync
 import { useRouter } from 'next/navigation';
 
 export default function PismoParamsManager() {
@@ -16,13 +15,12 @@ export default function PismoParamsManager() {
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
 
-  const supabase = createClient();
+  const supabase = createClient();  // ← No await here
   const router = useRouter();
 
-  // Fetch all params on load
   useEffect(() => {
     const fetchParams = async () => {
-      const { data, error } = await supabase.from('pismo_rental_params').select('*');
+      const { data, error } = supabase.from('pismo_rental_params').select('*');
       if (error) {
         console.error(error);
         setLoading(false);
@@ -61,7 +59,6 @@ export default function PismoParamsManager() {
     setSaving(false);
   };
 
-  // Color days on calendar
   const modifiers = {
     busy: Object.keys(params)
       .filter(d => params[d].is_busy_day)
@@ -106,7 +103,6 @@ export default function PismoParamsManager() {
         />
       </div>
 
-      {/* Modal for editing day */}
       {selectedDay && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-10 rounded-3xl max-w-md w-full">

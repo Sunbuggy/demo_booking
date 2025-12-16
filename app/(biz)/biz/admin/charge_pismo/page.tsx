@@ -3,7 +3,7 @@ import { createClient } from "@/utils/supabase/client";
 import React, { useState, useRef, useEffect } from 'react';
 
 function ChargesPismo() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const [reservationNumber, setReservationNumber] = useState('');
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');

@@ -17,7 +17,7 @@ import { getClockedInTime, insertIntoClockOut } from '@/utils/supabase/queries';
 import { useToast } from '@/components/ui/use-toast';
 
 const ClockOut = ({ user }: { user?: UserType }) => {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { toast } = useToast();
   const [clockOut, setClockOut] = React.useState<boolean>(false);
   const [clockedInTime, setClockedInTime] = React.useState<Date | undefined>(

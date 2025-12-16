@@ -35,7 +35,7 @@ const TimeSheetAdjustment = ({ user }: { user?: UserType }) => {
     if (getTimesheets) {
       if (user) {
         fetchTimeSheetRequests(
-          createClient(),
+          await createClient(),
           user.id,
           historyDateRange?.from?.toISOString() || '',
           historyDateRange?.to?.toISOString() || ''

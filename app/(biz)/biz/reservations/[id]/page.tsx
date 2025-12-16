@@ -14,7 +14,7 @@ export default async function ReservationPage({
   // UNWRAP THE PARAMS PROMISE
   const { id } = await params;
   
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await (await supabase).auth.getUser();
   
   if (!user) {

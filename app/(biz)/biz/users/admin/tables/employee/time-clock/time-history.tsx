@@ -27,7 +27,7 @@ const HistoryTimeClockEvents = ({ user }: { user: UserType }) => {
       from: addDays(new Date(), -7),
       to: new Date()
     });
-  const supabase = createClient();
+  const supabase = await createClient();
 
   React.useEffect(() => {
     if (

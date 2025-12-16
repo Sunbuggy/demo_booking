@@ -6,7 +6,7 @@ import { Reservation } from '../../types';
 import { fetchHotels, getUserDetails } from '@/utils/supabase/queries';
 
 export default async function NewReservationPage() {
-  const supabase = await createClient();
+  const supabase = await await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) {

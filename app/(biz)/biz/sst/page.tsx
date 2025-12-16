@@ -10,7 +10,7 @@ import { VehicleLocation } from '../vehicles/types';
 import { redirect } from 'next/navigation'; // Add this import
 
 const SSTPage = async () => {
-  const supabase = await createClient();
+  const supabase = await await createClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();

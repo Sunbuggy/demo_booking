@@ -8,7 +8,7 @@
 
 //   try {
 //     // Initialize Supabase client during runtime
-//     const supabase = createClient();
+//     const supabase = await createClient();
 
 //     // Fetch tables to monitor from audit_table_queue
 //     const { data: auditTableQueue, error: queueError } = await supabase

@@ -95,7 +95,7 @@ export async function createGroups(
   lead?: string,
   sweep?: string
 ) {
-  const supabase =  await createClient();
+  const supabase =  await await createClient();
   try {
     const { data: existingGroups, error } = await supabase
       .from('groups')
@@ -128,7 +128,7 @@ export async function insertIntoGroupVehicles(
   if (quantity > 10) return { data: null, error: 'Quantity cannot be more than 10.' };
   if (!group_id) return { data: null, error: 'Invalid group ID' };
 
-  const supabase = await createClient();
+  const supabase = await await createClient();
   try {
     // Type-safe insert with proper typing
     const insertData = {
@@ -153,7 +153,7 @@ export async function insertIntoGroupVehicles(
 export async function deleteFromGroupVehicles(id: string) {
   if (!id) return { data: null, error: 'No id provided.' };
 
-  const supabase = await createClient();
+  const supabase = await await createClient();
   try {
     const { data, error } = await (supabase as any)
       .from('group_vehicles')
@@ -174,7 +174,7 @@ export async function updateGroupVehicleQuantity(
 ) {
   if (!id) return { data: null, error: 'No id provided.' };
 
-  const supabase = await createClient();
+  const supabase = await await createClient();
   try {
     const { data, error } = await (supabase as any)
       .from('group_vehicles')
@@ -192,7 +192,7 @@ export async function updateGroupVehicleQuantity(
 export async function deleteGroup(group_id: string) {
   if (!group_id) return { data: null, error: 'No id provided.' };
 
-  const supabase = await createClient();
+  const supabase = await await createClient();
   try {
     const { data, error } = await (supabase as any)
       .from('groups')
@@ -210,7 +210,7 @@ export async function deleteGroup(group_id: string) {
 async function updateGroupStatus(group_id: string, status: boolean) {
   if (!group_id) return { data: null, error: 'No id provided.' };
 
-  const supabase = await createClient();
+  const supabase = await await createClient();
   try {
     let timestampz = null;
     if (status) {
@@ -231,7 +231,7 @@ async function updateGroupStatus(group_id: string, status: boolean) {
 }
 
 export async function updateGroupName(groupId: string, newGroupName: string) {
-  const supabase = await createClient();
+  const supabase = await await createClient();
   try {
     const { data: existingGroup, error: fetchError } = await (supabase as any)
       .from('groups')

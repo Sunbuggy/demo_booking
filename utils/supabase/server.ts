@@ -1,39 +1,30 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+// utils/supabase/server.ts
+"use server";
 
-export const createClient = async () => {
-  const cookieStore = await cookies();
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
+
+export async function createClient() {
+  const cookieStore = await cookies();  // ← Must await in Next.js 16
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        async get(name: string) {
-          const cookieStore = await cookies();
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        async set(name: string, value: string, options: any) {
+        setAll(cookiesToSet) {
           try {
-            const cookieStore = await cookies();
-            cookieStore.set({ name, value, ...options });
-          } catch (error) {
-            // The `set` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
-        },
-        async remove(name: string, options: any) {
-          try {
-            const cookieStore = await cookies();
-            cookieStore.set({ name, value: '', ...options });
-          } catch (error) {
-            // The `remove` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // Ignore if called from Server Component (safe during render)
           }
         },
       },
     }
   );
-};
+}

@@ -42,7 +42,7 @@ export default async function SignIn({
   }
 
   // Check if the user is already logged in and redirect to the account page if so
-  const supabase =  await createClient();
+  const supabase =  await await createClient();
 
   const {
     data: { user }

@@ -19,7 +19,7 @@ const VehiclesTabContainer = async ({
   vehicles: VehicleType[];
   loggedInUser: User | null | undefined;
 }) => {
-  const supabase =  await createClient();
+  const supabase =  await await createClient();
   const userFullName = String(loggedInUser?.user_metadata.full_name);
   const allVehicleLocations = (await fetchAllVehicleLocations(
     supabase

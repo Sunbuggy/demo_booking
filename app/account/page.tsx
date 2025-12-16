@@ -25,7 +25,7 @@ export type TimeEntry = {
   };
 };
 export default async function Account() {
-  const supabase =  await createClient();
+  const supabase =  await await createClient();
   try {
     const { error } = await supabase.rpc('auto_clock_out');
     if (error) {

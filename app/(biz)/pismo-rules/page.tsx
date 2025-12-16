@@ -15,7 +15,7 @@ export default function PismoRulesAdmin() {
   const [offsetMins, setOffsetMins] = useState<number>(60);
   const [loading, setLoading] = useState(true);
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   useEffect(() => {
     fetchRules();

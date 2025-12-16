@@ -67,7 +67,7 @@ export const columns: ColumnDef<UserType, any>[] = [
     ),
     cell: ({ row }) => {
       const name = row.getValue('full_name') as string;
-      const supabase = createClient();
+      const supabase = await createClient();
       const [signedInUserId, setSignedInUserId] = useState<string | undefined>(
         undefined
       );
@@ -121,7 +121,7 @@ export const columns: ColumnDef<UserType, any>[] = [
       const [makeManager, setMakeManager] = useState(false);
       const [makeAdmin, setMakeAdmin] = useState(false);
       const [makeCustomer, setMakeCustomer] = useState(false);
-      const supabase = createClient();
+      const supabase = await createClient();
       const { toast } = useToast();
       const router = useRouter();
 
@@ -323,7 +323,7 @@ export const columns: ColumnDef<UserType, any>[] = [
       const [timeSinceClockIn, setTimeSinceClockIn] = useState(
         status === 'clocked_in' ? 'loading' : ''
       );
-      const supabase = createClient();
+      const supabase = await createClient();
       const router = useRouter();
 
       // Subscribe to changes in the users table

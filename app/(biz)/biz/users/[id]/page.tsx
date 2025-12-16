@@ -25,7 +25,7 @@ import HomepageSettings from '@/components/Homepage/HomepageSettings';
 const bucket = 'users';
 
 const UserPage = async ({ params }: { params: { id: string } }) => {
-  const supabase = await createClient();
+  const supabase = await await createClient();
   const user = await getUserById(supabase, params.id);
   const empDetails = await getEmployeeDetails(supabase, params.id);
   const userDispatchGroup = await supabase

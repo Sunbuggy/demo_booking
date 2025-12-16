@@ -1,66 +1,99 @@
 // app/api/pismo/times/route.ts
+import { NextRequest } from 'next/server';
+import { createClient } from '@/utils/supabase/server';
 
-import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server'; // Your server Supabase client (uses service_role safely)
-import SunCalc from 'suncalc';
-
+// Pismo Beach coordinates for sunset
 const PISMO_LAT = 35.1428;
 const PISMO_LNG = -120.6413;
-const SLOT_INTERVAL_MINUTES = 30; // Or whatever interval you want for starts
 
-export async function GET(request: Request) {
+function getSunsetTime(date: Date): Date {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  const J = day - 32075 + Math.floor(1461 * (year + 4800 + Math.floor((month - 14) / 12)) / 4)
+           + Math.floor(367 * (month - 2 - Math.floor((month - 14) / 12) * 12) / 12)
+           - Math.floor(3 * Math.floor((year + 4900 + Math.floor((month - 14) / 12)) / 100) / 4);
+
+  const n = J - 2451545;
+  const L = (n + 0.0009 + PISMO_LNG / 360) % 1;
+  const M = (357.5291 + 0.98560028 * n) % 360;
+  const C = 1.9148 * Math.sin(M * Math.PI / 180) + 0.0200 * Math.sin(2 * M * Math.PI / 180) + 0.0003 * Math.sin(3 * M * Math.PI / 180);
+  const lambda = (L + C / 360 + 1.9148 * Math.sin(M * Math.PI / 180) + 0.0200 * Math.sin(2 * M * Math.PI / 180)) % 1;
+
+  const declination = Math.asin(Math.sin(23.4393 * Math.PI / 180) * Math.sin(lambda * 360 * Math.PI / 180));
+  const hourAngle = Math.acos((Math.sin(-0.83 * Math.PI / 180) - Math.sin(PISMO_LAT * Math.PI / 180) * Math.sin(declination)) /
+                              (Math.cos(PISMO_LAT * Math.PI / 180) * Math.cos(declination)));
+
+  const sunsetHours = 12 + (hourAngle * 180 / Math.PI / 15);
+  const sunset = new Date(date);
+  sunset.setHours(Math.floor(sunsetHours));
+  sunset.setMinutes(Math.round((sunsetHours % 1) * 60));
+  return sunset;
+}
+
+function timeStrToHours(timeStr: string): number {
+  const match = timeStr.match(/(\d+):(\d+)/);
+  if (!match) return 9;
+  let hours = parseInt(match[1]);
+  if (timeStr.includes('PM') && hours !== 12) hours += 12;
+  if (timeStr.includes('AM') && hours === 12) hours = 0;
+  return hours;
+}
+
+export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const dateStr = searchParams.get('date');
-  if (!dateStr) return NextResponse.json({ error: 'Date required' }, { status: 400 });
 
-  const supabase = createClient();
-
-  const { data: rules } = await supabase
-    .from('pismo_rental_rules')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (!rules || rules.length === 0) return NextResponse.json({ startTimes: [] });
-
-  const targetDate = new Date(dateStr);
-  const dayOfWeek = targetDate.getDay() + 1; // 1=Mon, 7=Sun
-
-  // Find most recent applicable rule
-  const activeRule = rules.find(rule => {
-    const start = new Date(rule.start_date);
-    const end = new Date(rule.end_date);
-    return targetDate >= start && targetDate <= end && rule.days_of_week.includes(dayOfWeek);
-  });
-
-  if (!activeRule) return NextResponse.json({ startTimes: [] });
-
-  // Sunset
-  const sunTimes = SunCalc.getTimes(targetDate, PISMO_LAT, PISMO_LNG);
-  const sunset = sunTimes.sunset;
-
-  // Last allowed end time
-  const lastEndTime = new Date(sunset.getTime() - activeRule.last_end_offset_minutes * 60 * 1000);
-
-  // First start from rule (e.g., "08:00:00" -> 8:00)
-  const [hours, minutes] = activeRule.first_start_time.split(':').map(Number);
-  let currentTime = new Date(targetDate);
-  currentTime.setHours(hours, minutes, 0, 0);
-
-  const startTimes: string[] = [];
-
-  // Generate starts every 30 min until a 4-hour ride would end after lastEndTime
-  while (true) {
-    const rideEnd = new Date(currentTime.getTime() + 4 * 60 * 60 * 1000); // Max duration check
-    if (rideEnd > lastEndTime) break;
-
-    startTimes.push(currentTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
-
-    currentTime = new Date(currentTime.getTime() + SLOT_INTERVAL_MINUTES * 60 * 1000);
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return Response.json({ error: 'Invalid date' }, { status: 400 });
   }
 
-  return NextResponse.json({
-    startTimes,
-    offsetMinutes: activeRule.last_end_offset_minutes,
-    firstStartTime: activeRule.first_start_time.slice(0, 5),
-  });
+  const targetDate = new Date(dateStr);
+  const jsDay = targetDate.getDay(); // 0=Sun ... 6=Sat
+  const ruleDay = jsDay === 0 ? 7 : jsDay; // 1=Mon ... 7=Sun
+  const sunset = getSunsetTime(targetDate);
+
+  const supabase = await createClient();
+
+  const { data: rules, error } = await supabase
+    .from('pismo_rental_rules')
+    .select('*')
+    .lte('start_date', dateStr)
+    .or(`end_date.gte.${dateStr},end_date.is.null`)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching rules:', error);
+    return Response.json({ error: 'Server error' }, { status: 500 });
+  }
+
+  const rule = rules?.find(r => r.days_of_week.includes(ruleDay));
+
+  if (!rule) {
+    return Response.json({ startTimes: [] });
+  }
+
+  const firstStartHours = timeStrToHours(rule.first_start_time || '10:00:00');
+  const offsetMins = rule.last_end_offset_minutes || 45;
+
+  const lastEnd = new Date(sunset);
+  lastEnd.setMinutes(lastEnd.getMinutes() - offsetMins);
+
+  const startTimes: string[] = [];
+  let current = new Date(targetDate);
+  current.setHours(Math.floor(firstStartHours), 0, 0, 0);
+
+  const maxStart = new Date(lastEnd);
+  maxStart.setHours(maxStart.getHours() - 1);
+
+  while (current <= maxStart) {
+    const h = current.getHours();
+    const period = h >= 12 ? 'PM' : 'AM';
+    const displayH = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    startTimes.push(`${displayH.toString().padStart(2, '0')}:00 ${period}`);
+    current.setHours(current.getHours() + 1);
+  }
+
+  return Response.json({ startTimes });
 }

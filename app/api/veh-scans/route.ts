@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const veh = decodeURIComponent(searchParams.get('veh') || '');
   const lat = searchParams.get('lat');
   const lon = searchParams.get('lon');
-  const supabase =  await createClient();
+  const supabase =  await await createClient();
 
   if (!veh || !lat || !lon) {
     console.error('Missing veh, lat, or lon query parameter');

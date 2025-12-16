@@ -126,7 +126,7 @@ export default async function BizPage({
   }
 
   // Auth + user details
-  const supabase = await createClient();
+  const supabase = await await createClient();
   const user = await getUserDetails(supabase);
 
   if (!user || !user[0]) {
