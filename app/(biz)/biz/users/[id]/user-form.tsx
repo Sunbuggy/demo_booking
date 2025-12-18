@@ -138,7 +138,7 @@ const UserForm = ({
   empDetails: EmpDetails;
   userDispatchLocation: enumLocation;
 }) => {
-  const supabase = await createClient(); // Remove await - createClient is synchronous for client components
+  const supabase = createClient(); // Remove await - createClient is synchronous for client components
   const [formData, setFormData] = React.useState<
     z.infer<typeof formSchema> | undefined
   >(undefined);

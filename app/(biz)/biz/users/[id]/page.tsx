@@ -1,3 +1,4 @@
+// app/(biz)/biz/users/[id]/page.tsx
 import {
   checkIfUserHasLevel,
   fetchVehicles,
@@ -24,17 +25,19 @@ import HomepageSettings from '@/components/Homepage/HomepageSettings';
 
 const bucket = 'users';
 
-const UserPage = async ({ params }: { params: { id: string } }) => {
-  const supabase = await await createClient();
-  const user = await getUserById(supabase, params.id);
-  const empDetails = await getEmployeeDetails(supabase, params.id);
+const UserPage = async ({ params }: { params: Promise<{ id: string }> }) => {
+  const { id } = await params; // Unwrap params Promise
+
+  const supabase = await createClient(); // Single await
+  const user = await getUserById(supabase, id);
+  const empDetails = await getEmployeeDetails(supabase, id);
   const userDispatchGroup = await supabase
     .from('dispatch_groups')
     .select('location')
-    .eq('user', params.id);
+    .eq('user', id);
   const scans = (await getQrHistoryByUser(
     supabase,
-    params.id
+    id
   )) as Database['public']['Tables']['qr_history']['Row'][];
   const signedInUserId = await supabase.auth
     .getUser()
@@ -47,7 +50,7 @@ const UserPage = async ({ params }: { params: { id: string } }) => {
   const profilePic = await fetchObjects(
     bucket,
     true,
-    `profile_pic/${params.id}`
+    `profile_pic/${id}`
   ).then((res) => res?.url);
 
   const userDispatchGroupLocations = userDispatchGroup.data

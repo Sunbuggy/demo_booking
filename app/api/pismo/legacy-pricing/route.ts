@@ -30,8 +30,6 @@ export async function GET() {
         enable_phone AS phoneOrdering,
         type AS typeVehicle,
         search_term AS searchTerm,
-        anti_search_term AS antiSearchTerm,
-        chart_order AS chartOrder,
         belt,
         insurance AS damageWaiver,
         dep AS deposit
