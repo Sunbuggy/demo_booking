@@ -24,14 +24,13 @@ interface NavSideBarProps {
 
 export default function NavSideBar({ user }: NavSideBarProps) {
   const pathname = usePathname();
-  const date = new Date().toLocaleDateString('en-CA');
 
   const navLinks: NavLink[] = [
-    { href: '/', label: 'Las Vegas', minLevel: 0 },  // Relabeled from "Home Page"
-  { href: '/pismo', label: 'Pismo Beach', minLevel: 0 },  // New public link
-  { href: '/pismo/book', label: 'Pismo Booking', minLevel: 0 },  // New public link
-  { href: '/biz/pismo-times', label: 'Pismo Times', minLevel: 600 },
-  { href: '/biz/pismo-pricing', label: 'Pismo Pricing', minLevel: 600 },
+    { href: '/', label: 'Las Vegas', minLevel: 0 },
+    { href: '/pismo', label: 'Pismo Beach', minLevel: 0 },
+    { href: '/pismo/book', label: 'Pismo Booking', minLevel: 0 },
+    { href: '/biz/pismo-times', label: 'Pismo Times', minLevel: 600 },
+    { href: '/biz/pismo-pricing', label: 'Pismo Pricing', minLevel: 600 },
     {
       href: 'https://www.sunbuggy.biz/',
       label: 'Old Biz',
@@ -42,26 +41,22 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       href: '/daily-pics',
       label: 'Daily Pics',
       minLevel: 300,
-      external: false
     },
     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 },
     {
       href: '/biz/reports',
       label: 'Reports',
       minLevel: 900,
-      external: false
     },
-
     {
       href: 'tel:+17752060022',
       label: 'Cyber Support: (775) 206-0022',
       minLevel: 300,
-      external: false
     }
   ];
 
   const dashboardLinks: NavLink[] = [
-    { href: `/biz/${date}`, label: 'NV', minLevel: 300, external: false },
+    { href: `/biz/${new Date().toLocaleDateString('en-CA')}`, label: 'NV', minLevel: 300 },
     {
       href: `https://fareharbor.com/sunbuggypismobeach/dashboard`,
       label: 'CA',
@@ -78,38 +73,23 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       href: '/biz/vehicles/admin',
       label: 'Fleet',
       minLevel: 300,
-      external: false
     },
     {
       href: '/biz/sst',
       label: 'SST',
       minLevel: 300,
-      external: false
     },
     {
       href: '/biz/qr',
       label: 'QR Generator',
       minLevel: 300,
-      external: false
     },
-  
     {
       href: '/biz/admin/charge_pismo',
       label: 'Pismo Charge',
       minLevel: 300,
-      external: false
     },
-   ];
-
-  // const managerLinks: NavLink[] = [
-  //   {
-  //     href: '/biz/admin/charge_pismo',
-  //     label: 'Pismo Charge',
-  //     minLevel: 600,
-  //     external: false
-  //   },
-  //   // Add more manager-specific links here as needed
-  // ];
+  ];
 
   const renderNavLink = (link: NavLink) => {
     const isActive = pathname === link.href;
@@ -136,50 +116,59 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     );
   };
 
+  // Render a group of links — only if the user has sufficient level (or minLevel 0)
   const renderLinkGroup = (
     links: NavLink[],
     title: string,
-    minLevel: number
+    minLevelRequired: number
   ) => {
-    if (!user) return null;
+    // Public links (minLevel 0) are always shown
+    // Protected links only shown if user exists and has enough level
+    if (minLevelRequired > 0 && (!user || user.user_level < minLevelRequired)) {
+      return null;
+    }
 
-    if (user?.user_level < minLevel) return null;
     const filteredLinks = links.filter(
-      (link) => link.minLevel <= user?.user_level
+      (link) => link.minLevel <= (user?.user_level ?? 0)
     );
+
     if (filteredLinks.length === 0) return null;
 
     return (
-      <div key={title} className="mb-4">
-        <span className="menulinks mb-2 flex gap-5">{title}</span>
+      <div key={title} className="mb-6">
+        <span className="menulinks mb-2 block text-sm font-semibold text-orange-400 uppercase tracking-wider">
+          {title}
+        </span>
         <div className="space-y-2">{filteredLinks.map(renderNavLink)}</div>
       </div>
     );
   };
 
+  // Group definitions
   const publicLinks = navLinks.filter((link) => link.minLevel === 0);
+
   const internalLinks = [
     ...dashboardLinks,
     ...navLinks.filter((link) => link.minLevel === 300)
   ];
-  const managerLevelLinks = [
-    // ...managerLinks,
-    ...navLinks.filter((link) => link.minLevel === 600)
-  ];
+
+  const managerLinks = navLinks.filter((link) => link.minLevel === 600);
+
   const adminLinks = navLinks.filter((link) => link.minLevel === 900);
 
   return (
     <div className="flex flex-col gap-3 p-4 overflow-y-auto h-full">
+      {/* PUBLIC — Always visible, even for guests */}
       {renderLinkGroup(publicLinks, 'PUBLIC', 0)}
-      {user &&
-        user.user_level >= 300 &&
-        renderLinkGroup(internalLinks, 'INTERNAL', 300)}
-      {user &&
-        user.user_level >= 600 &&
-        renderLinkGroup(managerLevelLinks, 'MANAGER', 600)}
-      {user &&
-        user.user_level >= 900 &&
-        renderLinkGroup(adminLinks, 'ADMIN', 900)}
+
+      {/* INTERNAL — Requires login + level 300+ */}
+      {renderLinkGroup(internalLinks, 'INTERNAL', 300)}
+
+      {/* MANAGER — Level 600+ */}
+      {renderLinkGroup(managerLinks, 'MANAGER', 600)}
+
+      {/* ADMIN — Level 900+ */}
+      {renderLinkGroup(adminLinks, 'ADMIN', 900)}
     </div>
   );
 }

@@ -1,10 +1,9 @@
-// app/pismo/book/page.tsx - Floating Summary Cart (Centered Card) + Checkout Scrolls In Below
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { createClient } from '@/utils/supabase/client'; // Adjust path if needed
 
 const TYPE_ORDER = {
   ATV: 1,
@@ -27,7 +26,16 @@ export default function PismoBooking() {
   const [message, setMessage] = useState<string>('');
   const [collectLoaded, setCollectLoaded] = useState(false);
 
-  // NMI Collect.js (PCI compliant - hosted fields)
+  // Reservation holder state
+  const [user, setUser] = useState<any>(null);
+  const [isEmployee, setIsEmployee] = useState(false);
+  const [bookingForSelf, setBookingForSelf] = useState(true);
+  const [holderFirstName, setHolderFirstName] = useState('');
+  const [holderLastName, setHolderLastName] = useState('');
+  const [holderEmail, setHolderEmail] = useState('');
+  const [holderPhone, setHolderPhone] = useState('');
+
+  // NMI Collect.js setup (PCI compliant)
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://secure.networkmerchants.com/token/Collect.js';
@@ -63,6 +71,80 @@ export default function PismoBooking() {
     };
   }, []);
 
+  // Fetch Supabase user and populate holder info (handles full_name only for now)
+  useEffect(() => {
+    const supabase = createClient();
+
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        setUser(user);
+
+        // Try to get profile data (full_name, phone, user_level)
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('full_name, phone, user_level')
+          .eq('id', user.id)
+          .single();
+
+        let firstName = '';
+        let lastName = '';
+
+        if (profile && !error && profile.full_name) {
+          const parts = profile.full_name.trim().split(' ');
+          firstName = parts[0] || '';
+          lastName = parts.slice(1).join(' ') || '';
+          setHolderPhone(profile.phone || '');
+          setIsEmployee((profile.user_level || 0) >= 600);
+        } else {
+          // Fallback: try user_metadata
+          const metaName = user.user_metadata?.full_name || user.user_metadata?.name;
+          if (metaName) {
+            const parts = metaName.trim().split(' ');
+            firstName = parts[0] || '';
+            lastName = parts.slice(1).join(' ') || '';
+          } else if (user.email) {
+            // Very basic fallback from email
+            const emailPart = user.email.split('@')[0];
+            const clean = emailPart.replace(/[\d._-]/g, ' ');
+            const parts = clean.trim().split(' ');
+            firstName = parts[0] || '';
+            lastName = parts.slice(1).join(' ') || '';
+          }
+        }
+
+        setHolderFirstName(firstName);
+        setHolderLastName(lastName);
+        setHolderEmail(user.email || '');
+        setBookingForSelf(true);
+      }
+    };
+
+    fetchUser();
+
+    // Listen for auth state changes
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        fetchUser();
+      } else {
+        // Logged out
+        setHolderFirstName('');
+        setHolderLastName('');
+        setHolderEmail('');
+        setHolderPhone('');
+        setIsEmployee(false);
+        setBookingForSelf(true);
+      }
+    });
+
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
   const handlePayment = async (token: string) => {
     if (!token) {
       setMessage('Invalid payment token.');
@@ -78,6 +160,12 @@ export default function PismoBooking() {
       body: JSON.stringify({
         payment_token: token,
         amount: total * 100,
+        holder: {
+          first_name: holderFirstName,
+          last_name: holderLastName,
+          email: holderEmail,
+          phone: holderPhone,
+        },
         booking: {
           date: selectedDate?.toISOString().split('T')[0],
           startTime,
@@ -104,6 +192,10 @@ export default function PismoBooking() {
       setMessage('Please select vehicles or add-ons first.');
       return;
     }
+    if (!holderFirstName || !holderLastName || !holderEmail || !holderPhone) {
+      setMessage('Please complete the reservation holder information.');
+      return;
+    }
     if (!collectLoaded) {
       setMessage('Payment form still loading...');
       return;
@@ -111,7 +203,7 @@ export default function PismoBooking() {
     (window as any).CollectJS.startPaymentRequest();
   };
 
-  // Fetch times
+  // Fetch available times
   useEffect(() => {
     if (!selectedDate) {
       setAvailableTimes([]);
@@ -133,7 +225,7 @@ export default function PismoBooking() {
     fetchTimes();
   }, [selectedDate]);
 
-  // Generate end times
+  // Generate possible end times
   useEffect(() => {
     if (!startTime) {
       setPossibleEndTimes([]);
@@ -163,7 +255,7 @@ export default function PismoBooking() {
     setPossibleEndTimes(ends);
   }, [startTime]);
 
-  // Fetch pricing
+  // Fetch pricing and calculate duration
   useEffect(() => {
     if (!endTime || !selectedDate) {
       setPricingCategories([]);
@@ -209,21 +301,7 @@ export default function PismoBooking() {
     fetchPricing();
   }, [endTime, selectedDate, startTime]);
 
-  // Selected items for cart
-  const selectedItems = pricingCategories
-    .filter(cat => selections[cat.id]?.qty > 0)
-    .map(cat => ({
-      id: cat.id,
-      name: cat.vehicle_name,
-      qty: selections[cat.id].qty,
-      waiver: selections[cat.id].waiver,
-      waiverCost: selections[cat.id].waiver ? (cat.damage_waiver || 0) * selections[cat.id].qty : 0,
-      price: (durationHours ? cat[`price_${durationHours}hr`] : cat.price_1hr) * selections[cat.id].qty,
-    }));
-
-  const totalSeats = selectedItems.reduce((sum, item) => sum + item.qty * (pricingCategories.find(c => c.id === item.id)?.seats || 1), 0);
-
-  // Total calculation
+  // Calculate total
   useEffect(() => {
     let calc = goggles * 4;
     pricingCategories.forEach(cat => {
@@ -243,7 +321,20 @@ export default function PismoBooking() {
     }));
   };
 
-  // Group for headings
+  const selectedItems = pricingCategories
+    .filter(cat => selections[cat.id]?.qty > 0)
+    .map(cat => ({
+      id: cat.id,
+      name: cat.vehicle_name,
+      qty: selections[cat.id].qty,
+      waiver: selections[cat.id].waiver,
+      waiverCost: selections[cat.id].waiver ? (cat.damage_waiver || 0) * selections[cat.id].qty : 0,
+      price: (durationHours ? cat[`price_${durationHours}hr`] : cat.price_1hr) * selections[cat.id].qty,
+    }));
+
+  const totalSeats = selectedItems.reduce((sum, item) => sum + item.qty * (pricingCategories.find(c => c.id === item.id)?.seats || 1), 0);
+
+  // Group vehicles
   const grouped = pricingCategories.reduce((acc, cat) => {
     const type = cat.type_vehicle || 'Other';
     if (!acc[type]) acc[type] = [];
@@ -251,14 +342,130 @@ export default function PismoBooking() {
     return acc;
   }, {} as Record<string, any[]>);
 
-  const sortedTypes = Object.keys(grouped).sort((a, b) => (TYPE_ORDER[a] || 99) - (TYPE_ORDER[b] || 99));
+  const sortedTypes = Object.keys(grouped).sort((a, b) => (TYPE_ORDER[a as keyof typeof TYPE_ORDER] || 99) - (TYPE_ORDER[b as keyof typeof TYPE_ORDER] || 99));
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8 pb-32"> {/* Padding for floating cart */}
+    <div className="min-h-screen bg-gray-900 text-white p-8 pb-32">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-5xl font-bold text-center mb-16 text-orange-500">
           Pismo Beach Hourly Rentals
         </h1>
+
+        {/* Reservation Holder Section */}
+        <section className="bg-gray-800 rounded-2xl p-8 mb-16 shadow-xl">
+          <h2 className="text-3xl font-bold mb-6 text-orange-500 text-center">
+            Reservation Holder
+            {user && (holderFirstName || holderLastName) && (
+              <span className="block text-xl mt-2 text-gray-300">
+                Booking for: {holderFirstName} {holderLastName} ({holderEmail})
+              </span>
+            )}
+          </h2>
+
+          {/* Employee Toggle - Only shown when user is an employee */}
+          {isEmployee && (
+            <div className="mb-10 flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  const newSelf = !bookingForSelf;
+                  setBookingForSelf(newSelf);
+
+                  if (!newSelf) {
+                    // Switching to "someone else" → clear fields
+                    setHolderFirstName('');
+                    setHolderLastName('');
+                    setHolderEmail('');
+                    setHolderPhone('');
+                  } else {
+                    // Switching back to "me" → repopulate from current user
+                    const supabase = createClient();
+                    supabase.auth.getUser().then(async ({ data }) => {
+                      if (data.user) {
+                        const { data: profile } = await supabase
+                          .from('profiles')
+                          .select('full_name, phone')
+                          .eq('id', data.user.id)
+                          .single();
+
+                        let firstName = '';
+                        let lastName = '';
+
+                        if (profile?.full_name) {
+                          const parts = profile.full_name.trim().split(' ');
+                          firstName = parts[0] || '';
+                          lastName = parts.slice(1).join(' ') || '';
+                        }
+
+                        setHolderFirstName(firstName);
+                        setHolderLastName(lastName);
+                        setHolderEmail(data.user.email || '');
+                        setHolderPhone(profile?.phone || '');
+                      }
+                    });
+                  }
+                }}
+                className="relative inline-flex items-center h-14 rounded-full w-96 bg-gray-700 px-3 transition-colors focus:outline-none"
+              >
+                <span className={`absolute left-6 text-lg ${bookingForSelf ? 'text-white font-bold' : 'text-gray-400'}`}>
+                  Booking for me
+                </span>
+                <span className={`absolute right-6 text-lg ${!bookingForSelf ? 'text-white font-bold' : 'text-gray-400'}`}>
+                  Someone else
+                </span>
+                <span
+                  className={`inline-block w-44 h-12 rounded-full bg-orange-600 transform transition-transform duration-300 ease-in-out ${
+                    bookingForSelf ? 'translate-x-1' : 'translate-x-48'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
+
+          {/* Contact Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            <input
+              type="text"
+              placeholder="First Name *"
+              value={holderFirstName}
+              onChange={(e) => setHolderFirstName(e.target.value)}
+              disabled={bookingForSelf && !isEmployee}
+              className="p-4 bg-gray-700 rounded-lg text-xl disabled:opacity-60 disabled:cursor-not-allowed"
+              required
+            />
+            <input
+              type="text"
+              placeholder="Last Name *"
+              value={holderLastName}
+              onChange={(e) => setHolderLastName(e.target.value)}
+              disabled={bookingForSelf && !isEmployee}
+              className="p-4 bg-gray-700 rounded-lg text-xl disabled:opacity-60"
+              required
+            />
+            <input
+              type="email"
+              placeholder="Email *"
+              value={holderEmail}
+              onChange={(e) => setHolderEmail(e.target.value)}
+              disabled={bookingForSelf && !isEmployee}
+              className="md:col-span-2 p-4 bg-gray-700 rounded-lg text-xl disabled:opacity-60"
+              required
+            />
+            <input
+              type="tel"
+              placeholder="Phone *"
+              value={holderPhone}
+              onChange={(e) => setHolderPhone(e.target.value)}
+              disabled={bookingForSelf && !isEmployee}
+              className="md:col-span-2 p-4 bg-gray-700 rounded-lg text-xl disabled:opacity-60"
+              required
+            />
+          </div>
+
+          <p className="text-center text-gray-400 mt-6 text-sm">
+            We'll send your confirmation, receipt, and ride details to this email and phone.
+          </p>
+        </section>
 
         {/* 1. Choose Reservation Date */}
         <section className="text-center mb-16">
@@ -371,7 +578,7 @@ export default function PismoBooking() {
         )}
 
         {/* 5. Goggles */}
-        <section className="text-center mb-32"> {/* Extra margin so checkout appears below cart */}
+        <section className="text-center mb-32">
           <label className="text-2xl block mb-4">Goggles ($4 each)</label>
           <input
             type="number"
@@ -386,13 +593,6 @@ export default function PismoBooking() {
         <section className="bg-gradient-to-br from-gray-800 to-gray-900 p-12 rounded-3xl shadow-2xl">
           <h2 className="text-4xl font-bold text-center mb-8">Secure Checkout</h2>
           <p className="text-center text-3xl mb-12">Total: ${total.toFixed(2)}</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-            <input placeholder="First Name" className="p-4 bg-gray-700 rounded text-xl" required />
-            <input placeholder="Last Name" className="p-4 bg-gray-700 rounded text-xl" required />
-            <input placeholder="Email" type="email" className="md:col-span-2 p-4 bg-gray-700 rounded text-xl" required />
-            <input placeholder="Phone" type="tel" className="md:col-span-2 p-4 bg-gray-700 rounded text-xl" />
-          </div>
 
           <div className="space-y-8 mb-12">
             <div id="cc-number" className="p-6 bg-gray-800 rounded-lg border border-gray-600"></div>
@@ -418,7 +618,7 @@ export default function PismoBooking() {
         </section>
       </div>
 
-      {/* Floating Summary Cart - Centered Card, Always Visible */}
+      {/* Floating Summary Cart */}
       {selectedItems.length > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-3xl">
           <div className="bg-gray-800 border-4 border-orange-500 rounded-2xl shadow-2xl p-6">
