@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 async function getBackgroundStyles() {
-  const supabase = await await createClient();
+  const supabase = await createClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
@@ -52,9 +52,8 @@ export default async function RootLayout({ children }: PropsWithChildren) {
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body suppressHydrationWarning={true}>  {/* ← This is the only change */}
         {/* <ClientApplePayLoader /> Load Apple Pay SDK safely (client-side only) */}
-         
 
         {/* Fixed background */}
         <div style={backgroundStyles} className="fixed inset-0 z-[-1]" />
