@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { createClient } from '@/utils/supabase/client';
@@ -12,6 +12,7 @@ const TYPE_ORDER = {
 };
 
 export default function PismoBooking() {
+  // === Core Booking State ===
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [startTime, setStartTime] = useState<string>('');
@@ -21,12 +22,13 @@ export default function PismoBooking() {
   const [pricingCategories, setPricingCategories] = useState<any[]>([]);
   const [selections, setSelections] = useState<Record<string, { qty: number; waiver: boolean }>>({});
   const [goggles, setGoggles] = useState<number>(0);
+  const [bandannas, setBandannas] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>('');
   const [collectLoaded, setCollectLoaded] = useState(false);
 
-  // Reservation holder
+  // === Reservation Holder ===
   const [user, setUser] = useState<any>(null);
   const [isAuthorizedToBookForOthers, setIsAuthorizedToBookForOthers] = useState(false);
   const [bookingForSelf, setBookingForSelf] = useState(true);
@@ -35,17 +37,19 @@ export default function PismoBooking() {
   const [holderEmail, setHolderEmail] = useState('');
   const [holderPhone, setHolderPhone] = useState('');
 
-  // Payment cardholder
+  // === Cardholder ===
   const [useHolderInfo, setUseHolderInfo] = useState(true);
   const [cardFirstName, setCardFirstName] = useState('');
   const [cardLastName, setCardLastName] = useState('');
   const [cardEmail, setCardEmail] = useState('');
 
-  // Scroll detection
-  const checkoutRef = useRef<HTMLDivElement>(null);
-  const [showCheckoutForm, setShowCheckoutForm] = useState(false);
+  // === Cart Mode: false = minimized summary, true = expanded checkout with waiver ===
+  const [isCheckoutExpanded, setIsCheckoutExpanded] = useState(false);
 
-  // NMI Collect.js
+  // === Liability Waiver (only relevant in expanded mode) ===
+  const [agreedToWaiver, setAgreedToWaiver] = useState(false);
+
+  // === NMI Collect.js (PCI Compliant) ===
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://secure.networkmerchants.com/token/Collect.js';
@@ -81,7 +85,49 @@ export default function PismoBooking() {
     };
   }, []);
 
-  // Auth & holder info
+  const handlePayment = async (token: string) => {
+    if (!token) return setMessage('Invalid payment token.');
+
+    setMessage('Processing payment...');
+    setLoading(true);
+
+    const res = await fetch('/api/pismo/charge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        payment_token: token,
+        amount: total * 100,
+        holder: { first_name: holderFirstName, last_name: holderLastName, email: holderEmail, phone: holderPhone },
+        cardholder: { first_name: cardFirstName, last_name: cardLastName, email: cardEmail },
+        booking: {
+          date: selectedDate?.toISOString().split('T')[0],
+          startTime,
+          endTime,
+          duration: durationHours,
+          vehicles: selections,
+          goggles,
+          bandannas,
+        },
+      }),
+    });
+
+    const result = await res.json();
+    setMessage(result.success ? `Booking confirmed! ID: ${result.transaction_id}` : `Payment failed: ${result.error || 'Try again.'}`);
+    setLoading(false);
+  };
+
+  const startPayment = () => {
+    if (total <= 0) return setMessage('Select vehicles/add-ons first.');
+    if (!holderFirstName || !holderLastName || !holderEmail || !holderPhone)
+      return setMessage('Complete reservation holder info.');
+    if (!cardFirstName || !cardLastName || !cardEmail)
+      return setMessage('Complete cardholder info.');
+    if (!agreedToWaiver) return setMessage('You must agree to the liability waiver.');
+    if (!collectLoaded) return setMessage('Payment form loading...');
+    (window as any).CollectJS.startPaymentRequest();
+  };
+
+  // === Auth & Auto-Fill ===
   useEffect(() => {
     const supabase = createClient();
 
@@ -118,7 +164,6 @@ export default function PismoBooking() {
         setIsAuthorizedToBookForOthers((profile?.user_level || 0) >= 300);
         setBookingForSelf(true);
 
-        // Pre-fill cardholder
         setCardFirstName(firstName);
         setCardLastName(lastName);
         setCardEmail(user.email || '');
@@ -146,7 +191,7 @@ export default function PismoBooking() {
     return () => listener?.subscription.unsubscribe();
   }, []);
 
-  // Sync cardholder when checkbox checked
+  // === Sync Cardholder ===
   useEffect(() => {
     if (useHolderInfo) {
       setCardFirstName(holderFirstName);
@@ -155,57 +200,7 @@ export default function PismoBooking() {
     }
   }, [useHolderInfo, holderFirstName, holderLastName, holderEmail]);
 
-  const handlePayment = async (token: string) => {
-    if (!token) return setMessage('Invalid payment token.');
-
-    setMessage('Processing payment...');
-    setLoading(true);
-
-    const res = await fetch('/api/pismo/charge', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        payment_token: token,
-        amount: total * 100,
-        holder: { first_name: holderFirstName, last_name: holderLastName, email: holderEmail, phone: holderPhone },
-        cardholder: { first_name: cardFirstName, last_name: cardLastName, email: cardEmail },
-        booking: {
-          date: selectedDate?.toISOString().split('T')[0],
-          startTime,
-          endTime,
-          duration: durationHours,
-          vehicles: selections,
-          goggles,
-        },
-      }),
-    });
-
-    const result = await res.json();
-    setMessage(result.success ? `Booking confirmed! ID: ${result.transaction_id}` : `Payment failed: ${result.error || 'Try again.'}`);
-    setLoading(false);
-  };
-
-  const startPayment = () => {
-    if (total <= 0) return setMessage('Select vehicles/add-ons first.');
-    if (!holderFirstName || !holderLastName || !holderEmail || !holderPhone)
-      return setMessage('Complete reservation holder info.');
-    if (!cardFirstName || !cardLastName || !cardEmail)
-      return setMessage('Complete cardholder info.');
-    if (!collectLoaded) return setMessage('Payment form loading...');
-    (window as any).CollectJS.startPaymentRequest();
-  };
-
-  // Scroll detection
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => setShowCheckoutForm(entry.isIntersecting),
-      { rootMargin: '0px 0px -100px 0px' }
-    );
-    if (checkoutRef.current) observer.observe(checkoutRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  // Times availability
+  // === Availability & Pricing ===
   useEffect(() => {
     if (!selectedDate) {
       setAvailableTimes([]);
@@ -227,7 +222,6 @@ export default function PismoBooking() {
     fetchTimes();
   }, [selectedDate]);
 
-  // End times
   useEffect(() => {
     if (!startTime) {
       setPossibleEndTimes([]);
@@ -257,7 +251,6 @@ export default function PismoBooking() {
     setPossibleEndTimes(ends);
   }, [startTime]);
 
-  // Pricing & duration
   useEffect(() => {
     if (!endTime || !selectedDate) {
       setPricingCategories([]);
@@ -303,9 +296,9 @@ export default function PismoBooking() {
     fetchPricing();
   }, [endTime, selectedDate, startTime]);
 
-  // Total calculation
+  // === Total Calculation ===
   useEffect(() => {
-    let calc = goggles * 4;
+    let calc = goggles * 4 + bandannas * 5;
     pricingCategories.forEach(cat => {
       const sel = selections[cat.id] || { qty: 0, waiver: false };
       const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
@@ -314,7 +307,7 @@ export default function PismoBooking() {
       if (sel.waiver) calc += sel.qty * (cat.damage_waiver || 0);
     });
     setTotal(calc);
-  }, [selections, goggles, pricingCategories, durationHours]);
+  }, [selections, goggles, bandannas, pricingCategories, durationHours]);
 
   const updateSelection = (catId: string, qty: number, waiver: boolean) => {
     setSelections(prev => ({ ...prev, [catId]: { qty, waiver } }));
@@ -332,6 +325,7 @@ export default function PismoBooking() {
     }));
 
   const totalSeats = selectedItems.reduce((sum, item) => sum + item.qty * (pricingCategories.find(c => c.id === item.id)?.seats || 1), 0);
+  const totalItemsCount = selectedItems.length + (goggles > 0 ? 1 : 0) + (bandannas > 0 ? 1 : 0);
 
   const grouped = pricingCategories.reduce((acc, cat) => {
     const type = cat.type_vehicle || 'Other';
@@ -343,7 +337,7 @@ export default function PismoBooking() {
   const sortedTypes = Object.keys(grouped).sort((a, b) => (TYPE_ORDER[a as keyof typeof TYPE_ORDER] || 99) - (TYPE_ORDER[b as keyof typeof TYPE_ORDER] || 99));
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 pb-32 md:p-8">
+    <div className="min-h-screen bg-gray-900 text-white p-4 pb-64 md:p-8">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold text-center mb-12 text-orange-500">
           Pismo Beach Hourly Rentals
@@ -360,7 +354,6 @@ export default function PismoBooking() {
             )}
           </h2>
 
-          {/* Toggle for staff/partners/resellers */}
           {isAuthorizedToBookForOthers && (
             <div className="mb-8 flex justify-center">
               <button
@@ -415,42 +408,10 @@ export default function PismoBooking() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-3xl mx-auto">
-            <input
-              type="text"
-              placeholder="First Name *"
-              value={holderFirstName}
-              onChange={e => setHolderFirstName(e.target.value)}
-              disabled={bookingForSelf && !isAuthorizedToBookForOthers}
-              className="p-4 bg-gray-700 rounded-lg text-lg md:text-xl disabled:opacity-60"
-              required
-            />
-            <input
-              type="text"
-              placeholder="Last Name *"
-              value={holderLastName}
-              onChange={e => setHolderLastName(e.target.value)}
-              disabled={bookingForSelf && !isAuthorizedToBookForOthers}
-              className="p-4 bg-gray-700 rounded-lg text-lg md:text-xl disabled:opacity-60"
-              required
-            />
-            <input
-              type="email"
-              placeholder="Email *"
-              value={holderEmail}
-              onChange={e => setHolderEmail(e.target.value)}
-              disabled={bookingForSelf && !isAuthorizedToBookForOthers}
-              className="md:col-span-2 p-4 bg-gray-700 rounded-lg text-lg md:text-xl disabled:opacity-60"
-              required
-            />
-            <input
-              type="tel"
-              placeholder="Phone *"
-              value={holderPhone}
-              onChange={e => setHolderPhone(e.target.value)}
-              disabled={bookingForSelf && !isAuthorizedToBookForOthers}
-              className="md:col-span-2 p-4 bg-gray-700 rounded-lg text-lg md:text-xl disabled:opacity-60"
-              required
-            />
+            <input type="text" placeholder="First Name *" value={holderFirstName} onChange={e => setHolderFirstName(e.target.value)} disabled={bookingForSelf && !isAuthorizedToBookForOthers} className="p-4 bg-gray-700 rounded-lg text-lg md:text-xl disabled:opacity-60" required />
+            <input type="text" placeholder="Last Name *" value={holderLastName} onChange={e => setHolderLastName(e.target.value)} disabled={bookingForSelf && !isAuthorizedToBookForOthers} className="p-4 bg-gray-700 rounded-lg text-lg md:text-xl disabled:opacity-60" required />
+            <input type="email" placeholder="Email *" value={holderEmail} onChange={e => setHolderEmail(e.target.value)} disabled={bookingForSelf && !isAuthorizedToBookForOthers} className="md:col-span-2 p-4 bg-gray-700 rounded-lg text-lg md:text-xl disabled:opacity-60" required />
+            <input type="tel" placeholder="Phone *" value={holderPhone} onChange={e => setHolderPhone(e.target.value)} disabled={bookingForSelf && !isAuthorizedToBookForOthers} className="md:col-span-2 p-4 bg-gray-700 rounded-lg text-lg md:text-xl disabled:opacity-60" required />
           </div>
 
           <p className="text-center text-gray-400 mt-6 text-sm">
@@ -458,7 +419,7 @@ export default function PismoBooking() {
           </p>
         </section>
 
-        {/* 1. Date Picker */}
+        {/* Date Picker */}
         <section className="text-center mb-12">
           <label className="text-2xl block mb-4">1. Choose Reservation Date</label>
           <DatePicker
@@ -470,7 +431,7 @@ export default function PismoBooking() {
           />
         </section>
 
-        {/* 2. Start Time */}
+        {/* Start Time */}
         {availableTimes.length > 0 && (
           <section className="text-center mb-12">
             <label className="text-2xl block mb-4">2. Choose Start Time</label>
@@ -493,7 +454,7 @@ export default function PismoBooking() {
           </section>
         )}
 
-        {/* 3. End Time */}
+        {/* End Time */}
         {startTime && possibleEndTimes.length > 0 && (
           <section className="text-center mb-12">
             <label className="text-2xl block mb-4">3. Choose End Time</label>
@@ -517,7 +478,7 @@ export default function PismoBooking() {
 
         {loading && <p className="text-center text-2xl text-orange-400 mb-12">Loading vehicles...</p>}
 
-        {/* 4. Vehicles — Fixed spacing & mobile layout */}
+        {/* Vehicles */}
         {pricingCategories.length > 0 && (
           <section className="mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-10">4. Select Vehicles</h2>
@@ -530,11 +491,18 @@ export default function PismoBooking() {
                   {grouped[type].map(cat => {
                     const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
                     const price = cat[priceKey] || 0;
+                    const seats = cat.seats || 1;
                     return (
                       <div key={cat.id} className="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl">
-                        <h4 className="text-2xl md:text-3xl font-bold mb-4">
-                          {cat.vehicle_name} — ${price} / {durationHours || 1}hr
+                        <h4 className="text-2xl md:text-3xl font-bold mb-2">
+                          {cat.vehicle_name}
                         </h4>
+                        <p className="text-xl md:text-2xl mb-4">
+                          ${price} / {durationHours || 1}hr
+                          <span className="block text-sm text-gray-400 mt-1">
+                            Seats {seats}
+                          </span>
+                        </p>
                         <div className="space-y-6">
                           <div>
                             <label className="text-lg md:text-xl block mb-2">Quantity</label>
@@ -566,118 +534,179 @@ export default function PismoBooking() {
           </section>
         )}
 
-        {/* 5. Goggles */}
-        <section className="text-center mb-20">
-          <label className="text-2xl block mb-4">Goggles ($4 each)</label>
-          <input
-            type="number"
-            min="0"
-            value={goggles}
-            onChange={e => setGoggles(parseInt(e.target.value) || 0)}
-            className="p-4 bg-gray-700 rounded w-32 text-xl"
-          />
+        {/* Optional Extras */}
+        <section className="bg-gray-800 rounded-2xl p-6 md:p-8 mb-12 shadow-xl">
+          <h2 className="text-3xl font-bold text-center mb-8 text-orange-500">Optional Extras</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+            <div className="text-center">
+              <label className="text-2xl block mb-4">Goggles ($4 each)</label>
+              <input
+                type="number"
+                min="0"
+                value={goggles}
+                onChange={e => setGoggles(parseInt(e.target.value) || 0)}
+                className="p-4 bg-gray-700 rounded w-32 text-xl"
+              />
+            </div>
+            <div className="text-center">
+              <label className="text-2xl block mb-4">Bandannas ($5 each)</label>
+              <input
+                type="number"
+                min="0"
+                value={bandannas}
+                onChange={e => setBandannas(parseInt(e.target.value) || 0)}
+                className="p-4 bg-gray-700 rounded w-32 text-xl"
+              />
+            </div>
+          </div>
         </section>
 
-        {/* Scroll anchor */}
-        <div ref={checkoutRef} className="h-1" />
+        {/* Extra space for floating cart */}
+        <div className="h-96" />
       </div>
 
-      {/* Floating Cart + Checkout — Mobile-optimized width */}
+      {/* Floating Cart */}
       {selectedItems.length > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 z-50 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl">
-          <div className="bg-gray-800 border-4 border-orange-500 rounded-2xl shadow-2xl p-6">
-            <h3 className="text-2xl font-bold mb-4 text-center">Your Selection</h3>
-            <div className="max-h-64 overflow-y-auto space-y-3 mb-4">
-              {selectedItems.map(item => (
-                <div key={item.id} className="flex flex-col">
-                  <div className="flex justify-between">
-                    <span>{item.name} x {item.qty}</span>
-                    <span>${item.price.toFixed(2)}</span>
-                  </div>
-                  {item.waiver && (
-                    <div className="text-sm text-orange-300 ml-4">
-                      + Damage Waiver (${item.waiverCost.toFixed(2)})
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl md:bottom-4">
+          <div className="bg-gray-800 border-t-4 border-orange-600 md:border-4 md:rounded-2xl shadow-2xl">
+            {/* Minimized Summary Bar */}
+            {!isCheckoutExpanded ? (
+              <div
+                onClick={() => setIsCheckoutExpanded(true)}
+                className="flex justify-between items-center p-5 cursor-pointer hover:bg-gray-700/50 transition"
+              >
+                <div>
+                  <span className="text-lg font-semibold">
+                    {totalSeats} seat{totalSeats !== 1 ? 's' : ''}
+                  </span>
+                  <span className="text-gray-400 ml-3">
+                    {totalItemsCount} item{totalItemsCount !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold">${total.toFixed(2)}</div>
+                  <div className="text-sm text-orange-400">Tap to Review & Checkout ↓</div>
+                </div>
+              </div>
+            ) : (
+              /* Expanded Checkout */
+              <div className="p-5 md:p-6 max-h-[85vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold">Your Selection</h3>
+                  <button
+                    onClick={() => {
+                      setIsCheckoutExpanded(false);
+                      setAgreedToWaiver(false); // reset waiver when going back to edit
+                    }}
+                    className="text-orange-400 hover:text-orange-300 underline text-sm"
+                  >
+                    Edit Selection ↑
+                  </button>
+                </div>
+
+                <div className="space-y-2 text-sm mb-4 border-b border-gray-700 pb-4">
+                  {selectedItems.map(item => (
+                    <div key={item.id} className="flex justify-between">
+                      <span>{item.qty}× {item.name}</span>
+                      <span>${item.price.toFixed(2)}</span>
+                    </div>
+                  ))}
+                  {goggles > 0 && (
+                    <div className="flex justify-between">
+                      <span>Goggles × {goggles}</span>
+                      <span>${(goggles * 4).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {bandannas > 0 && (
+                    <div className="flex justify-between">
+                      <span>Bandannas × {bandannas}</span>
+                      <span>${(bandannas * 5).toFixed(2)}</span>
                     </div>
                   )}
                 </div>
-              ))}
-              {goggles > 0 && (
-                <div className="flex justify-between">
-                  <span>Goggles x {goggles}</span>
-                  <span>${(goggles * 4).toFixed(2)}</span>
-                </div>
-              )}
-            </div>
 
-            <div className="flex justify-between text-xl font-bold border-t-2 border-orange-500 pt-4 mb-6">
-              <span>Total Seats: {totalSeats}</span>
-              <span>Total: ${total.toFixed(2)}</span>
-            </div>
-
-            {showCheckoutForm && (
-              <div className="space-y-6">
-                <h4 className="text-xl font-bold text-center">Cardholder Information</h4>
-                <label className="flex items-center justify-center gap-3 text-lg">
-                  <input
-                    type="checkbox"
-                    checked={useHolderInfo}
-                    onChange={e => setUseHolderInfo(e.target.checked)}
-                    className="w-6 h-6"
-                  />
-                  Same as reservation holder
-                </label>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    placeholder="First Name *"
-                    value={cardFirstName}
-                    onChange={e => setCardFirstName(e.target.value)}
-                    disabled={useHolderInfo}
-                    className="p-4 bg-gray-700 rounded-lg text-xl disabled:opacity-60"
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Last Name *"
-                    value={cardLastName}
-                    onChange={e => setCardLastName(e.target.value)}
-                    disabled={useHolderInfo}
-                    className="p-4 bg-gray-700 rounded-lg text-xl disabled:opacity-60"
-                    required
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email *"
-                    value={cardEmail}
-                    onChange={e => setCardEmail(e.target.value)}
-                    disabled={useHolderInfo}
-                    className="md:col-span-2 p-4 bg-gray-700 rounded-lg text-xl disabled:opacity-60"
-                    required
-                  />
+                <div className="flex justify-between text-lg font-bold mb-6">
+                  <span>Total:</span>
+                  <span>${total.toFixed(2)}</span>
                 </div>
 
-                <div className="space-y-6">
-                  <div id="cc-number" className="p-6 bg-gray-800 rounded-lg border border-gray-600"></div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div id="cc-exp" className="p-6 bg-gray-800 rounded-lg border border-gray-600"></div>
-                    <div id="cc-cvv" className="p-6 bg-gray-800 rounded-lg border border-gray-600"></div>
+                {/* Liability Waiver */}
+                <div className="bg-red-900/30 border-2 border-red-600 rounded-xl p-4 mb-6">
+                  <label className="flex items-start gap-4 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={agreedToWaiver}
+                      onChange={(e) => setAgreedToWaiver(e.target.checked)}
+                      className="mt-1 w-6 h-6 text-orange-600 shrink-0"
+                    />
+                    <span className="text-sm leading-relaxed">
+                      I understand that off-road vehicle driving can be inherently dangerous and involves risk of injury or death. 
+                      I agree to participate at my own risk and assume full responsibility for any injury or damage that may occur.
+                    </span>
+                  </label>
+                </div>
+
+                {/* Payment Form — only after waiver */}
+                {agreedToWaiver && (
+                  <div className="space-y-5">
+                    <div className="text-center">
+                      <label className="flex items-center justify-center gap-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={useHolderInfo}
+                          onChange={(e) => setUseHolderInfo(e.target.checked)}
+                          className="w-5 h-5"
+                        />
+                        Cardholder same as reservation holder
+                      </label>
+                    </div>
+
+                    {!useHolderInfo && (
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <input
+                          placeholder="First Name *"
+                          value={cardFirstName}
+                          onChange={(e) => setCardFirstName(e.target.value)}
+                          className="p-3 bg-gray-700 rounded"
+                        />
+                        <input
+                          placeholder="Last Name *"
+                          value={cardLastName}
+                          onChange={(e) => setCardLastName(e.target.value)}
+                          className="p-3 bg-gray-700 rounded"
+                        />
+                        <input
+                          placeholder="Email *"
+                          value={cardEmail}
+                          onChange={(e) => setCardEmail(e.target.value)}
+                          className="col-span-2 p-3 bg-gray-700 rounded"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div id="cc-number" className="p-5 bg-gray-900 rounded-lg border border-gray-600"></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div id="cc-exp" className="p-5 bg-gray-900 rounded-lg border border-gray-600"></div>
+                        <div id="cc-cvv" className="p-5 bg-gray-900 rounded-lg border border-gray-600"></div>
+                      </div>
+                    </div>
+
+                    {message && (
+                      <p className={`text-center text-sm font-medium ${message.includes('confirmed') ? 'text-green-400' : 'text-red-400'}`}>
+                        {message}
+                      </p>
+                    )}
+
+                    <button
+                      onClick={startPayment}
+                      disabled={loading || !collectLoaded}
+                      className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 py-5 text-2xl font-bold rounded-xl shadow-lg transition"
+                    >
+                      {loading ? 'Processing...' : `Pay $${total.toFixed(2)} & Book Now`}
+                    </button>
                   </div>
-                </div>
-
-                {message && (
-                  <p className={`text-center text-xl ${message.includes('confirmed') ? 'text-green-400' : 'text-red-400'}`}>
-                    {message}
-                  </p>
                 )}
-
-                <button
-                  onClick={startPayment}
-                  disabled={loading || total === 0}
-                  className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 py-6 text-2xl md:text-3xl font-bold rounded-xl shadow-lg"
-                >
-                  {loading ? 'Processing...' : `Pay $${total.toFixed(2)} & Book Now`}
-                </button>
               </div>
             )}
           </div>
