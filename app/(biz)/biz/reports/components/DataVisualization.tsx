@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useMemo } from 'react';
 import {
   Table,
@@ -77,36 +79,41 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // Extract column names from first row (exclude internal 'id' if present)
   const columns = useMemo(() => {
     if (data.length === 0) return [];
     return Object.keys(data[0]).filter((col) => col !== 'id');
   }, [data]);
 
-  // Set amount of visible columns
+  // Show first 15 columns by default
   useMemo(() => {
     setVisibleColumns(columns.slice(0, 15));
   }, [columns]);
 
+  // Determine column types for filtering
   const columnTypes: Record<string, ColumnType> = useMemo(() => {
     if (data.length === 0) return {};
     const types: Record<string, ColumnType> = {};
     columns.forEach((col) => {
       const value = data[0][col];
-      if (typeof value === 'string') {
+      if (col === 'amount') {
+        types[col] = 'number';
+      } else if (col.includes('date') || col === 'date_local') {
+        types[col] = 'string'; // formatted string
+      } else if (typeof value === 'string') {
         types[col] = 'string';
       } else if (typeof value === 'number') {
         types[col] = 'number';
       } else if (typeof value === 'boolean') {
         types[col] = 'boolean';
-      } else if (value instanceof Date) {
-        types[col] = 'date';
       } else {
-        types[col] = 'string'; // Default to string for unknown types
+        types[col] = 'string';
       }
     });
     return types;
   }, [data, columns]);
 
+  // Unique values per column for dropdown filters
   const uniqueValues = useMemo(() => {
     const values: Record<string, Set<any>> = {};
     columns.forEach((col) => {
@@ -115,50 +122,27 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
     return values;
   }, [data, columns]);
 
+  // Apply search, column filters, and sorting
   const filteredData = useMemo(() => {
     let filtered = data.filter((item) => {
-      // Parse the date from the 'created_at' field and ensure it's within the date range
-      const createdAtDate = new Date(item.created_at);
-
-      const isInDateRange =
-        createdAtDate >= new Date(dateRange.from) &&
-        createdAtDate <= new Date(dateRange.to);
-
-      // Optionally check the 'date' field if it's relevant to the filter
-      const entryDate = new Date(item.date);
-      const isEntryDateInRange =
-        entryDate >= new Date(dateRange.from) &&
-        entryDate <= new Date(dateRange.to);
-
-      // Combine both checks, as needed
-      if (!isInDateRange && !isEntryDateInRange) {
-        return false;
-      }
-
-      // Apply search term filtering
+      // Global search
       const matchesSearch = Object.values(item).some((value) =>
-        value
-          ?.toString()
-          ?.toLowerCase()
-          .includes(searchTerm?.toLowerCase() ?? '')
+        value?.toString()?.toLowerCase().includes(searchTerm?.toLowerCase() ?? '')
       );
 
-      // Apply column filter logic
+      // Column filters
       const matchesColumnFilters = columnFilters.every((filter) => {
         const itemValue = item[filter.column];
         switch (filter.type) {
           case 'string':
             return itemValue
-              ?.toLowerCase()
+              ?.toString()
+              .toLowerCase()
               .includes(filter.value?.toString()?.toLowerCase() ?? '');
           case 'number':
             return itemValue === Number(filter.value);
           case 'boolean':
             return itemValue === filter.value;
-          case 'date':
-            const filterDate = new Date(filter.value as string | number | Date);
-            const itemDate = new Date(itemValue);
-            return itemDate.toDateString() === filterDate.toDateString();
           default:
             return true;
         }
@@ -167,24 +151,29 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
       return matchesSearch && matchesColumnFilters;
     });
 
-    // Sort filtered data based on the selected column and order
+    // Sorting
     if (sortColumn) {
       filtered = filtered.sort((a, b) => {
         const aValue = a[sortColumn];
         const bValue = b[sortColumn];
 
-        if (aValue < bValue) {
-          return sortOrder === 'asc' ? -1 : 1;
+        // Special sorting for date_local (formatted string)
+        if (sortColumn === 'date_local') {
+          const aDate = new Date(aValue.replace(' PM', 'PM').replace(' AM', 'AM'));
+          const bDate = new Date(bValue.replace(' PM', 'PM').replace(' AM', 'AM'));
+          return sortOrder === 'asc'
+            ? aDate.getTime() - bDate.getTime()
+            : bDate.getTime() - aDate.getTime();
         }
-        if (aValue > bValue) {
-          return sortOrder === 'asc' ? 1 : -1;
-        }
+
+        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
         return 0;
       });
     }
 
     return filtered;
-  }, [data, dateRange, searchTerm, columnFilters, sortColumn, sortOrder]);
+  }, [data, searchTerm, columnFilters, sortColumn, sortOrder]);
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
@@ -193,20 +182,8 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
 
   const totalPages = Math.ceil(filteredData.length / pageSize);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return (
-      date.toLocaleDateString() +
-      ' ' +
-      date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      })
-    );
-  };
-
-  const downloadData = (format: 'csv' | 'json' | 'xlsx') => {
+  // CSV/JSON download
+  const downloadData = (format: 'csv' | 'json') => {
     let content: string;
     let mimeType: string;
     let fileExtension: string;
@@ -222,21 +199,14 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
         mimeType = 'application/json';
         fileExtension = 'json';
         break;
-      case 'xlsx':
-        alert(
-          'XLSX download is not implemented in this example. You would need to use a library like xlsx.js to generate the file.'
-        );
-        return;
     }
 
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${tableName}_${format}.${fileExtension}`;
-    document.body.appendChild(a);
+    a.download = `${tableName.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().slice(0, 10)}.${fileExtension}`;
     a.click();
-    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
@@ -248,6 +218,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
     return [header, ...rows].join('\n');
   };
 
+  // Filter UI helpers
   const renderFilterInput = (filter: ColumnFilter) => {
     const uniqueColumnValues = Array.from(uniqueValues[filter.column]);
 
@@ -262,7 +233,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
           </SelectTrigger>
           <SelectContent>
             {uniqueColumnValues.map((value) => (
-              <SelectItem key={value} value={value?.toString()}>
+              <SelectItem key={value?.toString()} value={value?.toString()}>
                 {value?.toString()}
               </SelectItem>
             ))}
@@ -271,47 +242,19 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
       );
     }
 
-    switch (filter.type) {
-      case 'string':
-        return (
-          <Input
-            type="text"
-            value={(filter.value as string) || ''}
-            onChange={(e) => updateFilter(filter.id, e.target.value)}
-            placeholder={`Filter ${filter.column}...`}
-          />
-        );
-      case 'number':
-        return (
-          <Input
-            type="number"
-            value={(filter.value as number) || ''}
-            onChange={(e) => updateFilter(filter.id, Number(e.target.value))}
-            placeholder={`Filter ${filter.column}...`}
-          />
-        );
-      case 'boolean':
-        return (
-          <Checkbox
-            checked={(filter.value as boolean) || false}
-            onCheckedChange={(checked) => updateFilter(filter.id, checked)}
-          />
-        );
-      case 'date':
-        return (
-          <DatePicker
-            date={(filter.value as Date) || null}
-            setDate={(date) => updateFilter(filter.id, date)}
-          />
-        );
-      default:
-        return null;
-    }
+    return (
+      <Input
+        type="text"
+        value={(filter.value as string) || ''}
+        onChange={(e) => updateFilter(filter.id, e.target.value)}
+        placeholder={`Filter ${filter.column}...`}
+      />
+    );
   };
 
   const addFilter = () => {
     const newFilter: ColumnFilter = {
-      id: Date.now()?.toString(),
+      id: Date.now().toString(),
       column: columns[0],
       type: columnTypes[columns[0]],
       value: null
@@ -320,13 +263,13 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   };
 
   const removeFilter = (id: string) => {
-    setColumnFilters(columnFilters.filter((filter) => filter.id !== id));
+    setColumnFilters(columnFilters.filter((f) => f.id !== id));
   };
 
   const updateFilter = (id: string, value: any) => {
     setColumnFilters(
-      columnFilters.map((filter) =>
-        filter.id === id ? { ...filter, value } : filter
+      columnFilters.map((f) =>
+        f.id === id ? { ...f, value } : f
       )
     );
   };
@@ -334,7 +277,7 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   const toggleColumnVisibility = (column: string) => {
     setVisibleColumns((prev) =>
       prev.includes(column)
-        ? prev.filter((col) => col !== column)
+        ? prev.filter((c) => c !== column)
         : [...prev, column]
     );
   };
@@ -358,14 +301,6 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-      <Accordion type="single" collapsible>
-        <AccordionItem value="item-2">
-          <AccordionTrigger>View Generated Report Description</AccordionTrigger>
-          <AccordionContent>
-            <TableDescription data={filteredData} columns={columns} />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
 
       <div className="flex flex-col space-y-4">
         <div className="flex flex-wrap items-center gap-4">
@@ -386,194 +321,156 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
             <SheetContent>
               <SheetHeader>
                 <SheetTitle>Column Settings</SheetTitle>
-                <SheetDescription>
-                  Select which columns to display in the table.
-                </SheetDescription>
+                <SheetDescription>Select visible columns</SheetDescription>
               </SheetHeader>
               <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
-                {columns.map((column) => {
-                  const isVehicleTag = tableName === 'vehicle_tag';
-                  return (
-                    <div key={column} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`column-${column}`}
-                        checked={visibleColumns.includes(column)}
-                        onCheckedChange={() => toggleColumnVisibility(column)}
-                      />
-                      <label htmlFor={`column-${column}`}>{column}</label>
-                    </div>
-                  );
-                })}
+                {columns.map((column) => (
+                  <div key={column} className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={visibleColumns.includes(column)}
+                      onCheckedChange={() => toggleColumnVisibility(column)}
+                    />
+                    <label>{column.replace(/_/g, ' ')}</label>
+                  </div>
+                ))}
               </div>
             </SheetContent>
           </Sheet>
         </div>
+
         <div className="flex flex-wrap gap-4">
           {columnFilters.map((filter) => (
-            <div
-              key={filter.id}
-              className="flex flex-col space-y-2 w-full sm:w-auto"
-            >
+            <div key={filter.id} className="flex items-center space-x-2">
               <Select
                 value={filter.column}
                 onValueChange={(value) =>
                   setColumnFilters(
                     columnFilters.map((f) =>
                       f.id === filter.id
-                        ? {
-                            ...f,
-                            column: value,
-                            type: columnTypes[value],
-                            value: null
-                          }
+                        ? { ...f, column: value, type: columnTypes[value], value: null }
                         : f
                     )
                   )
                 }
               >
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {columns.map((column) => (
-                    <SelectItem key={column} value={column}>
-                      {column.replace(/_/g, ' ')}
+                  {columns.map((col) => (
+                    <SelectItem key={col} value={col}>
+                      {col.replace(/_/g, ' ')}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <div className="flex items-center space-x-2">
-                {renderFilterInput(filter)}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeFilter(filter.id)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+              {renderFilterInput(filter)}
+              <Button variant="ghost" size="icon" onClick={() => removeFilter(filter.id)}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           ))}
-        </div>
-        <div className="flex flex-wrap gap-4">
           <Button onClick={addFilter} variant="outline">
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Filter
           </Button>
+        </div>
+
+        <div className="flex gap-4">
           <Button onClick={() => downloadData('csv')} variant="outline">
-            <DownloadIcon className="mr-2 h-4 w-4" />
-            CSV
+            <DownloadIcon className="mr-2 h-4 w-4" /> CSV
           </Button>
           <Button onClick={() => downloadData('json')} variant="outline">
-            <DownloadIcon className="mr-2 h-4 w-4" />
-            JSON
-          </Button>
-          <Button onClick={() => downloadData('xlsx')} variant="outline">
-            <DownloadIcon className="mr-2 h-4 w-4" />
-            XLSX
+            <DownloadIcon className="mr-2 h-4 w-4" /> JSON
           </Button>
         </div>
       </div>
+
       <div className="border rounded-md overflow-x-auto">
-        <Table className="whitespace-wrap">
+        <Table>
           <TableHeader>
             <TableRow>
               {visibleColumns.map((column) => (
                 <TableHead key={column}>
                   <div className="flex items-center space-x-2">
                     <span>{column.replace(/_/g, ' ')}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSort(column)}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => handleSort(column)}>
                       {sortColumn === column ? (
-                        sortOrder === 'asc' ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )
+                        sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
                       ) : (
-                        <ArrowDown className="h-4 w-4" />
+                        <ArrowDown className="h-4 w-4 opacity-30" />
                       )}
                     </Button>
-                    {uniqueValues[column].size < 20 && (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <FilterIcon className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-48">
-                          <div className="space-y-2">
-                            {Array.from(uniqueValues[column]).map((value) => (
-                              <div
-                                key={value}
-                                className="flex items-center space-x-2"
-                              >
-                                <Checkbox
-                                  id={`${column}-${value}`}
-                                  checked={columnFilters.some(
-                                    (filter) =>
-                                      filter.column === column &&
-                                      filter.value === value
-                                  )}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      const newFilter: ColumnFilter = {
-                                        id: Date.now()?.toString(),
-                                        column,
-                                        type: columnTypes[column],
-                                        value
-                                      };
-                                      setColumnFilters([
-                                        ...columnFilters,
-                                        newFilter
-                                      ]);
-                                    } else {
-                                      setColumnFilters(
-                                        columnFilters.filter(
-                                          (filter) =>
-                                            !(
-                                              filter.column === column &&
-                                              filter.value === value
-                                            )
-                                        )
-                                      );
-                                    }
-                                  }}
-                                />
-                                <label htmlFor={`${column}-${value}`}>
-                                  {value}
-                                </label>
-                              </div>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    )}
                   </div>
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedData.map((row, index) => (
-              <TableRow key={index}>
-                {visibleColumns.map((column) => (
-                  <TableCell key={column}>
-                    {column === 'created_at' || column === 'updated_at'
-                      ? formatDate(row[column])
-                      : row[column] === null || row[column] === ''
-                        ? '-'
-                        : String(row[column])}
-                  </TableCell>
-                ))}
+            {paginatedData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={visibleColumns.length} className="text-center py-8 text-gray-500">
+                  No transactions found for the selected date range.
+                </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              paginatedData.map((row, i) => (
+                <TableRow key={i} className="hover:bg-gray-800/50">
+                  {visibleColumns.map((col) => (
+                    <TableCell key={col}>
+                      {col === 'amount' ? (
+                        <span className="font-bold text-green-400">
+                          ${parseFloat(row[col] || '0').toFixed(2)}
+                        </span>
+                      ) : col === 'condition' ? (
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            row[col] === 'complete'
+                              ? 'bg-green-900/50 text-green-300'
+                              : 'bg-red-900/50 text-red-300'
+                          }`}
+                        >
+                          {row[col] || 'unknown'}
+                        </span>
+                      ) : col === 'location' ? (
+                        <span className="px-3 py-1 bg-gray-700 rounded-full text-sm">
+                          {row[col] || '—'}
+                        </span>
+                      ) : col === 'customer_name' ? (
+                        row[col] || <span className="text-gray-500 italic">Not provided</span>
+                      ) : col === 'date_local' ? (
+                        row[col] || <span className="text-gray-500 italic">Not available</span>
+                      ) : (
+                        row[col] || '—'
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
           </TableBody>
+
+          {/* Totals Row - Fixed nesting: placed inside TableBody as a TableRow */}
+          {filteredData.length > 0 && (
+            <tfoot>
+              <TableRow className="bg-gray-900 font-bold border-t-4 border-gray-700">
+                <TableCell
+                  colSpan={visibleColumns.length - 1}
+                  className="text-right text-gray-300 pr-8"
+                >
+                  Total ({filteredData.length} transactions):
+                </TableCell>
+                <TableCell className="text-green-400 text-right font-bold">
+                  ${filteredData
+                    .reduce((sum, row) => sum + (parseFloat(row.amount || '0') || 0), 0)
+                    .toFixed(2)}
+                </TableCell>
+              </TableRow>
+            </tfoot>
+          )}
         </Table>
       </div>
+
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}

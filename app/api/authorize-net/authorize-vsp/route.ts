@@ -383,7 +383,17 @@ async function getSettledBatchList(first_date: string, last_date: string) {
       console.log(apiResponse.getMessages().getMessage()[0].getCode());
       console.log(apiResponse.getMessages().getMessage()[0].getText());
     }
-    throw new Error(apiResponse.getMessages().getMessage());
+    // Safely extract error message from Authorize.Net response
+const messages = apiResponse.getMessages();
+if (messages && messages.getResultCode() !== 'Ok') {
+  const messageArray = messages.getMessage();
+  if (messageArray && messageArray.length > 0) {
+    const errorText = messageArray.map(m => `${m.getCode()}: ${m.getText()}`).join('; ');
+    console.error('Authorize.Net API Error:', errorText);
+    throw new Error(`Authorize.Net Error: ${errorText}`);
+  }
+}
+throw new Error('Authorize.Net API returned an error with no message details');
   }
 }
 
