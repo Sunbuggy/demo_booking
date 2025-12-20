@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { createClient } from '@/utils/supabase/client';
+import Image from 'next/image'; // Import Next.js Image component for optimized images
 
 const TYPE_ORDER = {
   ATV: 1,
@@ -50,6 +51,7 @@ export default function PismoBooking() {
   const [agreedToWaiver, setAgreedToWaiver] = useState(false);
 
   // === NMI Collect.js (PCI Compliant) ===
+  // Loads NMI's Collect.js for inline hosted payment fields to ensure PCI compliance by not handling card data on our server.
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://secure.networkmerchants.com/token/Collect.js';
@@ -85,6 +87,7 @@ export default function PismoBooking() {
     };
   }, []);
 
+  // Handles secure payment processing using the token from Collect.js.
   const handlePayment = async (token: string) => {
     if (!token) return setMessage('Invalid payment token.');
 
@@ -336,12 +339,71 @@ export default function PismoBooking() {
 
   const sortedTypes = Object.keys(grouped).sort((a, b) => (TYPE_ORDER[a as keyof typeof TYPE_ORDER] || 99) - (TYPE_ORDER[b as keyof typeof TYPE_ORDER] || 99));
 
+  // === Progress Indicator Logic ===
+  const isStep1Complete = !!endTime && !!durationHours;
+  const isStep2Complete = total > 0;
+  const isStep3Active = isCheckoutExpanded;
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 pb-64 md:p-8">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-4xl md:text-5xl font-bold text-center mb-12 text-orange-500">
+        <h1 className="text-4xl md:text-5xl font-bold text-center mb-8 text-orange-500">
           Pismo Beach Hourly Rentals
         </h1>
+
+        {/* === PROGRESS INDICATOR === */}
+        <div className="sticky top-16 z-40 bg-gray-900 py-4 mb-8 shadow-md border-b border-gray-800 overflow-x-auto">
+          <div className="flex flex-col items-center min-w-max mx-auto">
+            <div className="flex items-center justify-center gap-4 md:gap-8">
+              {/* Step 1: Date & Time */}
+              <div className="flex items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-all ${
+                  isStep1Complete ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-400'
+                }`}>
+                  {isStep1Complete ? '✓' : '1'}
+                </div>
+                <span className={`ml-2 text-md hidden md:block ${isStep1Complete ? 'text-orange-400' : 'text-gray-500'}`}>
+                  Date & Time
+                </span>
+              </div>
+
+              <div className={`w-12 h-1 mx-1 transition-all ${isStep1Complete ? 'bg-orange-600' : 'bg-gray-700'}`} />
+
+              {/* Step 2: Select Vehicles */}
+              <div className="flex items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-all ${
+                  isStep2Complete ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-400'
+                }`}>
+                  {isStep2Complete ? '✓' : '2'}
+                </div>
+                <span className={`ml-2 text-md hidden md:block ${isStep2Complete ? 'text-orange-400' : 'text-gray-500'}`}>
+                  Vehicles
+                </span>
+              </div>
+
+              <div className={`w-12 h-1 mx-1 transition-all ${isStep2Complete ? 'bg-orange-600' : 'bg-gray-700'}`} />
+
+              {/* Step 3: Checkout */}
+              <div className="flex items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-all ${
+                  isStep3Active ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-400'
+                }`}>
+                  3
+                </div>
+                <span className={`ml-2 text-md hidden md:block ${isStep3Active ? 'text-orange-400' : 'text-gray-500'}`}>
+                  Checkout
+                </span>
+              </div>
+            </div>
+
+            {/* Mobile labels - spaced to align with steps */}
+            <div className="flex justify-around w-full mt-2 text-xs text-gray-400 md:hidden">
+              <span className="text-center flex-1">Date & Time</span>
+              <span className="text-center flex-1">Vehicles</span>
+              <span className="text-center flex-1">Checkout</span>
+            </div>
+          </div>
+        </div>
 
         {/* Reservation Holder */}
         <section className="bg-gray-800 rounded-2xl p-6 md:p-8 mb-12 shadow-xl">
@@ -493,17 +555,20 @@ export default function PismoBooking() {
                     const price = cat[priceKey] || 0;
                     const seats = cat.seats || 1;
                     return (
-                      <div key={cat.id} className="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl">
-                        <h4 className="text-2xl md:text-3xl font-bold mb-2">
+                      <div key={cat.id} className="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl flex flex-col">
+                        {/* Title with fixed min-height to align across cards (accommodates up to 2 lines) */}
+                        <h4 className="text-2xl md:text-3xl font-bold mb-2 min-h-[3.5rem] flex items-center justify-center text-center">
                           {cat.vehicle_name}
                         </h4>
-                        <p className="text-xl md:text-2xl mb-4">
+                        {/* Price with fixed min-height for alignment */}
+                        <p className="text-xl md:text-2xl mb-4 min-h-[3rem] flex flex-col justify-center text-center">
                           ${price} / {durationHours || 1}hr
                           <span className="block text-sm text-gray-400 mt-1">
                             Seats {seats}
                           </span>
                         </p>
-                        <div className="space-y-6">
+                        {/* Inputs section - takes remaining space */}
+                        <div className="space-y-6 mt-auto">
                           <div>
                             <label className="text-lg md:text-xl block mb-2">Quantity</label>
                             <input
@@ -596,7 +661,7 @@ export default function PismoBooking() {
                   <button
                     onClick={() => {
                       setIsCheckoutExpanded(false);
-                      setAgreedToWaiver(false); // reset waiver when going back to edit
+                      setAgreedToWaiver(false);
                     }}
                     className="text-orange-400 hover:text-orange-300 underline text-sm"
                   >
@@ -604,11 +669,18 @@ export default function PismoBooking() {
                   </button>
                 </div>
 
-                <div className="space-y-2 text-sm mb-4 border-b border-gray-700 pb-4">
+                <div className="space-y-3 text-sm mb-4 border-b border-gray-700 pb-4">
                   {selectedItems.map(item => (
-                    <div key={item.id} className="flex justify-between">
-                      <span>{item.qty}× {item.name}</span>
-                      <span>${item.price.toFixed(2)}</span>
+                    <div key={item.id} className="flex flex-col">
+                      <div className="flex justify-between">
+                        <span>{item.qty}× {item.name}</span>
+                        <span>${item.price.toFixed(2)}</span>
+                      </div>
+                      {item.waiver && (
+                        <div className="text-sm text-orange-300 ml-4">
+                          + Damage Waiver (${item.waiverCost.toFixed(2)})
+                        </div>
+                      )}
                     </div>
                   ))}
                   {goggles > 0 && (
