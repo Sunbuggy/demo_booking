@@ -27,7 +27,7 @@ const Navhead = () => {
   const dropdownLinks = [
     { value: 'lasvegas' as LocationKey, link: '/' },
     // { value: 'pismo' as LocationKey, link: 'https://fareharbor.com/sunbuggypismobeach/dashboard' },
-    { value: 'pismo' as LocationKey, link: '/location/pismo' },
+    { value: 'pismo' as LocationKey, link: '/pismo' },
     { value: 'silverlake' as LocationKey, link: '/location/silverlake' }
 
     // { value: 'silverlake' as LocationKey, link: 'https://fareharbor.com/sunbuggysilverlakedunes/dashboard' },
@@ -37,9 +37,12 @@ const Navhead = () => {
     <div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="nav_head flex flex-col items-center text-xl font-bold cursor-pointer">
+          {/* Kept flex-col for vertical stacking to maintain readability, but reduced sizes to prevent overflow and fit shorter navbar. */}
+          {/* Title: text-xl to text-lg; subtitle: text-sm to text-xs. leading-tight minimizes line height between lines. */}
+          {/* Removed items-center (defaults to flex-start) to tighten vertical space. If profile icon is still off-page, this ensures Navhead takes minimal height. */}
+          <button className="nav_head flex flex-col text-lg font-bold cursor-pointer leading-tight">
             SunBuggy
-            <span className="text-sm font-normal">
+            <span className="text-xs font-normal leading-tight">
               {position ? locations[position] : 'Choose a location'}
             </span>
           </button>

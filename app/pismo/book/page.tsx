@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { createClient } from '@/utils/supabase/client';
-import Image from 'next/image'; // Import Next.js Image component for optimized images
 
 const TYPE_ORDER = {
   ATV: 1,
@@ -51,7 +50,6 @@ export default function PismoBooking() {
   const [agreedToWaiver, setAgreedToWaiver] = useState(false);
 
   // === NMI Collect.js (PCI Compliant) ===
-  // Loads NMI's Collect.js for inline hosted payment fields to ensure PCI compliance by not handling card data on our server.
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://secure.networkmerchants.com/token/Collect.js';
@@ -87,7 +85,6 @@ export default function PismoBooking() {
     };
   }, []);
 
-  // Handles secure payment processing using the token from Collect.js.
   const handlePayment = async (token: string) => {
     if (!token) return setMessage('Invalid payment token.');
 
