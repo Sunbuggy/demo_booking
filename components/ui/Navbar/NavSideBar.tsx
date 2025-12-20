@@ -56,12 +56,11 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   ];
 
   const dashboardLinks: NavLink[] = [
-    { href: `/biz/${new Date().toLocaleDateString('en-CA')}`, label: 'NV', minLevel: 300 },
+    { href: `/biz/vegas`, label: 'NV', minLevel: 300 },
     {
-      href: `https://fareharbor.com/sunbuggypismobeach/dashboard`,
+      href: `/biz/pismo`,
       label: 'CA',
       minLevel: 300,
-      external: true
     },
     {
       href: `https://fareharbor.com/sunbuggysilverlakedunes/dashboard`,

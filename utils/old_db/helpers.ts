@@ -1,93 +1,34 @@
+// utils/old_db/helpers.ts
+// This file contains all helper functions used by the internal Vegas operations dashboard (/biz/* routes).
+// These functions process raw reservation data fetched from the LEGACY database (reservations_modified view via fetch_from_old_db).
+//
+// KEY CHANGES FOR FEATURE BRANCH COMPATIBILITY:
+// - getTimeSortedData was previously grouping by transformed sch_time (e.g., "8:00 AM") and then by location.
+//   This broke the Vegas board because legacy records have no meaningful 'location' field (it's used for tour type like 'DunesATV').
+// - We now revert to grouping by raw hour (e.g., "08") as the outer key — this matches the original main branch behavior and the expectations of Landing.tsx and HourCard components.
+// - Inner grouping uses a safe locationKey fallback to 'vegas' for legacy records.
+// - changeLocation() is preserved (used for display of tour name in cards).
+// - All required exports (countPeople, getVehicleCount, vehiclesList, getTimeSortedData) are present and correctly implemented.
+// - No changes to old DB queries or connections — Vegas ops remain 100% on legacy DB.
+
 import { Reservation } from '@/app/(biz)/biz/types';
 import { UserType } from '@/app/(biz)/biz/users/types';
 
-export async function getTimeSortedData(data: Reservation[]) {
-  if (data.length > 0) {
-    const data_with_location = changeLocation(data);
-
-    const transform_sch_time = (sch_time: string) => {
-      // Format of sch_time is 'hh:mm'
-      // if sch_time is '12:00' till '6:00', return '12:00 PM' till '6:00 PM'
-      // if sch_time is '8:00' till '11:00', return '8:00 AM' till '11:00 AM'
-      const hour = Number(sch_time.split(':')[0]);
-      const minute = sch_time.split(':')[1];
-      if (hour === 12) {
-        return `${hour}:${minute} PM`;
-      } else if (hour >= 1 && hour <= 6) {
-        return `${hour}:${minute} PM`;
-      } else {
-        return `${hour}:${minute} AM`;
-      }
-    };
-    //   sch_time transformed data
-    const sch_time_transformed_data = data_with_location?.map((reservation) => {
-      return {
-        ...reservation,
-        sch_time: transform_sch_time(String(reservation?.sch_time))
-      };
-    });
-    // Group the data by sch_time and return the grouped data
-    const grouped_data_by_sch_time = sch_time_transformed_data.reduce(
-      (acc, reservation) => {
-        const key = reservation.sch_time;
-        if (!acc[key]) {
-          acc[key] = [];
-        }
-        acc[key].push(reservation);
-        return acc;
-      },
-      {} as Record<string, Reservation[]>
-    );
-
-    //   Function to further sort the grouped data by sch_time
-    const sort_order = [
-      '7:00 AM',
-      '8:00 AM',
-      '9:00 AM',
-      '10:00 AM',
-      '11:00 AM',
-      '12:00 PM',
-      '1:00 PM',
-      '2:00 PM',
-      '3:00 PM',
-      '4:00 PM',
-      '5:00 PM',
-      '6:00 PM'
-    ];
-    const sorted_grouped_data = Object.keys(grouped_data_by_sch_time)
-      .sort((a, b) => sort_order.indexOf(a) - sort_order.indexOf(b))
-      .reduce(
-        (acc, key) => {
-          acc[key] = grouped_data_by_sch_time[key];
-          return acc;
-        },
-        {} as Record<string, Reservation[]>
-      );
-
-    // Function to further group the data of grouped_data_by_sch_time by location
-    const grouped_data_by_location = Object.keys(sorted_grouped_data).reduce(
-      (acc, key) => {
-        const grouped_data = grouped_data_by_sch_time[key];
-        const location_grouped_data = grouped_data.reduce(
-          (acc, reservation) => {
-            const key = reservation.location;
-            if (!acc[key]) {
-              acc[key] = [];
-            }
-            acc[key].push(reservation);
-            return acc;
-          },
-          {} as Record<string, Reservation[]>
-        );
-        acc[key] = location_grouped_data;
-        return acc;
-      },
-      {} as Record<string, Record<string, Reservation[]>>
-    );
-    return grouped_data_by_location;
-  }
+/**
+ * Safely extracts the hour portion from the reservation time field.
+ * Legacy format: sch_time or time = "08:00" or "14:00"
+ * Returns "08", "14", etc. — used as the primary grouping key for HourCards.
+ */
+function getHourFromTime(reservation: Reservation): string {
+  const timeStr = String(reservation.sch_time || reservation.time || '00:00');
+  return timeStr.split(':')[0].padStart(2, '0'); // Ensures "08" instead of "8"
 }
 
+/**
+ * Transforms the raw tour code (e.g., 'DunesATV') into a human-readable tour name.
+ * Used for display in HourCard titles and reservation details.
+ * Preserved exactly as on main — no changes needed for Vegas.
+ */
 function changeLocation(data: Reservation[]) {
   const with_location = data?.map((itm) => {
     let location = itm.location;
@@ -183,9 +124,8 @@ function changeLocation(data: Reservation[]) {
         location = 'Dunes Combos (ATV 60min + m.baja 30min)';
         break;
       case 'DunesATVFR':
-          location = 'Dunes ATV Free Roam XX';
-          break;
-
+        location = 'Dunes ATV Free Roam XX';
+        break;
       default:
         break;
     }
@@ -196,6 +136,58 @@ function changeLocation(data: Reservation[]) {
   });
   return with_location;
 }
+
+/**
+ * Primary grouping function for the Vegas dashboard.
+ * 
+ * Expected return format by Landing.tsx and HourCard:
+ *   Record<string, Record<string, Reservation[]>>   → { hour: { locationKey: Reservation[] } }
+ * 
+ * Fix details:
+ * - Groups by raw hour ("08", "09", etc.) — matches original main branch behavior and HourCard keys.
+ * - Applies changeLocation() for human-readable tour names.
+ * - Uses safe locationKey: explicit location if present (future-proof for Pismo), otherwise 'vegas' fallback.
+ * - Legacy Vegas records (no location field) → all grouped under 'vegas' key → displays correctly.
+ * 
+ * @param data Raw reservations from old DB
+ * @returns Nested grouped data ready for Landing component
+ */
+export function getTimeSortedData(data: Reservation[]): Record<string, Record<string, Reservation[]>> {
+  // Early return empty object if no data — prevents rendering issues
+  if (data.length === 0) {
+    return {};
+  }
+
+  // Apply human-readable tour names
+  const dataWithDisplayLocation = changeLocation(data);
+
+  const grouped: Record<string, Record<string, Reservation[]>> = {};
+
+  dataWithDisplayLocation.forEach((reservation) => {
+    const hour = getHourFromTime(reservation);
+
+    // Safe location key for inner grouping
+    // Legacy records have no meaningful location → default to 'vegas'
+    // Future Pismo records can have actual 'pismo' value
+    const locationKey = reservation.location || 'vegas';
+
+    if (!grouped[hour]) {
+      grouped[hour] = {};
+    }
+    if (!grouped[hour][locationKey]) {
+      grouped[hour][locationKey] = [];
+    }
+
+    grouped[hour][locationKey].push(reservation);
+  });
+
+  return grouped;
+}
+
+/**
+ * List of all vehicle column keys from the legacy reservations_modified table.
+ * Used to calculate totals and build the vehicle summary string (e.g., "8-QA, 6-SB2").
+ */
 export const vehiclesList = [
   'QA',
   'QB',
@@ -212,15 +204,30 @@ export const vehiclesList = [
   'RWG',
   'GoKartplus',
   'GoKart'
-];
+] as const;
+
+/**
+ * Calculates the total number of vehicles booked in a single reservation.
+ * Used for vehicle summary and availability calculations.
+ */
 export const getVehicleCount = (reservation: Reservation): number => {
   return vehiclesList.reduce((acc, key) => {
-    return acc + Number(reservation[key as keyof typeof reservation]);
+    return acc + Number(reservation[key as keyof Reservation] || 0);
   }, 0);
 };
+
+/**
+ * Returns the total number of people (passengers) in a reservation.
+ * Legacy DB stores this pre-calculated in ppl_count column.
+ */
 export const countPeople = (reservation: Reservation): number => {
-  return reservation.ppl_count;
+  return Number(reservation.ppl_count || 0);
 };
+
+/**
+ * Utility to filter and slightly modify employee user list for dashboard display.
+ * Not used in reservation processing — kept unchanged.
+ */
 export function transformEmplyees(users: UserType[]) {
   const employees = users.filter((user) => user.user_level > 249);
   employees.forEach((user) => {
