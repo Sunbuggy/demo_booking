@@ -1,4 +1,8 @@
 // app/biz/pismo-pricing/page.tsx - Grouped Pricing Rules Admin (Managers Only)
+// Updated: Sort order is now prominently displayed on every vehicle card
+// This allows managers to see the current relative ordering at a glance without needing to click "Edit"
+// The sort order number appears clearly below the prefixes line, making it easy to decide what number
+// to set when reordering vehicles.
 
 'use client';
 
@@ -120,7 +124,7 @@ export default function PismoPricingAdmin() {
   // Sort types (ATV → UTV → Buggy)
   const sortedTypes = Object.keys(grouped).sort((a, b) => (TYPE_ORDER[a] || 99) - (TYPE_ORDER[b] || 99));
 
-  // Sort rules within each type by sort_order
+  // Sort rules within each type by sort_order (lower number = appears higher on public page)
   sortedTypes.forEach(type => {
     grouped[type].sort((a, b) => (a.sort_order || 100) - (b.sort_order || 100));
   });
@@ -213,7 +217,16 @@ export default function PismoPricingAdmin() {
                   </div>
                 </div>
 
-                <p className="mb-4 text-sm"><strong>Prefixes:</strong> {rule.fleet_prefixes?.join(', ')}</p>
+                <p className="mb-2 text-sm"><strong>Prefixes:</strong> {rule.fleet_prefixes?.join(', ')}</p>
+                
+                {/* NEW: Sort order displayed clearly on the card */}
+                <p className="mb-4 text-lg font-semibold text-yellow-300">
+                  <strong>Sort Order:</strong> {rule.sort_order ?? 100}
+                  <span className="block text-sm font-normal text-gray-400 mt-1">
+                    (lower number = appears higher on booking page)
+                  </span>
+                </p>
+
                 <p className="mb-4 text-sm"><strong>Active:</strong> {rule.start_date} → {rule.end_date || 'Ongoing'}</p>
                 <p className="text-xs text-gray-400 mb-6">
                   Created by: {rule.created_by_name || rule.created_by}<br />
