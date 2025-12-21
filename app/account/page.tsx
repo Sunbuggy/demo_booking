@@ -13,7 +13,7 @@ import { createClient } from '@/utils/supabase/server';
 import { fetchTimeEntryByUserId } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 import BackgroundPickerButton from './components/background-picker-button';
-import UserPage from '../(biz)/biz/users/[id]/page';
+import UserPage from '@/app/(biz)/biz/users/[id]/page';
 
 export type TimeEntry = {
   id: any;
