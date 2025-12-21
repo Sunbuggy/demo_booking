@@ -1,6 +1,6 @@
 // app/account/page.tsx
 // Account Page – Server Component
-// This is the main authenticated user dashboard in the Sunbuggy admin app.
+// This page serves as the authenticated user's personal dashboard in the Sunbuggy admin app.
 // It is a server component (async is allowed) and runs entirely on the server.
 // Purpose:
 // - Provide a personalized "Account" view for the logged-in user
@@ -23,7 +23,7 @@ import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 import BackgroundPickerButton from './components/background-picker-button';
 import UserPage from '../(biz)/biz/users/[id]/page';
 
-// Type definition for time entry data – used by ClockinForm to show current clock-in time
+// Type for time entry data – used by ClockinForm to show current clock-in time
 export type TimeEntry = {
   id: any;
   date: any;
@@ -39,6 +39,7 @@ export type TimeEntry = {
   };
 };
 
+// Server Component – async is allowed here
 export default async function Account() {
   // Create server-side Supabase client – must be awaited because createClient returns a Promise
   const supabase = await createClient();
@@ -87,7 +88,6 @@ export default async function Account() {
 
   return (
     <section className="mb-32 w-screen">
-      {/* Main container with responsive max-width and padding */}
       <div className="max-w-6xl px-4 py-8 mx-auto sm:px-6 sm:pt-24 lg:px-8">
         <div className="sm:align-center sm:flex sm:flex-col">
           {/* Page title */}
@@ -113,7 +113,7 @@ export default async function Account() {
           </div>
         </div>
 
-        {/* Background image picker – allows user to customize their profile background */}
+        {/* Background image picker button – lets user customize their profile background */}
         <BackgroundPickerButton user={profile} />
       </div>
     </section>
