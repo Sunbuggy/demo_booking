@@ -1,13 +1,12 @@
 // app/account/page.tsx
 // Account Page – Server Component
-// Main authenticated user dashboard
+// Authenticated user dashboard
 // - Creates server-side Supabase client (must await)
-// - Calls auto_clock_out RPC to clean stuck clock-ins
+// - Calls auto_clock_out RPC
 // - Fetches current user and time entry
-// - Redirects unauthenticated users
-// - Renders UserPage (manager profile view of self)
-// - Shows ClockinForm for employees (role > 284)
-// - Includes BackgroundPickerButton
+// - Renders UserPage with correct string id
+// - ClockinForm for employees
+// - Background picker button
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server'; // Returns Promise<SupabaseClient>
@@ -36,10 +35,10 @@ export type TimeEntry = {
 };
 
 export default async function Account() {
-  // Server-side Supabase client — must await
+  // Create server-side Supabase client — must await
   const supabase = await createClient();
 
-  // Clean up stuck clock-ins
+  // Auto clock-out any stuck sessions
   try {
     const { error } = await supabase.rpc('auto_clock_out');
     if (error) console.error('auto_clock_out error:', error);
@@ -47,17 +46,15 @@ export default async function Account() {
     console.error('Unexpected auto_clock_out error:', err);
   }
 
-  // Fetch authenticated user details
+  // Fetch current authenticated user
   const user = await getUserDetails(supabase);
 
-  // Redirect if not logged in
   if (!user || user.length === 0) {
     return redirect('/signin');
   }
 
-  // Extract user data
   const currentUser = user[0];
-  const userId = currentUser.id as string; // id is string from DB
+  const userId = currentUser.id; // id is string from DB — no need for 'as string'
   const role = currentUser.user_level;
   const clockinStatus = currentUser.time_entry_status;
 
