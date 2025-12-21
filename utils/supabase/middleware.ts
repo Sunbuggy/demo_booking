@@ -14,7 +14,8 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
+        // FIX: Explicitly typed 'cookiesToSet' as 'any[]' to satisfy TypeScript strict mode
+        setAll(cookiesToSet: any[]) {
           cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
