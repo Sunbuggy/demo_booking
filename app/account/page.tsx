@@ -3,13 +3,14 @@
 // Authenticated user dashboard
 // - Creates server-side Supabase client
 // - Calls auto_clock_out RPC
-// - Fetches current user directly from auth + users table (no getUserDetails)
+// - Fetches current user directly from auth + users table (no queries.ts dependency)
 // - Renders UserPage with string id
 // - ClockinForm for employees
 // - Background picker button
+// - This pattern avoids type inference bugs with cached async functions
 
 import { redirect } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/utils/supabase/server'; // Returns Promise<SupabaseClient>
 import { fetchTimeEntryByUserId } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 import BackgroundPickerButton from './components/background-picker-button';
@@ -41,28 +42,28 @@ export default async function Account() {
     console.error('Unexpected auto_clock_out error:', err);
   }
 
-  // Fetch current authenticated user directly
+  // Fetch current authenticated user directly from Supabase auth
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return redirect('/signin');
   }
 
-  // Fetch user profile from 'users' table
-  const { data: profileData, error: profileError } = await supabase
+  // Fetch user profile from 'users' table using the auth user id
+  const { data: profile, error: profileError } = await supabase
     .from('users')
-    .select('*')
+    .select('id, user_level, time_entry_status, full_name, phone')
     .eq('id', user.id)
     .single();
 
-  if (profileError || !profileData) {
+  if (profileError || !profile) {
     console.error('Profile fetch error:', profileError);
     return redirect('/signin');
   }
 
-  const userId = profileData.id as string;
-  const role = profileData.user_level;
-  const clockinStatus = profileData.time_entry_status;
+  const userId = profile.id; // string — no Promise
+  const role = profile.user_level;
+  const clockinStatus = profile.time_entry_status;
 
   // Fetch current time entry
   const timeEntry = await fetchTimeEntryByUserId(supabase, userId);
@@ -78,8 +79,10 @@ export default async function Account() {
           </h1>
 
           <div className="p-4">
+            {/* Manager-style profile view for current user */}
             <UserPage params={{ id: userId }} />
 
+            {/* Clock-in form for employees */}
             {role > 284 && (
               <ClockinForm
                 user_role={role || 100}
@@ -91,7 +94,8 @@ export default async function Account() {
           </div>
         </div>
 
-        <BackgroundPickerButton user={profileData} />
+        {/* Background customization */}
+        <BackgroundPickerButton user={profile} />
       </div>
     </section>
   );
