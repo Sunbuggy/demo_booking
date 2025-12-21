@@ -3,7 +3,7 @@
 // Authenticated user dashboard
 // - Creates server-side Supabase client
 // - Calls auto_clock_out RPC
-// - Fetches current user directly (no getUserDetails dependency)
+// - Fetches current user directly from auth + users table (no getUserDetails)
 // - Renders UserPage with string id
 // - ClockinForm for employees
 // - Background picker button
@@ -49,20 +49,20 @@ export default async function Account() {
   }
 
   // Fetch user profile from 'users' table
-  const { data: userProfile, error: profileError } = await supabase
+  const { data: profileData, error: profileError } = await supabase
     .from('users')
     .select('*')
     .eq('id', user.id)
     .single();
 
-  if (profileError || !userProfile) {
-    console.error('Error fetching user profile:', profileError);
+  if (profileError || !profileData) {
+    console.error('Profile fetch error:', profileError);
     return redirect('/signin');
   }
 
-  const userId = userProfile.id as string;
-  const role = userProfile.user_level;
-  const clockinStatus = userProfile.time_entry_status;
+  const userId = profileData.id as string;
+  const role = profileData.user_level;
+  const clockinStatus = profileData.time_entry_status;
 
   // Fetch current time entry
   const timeEntry = await fetchTimeEntryByUserId(supabase, userId);
@@ -91,7 +91,7 @@ export default async function Account() {
           </div>
         </div>
 
-        <BackgroundPickerButton user={userProfile} />
+        <BackgroundPickerButton user={profileData} />
       </div>
     </section>
   );
