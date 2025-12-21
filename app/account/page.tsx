@@ -14,7 +14,7 @@
 // No client-side state needed here — everything is resolved on the server
 
 import { redirect } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server'; // Server-side Supabase client
+import { createClient } from '@/utils/supabase/server'; // Server-side client
 import {
   fetchTimeEntryByUserId,
   getUserDetails
@@ -41,7 +41,7 @@ export type TimeEntry = {
 
 // Server Component — async allowed here
 export default async function Account() {
-  // Create server-side Supabase client (safe — runs only on server)
+  // Create server-side Supabase client (no await needed — synchronous)
   const supabase = createClient();
 
   // Auto clock-out any stuck sessions (RPC handles edge cases)
@@ -54,10 +54,10 @@ export default async function Account() {
     console.error('Unexpected error in auto_clock_out:', error);
   }
 
-  // Fetch current authenticated user details
+  // Fetch authenticated user details
   const user = await getUserDetails(supabase);
 
-  // If no user — redirect to sign-in page
+  // Redirect to sign-in if not logged in
   if (!user || user.length === 0) {
     return redirect('/signin');
   }
@@ -100,6 +100,6 @@ export default async function Account() {
         {/* Background picker button — allows user to customize profile background */}
         <BackgroundPickerButton user={currentUser} />
       </section>
-    );
+    </div>
   );
 }
