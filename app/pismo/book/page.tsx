@@ -541,21 +541,23 @@ onChange={(date: Date | null) => {
         {loading && <p className="text-center text-2xl text-orange-400 mb-12">Loading vehicles...</p>}
 
         {/* Vehicles */}
-        {pricingCategories.length > 0 && (
-          <section className="mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-10">4. Select Vehicles</h2>
-            {sortedTypes.map(type => (
-              <div key={type} className="mb-12">
-                <h3 className="text-2xl md:text-3xl font-bold text-orange-400 mb-6 text-center">
-                  {type === 'Buggy' ? 'Buggies' : type + 's'}
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                  {grouped[type].map(cat => {
-                    const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
-                    const price = cat[priceKey] || 0;
-                    const seats = cat.seats || 1;
-                    return (
-                      <div key={cat.id} className="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl flex flex-col">
+{pricingCategories.length > 0 && (
+  <section className="mb-12">
+    <h2 className="text-3xl md:text-4xl font-bold text-center mb-10">4. Select Vehicles</h2>
+    {sortedTypes.map(type => (
+      <div key={type} className="mb-12">
+        <h3 className="text-2xl md:text-3xl font-bold text-orange-400 mb-6 text-center">
+          {type === 'Buggy' ? 'Buggies' : type + 's'}
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          {/* FIX APPLIED HERE: Added (cat: any) */}
+          {grouped[type].map((cat: any) => {
+            const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
+            const price = cat[priceKey] || 0;
+            const seats = cat.seats || 1;
+            return (
+              <div key={cat.id} className="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl flex flex-col">
+                {/* ... rest of your card code ... */}
                         {/* Title with fixed min-height to align across cards (accommodates up to 2 lines) */}
                         <h4 className="text-2xl md:text-3xl font-bold mb-2 min-h-[3.5rem] flex items-center justify-center text-center">
                           {cat.vehicle_name}
