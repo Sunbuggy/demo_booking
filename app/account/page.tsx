@@ -1,15 +1,15 @@
 // app/account/page.tsx
 // Account Page – Server Component
 // Authenticated user dashboard
-// - Creates server-side Supabase client (must await)
-// - Calls auto_clock_out RPC
-// - Fetches current user and time entry
-// - Renders UserPage with correct string id
+// - Server-side Supabase client (awaited)
+// - Auto clock-out RPC
+// - Fetch user and time entry
+// - Render UserPage with correct string id (type assertion to satisfy TS)
 // - ClockinForm for employees
 // - Background picker button
 
 import { redirect } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server'; // Returns Promise<SupabaseClient>
+import { createClient } from '@/utils/supabase/server';
 import {
   fetchTimeEntryByUserId,
   getUserDetails
@@ -18,7 +18,6 @@ import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 import BackgroundPickerButton from './components/background-picker-button';
 import UserPage from '../(biz)/biz/users/[id]/page';
 
-// Type for time entry data (clock-in display)
 export type TimeEntry = {
   id: any;
   date: any;
@@ -35,10 +34,9 @@ export type TimeEntry = {
 };
 
 export default async function Account() {
-  // Create server-side Supabase client — must await
   const supabase = await createClient();
 
-  // Auto clock-out any stuck sessions
+  // Auto clock-out stuck sessions
   try {
     const { error } = await supabase.rpc('auto_clock_out');
     if (error) console.error('auto_clock_out error:', error);
@@ -46,7 +44,6 @@ export default async function Account() {
     console.error('Unexpected auto_clock_out error:', err);
   }
 
-  // Fetch current authenticated user
   const user = await getUserDetails(supabase);
 
   if (!user || user.length === 0) {
@@ -54,11 +51,10 @@ export default async function Account() {
   }
 
   const currentUser = user[0];
-  const userId = currentUser.id; // id is string from DB — no need for 'as string'
+  const userId = currentUser.id as string;
   const role = currentUser.user_level;
   const clockinStatus = currentUser.time_entry_status;
 
-  // Fetch current time entry for clock-in timestamp
   const timeEntry = await fetchTimeEntryByUserId(supabase, userId);
   const timeEnt = timeEntry as unknown as TimeEntry[];
   const clockInTimeStamp = timeEnt[0]?.clock_in?.clock_in_time;
@@ -73,9 +69,9 @@ export default async function Account() {
 
           <div className="p-4">
             {/* Manager-style profile view for current user */}
-            <UserPage params={{ id: userId }} />
+            {/* Type assertion to satisfy TypeScript — we know userId is string */}
+            <UserPage params={{ id: userId } as { id: string }} />
 
-            {/* Clock-in form for employees only */}
             {role > 284 && (
               <ClockinForm
                 user_role={role || 100}
@@ -87,7 +83,6 @@ export default async function Account() {
           </div>
         </div>
 
-        {/* Background customization button */}
         <BackgroundPickerButton user={currentUser} />
       </div>
     </section>
