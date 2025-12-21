@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { SettledCombinedData } from './page';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Loader2, Settings } from 'lucide-react';
@@ -45,6 +44,21 @@ interface ColumnDef {
   label: string;
   visible: boolean;
 }
+
+interface SettledBatch {
+  batchId: string;
+  settlementTimeUTC: string;
+  statistics?: {
+    statistic?: {
+      chargeAmount?: string;
+      chargeCount?: number;
+    }[];
+  };
+  accountType?: string;
+  // Add other fields you use
+}
+
+type SettledCombinedData = SettledBatch[];
 
 export default function TableUI({ data, isSettled }: TableUIProps) {
   const router = useRouter();
