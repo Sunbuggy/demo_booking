@@ -150,10 +150,9 @@ export default function PismoPricingAdmin() {
   );
 
   /**
-   * FIX: Explicit 'any' Typing
-   * Here is where the build error was. Inside this sort function, TypeScript
-   * inferred 'a' and 'b' as unknown types because they came from a dynamic object.
-   * By adding ': any', we explicitly tell TypeScript "trust us, these objects have a sort_order property".
+   * FIX 1: Explicit 'any' Typing in Sort
+   * TypeScript inferred 'a' and 'b' as unknown types.
+   * We explicitly type them as 'any' to allow access to .sort_order.
    */
   sortedTypes.forEach(type => {
     grouped[type].sort((a: any, b: any) => (a.sort_order || 100) - (b.sort_order || 100));
@@ -217,7 +216,11 @@ export default function PismoPricingAdmin() {
             {type === 'Buggy' ? 'Buggies' : type + 's'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {grouped[type].map(rule => (
+            {/** * FIX 2: Explicit 'any' Typing in Map
+             * This was the missing error. Even though grouped[type] is an array of any,
+             * strictly typed builds require the render callback variable to also be explicit.
+             */}
+            {grouped[type].map((rule: any) => (
               <div key={rule.id} className="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700">
                 <h3 className="text-3xl font-bold text-orange-300 mb-6 text-center">
                   {rule.vehicle_name}
