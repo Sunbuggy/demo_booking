@@ -14,11 +14,10 @@
 // - Handles missing user gracefully
 // - All async operations are awaited properly
 
-import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server'; // Server-side client (returns Promise)
-import { getEmployeeDetails } from '@/utils/supabase/queries'; // Adjust if you have a specific query
-import UserImage from './components/user-image'; // Your custom profile image component
-import BackgroundPickerButton from '../components/background-picker-button'; // Or correct path
+import { getEmployeeDetails } from '@/utils/supabase/queries';
+import UserImage from './components/user-image'; // Local component
+import BackgroundPickerButton from '@/app/account/components/background-picker-button'; // Absolute path – fixes module not found
 
 // Props for the dynamic route — params is a Promise in Next.js 16
 interface UserPageProps {
