@@ -1,10 +1,10 @@
 // app/account/page.tsx
 // Account Page – Server Component
 // Authenticated user dashboard
-// - Creates server-side Supabase client (await required)
-// - Calls auto_clock_out RPC
-// - Fetches user and time entry
-// - Renders UserPage with string id
+// - Server-side Supabase client (await required)
+// - Auto clock-out
+// - Fetch user and time entry
+// - Render UserPage with string id
 // - ClockinForm for employees
 // - Background picker button
 
@@ -18,6 +18,7 @@ import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 import BackgroundPickerButton from './components/background-picker-button';
 import UserPage from '../(biz)/biz/users/[id]/page';
 
+// Type for time entry data
 export type TimeEntry = {
   id: any;
   date: any;
@@ -34,7 +35,7 @@ export type TimeEntry = {
 };
 
 export default async function Account() {
-  // AWAIT the server client — this is the key fix
+  // Await the server client — required
   const supabase = await createClient();
 
   // Auto clock-out stuck sessions
@@ -70,8 +71,10 @@ export default async function Account() {
           </h1>
 
           <div className="p-4">
+            {/* Manager view of own profile */}
             <UserPage params={{ id: userId }} />
 
+            {/* Clock-in form for employees */}
             {role > 284 && (
               <ClockinForm
                 user_role={role || 100}
