@@ -15,103 +15,69 @@ const LocationCard = ({
   locationKey: string;
   display_cost: boolean;
 }) => {
-  // Calculate adding up the non zero values of the vehiclesList and return the sum
+  // Helper: count vehicles booked in a single reservation
   const getVehicleCount = (reservation: Reservation): number => {
     return vehiclesList.reduce((acc, key) => {
-      return acc + Number(reservation[key as keyof typeof reservation]);
+      return acc + Number(reservation[key as keyof Reservation] || 0);
     }, 0);
   };
-  // Calculate the total count of people
+
+  // Helper: total people in a reservation
   const countPeople = (reservation: Reservation): number => {
-    return reservation.ppl_count;
+    return reservation.ppl_count || 0;
   };
 
+  // Get list of vehicles actually used in this location (with counts)
+  const usedVehicles = vehiclesList
+    .filter((key) => {
+      return data[id][locationKey].some(
+        (reservation) => Number(reservation[key as keyof Reservation] || 0) > 0
+      );
+    })
+    .map((key) => {
+      const count = data[id][locationKey].reduce((acc, reservation) => {
+        return acc + Number(reservation[key as keyof Reservation] || 0);
+      }, 0);
+      return `${count}-${key}`;
+    })
+    .join(', ');
+
   return (
-    <Card
-      key={locationKey}
-      className="LocationCardStyle"
-    >
+    <Card key={locationKey} className="LocationCardStyle">
       <CardTitle>
-        <span className="text-sm font-light flex gap-2 items-center">
-          <span className="text-xl">{locationKey} </span>
+        <span className="text-sm font-light flex flex-col gap-1">
+          <span className="text-xl">{locationKey}</span>
           <span className="text-orange-500">
-            
-            {
-              // map throuugh the location and get the total count of people
-              data[id][locationKey].reduce((acc, reservation) => {
-                return acc + countPeople(reservation);
-              }, 0)
-            }-People
-            {' '}
+            {data[id][locationKey].reduce((acc, reservation) => acc + countPeople(reservation), 0)} People
           </span>
           <span className="text-orange-500">
-            {' '}
-            {
-              // map throuugh the location and get the total count of vehicles
-              data[id][locationKey].reduce((acc, reservation) => {
-                return acc + getVehicleCount(reservation);
-              }, 0)
-            }-Vehicles
+            {data[id][locationKey].reduce((acc, reservation) => acc + getVehicleCount(reservation), 0)} Vehicles
           </span>
           <span className="text-sm font-light italic text-orange-500">
-            (
-            {
-              // Group and count vehicles for the given location. if same vehicle add count and display vehicle with count ignore if count is 0
-              vehiclesList
-                .filter((key) => {
-                  return data[id][locationKey].some(
-                    (reservation) =>
-                      Number(reservation[key as keyof typeof reservation]) > 0
-                  );
-                })
-                .map((key, idx, filteredList) => {
-                  const count = data[id][locationKey].reduce(
-                    (acc, reservation) => {
-                      return (
-                        acc +
-                        Number(reservation[key as keyof typeof reservation])
-                      );
-                    },
-                    0
-                  );
-                  const full_name=` ${count}-${key}`
-                  return (
-                    <span key={idx}>
-                  <span className="italic font-thin text-orange-500" key={key}>
-                    {full_name} {idx !== filteredList.length - 1 && ', '} 
-                  </span>
-                </span>
-                  );
-                })
-            }
-            )
+            ({usedVehicles || 'None'})
           </span>
         </span>
+
         {display_cost && (
-          <div className="text-green-600">
+          <div className="text-green-600 font-bold">
             $
-            {
-              //  Sum of all reservation.total_cost for the given location
-              data[id][locationKey]
-                .reduce((acc, reservation) => {
-                  return acc + Number(reservation.total_cost);
-                }, 0)
-                .toFixed(2)
-            }
+            {data[id][locationKey]
+              .reduce((acc, reservation) => acc + Number(reservation.total_cost || 0), 0)
+              .toFixed(2)}
           </div>
         )}
-      </CardTitle>{' '}
-      <CardContent className=" flex flex-col gap-2 p-1">
-        {data[id][locationKey].map((reservation, key) => {
-          return (
-            <BookingCard
-              reservation={reservation}
-              key={key}
-              vehiclesList={vehiclesList}
-              display_cost={display_cost}
-            />
-          );
-        })}
+      </CardTitle>
+
+      <CardContent className="flex flex-col gap-2 p-1">
+        {data[id][locationKey].map((reservation, index) => (
+          <BookingCard
+            reservation={reservation}
+            key={index}
+            // Safe cast — vehiclesList is readonly, but BookingCard only reads it
+            vehiclesList={vehiclesList as readonly string[]}
+            display_cost={display_cost}
+          />
+        ))}
       </CardContent>
     </Card>
   );

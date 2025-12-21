@@ -1,36 +1,32 @@
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
-import { DialogDemo } from '@/components/ui/Dialog';
-import React from 'react';
-import { Reservation } from '../../types';
+'use client';
+
+import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
-import { BsArrowReturnRight } from "react-icons/bs";
+import { BsArrowReturnRight } from 'react-icons/bs';
+import { Reservation } from '../../types';
 
+interface BookingCardProps {
+  reservation: Reservation;
+  vehiclesList: readonly string[]; // readonly to match your const array
+  display_cost: boolean;
+}
 
-export type Groups = {
-  created_by: string;
-  group_date: string;
-  group_name: string;
-};
-export type GroupNamesType = {
-  groups: any;
-}[];
-
-const BookingCard = async ({
+const BookingCard: React.FC<BookingCardProps> = ({
   reservation,
   vehiclesList,
   display_cost
-}: {
-  reservation: Reservation;
-  vehiclesList: string[];
-  display_cost: boolean;
 }) => {
-  let fleet = {};
-  vehiclesList
-    .filter((key) => Number(reservation[key as keyof typeof reservation]) > 0)
+  // Build list of vehicles actually booked (with count > 0)
+  const bookedVehicles = vehiclesList
+    .filter((key) => {
+      const count = Number(reservation[key as keyof Reservation]);
+      return count > 0;
+    })
     .map((key) => {
-      const count = Number(reservation[key as keyof typeof reservation]);
-      fleet = { [key]: count };
-    });
+      const count = Number(reservation[key as keyof Reservation]);
+      return `${count}-${key}`;
+    })
+    .join(', ');
 
   return (
     <Card
@@ -38,69 +34,55 @@ const BookingCard = async ({
       className={`bookingcard ${reservation.is_special_event ? 'text-orange-500 dark:text-orange-500' : ''}`}
     >
       <CardContent className="bookingcardcontent">
-
+        {/* Reservation ID Link */}
         <Link
           href={`/biz/reservations/${reservation.res_id}`}
-          className="p-2 text-pink-500 cursor-pointer hover:underline"
+          className="p-2 text-pink-500 cursor-pointer hover:underline block mb-2"
         >
           <i>{reservation.res_id}</i>
         </Link>
-        {/* */}
 
+        {/* Customer Name & Total Cost */}
+        <div className="mb-2">
+          <span className="font-medium">{reservation.full_name || '—'}</span>
+          {display_cost && (
+            <i className="text-green-600 ml-4">
+              ${Number(reservation.total_cost || 0).toFixed(2)}
+            </i>
+          )}
+        </div>
 
-        {reservation.full_name} {/* Total Cost */}
-        {display_cost && (
-          <i className="text-green-600"> ${reservation.total_cost}</i>
-        )}
-        <div className="flex gap-2 items-center">
-          <p className="occasionbox itembox">
+        {/* Occasion, Hotel, People, Vehicles */}
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <span className="occasionbox itembox">
             {reservation.occasion?.toLowerCase().slice(0, 28) || 'occasion'}
-          </p><p>
-            {reservation.hotel?.toLocaleLowerCase() === 'drive here' ? (
-              <span className="HotelListing itembox">
-                {/* OBJECTIVE come back here and add links to call the hotel or get directions, or see pickup location */}
-                {reservation.hotel?.toLowerCase()}
-              </span>
-            ) : (<span className="HotelListing itembox">
-              {reservation.hotel?.toLowerCase().slice(0, 28)}
-            </span>)}
-          </p>
-
-          <span className=" text-orange-500">
-            {reservation.ppl_count}-PPL:
           </span>
 
-          <span className="flex gap-2 ">
-            {/* Vehicles */}
-            {vehiclesList
-              .filter(
-                (key) => Number(reservation[key as keyof typeof reservation]) > 0
-              )
-              .map((key, idx, filteredList) => {
-                const count = Number(
-                  reservation[key as keyof typeof reservation]
-                );
-                const full_name = `${count}-${key}`
-                return (
-                  <div key={idx}>
-                    <span className="italic font-thin text-orange-500" key={key}>
-                      {full_name} {idx !== filteredList.length - 1 && ', '}
-                    </span>
-                  </div>
-                );
-              })}
+          <span className="HotelListing itembox">
+            {reservation.hotel?.toLowerCase().slice(0, 28) || '—'}
           </span>
+
+          <span className="text-orange-500 font-medium">
+            {reservation.ppl_count || 0}-PPL
+          </span>
+
+          {bookedVehicles && (
+            <span className="italic font-thin text-orange-500">
+              {bookedVehicles}
+            </span>
+          )}
+
+          {/* External Edit Link */}
           <Link
             href={`https://www.sunbuggy.biz/edt_res.php?Id=${reservation.res_id}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 text-pink-500 cursor-pointer hover:underline"
+            className="ml-auto"
           >
-            <BsArrowReturnRight className="text-2xl" />
+            <BsArrowReturnRight className="text-2xl text-pink-500 hover:text-pink-600" />
           </Link>
         </div>
       </CardContent>
-
     </Card>
   );
 };
