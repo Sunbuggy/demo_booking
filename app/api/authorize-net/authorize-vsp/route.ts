@@ -1,20 +1,20 @@
 // app/api/authorize-net/authorize-vsp/route.ts
 // Authorize.Net API Route Handler (VSP Integration)
-// This route handles multiple Authorize.Net operations:
-// - Fetch unsettled transactions
-// - Fetch settled batch lists and transaction details
-// - Create customer profiles from existing transactions
-// - Charge saved customer profiles
-// - Fetch individual transaction details
-// All communication is with Authorize.Net XML API via Axios
-// No credit card data is handled — PCI compliant
+// This route provides endpoints for:
+// - Fetching unsettled transactions
+// - Fetching settled batch lists and transaction details
+// - Creating customer profiles from existing transactions
+// - Charging saved customer profiles
+// - Fetching individual transaction details
+// All communication is via Authorize.Net XML API using Axios
+// No credit card data is processed — fully PCI compliant
 
 import { NextRequest, NextResponse } from 'next/server';
 import { APIContracts } from 'authorizenet';
 import axios from 'axios';
 import { createMerchantAuthenticationType } from '../helpers/vegas-vsp-create-merchant-authentication-type';
 
-// Force dynamic rendering — no caching of responses
+// Force dynamic rendering and disable all caching — critical for real-time transaction data
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -28,13 +28,13 @@ export async function GET(request: NextRequest) {
   const invoiceNumber = searchParams.get('invoiceNumber');
   const fetchByTransId = searchParams.get('fetchByTransId');
 
-  // Prevent any caching of sensitive transaction data
+  // Prevent browser/proxy caching of sensitive financial data
   const headersList = new Headers();
   headersList.append('Cache-Control', 'no-cache, no-store, must-revalidate');
   headersList.append('Pragma', 'no-cache');
   headersList.append('Expires', '0');
 
-  // Fetch single transaction details by ID
+  // Fetch single transaction details by transaction ID
   if (fetchByTransId) {
     try {
       const transactionDetails = await getTrasactionDetails(transactionId!);
@@ -44,7 +44,9 @@ export async function GET(request: NextRequest) {
           transactionDetails
         });
       }
+      return NextResponse.json({ message: 'Transaction not found' }, { status: 404 });
     } catch (error) {
+      console.error('Error fetching transaction details:', error);
       return NextResponse.json(
         { error: 'Failed to fetch transaction details' },
         { status: 500 }
@@ -53,35 +55,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Handle settled batch requests (historical data)
+    // Handle settled (batched) transactions — historical reporting
     if (isSettled === 'true') {
       if (!first_date || !last_date) {
         return NextResponse.json(
-          { message: 'Please provide first_date and last_date' },
-          { status: 400 }
-        );
-      }
-
-      if (new Date(first_date) > new Date(last_date)) {
-        return NextResponse.json(
-          { message: 'first_date should be less than last_date' },
-          { status: 400 }
-        );
-      }
-
-      if (new Date(first_date) > new Date() || new Date(last_date) > new Date()) {
-        return NextResponse.json(
-          { message: 'first_date and last_date should be less than today' },
-          { status: 400 }
-        );
-      }
-
-      if (
-        new Date(last_date).getTime() - new Date(first_date).getTime() >
-        30 * 24 * 60 * 60 * 1000
-      ) {
-        return NextResponse.json(
-          { message: 'first_date and last_date should be less than 30 days' },
+          { message: 'Missing dates' },
           { status: 400 }
         );
       }
@@ -95,8 +73,9 @@ export async function GET(request: NextRequest) {
         );
         return NextResponse.json({ all_transactions });
       }
+      return NextResponse.json({ all_transactions: [] });
     } else {
-      // Handle unsettled transactions or saved profile charges
+      // Handle unsettled transactions or charge operations
       if (chargeAmt && transactionId) {
         const transactionDetails = await createCustomerProfileFromTransaction(transactionId);
         const profileId = transactionDetails.customerProfileId;
@@ -110,30 +89,21 @@ export async function GET(request: NextRequest) {
           invoiceNumber!
         );
         return NextResponse.json({
-          message: 'Successfully charged customer profile',
+          message: 'Successfully charged profile',
           chargeResponse
         });
       }
 
+      // Default: fetch unsettled (pending) transactions
       if (!transactionId) {
         const transactions = await getUnsettledTransactionList();
-        return NextResponse.json(
-          {
-            message: 'Successfully fetched unsettled transactions',
-            transactions
-          },
-          { headers: headersList }
-        );
+        return NextResponse.json({ transactions }, { headers: headersList });
       }
     }
   } catch (error) {
-    console.error('Error in Authorize.Net API route:', error);
-    const errorMessage = (error as Error).message || 'Unknown error';
+    console.error('Route Error:', error);
     return NextResponse.json(
-      {
-        message: 'API request failed',
-        error: errorMessage
-      },
+      { error: (error as Error).message || 'Unknown error' },
       { headers: headersList, status: 500 }
     );
   }
@@ -143,15 +113,7 @@ export async function GET(request: NextRequest) {
 async function getUnsettledTransactionList() {
   const merchantAuthenticationType = createMerchantAuthenticationType();
   const getRequest = new APIContracts.GetUnsettledTransactionListRequest();
-  const paging = new APIContracts.Paging();
-  paging.setLimit(500);
-  paging.setOffset(1);
-  const sorting = new APIContracts.TransactionListSorting();
-  sorting.setOrderBy(APIContracts.TransactionListOrderFieldEnum.ID);
-  sorting.setOrderDescending(true);
   getRequest.setMerchantAuthentication(merchantAuthenticationType);
-  getRequest.setPaging(paging);
-  getRequest.setSorting(sorting);
 
   const response = await axios.post(
     'https://api.authorize.net/xml/v1/request.api',
@@ -164,37 +126,24 @@ async function getUnsettledTransactionList() {
   if (apiResponse.getMessages().getResultCode() === APIContracts.MessageTypeEnum.OK) {
     return apiResponse.transactions?.transaction || [];
   } else {
-    console.log('Failed to get unsettled transaction list');
     const messages = apiResponse.getMessages();
-    if (messages && messages.getMessage()) {
-      const messageArray = messages.getMessage();
-      // Explicit type to satisfy TypeScript strict mode
-      const errorText = messageArray.map((m: APIContracts.MessageType) => 
-        `${m.getCode()}: ${m.getText()}`
-      ).join('; ');
-      console.error('Authorize.Net API Error:', errorText);
-      throw new Error(`Authorize.Net Error: ${errorText}`);
-    }
-    throw new Error('Authorize.Net API returned an error with no message details');
+    const messageArray = messages.getMessage() || [];
+    const errorText = messageArray.map((m: any) => `${m.getCode()}: ${m.getText()}`).join('; ');
+    throw new Error(errorText || 'Unknown Authorize.Net error');
   }
 }
 
-// Create a customer profile from an existing transaction
+// Create a customer profile from an existing transaction (for future charges)
 async function createCustomerProfileFromTransaction(transactionId: string) {
   const merchantAuthenticationType = createMerchantAuthenticationType();
   const createRequest = new APIContracts.CreateCustomerProfileFromTransactionRequest();
   createRequest.setTransId(transactionId);
   createRequest.setMerchantAuthentication(merchantAuthenticationType);
 
-  // Generate a random merchant customer ID (11 alphanumeric chars)
-  const possible_letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let randoms = '';
-  for (let i = 0; i < 11; i++) {
-    randoms += possible_letters.charAt(Math.floor(Math.random() * possible_letters.length));
-  }
+  // Generate random merchant customer ID
+  const randomId = 'CUST_' + Math.random().toString(36).substr(2, 9);
   const customerProfile = new APIContracts.CustomerProfileBaseType();
-  customerProfile.setMerchantCustomerId(randoms || '');
-
+  customerProfile.setMerchantCustomerId(randomId);
   createRequest.setCustomer(customerProfile);
 
   const response = await axios.post(
@@ -208,17 +157,9 @@ async function createCustomerProfileFromTransaction(transactionId: string) {
   if (apiResponse.getMessages().getResultCode() === APIContracts.MessageTypeEnum.OK) {
     return apiResponse;
   } else {
-    console.log('Failed to create customer profile from transaction');
-    const messages = apiResponse.getMessages();
-    if (messages && messages.getMessage()) {
-      const messageArray = messages.getMessage();
-      const errorText = messageArray.map((m: APIContracts.MessageType) => 
-        `${m.getCode()}: ${m.getText()}`
-      ).join('; ');
-      console.error('Authorize.Net API Error:', errorText);
-      throw new Error(`Authorize.Net Error: ${errorText}`);
-    }
-    throw new Error('Authorize.Net API returned an error with no message details');
+    const messageArray = apiResponse.getMessages().getMessage() || [];
+    const errorText = messageArray.map((m: any) => `${m.getCode()}: ${m.getText()}`).join('; ');
+    throw new Error(errorText || 'Failed to create customer profile');
   }
 }
 
@@ -232,10 +173,19 @@ async function chargeCustomerProfile(
   const merchantAuthenticationType = createMerchantAuthenticationType();
   const createRequest = new APIContracts.CreateTransactionRequest();
   createRequest.setMerchantAuthentication(merchantAuthenticationType);
-  createRequest.setRefId(invoiceNumber);
-  createRequest.setTransactionRequest(
-    createTransactionRequest(customerProfileId, customerPaymentProfileId, amount, invoiceNumber)
+
+  const transactionRequestType = new APIContracts.TransactionRequestType();
+  transactionRequestType.setTransactionType(APIContracts.TransactionTypeEnum.AUTHCAPTURETRANSACTION);
+  transactionRequestType.setAmount(amount);
+
+  const profile = new APIContracts.CustomerProfilePaymentType();
+  profile.setCustomerProfileId(customerProfileId);
+  profile.setPaymentProfile(
+    new APIContracts.PaymentProfile({ paymentProfileId: customerPaymentProfileId })
   );
+  transactionRequestType.setProfile(profile);
+
+  createRequest.setTransactionRequest(transactionRequestType);
 
   const response = await axios.post(
     'https://api.authorize.net/xml/v1/request.api',
@@ -248,55 +198,13 @@ async function chargeCustomerProfile(
   if (apiResponse.getMessages().getResultCode() === APIContracts.MessageTypeEnum.OK) {
     return apiResponse.transactionResponse;
   } else {
-    console.log('Failed to charge customer profile');
-    const messages = apiResponse.getMessages();
-    if (messages && messages.getMessage()) {
-      const messageArray = messages.getMessage();
-      const errorText = messageArray.map((m: APIContracts.MessageType) => 
-        `${m.getCode()}: ${m.getText()}`
-      ).join('; ');
-      console.error('Authorize.Net API Error:', errorText);
-      throw new Error(`Authorize.Net Error: ${errorText}`);
-    }
-    throw new Error('Authorize.Net API returned an error with no message details');
+    const messageArray = apiResponse.getMessages().getMessage() || [];
+    const errorText = messageArray.map((m: any) => `${m.getCode()}: ${m.getText()}`).join('; ');
+    throw new Error(errorText || 'Failed to charge profile');
   }
 }
 
-// Build the transaction request for charging a profile
-function createTransactionRequest(
-  customerProfileId: string,
-  customerPaymentProfileId: string,
-  amount: string,
-  invoiceNumber: string
-) {
-  const transactionRequestType = new APIContracts.TransactionRequestType();
-  transactionRequestType.setTransactionType(APIContracts.TransactionTypeEnum.AUTHCAPTURETRANSACTION);
-  
-  const order = new APIContracts.OrderType();
-  let finalInvoiceNumber = invoiceNumber;
-  if (invoiceNumber.startsWith('ADD_CHARGE_')) {
-    const changedInvoiceNumber = invoiceNumber.split('_')[2];
-    if (changedInvoiceNumber) {
-      finalInvoiceNumber = changedInvoiceNumber;
-    }
-  }
-  order.setInvoiceNumber('ADD_CHARGE_' + finalInvoiceNumber);
-  transactionRequestType.setOrder(order);
-  
-  transactionRequestType.setAmount(amount);
-  
-  const profile = new APIContracts.CustomerProfilePaymentType();
-  profile.setCustomerProfileId(customerProfileId);
-  profile.setPaymentProfile(
-    new APIContracts.PaymentProfile({ paymentProfileId: customerPaymentProfileId })
-  );
-  
-  transactionRequestType.setProfile(profile);
-  
-  return transactionRequestType;
-}
-
-// Fetch details for a single transaction by ID
+// Fetch details for a single transaction
 async function getTrasactionDetails(transactionId: string) {
   const merchantAuthenticationType = createMerchantAuthenticationType();
   const getRequest = new APIContracts.GetTransactionDetailsRequest();
@@ -313,20 +221,17 @@ async function getTrasactionDetails(transactionId: string) {
 
   if (apiResponse.getMessages().getResultCode() === APIContracts.MessageTypeEnum.OK) {
     return apiResponse.transaction;
-  } else {
-    console.log('Failed to get transaction details');
-    return null;
   }
+  return null;
 }
 
-// Fetch settled batch list for a date range
-async function getSettledBatchList(first_date: string, last_date: string) {
+// Fetch settled batch list for date range
+async function getSettledBatchList(first: string, last: string) {
   const merchantAuthenticationType = createMerchantAuthenticationType();
   const getRequest = new APIContracts.GetSettledBatchListRequest();
   getRequest.setMerchantAuthentication(merchantAuthenticationType);
-  getRequest.setIncludeStatistics(true);
-  getRequest.setFirstSettlementDate(new Date(first_date));
-  getRequest.setLastSettlementDate(new Date(last_date));
+  getRequest.setFirstSettlementDate(new Date(first));
+  getRequest.setLastSettlementDate(new Date(last));
 
   const response = await axios.post(
     'https://api.authorize.net/xml/v1/request.api',
@@ -337,19 +242,11 @@ async function getSettledBatchList(first_date: string, last_date: string) {
   const apiResponse = new APIContracts.GetSettledBatchListResponse(response.data);
 
   if (apiResponse.getMessages().getResultCode() === APIContracts.MessageTypeEnum.OK) {
-    return apiResponse.batchList.batch || [];
+    return apiResponse.batchList?.batch || [];
   } else {
-    console.log('Failed to get settled batch list');
-    const messages = apiResponse.getMessages();
-    if (messages && messages.getMessage()) {
-      const messageArray = messages.getMessage();
-      const errorText = messageArray.map((m: APIContracts.MessageType) => 
-        `${m.getCode()}: ${m.getText()}`
-      ).join('; ');
-      console.error('Authorize.Net API Error:', errorText);
-      throw new Error(`Authorize.Net Error: ${errorText}`);
-    }
-    throw new Error('Authorize.Net API returned an error with no message details');
+    const messageArray = apiResponse.getMessages().getMessage() || [];
+    const errorText = messageArray.map((m: any) => `${m.getCode()}: ${m.getText()}`).join('; ');
+    throw new Error(errorText || 'Failed to fetch settled batches');
   }
 }
 
@@ -357,16 +254,8 @@ async function getSettledBatchList(first_date: string, last_date: string) {
 async function getTransactionList(batchId: string) {
   const merchantAuthenticationType = createMerchantAuthenticationType();
   const getRequest = new APIContracts.GetTransactionListRequest();
-  const paging = new APIContracts.Paging();
-  const sorting = new APIContracts.TransactionListSorting();
-  sorting.setOrderBy(APIContracts.TransactionListOrderFieldEnum.ID);
-  sorting.setOrderDescending(true);
-  paging.setLimit(500);
-  paging.setOffset(1);
   getRequest.setMerchantAuthentication(merchantAuthenticationType);
   getRequest.setBatchId(batchId);
-  getRequest.setPaging(paging);
-  getRequest.setSorting(sorting);
 
   const response = await axios.post(
     'https://api.authorize.net/xml/v1/request.api',
@@ -379,16 +268,8 @@ async function getTransactionList(batchId: string) {
   if (apiResponse.getMessages().getResultCode() === APIContracts.MessageTypeEnum.OK) {
     return apiResponse.transactions?.transaction || [];
   } else {
-    console.log('Failed to get transaction list');
-    const messages = apiResponse.getMessages();
-    if (messages && messages.getMessage()) {
-      const messageArray = messages.getMessage();
-      const errorText = messageArray.map((m: APIContracts.MessageType) => 
-        `${m.getCode()}: ${m.getText()}`
-      ).join('; ');
-      console.error('Authorize.Net API Error:', errorText);
-      throw new Error(`Authorize.Net Error: ${errorText}`);
-    }
-    throw new Error('Authorize.Net API returned an error with no message details');
+    const messageArray = apiResponse.getMessages().getMessage() || [];
+    const errorText = messageArray.map((m: any) => `${m.getCode()}: ${m.getText()}`).join('; ');
+    throw new Error(errorText || 'Failed to fetch transaction list');
   }
 }
