@@ -483,7 +483,10 @@ export default function PismoBooking() {
           <label className="text-2xl block mb-4">1. Choose Reservation Date</label>
           <DatePicker
             selected={selectedDate}
-            onChange={(date: Date) => setSelectedDate(date)}
+            // ✅ PASSES: Accepts Date or null, and only updates state if date exists
+onChange={(date: Date | null) => {
+  if (date) setSelectedDate(date);
+}}
             minDate={new Date()}
             className="p-4 text-black text-xl rounded-lg cursor-pointer w-full max-w-xs"
             placeholderText="Click to select date"
