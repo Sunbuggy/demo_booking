@@ -1,15 +1,15 @@
 // app/account/page.tsx
 // Account Page – Server Component
 // Authenticated user dashboard
-// - Server-side Supabase client
-// - Auto clock-out
-// - Fetch user and time entry
-// - Render UserPage with correct string id
+// - Creates server-side Supabase client (await required)
+// - Calls auto_clock_out RPC
+// - Fetches user and time entry
+// - Renders UserPage with string id
 // - ClockinForm for employees
-// - Background picker
+// - Background picker button
 
 import { redirect } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/utils/supabase/server'; // Returns Promise<SupabaseClient>
 import {
   fetchTimeEntryByUserId,
   getUserDetails
@@ -34,7 +34,8 @@ export type TimeEntry = {
 };
 
 export default async function Account() {
-  const supabase = createClient();
+  // AWAIT the server client — this is the key fix
+  const supabase = await createClient();
 
   // Auto clock-out stuck sessions
   try {
@@ -44,6 +45,7 @@ export default async function Account() {
     console.error('Unexpected auto_clock_out error:', err);
   }
 
+  // Fetch current user
   const user = await getUserDetails(supabase);
 
   if (!user || user.length === 0) {
@@ -51,7 +53,7 @@ export default async function Account() {
   }
 
   const currentUser = user[0];
-  const userId = currentUser.id as string; // Assert as string — it's from DB
+  const userId = currentUser.id as string; // Safe — id is string from DB
   const role = currentUser.user_level;
   const clockinStatus = currentUser.time_entry_status;
 
@@ -68,7 +70,6 @@ export default async function Account() {
           </h1>
 
           <div className="p-4">
-            {/* User profile view — pass string id */}
             <UserPage params={{ id: userId }} />
 
             {role > 284 && (
