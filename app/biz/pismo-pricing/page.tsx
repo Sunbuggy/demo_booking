@@ -18,12 +18,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client'; // Client-side Supabase client
+import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
 // Define the display order for vehicle types
-// Using index signature { [key: string]: number } allows safe string indexing in .sort()
-// while keeping type safety for known keys
+// Using index signature allows safe string indexing while keeping type safety
 const TYPE_ORDER: { [key: string]: number } = {
   ATV: 1,
   UTV: 2,
@@ -31,7 +30,6 @@ const TYPE_ORDER: { [key: string]: number } = {
 };
 
 // All possible fleet prefixes — used for multi-select in edit modal
-// These correspond to vehicle codes in your inventory
 const ALL_PREFIXES = [
   'QA', 'QB', 'QC', 'QD', 'QE', 'QF', 'QG', 'QH', 'QI', 'QJ', 'QK', 'QL', 'QM', 'QN', 'QO', 'QP', 'QQ', 'QR', 'QS', 'QT', 'QU', 'QV', 'QW', 'QX', 'QY', 'QZ',
   'SB1', 'SB2', 'SB4', 'SB5', 'SB6',
@@ -39,7 +37,6 @@ const ALL_PREFIXES = [
 ];
 
 export default function PismoPricingAdmin() {
-  // State for rules, current user, editing, loading/saving
   const [rules, setRules] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [editingRule, setEditingRule] = useState<any | null>(null);
@@ -50,17 +47,14 @@ export default function PismoPricingAdmin() {
   const supabase = createClient();
   const router = useRouter();
 
-  // Initial load — check auth, role, and fetch rules
   useEffect(() => {
     const init = async () => {
-      // Get authenticated user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/signin');
         return;
       }
 
-      // Fetch user profile to check role level
       const { data: profile } = await supabase
         .from('users')
         .select('user_level, full_name')
@@ -73,10 +67,8 @@ export default function PismoPricingAdmin() {
         return;
       }
 
-      // Store current user for created/updated by fields
       setCurrentUser({ id: user.id, name: profile.full_name || user.email });
 
-      // Fetch all pricing rules
       const { data } = await supabase
         .from('pismo_pricing_rules')
         .select('*')
@@ -89,13 +81,11 @@ export default function PismoPricingAdmin() {
     init();
   }, [router, supabase]);
 
-  // Open edit modal with existing rule data
   const startEdit = (rule: any) => {
     setEditingRule({ ...rule });
     setSelectedPrefixes(rule.fleet_prefixes || []);
   };
 
-  // Save new or updated rule
   const saveRule = async () => {
     if (!editingRule || !editingRule.vehicle_name || selectedPrefixes.length === 0) {
       alert('Vehicle name and at least one fleet prefix required');
@@ -123,7 +113,6 @@ export default function PismoPricingAdmin() {
     if (error) {
       alert('Error: ' + error.message);
     } else {
-      // Refresh rules after successful save
       const { data } = await supabase
         .from('pismo_pricing_rules')
         .select('*')
@@ -145,14 +134,14 @@ export default function PismoPricingAdmin() {
     return acc;
   }, {} as Record<string, any[]>);
 
-  // Sort types according to TYPE_ORDER (ATV → UTV → Buggy)
+  // Sort types according to TYPE_ORDER
   const sortedTypes = Object.keys(grouped).sort((a, b) => 
     (TYPE_ORDER[a] || 99) - (TYPE_ORDER[b] || 99)
   );
 
-  // Sort rules within each type by sort_order (lower number = higher on public page)
+  // Sort rules within each type by sort_order
   sortedTypes.forEach(type => {
-    grouped[type].sort((a, b) => (a.sort_order || 100) - (b.sort_order || 100));
+    grouped[type].sort((a: any, b: any) => (a.sort_order || 100) - (b.sort_order || 100));
   });
 
   return (
@@ -204,7 +193,6 @@ export default function PismoPricingAdmin() {
         </button>
       </div>
 
-      {/* Render each vehicle type group */}
       {sortedTypes.map(type => (
         <div key={type} className="mb-16">
           <h2 className="text-3xl font-bold text-orange-400 mb-8 text-center">
@@ -246,7 +234,6 @@ export default function PismoPricingAdmin() {
 
                 <p className="mb-2 text-sm"><strong>Prefixes:</strong> {rule.fleet_prefixes?.join(', ')}</p>
                 
-                {/* Sort order displayed clearly on the card */}
                 <p className="mb-4 text-lg font-semibold text-yellow-300">
                   <strong>Sort Order:</strong> {rule.sort_order ?? 100}
                   <span className="block text-sm font-normal text-gray-400 mt-1">
@@ -283,7 +270,7 @@ export default function PismoPricingAdmin() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-8">
-              {/* Your form JSX here — unchanged from your version */}
+              {/* Form fields — keep your existing JSX here */}
             </div>
 
             <div className="p-8 border-t border-gray-700 text-center space-x-6">
