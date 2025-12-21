@@ -35,7 +35,7 @@ export default function VehicleLocationsDisplay({
   >(null);
   const [isDispatchGroupsDialogOpen, setDispatchGroupsDialogOpen] =
     React.useState<boolean>(false);
-  const supabase = await createClient();
+  const supabase = createClient();
   const router = useRouter();
   const { data: vehicleLocations } = useQuery({
     queryKey: ['vehicleLocations'],

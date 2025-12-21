@@ -38,7 +38,7 @@ const useSendSMS = (user: User, textLocation: 'CA' | 'NV' | 'MI' | null, locatio
       return;
     }
 
-    const supabase = await createClient();
+    const supabase = createClient();
     try {
       // Get vehicle name
       let vehicleName = 'Unknown Vehicle';
@@ -176,7 +176,7 @@ export default function DispatchForm({
 
   React.useEffect(() => {
     if (dispatchId) {
-      const supabase = await createClient();
+      const supabase = createClient();
       const fetchDispatch = async () => {
         const { data: dispatch } = await supabase
           .from('vehicle_locations')

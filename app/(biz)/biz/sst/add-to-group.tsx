@@ -14,7 +14,7 @@ import { createClient } from '@/utils/supabase/client';
 import { PopoverClose } from '@radix-ui/react-popover';
 
 export default function AddToGroup({ user }: { user: string }) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const [locations, setLocations] = useState<('NV' | 'CA' | 'MI')[]>([]);
   const queryClient = useQueryClient();
 
