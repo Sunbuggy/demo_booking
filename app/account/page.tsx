@@ -1,19 +1,16 @@
 // app/account/page.tsx
 // Account Page – Server Component
 // Authenticated user dashboard
-// - Server-side Supabase client (await required)
-// - Auto clock-out RPC
-// - Fetch user and time entry
-// - Render UserPage with correct string id
+// - Creates server-side Supabase client
+// - Calls auto_clock_out RPC
+// - Fetches current user directly (no getUserDetails dependency)
+// - Renders UserPage with string id
 // - ClockinForm for employees
 // - Background picker button
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import {
-  fetchTimeEntryByUserId,
-  getUserDetails
-} from '@/utils/supabase/queries';
+import { fetchTimeEntryByUserId } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
 import BackgroundPickerButton from './components/background-picker-button';
 import UserPage from '../(biz)/biz/users/[id]/page';
@@ -44,18 +41,30 @@ export default async function Account() {
     console.error('Unexpected auto_clock_out error:', err);
   }
 
-  // Fetch current user — getUserDetails returns array of user objects
-  const userArray = await getUserDetails(supabase);
+  // Fetch current authenticated user directly
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  if (!userArray || userArray.length === 0) {
+  if (authError || !user) {
     return redirect('/signin');
   }
 
-  const currentUser = userArray[0];
-  const userId = currentUser.id as string; // id is string from DB
-  const role = currentUser.user_level;
-  const clockinStatus = currentUser.time_entry_status;
+  // Fetch user profile from 'users' table
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single();
 
+  if (profileError || !userProfile) {
+    console.error('Error fetching user profile:', profileError);
+    return redirect('/signin');
+  }
+
+  const userId = userProfile.id as string;
+  const role = userProfile.user_level;
+  const clockinStatus = userProfile.time_entry_status;
+
+  // Fetch current time entry
   const timeEntry = await fetchTimeEntryByUserId(supabase, userId);
   const timeEnt = timeEntry as unknown as TimeEntry[];
   const clockInTimeStamp = timeEnt[0]?.clock_in?.clock_in_time;
@@ -69,7 +78,6 @@ export default async function Account() {
           </h1>
 
           <div className="p-4">
-            {/* Manager-style profile view for current user */}
             <UserPage params={{ id: userId }} />
 
             {role > 284 && (
@@ -83,7 +91,7 @@ export default async function Account() {
           </div>
         </div>
 
-        <BackgroundPickerButton user={currentUser} />
+        <BackgroundPickerButton user={userProfile} />
       </div>
     </section>
   );
