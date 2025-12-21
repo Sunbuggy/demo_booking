@@ -1,19 +1,5 @@
 // app/biz/pismo-pricing/page.tsx
 // Pismo Pricing Rules Admin Page (Managers Only)
-// This page allows managers (user_level >= 650) to create and edit pricing rules for Pismo rentals.
-// Rules define:
-// - Vehicle name and type (ATV, UTV, Buggy)
-// - Hourly pricing
-// - Fleet prefixes (which vehicles this rule applies to)
-// - Sort order (lower = appears higher on public booking page)
-// - Active date range and days of week
-// - Online/phone booking availability
-// - Additional fees (belt, damage waiver, deposit)
-//
-// Rules are grouped by vehicle type and sorted by TYPE_ORDER (ATV → UTV → Buggy)
-// Within each type, rules are sorted by sort_order (lower number = higher on public page)
-//
-// The sort order is prominently displayed on each card so managers can see current ordering at a glance.
 
 'use client';
 
@@ -21,15 +7,19 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 
-// Define the display order for vehicle types
-// Using index signature allows safe string indexing while keeping type safety
+/**
+ * CONSTANT: TYPE_ORDER
+ * We use an "Index Signature" { [key: string]: number } here.
+ * Why? By default, TypeScript thinks an object only has the specific keys you typed (ATV, UTV, etc).
+ * But later, when we do Object.keys(grouped), TypeScript sees those keys as generic 'strings'.
+ * The Index Signature tells TS: "It's okay to use ANY string to look up a number in this object."
+ */
 const TYPE_ORDER: { [key: string]: number } = {
   ATV: 1,
   UTV: 2,
   Buggy: 3,
 };
 
-// All possible fleet prefixes — used for multi-select in edit modal
 const ALL_PREFIXES = [
   'QA', 'QB', 'QC', 'QD', 'QE', 'QF', 'QG', 'QH', 'QI', 'QJ', 'QK', 'QL', 'QM', 'QN', 'QO', 'QP', 'QQ', 'QR', 'QS', 'QT', 'QU', 'QV', 'QW', 'QX', 'QY', 'QZ',
   'SB1', 'SB2', 'SB4', 'SB5', 'SB6',
@@ -37,6 +27,7 @@ const ALL_PREFIXES = [
 ];
 
 export default function PismoPricingAdmin() {
+  // State management
   const [rules, setRules] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [editingRule, setEditingRule] = useState<any | null>(null);
@@ -47,20 +38,24 @@ export default function PismoPricingAdmin() {
   const supabase = createClient();
   const router = useRouter();
 
+  // AUTH CHECK & INITIAL DATA FETCH
   useEffect(() => {
     const init = async () => {
+      // 1. Get the authenticated user from the session
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/signin');
         return;
       }
 
+      // 2. Fetch the user's profile to check their role level
       const { data: profile } = await supabase
         .from('users')
         .select('user_level, full_name')
         .eq('id', user.id)
         .single();
 
+      // 3. Security Check: Must be level 650 or higher
       if (!profile || profile.user_level < 650) {
         alert('Access denied: Managers only');
         router.push('/biz');
@@ -69,6 +64,7 @@ export default function PismoPricingAdmin() {
 
       setCurrentUser({ id: user.id, name: profile.full_name || user.email });
 
+      // 4. Fetch the actual pricing rules
       const { data } = await supabase
         .from('pismo_pricing_rules')
         .select('*')
@@ -79,14 +75,17 @@ export default function PismoPricingAdmin() {
     };
 
     init();
-  }, [router, supabase]);
+  }, [router, supabase]); // Dependencies ensure this only runs once on mount
 
+  // HELPER: Initialize the edit form
   const startEdit = (rule: any) => {
     setEditingRule({ ...rule });
     setSelectedPrefixes(rule.fleet_prefixes || []);
   };
 
+  // HELPER: Save to Supabase (Insert or Update)
   const saveRule = async () => {
+    // Basic validation
     if (!editingRule || !editingRule.vehicle_name || selectedPrefixes.length === 0) {
       alert('Vehicle name and at least one fleet prefix required');
       return;
@@ -94,9 +93,11 @@ export default function PismoPricingAdmin() {
 
     setSaving(true);
 
+    // Prepare the payload for the database
     const payload = {
       ...editingRule,
       fleet_prefixes: selectedPrefixes,
+      // Track who made the change based on whether it's an update or new insert
       ...(editingRule.id ? {
         updated_by: currentUser.id,
         updated_by_name: currentUser.name,
@@ -106,6 +107,7 @@ export default function PismoPricingAdmin() {
       })
     };
 
+    // Execute the query
     const { error } = editingRule.id
       ? await supabase.from('pismo_pricing_rules').update(payload).eq('id', editingRule.id)
       : await supabase.from('pismo_pricing_rules').insert(payload);
@@ -113,6 +115,7 @@ export default function PismoPricingAdmin() {
     if (error) {
       alert('Error: ' + error.message);
     } else {
+      // Refresh the list immediately after saving to show changes
       const { data } = await supabase
         .from('pismo_pricing_rules')
         .select('*')
@@ -126,7 +129,11 @@ export default function PismoPricingAdmin() {
 
   if (loading) return <div className="p-8 text-center text-2xl">Checking access...</div>;
 
-  // Group rules by type_vehicle
+  /**
+   * DATA TRANSFORMATION: Grouping
+   * We turn the flat list of rules into an object grouped by vehicle type.
+   * Example: { "ATV": [...rules], "UTV": [...rules] }
+   */
   const grouped = rules.reduce((acc, rule) => {
     const type = rule.type_vehicle || 'Other';
     if (!acc[type]) acc[type] = [];
@@ -134,12 +141,20 @@ export default function PismoPricingAdmin() {
     return acc;
   }, {} as Record<string, any[]>);
 
-  // Sort types according to TYPE_ORDER
+  /**
+   * DATA TRANSFORMATION: Sorting Keys
+   * We get the keys (ATV, UTV, Buggy) and sort them based on our TYPE_ORDER constant.
+   */
   const sortedTypes = Object.keys(grouped).sort((a, b) => 
     (TYPE_ORDER[a] || 99) - (TYPE_ORDER[b] || 99)
   );
 
-  // Sort rules within each type by sort_order
+  /**
+   * FIX: Explicit 'any' Typing
+   * Here is where the build error was. Inside this sort function, TypeScript
+   * inferred 'a' and 'b' as unknown types because they came from a dynamic object.
+   * By adding ': any', we explicitly tell TypeScript "trust us, these objects have a sort_order property".
+   */
   sortedTypes.forEach(type => {
     grouped[type].sort((a: any, b: any) => (a.sort_order || 100) - (b.sort_order || 100));
   });
@@ -149,9 +164,11 @@ export default function PismoPricingAdmin() {
       <h1 className="text-4xl font-bold text-orange-500 mb-4 text-center">Pismo Pricing Rules Admin (Managers Only)</h1>
       <p className="text-center mb-8">Logged in as: {currentUser?.name}</p>
 
+      {/* Control Buttons */}
       <div className="flex justify-center gap-4 mb-12">
         <button
           onClick={() => {
+            // Reset form for a new rule
             setEditingRule({
               vehicle_name: '',
               seats: 1,
@@ -193,6 +210,7 @@ export default function PismoPricingAdmin() {
         </button>
       </div>
 
+      {/* Render the grouped sections */}
       {sortedTypes.map(type => (
         <div key={type} className="mb-16">
           <h2 className="text-3xl font-bold text-orange-400 mb-8 text-center">
@@ -208,28 +226,15 @@ export default function PismoPricingAdmin() {
                   Seats: {rule.seats}
                 </p>
 
+                {/* Price Grid */}
                 <div className="space-y-3 mb-8 text-lg">
-                  <div className="grid grid-cols-2">
-                    <span className="font-semibold">1hr:</span> <span className="text-right">${rule.price_1hr}</span>
-                  </div>
-                  <div className="grid grid-cols-2">
-                    <span className="font-semibold">1.5hr:</span> <span className="text-right">${rule.price_1_5hr}</span>
-                  </div>
-                  <div className="grid grid-cols-2">
-                    <span className="font-semibold">2hr:</span> <span className="text-right">${rule.price_2hr}</span>
-                  </div>
-                  <div className="grid grid-cols-2">
-                    <span className="font-semibold">2.5hr:</span> <span className="text-right">${rule.price_2_5hr}</span>
-                  </div>
-                  <div className="grid grid-cols-2">
-                    <span className="font-semibold">3hr:</span> <span className="text-right">${rule.price_3hr}</span>
-                  </div>
-                  <div className="grid grid-cols-2">
-                    <span className="font-semibold">3.5hr:</span> <span className="text-right">${rule.price_3_5hr}</span>
-                  </div>
-                  <div className="grid grid-cols-2">
-                    <span className="font-semibold">4hr:</span> <span className="text-right">${rule.price_4hr}</span>
-                  </div>
+                  <div className="grid grid-cols-2"><span className="font-semibold">1hr:</span> <span className="text-right">${rule.price_1hr}</span></div>
+                  <div className="grid grid-cols-2"><span className="font-semibold">1.5hr:</span> <span className="text-right">${rule.price_1_5hr}</span></div>
+                  <div className="grid grid-cols-2"><span className="font-semibold">2hr:</span> <span className="text-right">${rule.price_2hr}</span></div>
+                  <div className="grid grid-cols-2"><span className="font-semibold">2.5hr:</span> <span className="text-right">${rule.price_2_5hr}</span></div>
+                  <div className="grid grid-cols-2"><span className="font-semibold">3hr:</span> <span className="text-right">${rule.price_3hr}</span></div>
+                  <div className="grid grid-cols-2"><span className="font-semibold">3.5hr:</span> <span className="text-right">${rule.price_3_5hr}</span></div>
+                  <div className="grid grid-cols-2"><span className="font-semibold">4hr:</span> <span className="text-right">${rule.price_4hr}</span></div>
                 </div>
 
                 <p className="mb-2 text-sm"><strong>Prefixes:</strong> {rule.fleet_prefixes?.join(', ')}</p>
@@ -259,7 +264,7 @@ export default function PismoPricingAdmin() {
         </div>
       ))}
 
-      {/* Editing Modal */}
+      {/* Editing Modal Overlay */}
       {editingRule && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
@@ -269,8 +274,65 @@ export default function PismoPricingAdmin() {
               </h2>
             </div>
 
+            {/* Scrollable Form Area */}
             <div className="flex-1 overflow-y-auto p-8">
-              {/* Form fields — keep your existing JSX here */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <label className="block text-xl mb-2">Vehicle Name</label>
+                  <input
+                    type="text"
+                    value={editingRule.vehicle_name}
+                    onChange={e => setEditingRule({ ...editingRule, vehicle_name: e.target.value })}
+                    className="p-4 bg-gray-700 rounded w-full text-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xl mb-2">Seats</label>
+                  <input type="number" value={editingRule.seats} onChange={e => setEditingRule({ ...editingRule, seats: parseInt(e.target.value) || 1 })} className="p-4 bg-gray-700 rounded w-full text-xl" />
+                </div>
+                <div>
+                  <label className="block text-xl mb-2">Type</label>
+                  <select value={editingRule.type_vehicle} onChange={e => setEditingRule({ ...editingRule, type_vehicle: e.target.value })} className="p-4 bg-gray-700 rounded w-full text-xl">
+                    <option>ATV</option><option>UTV</option><option>Buggy</option>
+                  </select>
+                </div>
+                
+                {/* Price Inputs */}
+                <div><label className="block text-xl mb-2">1hr Price</label><input type="number" step="0.01" value={editingRule.price_1hr} onChange={e => setEditingRule({ ...editingRule, price_1hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
+                <div><label className="block text-xl mb-2">1.5hr Price</label><input type="number" step="0.01" value={editingRule.price_1_5hr} onChange={e => setEditingRule({ ...editingRule, price_1_5hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
+                <div><label className="block text-xl mb-2">2hr Price</label><input type="number" step="0.01" value={editingRule.price_2hr} onChange={e => setEditingRule({ ...editingRule, price_2hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
+                <div><label className="block text-xl mb-2">2.5hr Price</label><input type="number" step="0.01" value={editingRule.price_2_5hr} onChange={e => setEditingRule({ ...editingRule, price_2_5hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
+                <div><label className="block text-xl mb-2">3hr Price</label><input type="number" step="0.01" value={editingRule.price_3hr} onChange={e => setEditingRule({ ...editingRule, price_3hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
+                <div><label className="block text-xl mb-2">3.5hr Price</label><input type="number" step="0.01" value={editingRule.price_3_5hr} onChange={e => setEditingRule({ ...editingRule, price_3_5hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
+                <div><label className="block text-xl mb-2">4hr Price</label><input type="number" step="0.01" value={editingRule.price_4hr} onChange={e => setEditingRule({ ...editingRule, price_4hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
+
+                <div><label className="block text-xl mb-2">Sort Order</label><input type="number" value={editingRule.sort_order} onChange={e => setEditingRule({ ...editingRule, sort_order: parseInt(e.target.value) || 100 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
+                <div><label className="block text-xl mb-2">Online</label><select value={editingRule.online ? 'true' : 'false'} onChange={e => setEditingRule({ ...editingRule, online: e.target.value === 'true' })} className="p-4 bg-gray-700 rounded w-full text-xl"><option value="true">Yes</option><option value="false">No</option></select></div>
+                <div><label className="block text-xl mb-2">Phone</label><select value={editingRule.phone ? 'true' : 'false'} onChange={e => setEditingRule({ ...editingRule, phone: e.target.value === 'true' })} className="p-4 bg-gray-700 rounded w-full text-xl"><option value="true">Yes</option><option value="false">No</option></select></div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xl mb-2">Fleet Prefixes</label>
+                  <div className="grid grid-cols-6 gap-4 max-h-60 overflow-y-auto p-4 bg-gray-700 rounded">
+                    {ALL_PREFIXES.map(prefix => (
+                      <label key={prefix} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedPrefixes.includes(prefix)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedPrefixes(prev => [...prev, prefix]);
+                            } else {
+                              setSelectedPrefixes(prev => prev.filter(p => p !== prefix));
+                            }
+                          }}
+                          className="mr-2"
+                        />
+                        {prefix}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="p-8 border-t border-gray-700 text-center space-x-6">

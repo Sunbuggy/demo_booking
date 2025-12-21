@@ -1,20 +1,14 @@
 // app/account/page.tsx
-// Account Page – Server Component
-// Authenticated user dashboard
-// - Server-side Supabase client
-// - Auto clock-out RPC
-// - Fetch user and time entry
-// - Render UserPage (which is a dynamic route expecting Promise params in Next.js 16)
-// - ClockinForm for employees
-// - Background picker button
-
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { fetchTimeEntryByUserId } from '@/utils/supabase/queries';
 import ClockinForm from '@/components/ui/AccountForms/ClockinForm';
+// Ensure this import path matches where your file actually is!
 import BackgroundPickerButton from './components/background-picker-button';
+// Absolute path prevents "Module Not Found" errors
 import UserPage from '@/app/(biz)/biz/users/[id]/page';
 
+// Define the shape of your time entry data
 export type TimeEntry = {
   id: any;
   date: any;
@@ -33,7 +27,7 @@ export type TimeEntry = {
 export default async function Account() {
   const supabase = await createClient();
 
-  // Auto clock-out stuck sessions
+  // 1. Auto clock-out maintenance
   try {
     const { error } = await supabase.rpc('auto_clock_out');
     if (error) console.error('auto_clock_out error:', error);
@@ -41,12 +35,11 @@ export default async function Account() {
     console.error('Unexpected auto_clock_out error:', err);
   }
 
-  // Fetch current user
+  // 2. Auth Check
   const { data: { user } } = await supabase.auth.getUser();
-
   if (!user) return redirect('/signin');
 
-  // Fetch user profile
+  // 3. Profile Fetch
   const { data: profile } = await supabase
     .from('users')
     .select('*')
@@ -59,9 +52,15 @@ export default async function Account() {
   const role = profile.user_level;
   const clockinStatus = profile.time_entry_status;
 
-  const timeEntry = await fetchTimeEntryByUserId(supabase, userId);
-  const timeEnt = timeEntry as unknown as TimeEntry[];
-  const clockInTimeStamp = timeEnt[0]?.clock_in?.clock_in_time;
+  // 4. Time Entry Fetch (With NULL Safety)
+  const timeEntryData = await fetchTimeEntryByUserId(supabase, userId);
+  
+  // FIX: Safety check. If API returns null, default to empty array []
+  // This prevents "Cannot read properties of null" errors.
+  const timeEnt = (timeEntryData || []) as unknown as TimeEntry[];
+  
+  // Now safely access the first item
+  const clockInTimeStamp = timeEnt.length > 0 ? timeEnt[0]?.clock_in?.clock_in_time : null;
 
   return (
     <section className="mb-32 w-screen">
@@ -72,8 +71,10 @@ export default async function Account() {
           </h1>
 
           <div className="p-4">
-            {/* KEY FIX: Wrap params in Promise.resolve() because UserPage expects Promise params in Next.js 16 */}
-            <UserPage params={Promise.resolve({ id: userId })} />
+            {/* FIX: String(userId) ensures we always pass a string.
+              If your DB uses integer IDs, passing a number here would break the build.
+            */}
+            <UserPage params={Promise.resolve({ id: String(userId) })} />
 
             {role > 284 && (
               <ClockinForm
