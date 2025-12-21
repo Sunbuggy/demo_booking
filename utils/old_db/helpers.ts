@@ -20,7 +20,8 @@ import { UserType } from '@/app/(biz)/biz/users/types';
  * Returns "08", "14", etc. — used as the primary grouping key for HourCards.
  */
 function getHourFromTime(reservation: Reservation): string {
-  const timeStr = String(reservation.sch_time || reservation.time || '00:00');
+  // FIX: Cast to 'any' to allow checking the legacy 'time' field
+const timeStr = String(reservation.sch_time || (reservation as any).time || '00:00');
   return timeStr.split(':')[0].padStart(2, '0'); // Ensures "08" instead of "8"
 }
 
