@@ -34,26 +34,12 @@ import dayjs from 'dayjs';
 import Link from 'next/link';
 import { BackwardFilled } from '@ant-design/icons';
 
-// Define the actual shape of a settled batch from Authorize.Net
-interface SettledBatch {
-  batchId: string;
-  settlementTimeUTC: string;
-  accountType?: string;
-  statistics?: {
-    statistic?: {
-      chargeAmount?: string;
-      chargeCount?: number;
-    }[];
-  };
-}
-
-// Props for the component — we receive an array of settled batches
+// Accept any data array — TableUI dynamically reads columns
 interface TableUIProps {
-  data: SettledBatch[];
+  data: any[];
   isSettled?: boolean;
 }
 
-// Column configuration
 interface ColumnDef {
   key: string;
   label: string;
@@ -75,26 +61,24 @@ export default function TableUI({ data, isSettled = true }: TableUIProps) {
     { key: 'chargeCount', label: 'Transaction Count', visible: true },
   ]);
 
-  // Filter batches by search term
   const filteredData = useMemo(() => {
-    return data.filter((batch) => {
+    return data.filter((item: any) => {
       const searchLower = filter.toLowerCase();
-      return (
-        batch.batchId.toLowerCase().includes(searchLower) ||
-        batch.accountType?.toLowerCase().includes(searchLower) ||
-        batch.settlementTimeUTC.toLowerCase().includes(searchLower)
+      return Object.values(item).some((value: any) =>
+        String(value || '').toLowerCase().includes(searchLower)
       );
     });
   }, [data, filter]);
 
-  // Calculate total amount from statistics
   const totalAmount = useMemo(() => {
     return filteredData
-      .reduce((sum, batch) => {
-        const chargeAmount = parseFloat(
-          batch.statistics?.statistic?.[0]?.chargeAmount || '0'
+      .reduce((sum: number, item: any) => {
+        const amount = parseFloat(
+          item.statistics?.statistic?.[0]?.chargeAmount ||
+          item.chargeAmount ||
+          '0'
         );
-        return sum + chargeAmount;
+        return sum + amount;
       }, 0)
       .toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   }, [filteredData]);
@@ -253,11 +237,11 @@ export default function TableUI({ data, isSettled = true }: TableUIProps) {
                   colSpan={columns.filter((c) => c.visible).length}
                   className="text-center py-8 text-gray-500"
                 >
-                  No settled batches found for the selected date range.
+                  No batches found for the selected date range.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredData.map((batch, index) => (
+              filteredData.map((batch: any, index) => (
                 <TableRow key={index}>
                   {columns
                     .filter((col) => col.visible)
