@@ -19,22 +19,24 @@ import UpdatePassword from '@/components/ui/AuthForms/UpdatePassword';
 import SignUp from '@/components/ui/AuthForms/Signup';
 import Image from 'next/image';
 
-interface PageProps {
+export default async function SignIn({
+  params,
+  searchParams
+}: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ disable_button?: boolean }>;
-}
-
-export default async function SignIn({ params, searchParams }: PageProps) {
+}) {
+  // Await params and searchParams
   const { id } = await params;
-  const query = await searchParams;
-
+  const { disable_button } = await searchParams;
+  
   const { allowOauth, allowEmail, allowPassword } = getAuthTypes();
   const viewTypes = getViewTypes();
   const redirectMethod = getRedirectMethod();
 
   let viewProp: string;
 
-  // Determine the current view from the URL or fall back to default
+  // Assign url id to 'viewProp' if it's a valid string and ViewTypes includes it
   if (typeof id === 'string' && viewTypes.includes(id)) {
     viewProp = id;
   } else {
@@ -43,18 +45,11 @@ export default async function SignIn({ params, searchParams }: PageProps) {
     return redirect(`/signin/${viewProp}`);
   }
 
-  // Properly await the async createClient() from server.ts
+  // Check if the user is already logged in and redirect to the account page if so
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.getUser();
 
-  if (error) {
-    console.error('Supabase getUser error:', error);
-  }
-
-  const user = data?.user ?? null;
-
-  // Optional: redirect already-logged-in users (uncomment if desired)
   // if (user && viewProp !== 'update_password') {
   //   return redirect('/');
   // } else if (!user && viewProp === 'update_password') {
@@ -117,7 +112,7 @@ export default async function SignIn({ params, searchParams }: PageProps) {
             <EmailSignIn
               allowPassword={allowPassword}
               redirectMethod={redirectMethod}
-              disableButton={query.disable_button}
+              disableButton={disable_button}
             />
           )}
 
@@ -125,7 +120,7 @@ export default async function SignIn({ params, searchParams }: PageProps) {
             <ForgotPassword
               allowEmail={allowEmail}
               redirectMethod={redirectMethod}
-              disableButton={query.disable_button}
+              disableButton={disable_button}
             />
           )}
 
