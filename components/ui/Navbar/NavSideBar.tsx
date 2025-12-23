@@ -26,7 +26,8 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   const pathname = usePathname();
 
   const navLinks: NavLink[] = [
-    { href: '/', label: 'Las Vegas', minLevel: 0 },
+    { href: '/', label: 'Welcome', minLevel: 0 },
+    { href: '/lasvegas', label: 'Las Vegas', minLevel: 0 },
     { href: '/pismo', label: 'Pismo Beach', minLevel: 0 },
     { href: '/pismo/book', label: 'Pismo Booking', minLevel: 0 },
     { href: '/biz/pismo-times', label: 'Pismo Times', minLevel: 600 },
@@ -43,7 +44,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 300,
     },
     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 },
-    { href: '/biz/schedule', label: 'Schedule Admin', minLevel: 900 },
     {
       href: '/biz/reports',
       label: 'Reports',
@@ -58,11 +58,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
 
   const dashboardLinks: NavLink[] = [
     // --- NEW BUTTON ADDED HERE ---
-    { 
-      href: '/biz/my-schedule', 
-      label: 'My Schedule', 
-      minLevel: 300 
-    },
+    
     // -----------------------------
     { href: `/biz/vegas`, label: 'NV', minLevel: 300 },
     {
@@ -71,11 +67,17 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 300,
     },
     {
-      href: `https://fareharbor.com/sunbuggysilverlakedunes/dashboard`,
+      href: `/biz/michigan`,
       label: 'MI',
       minLevel: 300,
       external: true
     },
+    { 
+      href: '/biz/my-schedule', 
+      label: 'My Schedule', 
+      minLevel: 300 
+    },
+    { href: '/biz/schedule', label: 'All Schedule', minLevel: 300 },
     {
       href: '/biz/vehicles/admin',
       label: 'Fleet',

@@ -1,20 +1,14 @@
-// app/layout.tsx - Server component (no 'use client')
 import { Metadata } from 'next';
 import Footer from '@/components/ui/Footer';
 import Navbar from '@/components/ui/Navbar';
-import { Toaster } from '@/components/ui/Toasts/toaster'; // Existing Toaster
+import { Toaster } from '@/components/ui/Toasts/toaster';
+import { Toster } from '@/components/ui/toaster';
 import Providers from './providers';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import '@/app/globals.css';
-import { ThemeProvider } from '@/components/theme-provider';
-import { Toster } from '@/components/ui/toaster'; // Existing Toster (typo?)
 import { createClient } from '@/utils/supabase/server';
 import { getUserBgImage, getUserBgProperties } from '@/utils/supabase/queries';
-import NavigationButtons from '@/components/NavigationButtons';
-
-// --- FIX: Alias this import to avoid conflict with the Toaster on line 4 ---
-import { Toaster as SonnerToaster } from 'sonner'; 
 
 const title = 'Sunbuggy Fun Rentals';
 const description = 'Sunbuggy Fun Rentals is the ultimate off-road adventure experience.';
@@ -55,37 +49,30 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning={true}>
-        
-        {/* Fixed background */}
         <div style={backgroundStyles} className="fixed inset-0 z-[-1]" />
-
-        {/* Semi-transparent overlay */}
         <div className="fixed inset-0 bg-background/85 z-[-1]" />
 
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <Providers>
           <div className="flex flex-col gap-5 min-h-screen relative">
             <Navbar />
-            <NavigationButtons />
-            <main className="p-2 flex mx-auto flex-grow">
-              <Providers>{children}</Providers>
+            
+            
+            {/* FIX: Added 'flex-col' and 'w-full'. 
+                'items-start' ensures tables start from left (standard). 
+                Individual pages like Timeclock will center themselves. */}
+            <main className="p-2 flex flex-col flex-grow w-full max-w-7xl mx-auto">
+              {children}
             </main>
+            
             <Footer />
           </div>
-        </ThemeProvider>
-        
-        <Suspense>
-          {/* Your existing toasters */}
-          <Toaster />
-          <Toster />
-          
-          {/* --- FIX: The new Sonner Toaster --- */}
-          <SonnerToaster position="top-center" richColors />
-        </Suspense>
+
+          <Suspense>
+            <Toaster />
+            <Toster />
+          </Suspense>
+        </Providers>
+
       </body>
     </html>
   );

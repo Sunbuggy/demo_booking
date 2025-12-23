@@ -25,10 +25,10 @@ const Navhead = () => {
 
   // Define dropdown links based on user level
   const dropdownLinks = [
-    { value: 'lasvegas' as LocationKey, link: '/' },
+    { value: 'lasvegas' as LocationKey, link: '/lasvegas' },
     // { value: 'pismo' as LocationKey, link: 'https://fareharbor.com/sunbuggypismobeach/dashboard' },
     { value: 'pismo' as LocationKey, link: '/pismo' },
-    { value: 'silverlake' as LocationKey, link: '/location/silverlake' }
+    { value: 'silverlake' as LocationKey, link: '/silverlake' }
 
     // { value: 'silverlake' as LocationKey, link: 'https://fareharbor.com/sunbuggysilverlakedunes/dashboard' },
   ];
