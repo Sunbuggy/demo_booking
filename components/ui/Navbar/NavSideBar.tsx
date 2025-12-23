@@ -43,6 +43,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 300,
     },
     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 },
+    { href: '/biz/schedule', label: 'Schedule Admin', minLevel: 900 },
     {
       href: '/biz/reports',
       label: 'Reports',
@@ -56,6 +57,13 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   ];
 
   const dashboardLinks: NavLink[] = [
+    // --- NEW BUTTON ADDED HERE ---
+    { 
+      href: '/biz/my-schedule', 
+      label: 'My Schedule', 
+      minLevel: 300 
+    },
+    // -----------------------------
     { href: `/biz/vegas`, label: 'NV', minLevel: 300 },
     {
       href: `/biz/pismo`,
@@ -115,7 +123,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     );
   };
 
-  // Render a group of links — only if the user has sufficient level (or minLevel 0)
+  // Render a group of links - only if the user has sufficient level (or minLevel 0)
   const renderLinkGroup = (
     links: NavLink[],
     title: string,
@@ -157,16 +165,16 @@ export default function NavSideBar({ user }: NavSideBarProps) {
 
   return (
     <div className="flex flex-col gap-3 p-4 overflow-y-auto h-full">
-      {/* PUBLIC — Always visible, even for guests */}
+      {/* PUBLIC - Always visible, even for guests */}
       {renderLinkGroup(publicLinks, 'PUBLIC', 0)}
 
-      {/* INTERNAL — Requires login + level 300+ */}
+      {/* INTERNAL - Requires login + level 300+ */}
       {renderLinkGroup(internalLinks, 'INTERNAL', 300)}
 
-      {/* MANAGER — Level 600+ */}
+      {/* MANAGER - Level 600+ */}
       {renderLinkGroup(managerLinks, 'MANAGER', 600)}
 
-      {/* ADMIN — Level 900+ */}
+      {/* ADMIN - Level 900+ */}
       {renderLinkGroup(adminLinks, 'ADMIN', 900)}
     </div>
   );

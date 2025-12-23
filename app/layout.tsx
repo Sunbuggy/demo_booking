@@ -2,17 +2,19 @@
 import { Metadata } from 'next';
 import Footer from '@/components/ui/Footer';
 import Navbar from '@/components/ui/Navbar';
-import { Toaster } from '@/components/ui/Toasts/toaster';
+import { Toaster } from '@/components/ui/Toasts/toaster'; // Existing Toaster
 import Providers from './providers';
 import { PropsWithChildren, Suspense } from 'react';
 import { getURL } from '@/utils/helpers';
 import '@/app/globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
-import { Toster } from '@/components/ui/toaster';
+import { Toster } from '@/components/ui/toaster'; // Existing Toster (typo?)
 import { createClient } from '@/utils/supabase/server';
 import { getUserBgImage, getUserBgProperties } from '@/utils/supabase/queries';
 import NavigationButtons from '@/components/NavigationButtons';
-// import ClientApplePayLoader from '@/components/ClientApplePayLoader'; // New import
+
+// --- FIX: Alias this import to avoid conflict with the Toaster on line 4 ---
+import { Toaster as SonnerToaster } from 'sonner'; 
 
 const title = 'Sunbuggy Fun Rentals';
 const description = 'Sunbuggy Fun Rentals is the ultimate off-road adventure experience.';
@@ -52,9 +54,8 @@ export default async function RootLayout({ children }: PropsWithChildren) {
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning={true}>  {/* ← This is the only change */}
-        {/* <ClientApplePayLoader /> Load Apple Pay SDK safely (client-side only) */}
-
+      <body suppressHydrationWarning={true}>
+        
         {/* Fixed background */}
         <div style={backgroundStyles} className="fixed inset-0 z-[-1]" />
 
@@ -76,9 +77,14 @@ export default async function RootLayout({ children }: PropsWithChildren) {
             <Footer />
           </div>
         </ThemeProvider>
+        
         <Suspense>
+          {/* Your existing toasters */}
           <Toaster />
           <Toster />
+          
+          {/* --- FIX: The new Sonner Toaster --- */}
+          <SonnerToaster position="top-center" richColors />
         </Suspense>
       </body>
     </html>
