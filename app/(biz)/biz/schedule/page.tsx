@@ -3,15 +3,20 @@
 // ============================================================================
 // SUNBUGGY ROSTER PAGE
 // ============================================================================
-// Purpose: A comprehensive Schedule and HR management dashboard.
-// Access Control: 
-//   - Admin (900+): Full Access + Archive.
-//   - Manager (500+): Schedule Editing, Profile Editing.
-//   - Employee (<500): Read-only view.
+// Purpose: Main schedule dashboard for managers and staff.
+// Features: 
+// - Visual Roster with Avatars and Live Clock-in Status
+// - Weekly Calendar View (Desktop) & Daily List View (Mobile)
+// - Integrated Weather Forecast (Cached via Supabase)
+// - Shift Management (Create, Edit, Delete, Copy Week)
+// - Employee Profile Management (Edit Info, Archive)
+// - Audit Logging for all changes
 // ============================================================================
 
 import { useState, useEffect, Fragment, useMemo } from 'react';
-import { createClient } from '@/utils/supabase/client'; // Client-side Supabase instance
+import { createClient } from '@/utils/supabase/client';
+// Ensure app/actions/weather.ts exists. This handles the API calls securely.
+import { getLocationWeather, DailyWeather } from '@/app/actions/weather'; 
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,7 +31,8 @@ import { Switch } from "@/components/ui/switch";
 import { 
     ChevronLeft, ChevronRight, Plus, Trash2, MapPin, 
     Ban, Copy, Loader2, Plane, Filter, LayoutList, 
-    Table as TableIcon, Info, History
+    Table as TableIcon, Info, History, Clock,
+    Sun, Cloud, CloudRain, Snowflake, CloudLightning, Wind
 } from 'lucide-react';
 import { toast } from 'sonner';
 import moment from 'moment';
@@ -41,11 +47,10 @@ import {
 } from "@/components/ui/popover";
 
 // ============================================================================
-// 1. TYPE DEFINITIONS
+// 1. STRICT TYPE DEFINITIONS
 // ============================================================================
-// Defining strict interfaces ensures we don't access properties that don't exist.
 
-/** Represents a user/employee fetched from the 'users' table */
+/** Employee: Maps to the 'users' table in Supabase */
 interface Employee {
   id: string;
   full_name: string;
@@ -59,152 +64,195 @@ interface Employee {
   avatar_url: string | null;
 }
 
-/** Represents a scheduled shift from 'employee_schedules' */
+/** Shift: Maps to 'employee_schedules' table */
 interface Shift {
   id: string;
   user_id: string;
-  start_time: string; // Stored as ISO Strings in DB
-  end_time: string;
+  start_time: string; // ISO String (e.g. 2025-01-01T09:00:00Z)
+  end_time: string;   // ISO String
   role: string;
   location?: string;
 }
 
-/** Represents an entry in the 'audit_logs' table for tracking changes */
+/** AuditLog: Maps to 'audit_logs' table for tracking history */
 interface AuditLog {
   id: string;
   created_at: string;
   action: string;
-  user_id: string; // The ID of the person who MADE the change
+  user_id: string;
   table_name: string;
-  row: string; // The ID of the record that was changed
-  actor_name?: string; // We manually join this to show "Who did it"
+  row: string;
+  actor_name?: string; // Joined field (not in DB table directly)
 }
 
-// Configuration: Maps Locations to their specific Departments
-const LOCATIONS = {
+// Configuration: Maps Locations to their specific Department lists
+const LOCATIONS: Record<string, string[]> = {
   'Las Vegas': ['OFFICE', 'SHUTTLES', 'DUNES', 'SHOP'],
   'Pismo': ['ADMIN', 'CSR', 'SHOP', 'BEACH'],
   'Michigan': ['ADMIN', 'SHOP', 'GUIDES', 'OFFICE']
 };
 
 // ============================================================================
-// 2. HELPER COMPONENTS (Small reusable UI parts)
+// 2. HELPER COMPONENTS
 // ============================================================================
 
 /**
- * Renders the Employee Avatar with a green/grey dot indicating live clock-in status.
+ * Renders user avatar with live status indicator.
+ * Fallback to initials if no image is provided.
  */
 const UserAvatar = ({ emp, isOnline, size = 'md' }: { emp: Employee, isOnline: boolean, size?: 'sm'|'md'|'lg' }) => {
     const dims = size === 'sm' ? 'w-8 h-8' : size === 'lg' ? 'w-16 h-16' : 'w-10 h-10';
-    // Generates initials (e.g., "John Doe" -> "JD") for when no image exists
-    const initials = emp.full_name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+    const fontSize = size === 'sm' ? 'text-[10px]' : size === 'lg' ? 'text-lg' : 'text-xs';
+    
+    // Calculate initials safely
+    const initials = emp.full_name 
+        ? emp.full_name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() 
+        : '??';
 
     return (
         <div className="relative inline-block">
             <div className={`${dims} rounded-full overflow-hidden bg-slate-200 border border-slate-300 flex items-center justify-center relative`}>
                 {emp.avatar_url ? (
-                    <Image src={emp.avatar_url} alt={emp.full_name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw"/>
+                    <Image 
+                        src={emp.avatar_url} 
+                        alt={emp.full_name} 
+                        fill 
+                        className="object-cover" 
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                    />
                 ) : (
-                    <span className={`font-bold text-slate-500 text-xs`}>{initials}</span>
+                    <span className={`font-bold text-slate-500 ${fontSize}`}>{initials}</span>
                 )}
             </div>
-            {/* Live Status Indicator Dot */}
-            <span className={`absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white ${isOnline ? 'bg-green-500' : 'bg-slate-300'}`} 
-                  title={isOnline ? "Clocked In" : "Clocked Out"}/>
+            {/* Green Dot = Clocked In, Grey Dot = Clocked Out */}
+            <span 
+                className={`absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-white ${isOnline ? 'bg-green-500' : 'bg-slate-300'}`} 
+                title={isOnline ? "Clocked In" : "Clocked Out"}
+            />
+        </div>
+    );
+};
+
+/**
+ * Renders a mini weather forecast cell.
+ * Translates WMO Weather Codes into visual Icons.
+ */
+const WeatherCell = ({ data }: { data: DailyWeather | undefined }) => {
+    if (!data) return <div className="text-[10px] text-muted-foreground h-full flex items-center justify-center">-</div>;
+
+    let Icon = Sun;
+    let color = "text-yellow-500";
+
+    // WMO Code Interpretation (Standard Codes)
+    if (data.code >= 1 && data.code <= 3) { Icon = Cloud; color = "text-gray-400"; }
+    else if (data.code >= 45 && data.code <= 48) { Icon = Wind; color = "text-blue-300"; }
+    else if (data.code >= 51 && data.code <= 67) { Icon = CloudRain; color = "text-blue-500"; }
+    else if (data.code >= 71 && data.code <= 77) { Icon = Snowflake; color = "text-cyan-400"; }
+    else if (data.code >= 95) { Icon = CloudLightning; color = "text-purple-500"; }
+
+    // Business Logic: High heat affects dune buggies!
+    const isExtremeHeat = data.max_temp >= 105;
+    const isExtremeCold = data.max_temp <= 40;
+
+    return (
+        <div className="flex flex-col items-center justify-center h-full w-full py-1 gap-0.5" title={`${data.min_temp}° - ${data.max_temp}°`}>
+            <div className="flex items-center gap-1">
+                <Icon className={`w-3.5 h-3.5 ${color}`} />
+                <span className={`text-[11px] font-bold ${isExtremeHeat ? 'text-red-600' : isExtremeCold ? 'text-blue-600' : 'text-slate-700 dark:text-slate-300'}`}>
+                    {data.max_temp}°
+                </span>
+            </div>
+            {/* Show precipitation chance only if significant (>20%) */}
+            {data.precip_chance > 20 && (
+                <div className="text-[9px] text-blue-500 font-semibold bg-blue-50 dark:bg-blue-900/30 px-1 rounded-sm">
+                    {data.precip_chance}%
+                </div>
+            )}
         </div>
     );
 };
 
 // ============================================================================
-// 3. MAIN COMPONENT
+// 3. MAIN PAGE COMPONENT
 // ============================================================================
 
 export default function RosterPage() {
   const supabase = createClient();
-  
-  // -- HYDRATION FIX --
-  // We use this to ensure date-heavy UI only renders on the client to avoid
-  // "Text content does not match server-rendered HTML" errors.
   const [isMounted, setIsMounted] = useState(false);
 
-  // -- APP DATA STATE --
+  // --- APP STATE ---
   const [currentDate, setCurrentDate] = useState(moment());
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
+  
+  // Data Containers
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [liveStatus, setLiveStatus] = useState<Record<string, boolean>>({}); // Map: UserId -> isClockedIn
+  const [liveStatus, setLiveStatus] = useState<Record<string, boolean>>({}); // Map UserID -> Boolean
+  const [weatherData, setWeatherData] = useState<Record<string, DailyWeather[]>>({}); // Map Location -> Forecast[]
   
-  // -- USER PERMISSION STATE --
+  // Permissions & Auth
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [currentUserLevel, setCurrentUserLevel] = useState<number>(0);
 
-  // -- UI STATE --
+  // UI Toggles & Forms
   const [loading, setLoading] = useState(true);
   const [copying, setCopying] = useState(false);
   const [visibleLocs, setVisibleLocs] = useState<Record<string, boolean>>({
       'Las Vegas': true, 'Pismo': true, 'Michigan': true
   });
-  // We remember the last role assigned to a specific user to speed up data entry
+  // Optimization: Remember last role used per employee to speed up scheduling
   const [lastRoles, setLastRoles] = useState<Record<string, string>>({});
 
-  // -- SHIFT MODAL STATE --
+  // Modals
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [selectedEmpId, setSelectedEmpId] = useState<string>('');
   const [selectedEmpName, setSelectedEmpName] = useState('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
   
-  // -- SHIFT FORM INPUTS --
+  // Shift Form
   const [formRole, setFormRole] = useState('Guide');
   const [formStart, setFormStart] = useState('09:00');
   const [formEnd, setFormEnd] = useState('17:00');
   const [formLocation, setFormLocation] = useState('Las Vegas');
   
-  // -- PROFILE MODAL STATE --
+  // Profile Form
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileEmp, setProfileEmp] = useState<Employee | null>(null);
 
-  // -- AUDIT LOG STATE --
+  // Logging
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
-  // -- CALCULATED DATES --
+  // Calculated Dates
   const startOfWeek = currentDate.clone().startOf('isoWeek');
-  // Generate array of 7 days for the header
   const weekDays = Array.from({ length: 7 }, (_, i) => startOfWeek.clone().add(i, 'days'));
 
-  // ==========================================================================
-  // 4. PERMISSION CHECKS
-  // ==========================================================================
-  const isManager = currentUserLevel >= 500; // Can Edit Schedule & Profiles
-  const isAdmin = currentUserLevel >= 900;   // Can Archive Employees
+  // Role Access
+  const isManager = currentUserLevel >= 500;
+  const isAdmin = currentUserLevel >= 900;
 
   // ==========================================================================
-  // 5. EFFECTS (Data Loading)
+  // 4. DATA FETCHING
   // ==========================================================================
 
-  // On Mount: Load filters from local storage & set hydration flag
+  // Hydration fix & Load Settings
   useEffect(() => {
       setIsMounted(true);
       const saved = localStorage.getItem('roster_filters');
       if (saved) try { setVisibleLocs(JSON.parse(saved)); } catch (e) { console.error(e); }
-      // Auto-switch to day view on mobile
       if (window.innerWidth < 768) setViewMode('day');
   }, []);
 
-  // When date changes or component mounts: Fetch fresh data
+  // Fetch data when date changes
   useEffect(() => { 
       if (isMounted) fetchData(); 
   }, [currentDate, isMounted]);
 
-  /**
-   * Main Data Fetching Function
-   * Fetches: User Info, Employees list, Shifts for the week, and Live Clock status.
-   */
   const fetchData = async () => {
     setLoading(true);
     
-    // 1. Get Current User & Level (For RBAC)
+    // 1. Authenticate User
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
         setCurrentUserId(user.id);
@@ -212,22 +260,21 @@ export default function RosterPage() {
         if (userData) setCurrentUserLevel(userData.user_level || 0);
     }
 
-    // 2. Fetch Active Employees (Level 300+)
+    // 2. Fetch Employees (Filtered to Active Staff)
     const { data: empData } = await supabase
         .from('users')
         .select('id, full_name, location, department, hire_date, user_level, timeclock_blocked, email, phone, avatar_url')
-        .gte('user_level', 300)
+        .gte('user_level', 300) // Only staff level 300+
         .order('full_name'); 
 
     if (empData) {
-        // Sanitize defaults
         const cleanEmps = empData.map(e => ({ 
             ...e, 
             location: e.location || 'Las Vegas', 
             department: e.department || 'General', 
             timeclock_blocked: e.timeclock_blocked || false 
         }));
-        // Sort by Seniority (Hire Date)
+        // Sort by Hire Date (Seniority)
         cleanEmps.sort((a, b) => {
             if (!a.hire_date) return 1; if (!b.hire_date) return -1;
             return new Date(a.hire_date).getTime() - new Date(b.hire_date).getTime();
@@ -235,43 +282,72 @@ export default function RosterPage() {
         setEmployees(cleanEmps);
     }
     
-    // 3. Fetch Shifts for current view window
-    const startStr = startOfWeek.toISOString();
-    const endStr = startOfWeek.clone().endOf('isoWeek').toISOString();
+    // 3. Fetch Shifts (Within visible week)
+    const startIso = startOfWeek.toISOString();
+    const endIso = startOfWeek.clone().endOf('isoWeek').toISOString();
+    
     const { data: shiftData } = await supabase
         .from('employee_schedules')
         .select('*')
-        .gte('start_time', startStr)
-        .lte('start_time', endStr);
+        .gte('start_time', startIso)
+        .lte('start_time', endIso);
     
     if (shiftData) setShifts(shiftData);
 
-    // 4. Live Status (Who is clocked in RIGHT NOW?)
+    // 4. Fetch Live Status (Who is clocked in NOW?)
     const knownLocations = Object.keys(LOCATIONS);
     const { data: activeEntries } = await supabase
         .from('time_entries')
         .select('user_id, employee_id')
         .in('location', knownLocations)
-        .is('clock_out', null); // If clock_out is null, they are working.
+        .is('clock_out', null); // Active = No clock out time
 
     if (activeEntries) {
         const statusMap: Record<string, boolean> = {};
-        activeEntries.forEach((entry: any) => {
+        activeEntries.forEach((entry: {user_id?: string; employee_id?: string}) => {
             const uid = entry.user_id || entry.employee_id;
             if (uid) statusMap[uid] = true;
         });
         setLiveStatus(statusMap);
     }
+
+    // 5. FETCH WEATHER DATA (FIXED)
+    // We fetch weather for all visible locations in parallel.
+    const weatherUpdates: Record<string, DailyWeather[]> = {};
+    
+    await Promise.all(Object.keys(LOCATIONS).map(async (loc) => {
+        if (!visibleLocs[loc]) return;
+        
+        // [FIX]: Ensure date format is YYYY-MM-DD for the weather API
+        // Previously this was sending an ISO string which caused the error.
+        const weatherDate = viewMode === 'week' 
+            ? startOfWeek.format('YYYY-MM-DD') 
+            : currentDate.format('YYYY-MM-DD');
+            
+        const daysToFetch = viewMode === 'week' ? 7 : 1;
+
+        try {
+            // Call the server action
+            const data = await getLocationWeather(loc, weatherDate, daysToFetch);
+            
+            if (data && data.length > 0) {
+                weatherUpdates[loc] = data;
+            }
+        } catch (e) {
+            console.error(`❌ Weather fetch failed for ${loc}`, e);
+        }
+    }));
+    
+    console.log("🌤️ [Weather Debug] State:", weatherUpdates);
+    setWeatherData(weatherUpdates);
+
     setLoading(false);
   };
 
   // ==========================================================================
-  // 6. AUDIT & LOGGING FUNCTIONS
+  // 5. AUDIT & LOGGING ACTIONS
   // ==========================================================================
 
-  /**
-   * Fetches audit logs for a specific row (Shift or User) and joins actor names.
-   */
   const fetchLogs = async (tableName: string, rowId: string) => {
       setLoadingLogs(true);
       const { data: logs, error } = await supabase
@@ -282,11 +358,10 @@ export default function RosterPage() {
           .order('created_at', { ascending: false });
 
       if (!error && logs) {
-          // Get unique user IDs of people who made changes to look up their names
+          // Resolve actor names (who performed the action)
           const actorIds = [...new Set(logs.map(l => l.user_id))];
           const { data: actors } = await supabase.from('users').select('id, full_name').in('id', actorIds);
           
-          // Combine log data with actor names
           const enrichedLogs = logs.map(log => ({
               ...log,
               actor_name: actors?.find(a => a.id === log.user_id)?.full_name || 'Unknown'
@@ -296,9 +371,6 @@ export default function RosterPage() {
       setLoadingLogs(false);
   };
 
-  /**
-   * Records an action to the database.
-   */
   const logChange = async (action: string, table: string, rowId: string) => {
       if (!currentUserId) return;
       await supabase.from('audit_logs').insert({
@@ -310,16 +382,15 @@ export default function RosterPage() {
   };
 
   // ==========================================================================
-  // 7. USER INTERACTION HANDLERS
+  // 6. EVENT HANDLERS (Shifts & Profiles)
   // ==========================================================================
 
-  /** Opens the Shift Modal (Create or Edit) */
+  // Opens the shift modal for editing or creating
   const handleCellClick = (emp: Employee, dateStr: string, existingShift?: Shift) => {
     setSelectedEmpId(emp.id); 
     setSelectedEmpName(emp.full_name); 
     setSelectedDate(dateStr);
     
-    // If clicking an existing shift, pre-fill form
     if (existingShift) {
       setSelectedShiftId(existingShift.id); 
       setFormRole(existingShift.role); 
@@ -327,8 +398,8 @@ export default function RosterPage() {
       setFormStart(moment(existingShift.start_time).format('HH:mm')); 
       setFormEnd(moment(existingShift.end_time).format('HH:mm'));
     } else {
-      // New shift: Use defaults or last role used for this person
       setSelectedShiftId(null); 
+      // Default to last used role for this employee (UX Optimization)
       setFormRole(lastRoles[emp.id] || 'Guide'); 
       setFormLocation(emp.location); 
       setFormStart('09:00'); 
@@ -337,11 +408,10 @@ export default function RosterPage() {
     setIsShiftModalOpen(true);
   };
 
-  /** Saves (Create or Update) a shift */
+  // Persists Shift Data
   const handleSaveShift = async () => {
-    if (!isManager) return; // Security Check
+    if (!isManager) return;
     
-    // Combine Date + Time input to get Full ISO String
     const startDateTime = moment(`${selectedDate} ${formStart}`, 'YYYY-MM-DD HH:mm').toISOString();
     const endDateTime = moment(`${selectedDate} ${formEnd}`, 'YYYY-MM-DD HH:mm').toISOString();
     
@@ -357,22 +427,17 @@ export default function RosterPage() {
     let action = '';
 
     if (selectedShiftId) {
-        // UPDATE Existing
         const { error } = await supabase.from('employee_schedules').update(payload).eq('id', selectedShiftId);
         if (error) { toast.error("Failed to update"); return; }
         action = `Updated shift: ${formRole} (${formStart}-${formEnd})`;
     } else {
-        // INSERT New
         const { data, error } = await supabase.from('employee_schedules').insert([payload]).select().single();
         if (error || !data) { toast.error("Failed to create"); return; }
         shiftId = data.id;
         action = `Created shift: ${formRole} (${formStart}-${formEnd})`;
     }
 
-    // Log the change
     if (shiftId) await logChange(action, 'employee_schedules', shiftId);
-    
-    // Optimization: Remember this role for next time we click this user
     setLastRoles(prev => ({ ...prev, [selectedEmpId]: formRole })); 
     
     fetchData(); 
@@ -380,18 +445,17 @@ export default function RosterPage() {
     toast.success("Saved");
   };
 
+  // Deletes a Shift
   const handleDeleteShift = async () => {
     if (!isManager || !selectedShiftId) return;
-    
     await logChange(`Deleted shift`, 'employee_schedules', selectedShiftId);
     await supabase.from('employee_schedules').delete().eq('id', selectedShiftId); 
-    
     toast.success("Deleted"); 
     fetchData(); 
     setIsShiftModalOpen(false);
   };
 
-  /** Copies current week's schedule to next week (Manager Only) */
+  // Batch Operation: Copy previous week
   const handleCopyWeek = async () => {
       if (!isManager) return;
       if (shifts.length === 0) { toast.error("No shifts"); return; }
@@ -403,7 +467,7 @@ export default function RosterPage() {
       const newShifts = shifts.map(s => ({ 
           user_id: s.user_id, 
           role: s.role, 
-          // Shift times forward by exactly 7 days
+          // Shift date forward by 7 days
           start_time: moment(s.start_time).add(7, 'days').toISOString(), 
           end_time: moment(s.end_time).add(7, 'days').toISOString(), 
           location: s.location || 'Las Vegas' 
@@ -416,15 +480,13 @@ export default function RosterPage() {
       else { 
           await logChange(`Copied ${newShifts.length} shifts to next week`, 'employee_schedules', 'BULK_COPY');
           toast.success("Copied!"); 
-          setCurrentDate(currentDate.clone().add(1, 'week')); // Navigate to the new week
+          setCurrentDate(currentDate.clone().add(1, 'week')); 
       }
   };
 
-  /** Updates Employee Profile Data */
+  // Update Employee Profile
   const handleSaveProfile = async () => {
       if (!isManager || !profileEmp) return;
-      
-      // Update User table
       const { error } = await supabase.from('users').update({ 
           hire_date: profileEmp.hire_date, 
           location: profileEmp.location, 
@@ -436,34 +498,49 @@ export default function RosterPage() {
       
       if (error) toast.error("Failed"); 
       else { 
-          await logChange(`Updated profile: ${profileEmp.location}, ${profileEmp.department}`, 'users', profileEmp.id);
+          await logChange(`Updated profile`, 'users', profileEmp.id);
           toast.success("Saved"); 
           fetchData(); 
           setIsProfileModalOpen(false); 
       }
   };
 
+  // Soft Delete Employee
+  const handleArchiveEmployee = async () => {
+      if (!isAdmin || !profileEmp) return;
+      if (!confirm(`Archive ${profileEmp.full_name}?`)) return;
+
+      const { error } = await supabase.from('users').update({ user_level: 100 }).eq('id', profileEmp.id);
+      if (error) {
+          toast.error("Failed to archive");
+      } else {
+          await logChange(`Archived Employee`, 'users', profileEmp.id);
+          toast.success("Employee Archived");
+          fetchData();
+          setIsProfileModalOpen(false);
+      }
+  };
+
   // ==========================================================================
-  // 8. DATA TRANSFORMATION (Grouping)
+  // 7. RENDERING HELPERS
   // ==========================================================================
-  // We group employees by Location -> Department -> Array[Employees]
-  // This memoized object drives the entire table rendering.
+
+  // Memoized Grouping: sorts employees into Location -> Dept buckets
   const groupedEmployees = useMemo(() => {
       const groups: Record<string, Record<string, Employee[]>> = {};
       
-      // Initialize structure based on Constants
+      // Initialize buckets
       Object.keys(LOCATIONS).forEach(loc => {
           groups[loc] = {}; 
-          LOCATIONS[loc as keyof typeof LOCATIONS].forEach(dept => { groups[loc][dept] = []; });
+          LOCATIONS[loc].forEach(dept => { groups[loc][dept] = []; });
           groups[loc]['Visiting Staff'] = [];
       });
       groups['Unassigned'] = { 'General': [] };
       
-      // Sort employees into groups
+      // Sort Employees
       employees.forEach(emp => {
-          const loc = LOCATIONS[emp.location as keyof typeof LOCATIONS] ? emp.location : 'Unassigned';
+          const loc = LOCATIONS[emp.location] ? emp.location : 'Unassigned';
           let dept = emp.department;
-          
           // Fallback if department doesn't match location config
           if (loc !== 'Unassigned' && !groups[loc][dept]) dept = Object.keys(groups[loc])[0];
           if (loc === 'Unassigned') dept = 'General';
@@ -472,26 +549,20 @@ export default function RosterPage() {
           groups[loc][dept].push(emp);
       });
       
-      // Handle "Visiting Staff" (Employees working a shift in a location not their own)
+      // Add 'Visiting Staff' if scheduled outside home location
       shifts.forEach(shift => {
           const emp = employees.find(e => e.id === shift.user_id);
           if (!emp) return;
           if (shift.location && shift.location !== emp.location && groups[shift.location]) {
               const targetLoc = shift.location; 
               const visitingBucket = groups[targetLoc]['Visiting Staff'];
-              // Add only if not already in the bucket
               if (!visitingBucket.find(v => v.id === emp.id)) visitingBucket.push(emp);
           }
       });
       return groups;
   }, [employees, shifts]);
 
-
-  // ==========================================================================
-  // 9. SUB-COMPONENTS (Defined locally for access to main state)
-  // ==========================================================================
-
-  /** Shows the 'History/Info' icon that opens the Audit Log Popover */
+  // Shows history of a shift or user
   const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: string }) => {
       return (
         <Popover>
@@ -528,7 +599,6 @@ export default function RosterPage() {
       );
   };
 
-  /** Calculates total hours for a set of shifts */
   const getHours = (start: string, end: string) => moment.duration(moment(end).diff(moment(start))).asHours();
   
   const sumWeeklyHours = (shiftList: Shift[]) => {
@@ -538,10 +608,6 @@ export default function RosterPage() {
       return relevantShifts.reduce((acc, s) => acc + getHours(s.start_time, s.end_time), 0).toFixed(1);
   };
 
-  // ==========================================================================
-  // 10. MAIN RENDER
-  // ==========================================================================
-  
   if (!isMounted) return null;
 
   return (
@@ -567,13 +633,11 @@ export default function RosterPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                  {/* Copy Week Button (Manager Only) */}
                   {viewMode === 'week' && isManager && (
                     <Button variant="secondary" size="sm" onClick={handleCopyWeek} disabled={copying || shifts.length === 0} className="hidden md:flex">
                         {copying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3 mr-2" />} Copy Week
                     </Button>
                   )}
-                  {/* Date Navigation */}
                   <div className="flex items-center border rounded-md bg-card shadow-sm">
                     <Button variant="ghost" size="icon" onClick={() => setCurrentDate(currentDate.clone().subtract(1, viewMode === 'week' ? 'week' : 'day'))}><ChevronLeft className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => setCurrentDate(moment())}>Today</Button>
@@ -583,7 +647,6 @@ export default function RosterPage() {
             </div>
           </div>
 
-          {/* Location Filters */}
           <div className="flex items-center gap-2 pb-2 overflow-x-auto">
              <Filter className="w-4 h-4 text-muted-foreground mr-1" />
              {Object.keys(LOCATIONS).map(loc => (
@@ -595,11 +658,12 @@ export default function RosterPage() {
           </div>
       </div>
 
-      {/* --- WEEK VIEW TABLE --- */}
+      {/* --- CONTENT AREA --- */}
       <div className="flex-1 overflow-auto border rounded-lg shadow-sm bg-card">
+        
+        {/* --- WEEK VIEW (TABLE) --- */}
         {viewMode === 'week' && (
         <table className="w-full border-collapse min-w-[1000px] text-sm">
-          {/* Table Header with Dates */}
           <thead className="sticky top-0 bg-muted z-20 shadow-sm">
             <tr>
                 <th className="p-2 text-left w-64 border-b font-bold text-muted-foreground bg-muted pl-4">Staff</th>
@@ -612,16 +676,17 @@ export default function RosterPage() {
             </tr>
           </thead>
           <tbody>
-            {/* 1. Loop through Locations */}
             {Object.entries(groupedEmployees).map(([locName, departments]) => {
-                // Apply Filter
                 if (!visibleLocs[locName]) return null;
-                // Don't show empty locations
+                // Only show if there are employees (or if you want to show empty locations, remove this check)
                 if (!Object.values(departments).some(arr => arr.length > 0)) return null;
 
                 const allEmpIdsInLoc = Object.values(departments).flat().map(e => e.id);
                 const locShifts = shifts.filter(s => (s.location === locName) || (!s.location && allEmpIdsInLoc.includes(s.user_id)));
                 
+                // Get weather data for this location
+                const locWeather = weatherData[locName] || [];
+
                 return (
                     <Fragment key={locName}>
                     {/* Location Header Row */}
@@ -632,19 +697,32 @@ export default function RosterPage() {
                                 <span className="bg-slate-800 text-[10px] px-1.5 py-0.5 rounded text-slate-200">{sumWeeklyHours(locShifts)}h</span>
                             </div>
                         </td>
-                        {/* Empty cells for location header */}
                         {weekDays.map(d => <td key={d.toString()} className="border-l border-slate-700 bg-slate-900"></td>)}
                     </tr>
 
-                    {/* 2. Loop through Departments within Location */}
+                    {/* --- WEATHER ROW (FIXED & VISIBLE) --- */} 
+                    <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 h-12">
+                        <td className="p-2 text-[10px] font-semibold text-muted-foreground uppercase border-r sticky left-0 z-10 bg-slate-50 dark:bg-slate-900">
+                            Forecast
+                        </td>
+                        {weekDays.map(day => {
+                            const dateStr = day.format('YYYY-MM-DD');
+                            const dayData = locWeather.find(w => w.date === dateStr);
+                            return (
+                                <td key={dateStr} className="border-l p-0 text-center">
+                                    <WeatherCell data={dayData} />
+                                </td>
+                            );
+                        })}
+                    </tr>
+
+                    {/* Departments Loop */}
                     {Object.entries(departments).map(([deptName, deptEmps]) => {
                         if (deptEmps.length === 0) return null;
-                        
                         const isVisiting = deptName === 'Visiting Staff';
                         
                         return (
                             <Fragment key={`${locName}-${deptName}`}>
-                            {/* Department Header */}
                             <tr className={isVisiting ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-slate-100 dark:bg-slate-800'}>
                                 <td className={`p-1 pl-4 font-semibold text-xs uppercase border-b sticky left-0 z-10 ${isVisiting ? 'text-amber-600' : 'text-slate-500'}`}>
                                     <div className="flex justify-between items-center pr-2">
@@ -654,12 +732,11 @@ export default function RosterPage() {
                                 {weekDays.map(d => <td key={d.toString()} className="border-l border-b bg-inherit" />)}
                             </tr>
 
-                            {/* 3. Loop through Employees */}
+                            {/* Employees Loop */}
                             {deptEmps.map(emp => {
                                 const empShifts = shifts.filter(s => s.user_id === emp.id);
                                 return (
                                 <tr key={`${locName}-${emp.id}`} className="hover:bg-muted/20 transition-colors border-b">
-                                    {/* Employee Name Column (Clickable for Manager) */}
                                     <td className="p-0 border-r border-r-slate-100 dark:border-r-slate-800 sticky left-0 z-10 bg-card">
                                         <div className="p-2 w-64 cursor-pointer flex flex-row items-center h-full gap-3" 
                                              onClick={(e) => { e.stopPropagation(); setProfileEmp(emp); setIsProfileModalOpen(true); }}>
@@ -678,15 +755,10 @@ export default function RosterPage() {
                                             </div>
                                         </div>
                                     </td>
-                                    
-                                    {/* 4. Days Grid */}
                                     {weekDays.map(day => {
                                         const dateStr = day.format('YYYY-MM-DD');
                                         const shift = shifts.find(s => s.user_id === emp.id && moment(s.start_time).format('YYYY-MM-DD') === dateStr);
-                                        
-                                        // Logic: Is this employee working at THIS location today?
                                         const shouldRender = shift && (!isVisiting || shift.location === locName);
-                                        // Logic: Are they sent somewhere else?
                                         const isAway = shift && shift.location !== emp.location && !isVisiting;
                                         
                                         return (
@@ -712,6 +784,106 @@ export default function RosterPage() {
           </tbody>
         </table>
         )}
+
+        {/* --- DAY VIEW (LIST) --- */}
+        {viewMode === 'day' && (
+            <div className="p-4 space-y-6">
+                {Object.entries(groupedEmployees).map(([locName, departments]) => {
+                    if (!visibleLocs[locName]) return null;
+                    
+                    const activeDepts = Object.entries(departments).filter(([deptName, emps]) => {
+                        const dateStr = currentDate.format('YYYY-MM-DD');
+                        return emps.some(emp => {
+                            const shift = shifts.find(s => s.user_id === emp.id && moment(s.start_time).format('YYYY-MM-DD') === dateStr);
+                            if(!shift) return false;
+                            const isVisiting = deptName === 'Visiting Staff';
+                            if (isVisiting && shift.location !== locName) return false;
+                            return true;
+                        });
+                    });
+
+                    if (activeDepts.length === 0) return null;
+
+                    // Get Today's Weather for Card Header
+                    const todayWeather = weatherData[locName]?.find(w => w.date === currentDate.format('YYYY-MM-DD'));
+
+                    return (
+                        <div key={locName} className="border rounded-lg overflow-hidden bg-card shadow-sm">
+                            <div className="bg-slate-900 text-white p-3 font-bold uppercase flex justify-between items-center">
+                                <div className="flex items-center">
+                                    <MapPin className="w-4 h-4 inline mr-2" /> {locName}
+                                </div>
+                                {/* NEW: Weather Badge for Mobile */}
+                                {todayWeather && (
+                                    <div className="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                                        <WeatherCell data={todayWeather} />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {activeDepts.map(([deptName, deptEmps]) => (
+                                    <div key={deptName} className="p-0">
+                                        <div className="bg-muted/50 px-3 py-1.5 text-xs font-bold uppercase text-muted-foreground tracking-wider border-b">
+                                            {deptName === 'Visiting Staff' && <Plane className="w-3 h-3 inline mr-1" />} {deptName}
+                                        </div>
+                                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                            {deptEmps.map(emp => {
+                                                const dateStr = currentDate.format('YYYY-MM-DD');
+                                                const shift = shifts.find(s => s.user_id === emp.id && moment(s.start_time).format('YYYY-MM-DD') === dateStr);
+                                                
+                                                if (!shift) return null;
+                                                const isVisiting = deptName === 'Visiting Staff';
+                                                if (isVisiting && shift.location !== locName) return null;
+                                                const isAway = shift.location && shift.location !== emp.location && !isVisiting;
+
+                                                return (
+                                                    <div key={emp.id} className="flex items-center justify-between p-3 hover:bg-muted/10 cursor-pointer" 
+                                                         onClick={() => isManager && handleCellClick(emp, dateStr, shift)}>
+                                                        <div className="flex items-center gap-3">
+                                                            <UserAvatar emp={emp} isOnline={liveStatus[emp.id]} />
+                                                            <div>
+                                                                <div className="font-semibold text-sm flex items-center gap-2">
+                                                                    <span className={isVisiting ? "italic text-amber-700 dark:text-amber-500" : ""}>{emp.full_name}</span>
+                                                                    <div onClick={(e)=>e.stopPropagation()}><ContactMenu user={emp} iconOnly={true} /></div>
+                                                                </div>
+                                                                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                                    <Badge variant="outline" className="text-[10px] h-5 px-1">{shift.role}</Badge>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="font-mono font-bold text-sm bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-100 px-2 py-1 rounded border border-blue-100 dark:border-blue-900">
+                                                                {moment(shift.start_time).format('h:mm A')} - {moment(shift.end_time).format('h:mm A')}
+                                                            </div>
+                                                            {isAway && <div className="text-[10px] text-amber-600 dark:text-amber-500 font-bold mt-1 uppercase"><Plane className="w-3 h-3 inline" /> {shift.location}</div>}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+                {/* Fallback if no one is scheduled today */}
+                {!Object.entries(groupedEmployees).some(([loc, departments]) => {
+                    if (!visibleLocs[loc]) return false;
+                    return Object.entries(departments).some(([_, emps]) => {
+                        const dateStr = currentDate.format('YYYY-MM-DD');
+                        return emps.some(emp => shifts.some(s => s.user_id === emp.id && moment(s.start_time).format('YYYY-MM-DD') === dateStr));
+                    });
+                }) && (
+                    <div className="text-center py-12 text-muted-foreground bg-card border rounded-lg border-dashed">
+                        <Clock className="w-10 h-10 mx-auto mb-2 opacity-20" />
+                        <p>No shifts scheduled for {currentDate.format('MMM Do')}</p>
+                        <Button variant="link" size="sm" onClick={() => setViewMode('week')}>Switch to Week View</Button>
+                    </div>
+                )}
+            </div>
+        )}
+
       </div>
 
       {/* --- SHIFT MODAL --- */}
@@ -720,14 +892,11 @@ export default function RosterPage() {
             <DialogHeader>
                 <DialogTitle className="flex items-center justify-between">
                     <span>Shift Details</span>
-                    {/* INFO ICON: Shows Audit History if shift exists */}
                     {selectedShiftId && <ChangeLogViewer tableName="employee_schedules" rowId={selectedShiftId} />}
                 </DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-2">
                 <div className="text-sm font-semibold">{selectedEmpName} <span className="font-normal text-muted-foreground">- {moment(selectedDate).format('MMM Do')}</span></div>
-                
-                {/* Time Inputs */}
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="text-xs">Start</label>
@@ -739,8 +908,6 @@ export default function RosterPage() {
                         <Input type="time" disabled={!isManager} value={formEnd} onChange={e => setFormEnd(e.target.value)} />
                     </div>
                 </div>
-
-                {/* Role Select */}
                 <div>
                     <label className="text-xs">Role</label>
                     <Select value={formRole} onValueChange={setFormRole} disabled={!isManager}>
@@ -748,8 +915,6 @@ export default function RosterPage() {
                         <SelectContent>{['Guide','Desk','Driver','Mechanic','Manager'].map(r=><SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                     </Select>
                 </div>
-                
-                {/* Location Select */}
                 <div>
                     <label className="text-xs">Location</label>
                     <Select value={formLocation} onValueChange={setFormLocation} disabled={!isManager}>
@@ -758,8 +923,6 @@ export default function RosterPage() {
                     </Select>
                 </div>
             </div>
-            
-            {/* Footer Buttons (Hidden for Employees) */}
             <DialogFooter className="flex justify-between w-full">
                 {selectedShiftId && isManager ? <Button variant="destructive" size="sm" onClick={handleDeleteShift}><Trash2 className="w-4 h-4 mr-2" /> Delete</Button> : <div/>}
                 {isManager && <Button size="sm" onClick={handleSaveShift}>Save</Button>}
@@ -778,7 +941,6 @@ export default function RosterPage() {
             </DialogHeader>
             {profileEmp && (
             <div className="grid gap-4 py-2">
-                {/* Header with Avatar */}
                 <div className="flex items-center gap-4 border-b pb-4 mb-2">
                     <UserAvatar emp={profileEmp} isOnline={liveStatus[profileEmp.id]} size="lg" />
                     <div>
@@ -786,8 +948,6 @@ export default function RosterPage() {
                         <div className="text-xs text-muted-foreground">{profileEmp.email}</div>
                     </div>
                 </div>
-
-                {/* Location & Dept */}
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="text-xs">Location</label>
@@ -804,21 +964,15 @@ export default function RosterPage() {
                         </Select>
                     </div>
                 </div>
-
-                {/* Details */}
                 <div><label className="text-xs">Hire Date</label><Input type="date" disabled={!isManager} value={profileEmp.hire_date||''} onChange={(e)=>setProfileEmp({...profileEmp,hire_date:e.target.value})} /></div>
                 <div><label className="text-xs">Phone Number</label><Input type="tel" disabled={!isManager} value={profileEmp.phone || ''} onChange={(e) => setProfileEmp({...profileEmp, phone: e.target.value})} /></div>
                 <div><label className="text-xs">Avatar URL</label><Input type="text" disabled={!isManager} value={profileEmp.avatar_url || ''} onChange={(e) => setProfileEmp({...profileEmp, avatar_url: e.target.value})} /></div>
-
-                {/* Controls (Manager Only) */}
                 {isManager && (
                     <div className="flex items-center justify-between border p-3 rounded bg-slate-50 dark:bg-slate-900/50">
                         <div><h4 className="text-sm font-bold flex items-center gap-2"><Ban className="w-4 h-4 text-red-500"/> Block Timeclock</h4></div>
                         <Switch checked={profileEmp.timeclock_blocked} onCheckedChange={(c)=>setProfileEmp({...profileEmp,timeclock_blocked:c})} disabled={!isManager} />
                     </div>
                 )}
-                
-                {/* ARCHIVE BUTTON - ADMIN ONLY */}
                 {isAdmin && (
                     <div className="bg-red-50 p-3 rounded-md border border-red-100 mt-2">
                         <Button variant="destructive" size="sm" className="w-full" onClick={handleArchiveEmployee}>Archive Employee</Button>
