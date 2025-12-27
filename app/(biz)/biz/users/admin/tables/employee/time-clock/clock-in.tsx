@@ -39,6 +39,9 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
   const [loading, setLoading] = useState(true);
   const [activeShift, setActiveShift] = useState<TimeEntry | null>(null);
   const [todaySchedule, setTodaySchedule] = useState<Schedule | null>(null);
+  
+  // "manualBlock" = true means the manager has explicitly restricted this user
+  // to ONLY clock in when scheduled.
   const [manualBlock, setManualBlock] = useState(false);
   
   // Camera & GPS State
@@ -168,25 +171,37 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
     const startOfDay = moment().startOf('day').toISOString();
     const endOfDay = moment().endOf('day').toISOString();
 
+    // 1. Check if user is restricted
     const { data: userData } = await supabase.from('users').select('timeclock_blocked').eq('id', employeeId).single();
     if (userData?.timeclock_blocked) setManualBlock(true);
 
+    // 2. Check if already clocked in
     const { data: currentEntry } = await supabase.from('time_entries').select('*').eq('user_id', employeeId).is('end_time', null).single();
     if (currentEntry) {
         setActiveShift(currentEntry);
         setSuccessLocation(currentEntry.location || 'Las Vegas');
     }
 
+    // 3. Get today's schedule (if any)
     const { data: schedule } = await supabase.from('employee_schedules').select('*').eq('user_id', employeeId).gte('start_time', startOfDay).lte('start_time', endOfDay).single();
     if (schedule) setTodaySchedule(schedule);
 
     setLoading(false);
   };
 
+  // --- UPDATED LOGIC: OPEN ACCESS BY DEFAULT ---
   const getScheduleStatus = () => {
-      if (manualBlock) return { allowed: false, reason: "Account blocked by manager." };
-      if (!todaySchedule) return { allowed: false, reason: "You are not scheduled for today." };
+      // 1. If not manually blocked by manager, allow access immediately
+      if (!manualBlock) {
+          return { allowed: true, reason: "" };
+      }
+
+      // 2. If blocked, STRICTLY check for schedule
+      if (!todaySchedule) {
+          return { allowed: false, reason: "Restricted Access: You are marked as 'Blocked' and have no schedule for today." };
+      }
       
+      // 3. If scheduled, enforce time window (e.g. can't clock in 2 hours early)
       const now = moment();
       const start = moment(todaySchedule.start_time);
       const earlyLimit = start.clone().subtract(15, 'minutes');
@@ -238,8 +253,10 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
     } catch (e) { console.error("Photo failed", e); }
 
     const now = new Date().toISOString();
-    const role = todaySchedule!.role; 
-    const loc = todaySchedule!.location || 'Las Vegas'; 
+    
+    // UPDATED: Safe defaults for Unscheduled Clock-Ins
+    const role = todaySchedule?.role || 'Staff'; 
+    const loc = todaySchedule?.location || 'Las Vegas'; 
 
     const { data, error } = await supabase.from('time_entries').insert([
       {
@@ -385,6 +402,7 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
       );
   }
 
+  // --- UI FOR BLOCKED USERS ---
   const scheduleStatus = getScheduleStatus();
   if (!activeShift && !scheduleStatus.allowed) {
       return (
@@ -409,7 +427,7 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
                     <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1 font-bold uppercase tracking-wider">Current Shift</Badge>
                 </div>
                 <h1 className="text-4xl font-black tracking-tight text-green-900 dark:text-green-100">{moment(activeShift.start_time).format('h:mm A')}</h1>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{activeShift.role} • {activeShift.location}</p>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{activeShift.role} â€¢ {activeShift.location}</p>
             </CardHeader>
             <CardContent className="flex flex-col gap-4 pt-2">
                 {cameraPreviewContent}
@@ -443,7 +461,14 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
     <Card className="w-full max-w-md shadow-xl border-t-4 border-t-blue-500">
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
-          Time Clock <Badge className="bg-blue-100 text-blue-800">{todaySchedule ? moment(todaySchedule.start_time).format('h:mm A') : 'Off Schedule'}</Badge>
+          Time Clock 
+          {/* UPDATED UI: Show "Open Clock-In" if not scheduled but allowed */}
+          <Badge className="bg-blue-100 text-blue-800">
+            {todaySchedule 
+              ? moment(todaySchedule.start_time).format('h:mm A') 
+              : (manualBlock ? 'Off Schedule' : 'Open Clock-In')
+            }
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -452,7 +477,7 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
              <div className="bg-white p-2 rounded-full shadow-sm"><Clock className="w-5 h-5 text-blue-500" /></div>
              <div>
                <p className="font-bold text-sm text-slate-900 dark:text-white">
-                  {todaySchedule.role} • {todaySchedule.location || 'Las Vegas'}
+                  {todaySchedule.role} â€¢ {todaySchedule.location || 'Las Vegas'}
                </p>
                <p className="text-xs text-muted-foreground">
                   Shift: {moment(todaySchedule.start_time).format('h:mm A')} - {moment(todaySchedule.end_time).format('h:mm A')}

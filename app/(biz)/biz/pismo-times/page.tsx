@@ -1,5 +1,4 @@
 // app/biz/pismo-times/page.tsx - Recurring Rules Manager
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,20 +8,83 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { createClient } from '@/utils/supabase/client';
 
+// ------------------------------------------------------------------
+// TYPE DEFINITIONS
+// Defining interfaces helps TypeScript catch errors before you build.
+// ------------------------------------------------------------------
+
+/**
+ * Represents the shape of a single rule row in your Supabase DB.
+ * Replacing 'any' with this interface ensures we know exactly what data we are handling.
+ */
+interface RentalRule {
+  id: number;
+  created_at: string;
+  start_date: string; // ISO date string (YYYY-MM-DD)
+  end_date: string | null; // Can be null if ongoing
+  days_of_week: number[]; // Array of integers (1-7)
+  first_start_time: string; // Time string (HH:MM:SS)
+  last_end_offset_minutes: number;
+}
+
+/**
+ * Interface for the currently selected date info popup
+ */
+interface SelectedDateInfo {
+  date: string;
+  rule: RentalRule;
+}
+
 export default function PismoTimesManager() {
-  const [rules, setRules] = useState<any[]>([]);
-  const [range, setRange] = useState<{ from: Date | null; to: Date | null }>({ from: null, to: null });
+  // ----------------------------------------------------------------
+  // STATE MANAGEMENT
+  // ----------------------------------------------------------------
+  
+  // Explicitly type the rules array using our interface instead of 'any[]'
+  const [rules, setRules] = useState<RentalRule[]>([]);
+  
+  // State for the date range picker
+  const [range, setRange] = useState<{ from: Date | null; to: Date | null }>({ 
+    from: null, 
+    to: null 
+  });
+  
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]); // 1=Mon ... 7=Sun
   const [firstStart, setFirstStart] = useState<string>('10:00');
   const [offsetMins, setOffsetMins] = useState<number>(45);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
-  const [selectedDateInfo, setSelectedDateInfo] = useState<{
-    date: string;
-    rule: any;
-  } | null>(null);
+  
+  // Type the selected info state to use our interface or null
+  const [selectedDateInfo, setSelectedDateInfo] = useState<SelectedDateInfo | null>(null);
 
   const supabase = createClient();
+
+  // ----------------------------------------------------------------
+  // HANDLERS (The Fix for Vercel Build Errors)
+  // By extracting these functions and typing the 'date' argument,
+  // TypeScript knows exactly what to expect, removing the 'implicit any' error.
+  // ----------------------------------------------------------------
+
+  /**
+   * Handles changes to the Start Date picker.
+   * @param date - The Date object or null (if cleared) passed by react-datepicker
+   */
+  const handleStartDateChange = (date: Date | null) => {
+    setRange((prev) => ({ ...prev, from: date }));
+  };
+
+  /**
+   * Handles changes to the End Date picker.
+   * @param date - The Date object or null passed by react-datepicker
+   */
+  const handleEndDateChange = (date: Date | null) => {
+    setRange((prev) => ({ ...prev, to: date }));
+  };
+
+  // ----------------------------------------------------------------
+  // DATA FETCHING & LOGIC
+  // ----------------------------------------------------------------
 
   useEffect(() => {
     fetchRules();
@@ -30,13 +92,19 @@ export default function PismoTimesManager() {
 
   const fetchRules = async () => {
     setLoading(true);
+    
+    // We create a typed query response roughly, though Supabase inference is usually automatic.
     const { data, error } = await supabase
       .from('pismo_rental_rules')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) console.error('Fetch error:', error);
-    setRules(data || []);
+    if (error) {
+      console.error('Fetch error:', error);
+    }
+    
+    // 'as RentalRule[]' creates a type assertion, telling TS "Trust me, this data matches the interface"
+    setRules((data as RentalRule[]) || []);
     setLoading(false);
   };
 
@@ -62,6 +130,7 @@ export default function PismoTimesManager() {
       alert('Error saving rule: ' + error.message);
     } else {
       await fetchRules();
+      // Reset form
       setRange({ from: null, to: null });
       setDaysOfWeek([]);
       setFirstStart('10:00');
@@ -72,35 +141,43 @@ export default function PismoTimesManager() {
     setSaving(false);
   };
 
-  // Client-side rule finder for calendar highlight
-  const getActiveRuleForDate = (dateStr: string): any | null => {
+  /**
+   * Client-side rule finder for calendar highlight.
+   * Now strictly typed to return a RentalRule or null.
+   */
+  const getActiveRuleForDate = (dateStr: string): RentalRule | null => {
     const checkDate = new Date(dateStr);
     const jsDay = checkDate.getDay(); // 0=Sun ... 6=Sat
     const ruleDay = jsDay === 0 ? 7 : jsDay; // Convert to 1=Mon ... 7=Sun
 
     const applicable = rules.filter(rule => {
       const start = new Date(rule.start_date);
+      // Use 2999 as a placeholder for "forever" if end_date is null
       const end = rule.end_date ? new Date(rule.end_date) : new Date('2999-12-31');
       return checkDate >= start && checkDate <= end && rule.days_of_week.includes(ruleDay);
     });
 
     if (applicable.length === 0) return null;
 
+    // If multiple rules apply, pick the most recently created one
     return applicable.reduce((latest, curr) =>
       new Date(curr.created_at) > new Date(latest.created_at) ? curr : latest
     );
   };
 
-  // Build affected dates for calendar
+  // Build affected dates for calendar visualization
   const affectedDates = new Set<string>();
-  const dateToRuleMap = new Map<string, any>();
+  const dateToRuleMap = new Map<string, RentalRule>();
 
+  // Helper variables for calendar generation
   const today = new Date();
   const startYear = today.getFullYear() - 1;
   const endYear = today.getFullYear() + 2;
 
+  // Loop through dates to pre-calculate which ones have active rules
   for (let y = startYear; y <= endYear; y++) {
     for (let m = 0; m < 12; m++) {
+      // Get number of days in the month
       const days = new Date(y, m + 1, 0).getDate();
       for (let d = 1; d <= days; d++) {
         const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -113,6 +190,7 @@ export default function PismoTimesManager() {
     }
   }
 
+  // React Day Picker Modifiers
   const modifiers = { affected: Array.from(affectedDates).map(d => new Date(d)) };
   const modifiersStyles = { affected: { backgroundColor: '#ff6900', color: 'white', fontWeight: 'bold' } };
 
@@ -122,7 +200,9 @@ export default function PismoTimesManager() {
     <div className="max-w-5xl mx-auto p-8 bg-gray-900 text-white min-h-screen">
       <h1 className="text-4xl font-bold text-center mb-8 text-orange-500">Pismo Times Manager</h1>
 
-      {/* Calendar */}
+      {/* CALENDAR SECTION 
+        Visualizes the rules on a calendar interface
+      */}
       <div className="bg-gray-800 p-8 rounded-2xl mb-12 shadow-2xl">
         <DayPicker
           modifiers={modifiers}
@@ -157,18 +237,37 @@ export default function PismoTimesManager() {
         )}
       </div>
 
-      {/* Create Rule Form */}
+      {/* CREATE RULE FORM 
+        Where the user inputs new recurring logic
+      */}
       <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl">
         <h2 className="text-3xl font-bold mb-8 text-center">Create Recurring Rule</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          {/* START DATE PICKER 
+             Using the new handleStartDateChange function to satisfy Strict TypeScript
+          */}
           <div>
             <label className="block text-xl mb-2">Start Date</label>
-            <DatePicker selected={range.from} onChange={d => setRange(prev => ({ ...prev, from: d }))} className="p-4 bg-gray-700 rounded w-full text-xl" placeholderText="Select start date" />
+            <DatePicker 
+              selected={range.from} 
+              onChange={handleStartDateChange} 
+              className="p-4 bg-gray-700 rounded w-full text-xl" 
+              placeholderText="Select start date" 
+            />
           </div>
+
+          {/* END DATE PICKER 
+             Using the new handleEndDateChange function
+          */}
           <div>
             <label className="block text-xl mb-2">End Date (optional, leave blank for ongoing)</label>
-            <DatePicker selected={range.to} onChange={d => setRange(prev => ({ ...prev, to: d }))} className="p-4 bg-gray-700 rounded w-full text-xl" placeholderText="Select end date" />
+            <DatePicker 
+              selected={range.to} 
+              onChange={handleEndDateChange} 
+              className="p-4 bg-gray-700 rounded w-full text-xl" 
+              placeholderText="Select end date" 
+            />
           </div>
         </div>
 

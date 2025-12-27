@@ -146,9 +146,13 @@ export default async function AdminUserProfilePage({
              <CardContent className="space-y-3 text-sm">
                 <div className="flex justify-between"><span>Email</span> <span className="font-mono">{targetUser.email}</span></div>
                 <div className="flex justify-between"><span>Cell</span> <span>{targetUser.phone || 'N/A'}</span></div>
-                {empDetails?.dialpad_number && (
-                   <div className="flex justify-between text-blue-600"><span>Dialpad</span> <span className="font-mono">{empDetails.dialpad_number}</span></div>
-                )}
+                
+                {(empDetails as any)?.dialpad_number && (
+  <div className="flex justify-between text-blue-600">
+    <span>Dialpad</span> 
+    <span className="font-mono">{(empDetails as any).dialpad_number}</span>
+  </div>
+)}
              </CardContent>
            </Card>
 

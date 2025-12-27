@@ -5,6 +5,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "type-check": "tsc --noEmit",  
     "prettier-fix": "prettier --write .",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",

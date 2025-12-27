@@ -356,7 +356,7 @@ export default function RosterPage() {
       setLoadingLogs(true);
       const { data: logs, error } = await supabase.from('audit_logs').select('id, created_at, action, user_id, table_name, row').eq('table_name', tableName).eq('row', rowId).order('created_at', { ascending: false });
       if (!error && logs) {
-          const actorIds = [...new Set(logs.map(l => l.user_id))];
+          const actorIds = Array.from(new Set(logs.map(l => l.user_id)));
           const { data: actors } = await supabase.from('users').select('id, full_name').in('id', actorIds);
           const enrichedLogs = logs.map(log => ({ ...log, actor_name: actors?.find(a => a.id === log.user_id)?.full_name || 'Unknown' }));
           setAuditLogs(enrichedLogs);
@@ -812,7 +812,7 @@ export default function RosterPage() {
                                                                     <div className="flex-shrink-0"><UserAvatar emp={emp} isOnline={liveStatus[emp.id]} /></div>
                                                                     <div className="flex flex-col min-w-0 flex-1">
                                                                         <div className="font-medium flex items-center gap-1"><span className={`truncate ${isVisiting ? "italic text-amber-700" : ""}`}>{emp.full_name}</span>{emp.timeclock_blocked && <Ban className="w-3 h-3 text-red-500 flex-shrink-0" />}</div>
-                                                                        <div className="flex items-center justify-between mt-0.5"><div onClick={(e) => e.stopPropagation()}><ContactMenu user={emp} iconOnly={true} size="xs" /></div>{sumWeeklyHours(empShifts) > 0 && <span className="text-[10px] bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-200 px-1.5 rounded-sm font-mono">{sumWeeklyHours(empShifts).toFixed(1)}h</span>}</div>
+                                                                        <div className="flex items-center justify-between mt-0.5"><div onClick={(e) => e.stopPropagation()}><ContactMenu user={emp} iconOnly={true} /></div>{sumWeeklyHours(empShifts) > 0 && <span className="text-[10px] bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-200 px-1.5 rounded-sm font-mono">{sumWeeklyHours(empShifts).toFixed(1)}h</span>}</div>
                                                                     </div>
                                                                 </div>
 

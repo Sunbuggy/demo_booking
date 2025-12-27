@@ -18,18 +18,20 @@ import Link from 'next/link';
 import { ImNewTab } from 'react-icons/im';
 import { getRedirectMethod } from '@/utils/auth-helpers/settings';
 import { handleRequest } from '@/utils/auth-helpers/client';
-// Added CalendarDays to imports
 import { PowerCircleIcon, Clock, Coffee, User as UserIcon, Sun, Moon, CalendarDays } from 'lucide-react';
 import moment from 'moment';
 import { useTheme } from "next-themes"
 
+// ✅ FIX: Updated Interface to accept the new props
 export function UserNav({
   email,
   userInitials,
   userImage,
   userName,
   user_id,
-  user_level = 0
+  user_level = 0,
+  status,              // <--- ADDED
+  clockInTimeStamp     // <--- ADDED
 }: {
   email: string | undefined;
   userInitials: string;
@@ -37,6 +39,8 @@ export function UserNav({
   userName: string;
   user_id: string;
   user_level?: number;
+  status?: string | null;       // <--- ADDED (Allows null to fix build error)
+  clockInTimeStamp?: string;    // <--- ADDED
 }) {
   const router = getRedirectMethod() === 'client' ? useRouter() : null;
   const path = usePathname();
@@ -44,9 +48,13 @@ export function UserNav({
   const { theme, setTheme } = useTheme();
 
   // State
-  const [tcStatus, setTcStatus] = useState<'active' | 'break' | 'closed' | 'loading'>('loading');
+  // We initialize state with the passed prop if available to avoid "layout shift"
+  const [tcStatus, setTcStatus] = useState<'active' | 'break' | 'closed' | 'loading'>(
+    status ? (status as 'active' | 'break' | 'closed') : 'loading'
+  );
+  
   const [timerText, setTimerText] = useState('');
-  const [shiftStart, setShiftStart] = useState<string | null>(null);
+  const [shiftStart, setShiftStart] = useState<string | null>(clockInTimeStamp || null);
   const [breakStart, setBreakStart] = useState<string | null>(null);
   const [internalLevel, setInternalLevel] = useState(user_level);
 
@@ -197,7 +205,6 @@ export function UserNav({
                  </Link>
               </Button>
 
-              {/* NEW BUTTON: Link to My Schedule */}
               <Button asChild variant="outline" className="w-full mt-2 h-8 text-xs border-slate-300 dark:border-slate-700 text-muted-foreground hover:text-foreground">
                  <Link href="/biz/my-schedule">
                     <CalendarDays className="w-3 h-3 mr-2" />

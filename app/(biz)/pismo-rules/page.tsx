@@ -127,7 +127,7 @@ export default function PismoRulesAdmin() {
             <label className="block text-sm font-medium mb-2">Start Date</label>
             <DatePicker
               selected={selectedRange.from}
-              onChange={(d) => setSelectedRange(prev => ({ ...prev, from: d }))}
+              onChange={(d: Date | null) => setSelectedRange(prev => ({ ...prev, from: d }))}
               className="w-full p-3 border rounded bg-white"
               placeholderText="Select start date"
             />
@@ -136,7 +136,7 @@ export default function PismoRulesAdmin() {
             <label className="block text-sm font-medium mb-2">End Date</label>
             <DatePicker
               selected={selectedRange.to}
-              onChange={(d) => setSelectedRange(prev => ({ ...prev, to: d }))}
+              onChange={(d: Date | null) => setSelectedRange(prev => ({ ...prev, to: d }))}
               className="w-full p-3 border rounded bg-white"
               placeholderText="Select end date"
             />

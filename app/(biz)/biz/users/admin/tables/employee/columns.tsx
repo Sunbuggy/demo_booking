@@ -425,7 +425,8 @@ export const columns: ColumnDef<UserType, any>[] = [
                 )}
                 {status === 'clocked_out' && (
                   <div>
-                    <ClockIn user={row.original} />
+                   {/* Passes the specific ID string instead of the whole object */}
+<ClockIn employeeId={row.original.id} />
                   </div>
                 )}
                 <HistoryTimeClockEvents user={row.original} />

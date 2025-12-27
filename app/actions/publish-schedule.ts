@@ -86,7 +86,7 @@ export async function publishWeeklySchedule(
     const errors: string[] = [];
     const locationLabel = targetLocation === 'ALL' ? '' : `${targetLocation} `;
 
-    for (const [userId, data] of staffMap) {
+   for (const [userId, data] of Array.from(staffMap)) {
       const { email, name, shifts } = data;
 
       const shiftRows = shifts.map((s: any) => {

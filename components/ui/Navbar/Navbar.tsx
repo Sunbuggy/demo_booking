@@ -25,10 +25,17 @@ export default async function Navbar() {
   const timeEntry = user
     ? await fetchTimeEntryByUserId(supabase, user[0]?.id)
     : null;
-  const timeEnt = user ? (timeEntry as unknown as TimeEntry[]) : null;
-  const clockInTimeStamp = user
-    ? timeEnt && timeEnt[0]?.clock_in?.clock_in_time
-    : null;
+  // ✅ NEW (Safe for Arrays and Objects)
+const timeEnt = user ? (timeEntry as unknown as TimeEntry[]) : null;
+
+// Helper to grab the data safely
+const rawClockIn = timeEnt?.[0]?.clock_in;
+
+const clockInTimeStamp = user
+  ? Array.isArray(rawClockIn)
+    ? rawClockIn[0]?.clock_in_time // If Array, grab first item
+    : rawClockIn?.clock_in_time    // If Object, grab property directly
+  : undefined;
   return (
     // Reduced height: Changed p-2 (padding: 0.5rem/8px) to p-1 (0.25rem/4px) to shorten the nav bar vertically.
     // Also added explicit h-12 (48px) to cap the height, overriding h-fit. This makes the bar take less space (~64px to ~48px total).

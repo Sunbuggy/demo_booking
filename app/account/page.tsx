@@ -47,17 +47,36 @@ import moment from 'moment';
 import { UserType } from '@/app/(biz)/biz/users/types';
 import { VehicleType } from '@/app/(biz)/biz/vehicles/admin/page';
 
+export interface TimeEntry {
+  id: string;
+  user_id: string;
+  clock_in?: { clock_in_time: string }[] | { clock_in_time: string } | null; // Handle both array/object shapes
+  clock_out?: { clock_out_time: string }[] | { clock_out_time: string } | null;
+  status?: string;
+  created_at?: string;
+}
 /**
  * Helper to calculate total hours from time entries
+ */
+/**
+ * Helper to calculate total hours from time entries
+ * UPDATED: Handles cases where clock_in/clock_out are arrays (Supabase joins) or objects.
  */
 const calculateWeeklyHours = (entries: any[]) => {
   if (!entries || entries.length === 0) return "0.00";
   
   let totalMinutes = 0;
   entries.forEach((entry) => {
-    if (entry.clock_in?.clock_in_time && entry.clock_out?.clock_out_time) {
-      const start = moment(entry.clock_in.clock_in_time);
-      const end = moment(entry.clock_out.clock_out_time);
+    // Safety check: Helper to extract time string whether it's an object or an array
+    const getStartTime = (obj: any) => Array.isArray(obj) ? obj[0]?.clock_in_time : obj?.clock_in_time;
+    const getEndTime = (obj: any) => Array.isArray(obj) ? obj[0]?.clock_out_time : obj?.clock_out_time;
+
+    const startStr = getStartTime(entry.clock_in);
+    const endStr = getEndTime(entry.clock_out);
+
+    if (startStr && endStr) {
+      const start = moment(startStr);
+      const end = moment(endStr);
       totalMinutes += end.diff(start, 'minutes');
     }
   });
@@ -129,9 +148,21 @@ export default async function AccountPage() {
       vehicle_status: v.vehicle_status || 'unknown'
     }));
 
-  const isClockedIn = activeTimeEntry && activeTimeEntry.length > 0;
-  const clockInTime = isClockedIn ? activeTimeEntry[0].clock_in?.clock_in_time : null;
-  const userLevel = userProfile.user_level ?? 0;
+const isClockedIn = activeTimeEntry && activeTimeEntry.length > 0;
+
+// FIX: 'clock_in' is returned as an array from the DB join.
+// We must access the first element [0] of that array.
+// The syntax 'activeTimeEntry[0].clock_in?.[0]?.clock_in_time' ensures:
+// 1. clock_in exists
+// 2. We grab the first item at index 0
+// 3. We grab the property clock_in_time
+const clockInTime = isClockedIn 
+  // We use optional chaining (?.) with the array index [0]
+// This fixes the "Property does not exist on array" error AND the "never" error.
+  ? activeTimeEntry[0].clock_in?.[0]?.clock_in_time 
+  : null;
+
+const userLevel = userProfile.user_level ?? 0;
   const isStaff = userLevel > 284;
 
   return (
@@ -164,7 +195,7 @@ export default async function AccountPage() {
                   <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader><DialogTitle>Edit Profile Details</DialogTitle></DialogHeader>
                     <div className="py-4">
-                      <UserForm user={userProfile as any} empDetails={employeeDetails} userDispatchLocation={[]} />
+                      <UserForm user={userProfile as any} empDetails={employeeDetails}  />
                     </div>
                   </DialogContent>
                 </Dialog>
