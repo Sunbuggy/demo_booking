@@ -44,6 +44,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 300,
     },
     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 },
+    { href: '/biz/payroll', label: 'Payroll', minLevel: 900 },
     {
       href: '/biz/reports',
       label: 'Reports',
