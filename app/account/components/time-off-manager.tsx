@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Loader2, Plane, CalendarClock } from 'lucide-react';
+import { Trash2, Loader2, Plane, CalendarClock, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -21,24 +21,31 @@ export type TimeOffRequest = {
   status: 'pending' | 'approved' | 'denied';
 };
 
-function SubmitButton() {
+function SubmitButton({ isAdmin }: { isAdmin: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} size="sm" className="w-full md:w-auto">
-      {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plane className="h-4 w-4 mr-2" />}
-      Submit Request
+    <Button type="submit" disabled={pending} size="sm" className="w-full md:w-auto gap-2">
+      {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : isAdmin ? <ShieldCheck className="w-4 h-4" /> : <Plane className="h-4 w-4" />}
+      {isAdmin ? "Approve & Save" : "Submit Request"}
     </Button>
   );
 }
 
-export default function TimeOffManager({ requests }: { requests: TimeOffRequest[] }) {
+// UPDATED: Accept userId prop
+export default function TimeOffManager({ 
+  requests, 
+  userId 
+}: { 
+  requests: TimeOffRequest[], 
+  userId?: string 
+}) {
   const [state, formAction] = useActionState(submitTimeOffRequest, { message: '', success: false });
   const { toast } = useToast();
 
   React.useEffect(() => {
     if (state.message) {
       toast({
-        title: state.success ? "Request Sent" : "Error",
+        title: state.success ? "Success" : "Error",
         description: state.message,
         variant: state.success ? "success" : "destructive"
       });
@@ -47,24 +54,31 @@ export default function TimeOffManager({ requests }: { requests: TimeOffRequest[
 
   const handleCancel = async (id: string) => {
     if(!confirm("Cancel this request?")) return;
-    await cancelTimeOffRequest(id);
+    await cancelTimeOffRequest(id, userId); // Pass userId so admins can cancel others' requests
     toast({ title: "Request cancelled" });
   };
 
   return (
-    <Card className="w-full shadow-md border-t-4 border-t-purple-500">
+    <Card className={`w-full shadow-md border-t-4 ${userId ? 'border-t-blue-500' : 'border-t-purple-500'}`}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-            <CalendarClock className="w-5 h-5" /> Time Off Requests
+            <CalendarClock className="w-5 h-5" /> 
+            {userId ? "Manage Time Off" : "Time Off Requests"}
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Request days off for vacation, appointments, or personal leave.
+          {userId 
+            ? "Submit a request on behalf of this user. It will be auto-approved." 
+            : "Request days off for vacation, appointments, or personal leave."}
         </p>
       </CardHeader>
       <CardContent className="space-y-8">
         
         {/* --- REQUEST FORM --- */}
         <form action={formAction} className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-900/40">
+          
+          {/* HIDDEN: Pass Target User ID if we are an Admin */}
+          {userId && <input type="hidden" name="targetUserId" value={userId} />}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
             <div className="space-y-4">
@@ -92,14 +106,14 @@ export default function TimeOffManager({ requests }: { requests: TimeOffRequest[
             </div>
 
             <div className="flex items-end justify-end">
-               <SubmitButton />
+               <SubmitButton isAdmin={!!userId} />
             </div>
           </div>
         </form>
 
         {/* --- REQUESTS LIST --- */}
         <div className="space-y-3">
-          <h3 className="font-semibold text-sm">History & Status</h3>
+          <h3 className="font-semibold text-sm">Request History</h3>
           {requests.length === 0 && (
             <div className="text-center p-4 text-sm text-muted-foreground italic">
                 No time off requests found.
@@ -126,7 +140,8 @@ export default function TimeOffManager({ requests }: { requests: TimeOffRequest[
                   <span className="text-sm text-muted-foreground">{req.reason}</span>
                 </div>
 
-                {req.status === 'pending' && (
+                {/* Allow Cancel if Pending OR if User is an Admin (userId is present) */}
+                {(req.status === 'pending' || userId) && (
                   <Button 
                       variant="ghost" 
                       size="sm" 

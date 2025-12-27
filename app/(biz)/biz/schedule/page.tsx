@@ -46,6 +46,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import PublishButton from './components/publish-button';
+
 
 // ============================================================================
 // 1. CONFIGURATION & TYPES
@@ -648,14 +650,20 @@ export default function RosterPage() {
                    </Button>
 
                   {viewMode === 'week' && isManager && (
-                    <Button variant="secondary" size="sm" onClick={handleCopyWeek} disabled={copying || shifts.length === 0} className="hidden md:flex">
-                        {copying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3 mr-2" />} Copy Week
-                    </Button>
+                    <>
+        <Button variant="secondary" size="sm" onClick={handleCopyWeek} disabled={copying || shifts.length === 0} className="hidden md:flex">
+            {copying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3 mr-2" />} Copy Week
+        </Button>
+
+        <PublishButton weekStart={startOfWeek.format('YYYY-MM-DD')} />
+    </>
+                    
                   )}
                   <div className="flex items-center border rounded-md bg-card shadow-sm">
                     <Button variant="ghost" size="icon" onClick={() => setCurrentDate(currentDate.clone().subtract(1, viewMode === 'week' ? 'week' : 'day'))}><ChevronLeft className="w-4 h-4" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => setCurrentDate(moment())}>Today</Button>
                     <Button variant="ghost" size="icon" onClick={() => setCurrentDate(currentDate.clone().add(1, viewMode === 'week' ? 'week' : 'day'))}><ChevronRight className="w-4 h-4" /></Button>
+                    
                   </div>
               </div>
             </div>

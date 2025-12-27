@@ -9,12 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Loader2, PlusCircle, Clock, Ban, ThumbsDown } from 'lucide-react'; // Added icons
+import { Trash2, Loader2, PlusCircle, Clock, Ban, ThumbsDown, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// UPDATED: Type definition to match new enum
 export type AvailabilityRule = {
   id: string;
   day_of_week: number;
@@ -33,7 +32,14 @@ function SubmitButton() {
   );
 }
 
-export default function AvailabilityManager({ existingRules }: { existingRules: AvailabilityRule[] }) {
+// UPDATED: Accept userId prop
+export default function AvailabilityManager({ 
+  existingRules, 
+  userId 
+}: { 
+  existingRules: AvailabilityRule[], 
+  userId?: string // Optional: If missing, assumes current user
+}) {
   const [state, formAction] = useActionState(addAvailabilityRule, { message: '', success: false });
   const { toast } = useToast();
 
@@ -49,7 +55,8 @@ export default function AvailabilityManager({ existingRules }: { existingRules: 
 
   const handleDelete = async (id: string) => {
     if(!confirm("Remove this rule?")) return;
-    await deleteAvailabilityRule(id);
+    // We pass userId here too so the server knows an Admin is performing the action
+    await deleteAvailabilityRule(id, userId); 
     toast({ title: "Rule removed" });
   };
 
@@ -60,14 +67,16 @@ export default function AvailabilityManager({ existingRules }: { existingRules: 
             <Clock className="w-5 h-5" /> Availability Exceptions
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          <strong>Assumption:</strong> You are available to work any day <strong>unless</strong> listed below. 
-          Please add days you cannot work (Unavailable) or would prefer not to work (Preferred Off).
+           {userId ? "Define days this employee cannot work." : "Add days you cannot work or prefer off."}
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
         
         {/* --- ADD RULE FORM --- */}
         <form action={formAction} className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-900/40">
+          {/* VITAL: Pass the userId to the server action */}
+          {userId && <input type="hidden" name="targetUserId" value={userId} />}
+          
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             
             <div className="space-y-2">
@@ -92,7 +101,7 @@ export default function AvailabilityManager({ existingRules }: { existingRules: 
             </div>
 
             <div className="space-y-2">
-               <Label>Time Range (Optional)</Label>
+               <Label>Time Range</Label>
                <div className="flex items-center gap-2">
                  <Input type="time" name="startTime" defaultValue="00:00" className="flex-1 min-w-[5rem]" />
                  <span className="text-muted-foreground">-</span>
@@ -106,12 +115,12 @@ export default function AvailabilityManager({ existingRules }: { existingRules: 
 
         {/* --- RULES LIST --- */}
         <div className="space-y-3">
-          <h3 className="font-semibold text-sm">Your Current Exceptions</h3>
+          <h3 className="font-semibold text-sm">Current Exceptions</h3>
           {existingRules.length === 0 && (
             <div className="text-center p-6 border border-dashed rounded-lg text-muted-foreground bg-green-50/50 dark:bg-green-900/10">
                 <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-500 opacity-50" />
                 <p>No exceptions set.</p>
-                <p className="text-xs">You are considered <strong>Available 7 Days a Week</strong>.</p>
+                <p className="text-xs">Considered <strong>Available 7 Days a Week</strong>.</p>
             </div>
           )}
           
@@ -153,6 +162,3 @@ export default function AvailabilityManager({ existingRules }: { existingRules: 
     </Card>
   );
 }
-
-// Helper icon for empty state
-import { CheckCircle2 } from 'lucide-react';

@@ -1,289 +1,219 @@
 'use client';
-import { FactoryForm, FieldConfig } from '@/components/factory-form';
-import { Skeleton } from '@/components/ui/skeleton';
+
+import React, { useState, useEffect } from 'react';
+import { updateEmployeeProfile } from '@/app/actions/update-user-profile'; 
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
-import { Database } from '@/types_db';
-import { createClient } from '@/utils/supabase/client';
-import {
-  removeDispatchGroup,
-  updateUser,
-  upsertDispatchGroup,
-  upsertEmployeeDetails
-} from '@/utils/supabase/queries';
-import React from 'react';
-import { z } from 'zod';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Phone, Cloud, Mail, MapPin, Briefcase } from 'lucide-react';
 
-type EmpDetails = Database['public']['Tables']['employee_details']['Row'][];
-type User = Database['public']['Tables']['users']['Row'];
-type enumLocation = ('NV' | 'CA' | 'MI' | null)[];
-
-export const formSchema = z.object({
-  email: z.string().nullable().optional(),
-  full_name: z.string().nullable().optional(),
-  phone: z.string().nullable().optional(),
-  user_level: z.coerce
-    .number({
-      required_error: 'User Level is required'
-    })
-    .optional(),
-  emp_id: z.string().nullable().optional(),
-  payroll_company: z.string().nullable().optional(),
-  primary_position: z.string().nullable().optional(),
-  primary_work_location: z.string().nullable().optional(),
-  sst_group_location: z.array(z.enum(['NV', 'CA', 'MI'])).nullable()
-});
-
-export const fields: FieldConfig[] = [
-  {
-    type: 'input',
-    name: 'full_name',
-    label: 'Full Name',
-    placeholder: 'Full Name',
-    description: 'The full name of the user.'
-  },
-  {
-    type: 'input',
-    name: 'email',
-    label: 'Email',
-    placeholder: 'Email',
-    description: 'The email of the user.'
-  },
-  {
-    type: 'input',
-    name: 'phone',
-    label: 'Phone',
-    placeholder: 'Phone',
-    description: 'The phone number of the user.'
-  },
-  {
-    type: 'input',
-    name: 'user_level',
-    label: 'User Level',
-    placeholder: 'User Level',
-    description: 'The user level of the user.'
-  },
-  {
-    type: 'input',
-    name: 'emp_id',
-    label: 'Emp ID',
-    placeholder: 'Emp ID',
-    description: 'The emp ID of the user.'
-  },
-  {
-    type: 'select',
-    name: 'payroll_company',
-    label: 'Payroll Company',
-    placeholder: 'Payroll Company',
-    description: 'The payroll company of the user.',
-    options: [
-      { label: 'NV-ModernHR', value: 'NV-ModernHR' },
-      { label: 'NV-BBSI', value: 'NV-BBSI' },
-      { label: 'MI-BBSI', value: 'MI-BBSI' },
-      { label: 'CA-ModernHR', value: 'CA-ModernHR' }
-    ]
-  },
-  {
-    type: 'select',
-    name: 'primary_position',
-    label: 'Primary Position',
-    placeholder: 'Primary Position',
-    description: 'The primary position of the user.',
-    options: [
-      { label: 'JR-DUNIE', value: 'JR-DUNIE' },
-      { label: 'SR-DUNIE', value: 'SR-DUNIE' },
-      { label: 'ShuttleDriver', value: 'ShuttleDriver' },
-      { label: 'CSR', value: 'CSR' },
-      { label: 'ADMIN', value: 'ADMIN' },
-      { label: 'DEV', value: 'DEV' },
-      { label: 'BUGGY-TECH', value: 'BUGGY-TECH' },
-      { label: 'ATV-TECH', value: 'ATV-TECH' },
-      { label: 'FLEET-TECH', value: 'FLEET-TECH' },
-      { label: 'FABRICATOR', value: 'FABRICATOR' },
-      { label: 'LABOR', value: 'LABOR' }
-    ]
-  },
-  {
-    type: 'select',
-    name: 'primary_work_location',
-    label: 'Primary Work Location',
-    placeholder: 'Primary Work Location',
-    description: 'The primary work location of the user.',
-    options: [
-      { label: 'NV', value: 'NV' },
-      { label: 'MI', value: 'MI' },
-      { label: 'CA', value: 'CA' },
-      { label: 'FL', value: 'FL' }
-    ]
-  },
-  {
-    type: 'checkbox',
-    name: 'sst_group_location',
-    label: 'SST Group Location',
-    placeholder: 'Select SST Group Location',
-    description: 'The SST group location of the user.',
-    options: [
-      { label: 'Nevada', value: 'NV' },
-      { label: 'Michigan', value: 'MI' },
-      { label: 'California', value: 'CA' }
-    ]
-  }
-];
-
-const UserForm = ({
-  user,
-  empDetails,
-  userDispatchLocation
-}: {
-  user: User;
-  empDetails: EmpDetails;
-  userDispatchLocation: enumLocation;
-}) => {
-  const supabase = createClient(); // Remove await - createClient is synchronous for client components
-  const [formData, setFormData] = React.useState<
-    z.infer<typeof formSchema> | undefined
-  >(undefined);
-  const [initialData, setInitialData] = React.useState<
-    Record<string, any> | undefined
-  >(undefined);
-  const { toast } = useToast();
-
-  React.useEffect(() => {
-    const usr = {
-      ...user,
-      ...empDetails[0],
-      sst_group_location: userDispatchLocation || []
-    };
-    setInitialData(usr);
-  }, [user, empDetails, userDispatchLocation]);
-
-  React.useEffect(() => {
-    if (formData) {
-      const user_id = user.id;
-      const full_name = formData.full_name;
-      const email = formData.email;
-      const phone = formData.phone;
-      const user_level = formData.user_level;
-      const emp_id = formData.emp_id;
-      const payroll_company = formData.payroll_company;
-      const primary_position = formData.primary_position;
-      const primary_work_location = formData.primary_work_location;
-      const sst_group_location = formData.sst_group_location;
-
-      const userTableData = {
-        full_name,
-        email,
-        phone,
-        user_level
-      };
-      const empDetailsTableData = {
-        emp_id,
-        payroll_company,
-        primary_position,
-        primary_work_location,
-        user_id
-      };
-      
-      updateUser(supabase, userTableData, user_id).then(() => {
-        toast({
-          title: 'User updated',
-          description: 'User updated successfully',
-          variant: 'success',
-          duration: 5000
-        });
-
-        upsertEmployeeDetails(supabase, empDetailsTableData).then(() => {
-          toast({
-            title: 'Employee Details updated',
-            description: 'Employee Details updated successfully',
-            variant: 'success',
-            duration: 5000
-          });
-        });
-
-        // Handle dispatch group updates
-        supabase
-          .from('dispatch_groups')
-          .select('location')
-          .eq('user', user_id)
-          .then((res) => {
-            if (res.error) {
-              console.error('Error fetching dispatch groups:', res.error);
-              return;
-            }
-
-            const currentLocations = res.data
-              ? res.data
-                  .map((item: any) => item.location) // Add type annotation
-                  .filter(
-                    (location): location is 'NV' | 'CA' | 'MI' =>
-                      location !== null
-                  )
-              : [];
-            const newLocations = (sst_group_location || []).filter(
-              (location): location is 'NV' | 'CA' | 'MI' => location !== null
-            );
-
-            // Locations to add
-            const locationsToAdd = newLocations.filter(
-              (location) => !currentLocations.includes(location)
-            );
-
-            // Locations to remove
-            const locationsToRemove = currentLocations.filter(
-              (location) => !newLocations.includes(location)
-            );
-
-            // Add new locations
-            locationsToAdd.forEach((location) => {
-              upsertDispatchGroup(supabase, user_id, location).then(() => {
-                toast({
-                  title: 'Dispatch Group updated',
-                  description: `Added ${location} to dispatch group`,
-                  variant: 'success',
-                  duration: 5000
-                });
-              });
-            });
-
-            // Remove unchecked locations
-            locationsToRemove.forEach((location) => {
-              removeDispatchGroup(supabase, user_id, location).then(() => {
-                toast({
-                  title: 'Dispatch Group updated',
-                  description: `Removed ${location} from dispatch group`,
-                  variant: 'success',
-                  duration: 5000
-                });
-              });
-            });
-            window.location.reload();
-          });
-      });
-    }
-  }, [formData, user, supabase, toast]);
-
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    setFormData(data);
-  };
-  
-  if (!user) return null;
-
-  if (user)
-    return (
-      <>
-        {initialData ? (
-          <FactoryForm
-            fields={fields}
-            formSchema={formSchema}
-            onSubmit={onSubmit}
-            data={initialData}
-            hideFilterBoxField={true}
-          />
-        ) : (
-          <Skeleton className="w-[400] h-[728]" />
-        )}
-      </>
-    );
+// --- CONFIGURATION ---
+// Valid Locations and their specific Departments
+const LOCATIONS: Record<string, string[]> = {
+  'Las Vegas': ['ADMIN', 'OFFICE', 'DUNES', 'SHUTTLES', 'SHOP'],
+  'Pismo': ['ADMIN', 'CSR', 'BEACH', 'SHOP'],
+  'Michigan': ['ADMIN', 'SHOP', 'GUIDES', 'OFFICE']
 };
 
-export default UserForm;
+export default function UserForm({ user, empDetails }: { user: any, empDetails: any }) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+
+  // Initialize state
+  const [formData, setFormData] = useState({
+    first_name: user.first_name || user.full_name?.split(' ')[0] || '',
+    last_name: user.last_name || user.full_name?.split(' ').slice(1).join(' ') || '',
+    stage_name: user.stage_name || user.full_name?.split(' ')[0] || '',
+    email: user.email || '',
+    phone: user.phone || '', 
+    dialpad_number: empDetails?.[0]?.dialpad_number || '',
+    
+    // We map 'position' to Department now
+    position: empDetails?.[0]?.primary_position || '', 
+    location: empDetails?.[0]?.primary_work_location || 'Las Vegas',
+    
+    payroll_id: empDetails?.[0]?.emp_id || '', 
+    user_level: user.user_level?.toString() || '300'
+  });
+
+  // Helper to handle Location change (resets department if invalid)
+  const handleLocationChange = (newLocation: string) => {
+    setFormData(prev => ({
+      ...prev,
+      location: newLocation,
+      // If current dept isn't valid for new location, reset it
+      position: LOCATIONS[newLocation]?.includes(prev.position) ? prev.position : ''
+    }));
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const payload = new FormData();
+    payload.append('userId', user.id);
+    payload.append('first_name', formData.first_name);
+    payload.append('last_name', formData.last_name);
+    payload.append('stage_name', formData.stage_name);
+    payload.append('email', formData.email);
+    payload.append('phone', formData.phone);
+    payload.append('dialpad_number', formData.dialpad_number);
+    payload.append('position', formData.position); // Saves as "primary_position" in DB
+    payload.append('location', formData.location);
+    payload.append('user_level', formData.user_level);
+    payload.append('payroll_id', formData.payroll_id);
+
+    const result = await updateEmployeeProfile(null, payload);
+
+    setLoading(false);
+
+    if (result.success) {
+      toast({ title: "Success", description: "Profile updated successfully.", variant: "success" });
+    } else {
+      toast({ title: "Update Failed", description: result.message, variant: "destructive" });
+    }
+  };
+
+  // Derived list of departments based on selected location
+  const availableDepartments = LOCATIONS[formData.location] || [];
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6 py-4">
+      
+      {/* IDENTITY SECTION */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Identity</h3>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>First Name (Legal)</Label>
+            <Input name="first_name" value={formData.first_name} onChange={handleChange} required />
+          </div>
+          <div className="space-y-2">
+            <Label>Last Name (Legal)</Label>
+            <Input name="last_name" value={formData.last_name} onChange={handleChange} required />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+                <Mail className="w-3 h-3" /> Email Address
+            </Label>
+            <Input name="email" value={formData.email} onChange={handleChange} placeholder="user@example.com" className="font-mono" />
+        </div>
+
+        <div className="space-y-2 bg-yellow-50/10 p-3 rounded-md border border-yellow-500/20">
+          <Label className="text-yellow-500 font-bold">Stage Name (Display Name)</Label>
+          <Input name="stage_name" value={formData.stage_name} onChange={handleChange} placeholder="e.g. 'Maverick'" className="font-semibold" />
+          <p className="text-xs text-muted-foreground">This is how the employee will appear on schedules and customer-facing views.</p>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* JOB DETAILS */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Job Details</h3>
+        
+        <div className="grid grid-cols-2 gap-4">
+           
+           {/* LOCATION SELECTOR */}
+           <div className="space-y-2">
+              <Label className="flex items-center gap-2"><MapPin className="w-3 h-3"/> Location</Label>
+              <Select 
+                value={formData.location} 
+                onValueChange={handleLocationChange}
+              >
+                <SelectTrigger><SelectValue placeholder="Select Location" /></SelectTrigger>
+                <SelectContent>
+                  {Object.keys(LOCATIONS).map(loc => (
+                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+           </div>
+
+           {/* DEPARTMENT SELECTOR (Filtered) */}
+           <div className="space-y-2">
+              <Label className="flex items-center gap-2"><Briefcase className="w-3 h-3"/> Department</Label>
+              <Select 
+                value={formData.position} 
+                onValueChange={(val) => setFormData({...formData, position: val})}
+                disabled={!formData.location}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={formData.location ? "Select Department" : "Choose Location First"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDepartments.map(dept => (
+                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+           </div>
+
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+           <div className="space-y-2">
+              <Label>Access Level</Label>
+              <Select 
+                value={formData.user_level} 
+                onValueChange={(val) => setFormData({...formData, user_level: val})}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="100">Customer (100)</SelectItem>
+                  <SelectItem value="300">Staff (300)</SelectItem>
+                  <SelectItem value="500">Manager (500)</SelectItem>
+                  <SelectItem value="900">Admin (900)</SelectItem>
+                </SelectContent>
+              </Select>
+           </div>
+           
+           <div className="space-y-2">
+              <Label>Payroll ID</Label>
+              <Input name="payroll_id" value={formData.payroll_id} onChange={handleChange} className="font-mono" />
+           </div>
+        </div>
+        
+        {/* CONTACT SECTION */}
+        <div className="grid grid-cols-2 gap-4 pt-2">
+           <div className="space-y-2">
+             <Label className="flex items-center gap-2">
+                <Phone className="w-3 h-3" /> Cell Phone
+             </Label>
+             <Input name="phone" value={formData.phone} onChange={handleChange} placeholder="Personal Mobile" />
+           </div>
+           
+           <div className="space-y-2">
+             <Label className="flex items-center gap-2 text-blue-600">
+                <Cloud className="w-3 h-3" /> Dialpad (VoIP)
+             </Label>
+             <Input 
+               name="dialpad_number" 
+               value={formData.dialpad_number} 
+               onChange={handleChange} 
+               placeholder="Desk Number" 
+               className="border-blue-200 focus-visible:ring-blue-500"
+             />
+           </div>
+        </div>
+
+      </div>
+
+      <div className="flex justify-end pt-4">
+        <Button type="submit" disabled={loading}>
+          {loading ? "Saving..." : "Save Changes"}
+        </Button>
+      </div>
+    </form>
+  );
+}
