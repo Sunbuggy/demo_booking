@@ -258,7 +258,8 @@ export const insertIntoClockIn = cache(
     supabase: SupabaseClient,
     userId: string,
     lat: number,
-    long: number
+    long: number,
+    imageUrl?: string // UPDATED: Added imageUrl optional parameter
   ) => {
     // If this user_id has a time_entry that has a clock_in_id but no clock_out_id, then return and do nothing
     const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
@@ -272,7 +273,8 @@ export const insertIntoClockIn = cache(
         {
           clock_in_time: new Date().toISOString(),
           lat,
-          long
+          long,
+          image_url: imageUrl // UPDATED: Saving image_url to DB
         }
       ])
       .select();
@@ -360,7 +362,8 @@ export const insertIntoClockOut = cache(
     lat: number,
     long: number,
     totalClockinHours: number,
-    clockOutTime?: string
+    clockOutTime?: string,
+    imageUrl?: string // UPDATED: Added imageUrl optional parameter
   ) => {
     // check the users table and get the time_entry_status
     const { data: urData, error: usError } = await supabase
@@ -409,7 +412,8 @@ export const insertIntoClockOut = cache(
         {
           clock_out_time: clockOutTime || new Date().toISOString(),
           lat,
-          long
+          long,
+          image_url: imageUrl // UPDATED: Saving image_url to DB
         }
       ])
       .select();
