@@ -31,57 +31,67 @@ const BookingCard: React.FC<BookingCardProps> = ({
   return (
     <Card
       key={reservation.res_id}
-      className={`bookingcard ${reservation.is_special_event ? 'text-orange-500 dark:text-orange-500' : ''}`}
+      // Added dark:bg-slate-950 to make the card slightly darker than the background in dark mode for contrast
+      className={`bookingcard mb-1 border-gray-200 dark:border-gray-800 dark:bg-slate-950 ${reservation.is_special_event ? 'text-orange-500 dark:text-orange-500' : ''}`}
     >
-      <CardContent className="bookingcardcontent">
-        {/* Reservation ID Link */}
+      <CardContent className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2 text-sm leading-tight">
+        
+        {/* 1. Reservation ID */}
         <Link
           href={`/biz/reservations/${reservation.res_id}`}
-          className="p-2 text-pink-500 cursor-pointer hover:underline block mb-2"
+          className="text-pink-500 hover:underline font-mono italic"
         >
-          <i>{reservation.res_id}</i>
+          {reservation.res_id}
         </Link>
 
-        {/* Customer Name & Total Cost */}
-        <div className="mb-2">
-          <span className="font-medium">{reservation.full_name || '—'}</span>
-          {display_cost && (
-            <i className="text-green-600 ml-4">
-              ${Number(reservation.total_cost || 0).toFixed(2)}
-            </i>
-          )}
-        </div>
+        {/* 2. Customer Name - FIX: Changed text-white to dark:text-white */}
+        <span className="font-bold text-gray-900 dark:text-white whitespace-nowrap">
+          {reservation.full_name || '—'}
+        </span>
 
-        {/* Occasion, Hotel, People, Vehicles */}
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <span className="occasionbox itembox">
-            {reservation.occasion?.toLowerCase().slice(0, 28) || 'occasion'}
+        {/* 3. Tags (Occasion & Hotel) - Compact badges adjusted for light/dark mode */}
+        {reservation.occasion && (
+          <span className="occasionbox px-1.5 py-0.5 text-xs rounded border border-gray-300 bg-gray-100 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 whitespace-nowrap">
+            {reservation.occasion.toLowerCase().slice(0, 20)}
           </span>
-
-          <span className="HotelListing itembox">
-            {reservation.hotel?.toLowerCase().slice(0, 28) || '—'}
+        )}
+        
+        {reservation.hotel && (
+          <span className="HotelListing px-1.5 py-0.5 text-xs rounded border border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-900/40 dark:bg-yellow-900/20 dark:text-yellow-500 whitespace-nowrap">
+            {reservation.hotel.toLowerCase().slice(0, 20)}
           </span>
+        )}
 
-          <span className="text-orange-500 font-medium">
+        {/* 4. Stats (People & Vehicles) - Side by Side */}
+        <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
+          <span className="font-semibold whitespace-nowrap">
             {reservation.ppl_count || 0}-PPL
           </span>
-
+          
           {bookedVehicles && (
-            <span className="italic font-thin text-orange-500">
+            <span className="italic font-light text-orange-600/90 dark:text-orange-400/90 whitespace-nowrap">
               {bookedVehicles}
             </span>
           )}
-
-          {/* External Edit Link */}
-          <Link
-            href={`https://www.sunbuggy.biz/edt_res.php?Id=${reservation.res_id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-auto"
-          >
-            <BsArrowReturnRight className="text-2xl text-pink-500 hover:text-pink-600" />
-          </Link>
         </div>
+
+        {/* 5. Cost (Optional) */}
+        {display_cost && (
+          <span className="text-green-600 dark:text-green-500 font-bold ml-1">
+            ${Number(reservation.total_cost || 0).toFixed(0)}
+          </span>
+        )}
+
+        {/* 6. Edit Link (Pushed to far right) */}
+        <Link
+          href={`https://www.sunbuggy.biz/edt_res.php?Id=${reservation.res_id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-auto pl-2"
+        >
+          <BsArrowReturnRight className="text-xl text-pink-500 hover:text-pink-600 transition-colors" />
+        </Link>
+
       </CardContent>
     </Card>
   );

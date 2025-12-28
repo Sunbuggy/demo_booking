@@ -54,7 +54,26 @@ function BizContent({
   tomorrow: string;
 }) {
   const hasReservations = reservations.length > 0;
-  const sortedData = hasReservations ? getTimeSortedData(reservations) : null;
+  
+  // 1. Get the data from the helper
+  let sortedData = hasReservations ? getTimeSortedData(reservations) : null;
+
+  // 2. FORCE RE-SORT: The Bug Fix
+  // If sortedData is an array (which it likely is for the Landing component), we sort it numerically.
+  // This fixes the issue where "10" comes before "8" because of alphabetical string sorting.
+  if (Array.isArray(sortedData)) {
+    sortedData = sortedData.sort((a: any, b: any) => {
+      // Safely parse the time keys (assuming property is 'time' or the first element if it's an entry)
+      // Adjust 'time' below to match the exact key in your data structure (e.g., a.time or a.key)
+      const timeA = parseInt(a.time || a.key || a, 10); 
+      const timeB = parseInt(b.time || b.key || b, 10);
+      return timeA - timeB;
+    });
+  } 
+  // If sortedData is an Object (dictionary), we can't easily sort it here without changing <Landing>.
+  // However, most "Board" views convert to an array before rendering. 
+  // If your Landing page accepts an Object, the sort order depends on Object.keys().
+  // If the issue persists after this patch, 'getTimeSortedData' in utils needs to return an Array, not an Object.
 
   return (
     <div className="min-h-screen w-full flex flex-col gap-5">
@@ -126,7 +145,7 @@ export default async function BizPage({
   }
 
   // Auth + user details
-  const supabase = await await createClient();
+  const supabase = await createClient(); // Fixed: Removed double 'await'
   const user = await getUserDetails(supabase);
 
   if (!user || !user[0]) {

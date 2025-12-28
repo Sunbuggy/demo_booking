@@ -7,13 +7,9 @@ import GroupShuttleAssignment from './shuttle-assignment/assign';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
-
 /**
  * Renders a landing component that displays reservation data.
- *
- * @param {Object} props - The component props.
- * @param {Record<string, Record<string, Reservation[]>>} props.data - The reservation data.
- * @returns {JSX.Element} The rendered landing component.
+ * Refactored to use horizontal layout for the header stats to save vertical space.
  */
 const Landing = ({
   data,
@@ -30,51 +26,54 @@ const Landing = ({
 }): JSX.Element => {
   if (data)
     return (
-      <div className="flex flex-col gap-5 max-w-screen">
-        <div className="daytotal">
+      <div className="flex flex-col gap-5 w-full max-w-full">
+        {/* HEADER: Flex row for compact stats */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm p-2 bg-slate-900/50 rounded-md border border-slate-800">
+          
+          {/* 1. Total Cost (Admin only) */}
           {role && role > 899 && display_cost && (
-            <p>
-              
-              Total Today: $
-              {
-                // Sum of all reservation.total_cost for the given data
-                Object.keys(data)
-                  .reduce((acc, hr) => {
-                    return (
-                      acc +
-                      Object.keys(data[hr]).reduce((acc, locationKey) => {
-                        return (
-                          acc +
-                          data[hr][locationKey].reduce((acc, reservation) => {
-                            return acc + Number(reservation.total_cost);
-                          }, 0)
-                        );
-                      }, 0)
-                    );
-                  }, 0)
-                  .toFixed(2)
-              }
-            </p>
-          )}
-          <p>
-            Total People:{' '}
-            {Object.keys(data).reduce((acc, hr) => {
-              return (
-                acc +
-                Object.keys(data[hr]).reduce((acc, locationKey) => {
+            <div className="font-semibold text-green-400">
+              Total: $
+              {Object.keys(data)
+                .reduce((acc, hr) => {
                   return (
                     acc +
-                    data[hr][locationKey].reduce((acc, reservation) => {
-                      return acc + countPeople(reservation);
+                    Object.keys(data[hr]).reduce((acc, locationKey) => {
+                      return (
+                        acc +
+                        data[hr][locationKey].reduce((acc, reservation) => {
+                          return acc + Number(reservation.total_cost);
+                        }, 0)
+                      );
                     }, 0)
                   );
                 }, 0)
-              );
-            }, 0)}
-          </p>
-          <p>
-            {/* Group and count vehicles for the given data. if same vehicle add
-            count and display vehicle with count ignore if count is 0  for the whole data using vehiclesList*/}
+                .toFixed(2)}
+            </div>
+          )}
+
+          {/* 2. Total People */}
+          <div className="font-medium text-slate-200">
+            Total People:{' '}
+            <span className="text-white font-bold">
+              {Object.keys(data).reduce((acc, hr) => {
+                return (
+                  acc +
+                  Object.keys(data[hr]).reduce((acc, locationKey) => {
+                    return (
+                      acc +
+                      data[hr][locationKey].reduce((acc, reservation) => {
+                        return acc + countPeople(reservation);
+                      }, 0)
+                    );
+                  }, 0)
+                );
+              }, 0)}
+            </span>
+          </div>
+
+          {/* 3. Vehicle Counts (Comma separated list) */}
+          <div className="flex-1 text-slate-300 min-w-[200px]">
             {vehiclesList
               .filter((key) => {
                 return Object.keys(data).some((hr) => {
@@ -106,17 +105,21 @@ const Landing = ({
                 return `${count}-${key}${count > 1 ? 's' : ''}`;
               })
               .join(', ')}
-          </p>
-          <p >
-          <ShaCreate />
-         <GroupShuttleAssignment date={date} />
-          <Button className="ml-2">
-          <Link href="/biz/reservations/new">Create Reservation</Link>
-         </Button>
-        </p>
+          </div>
+
+          {/* 4. Action Buttons (Aligned to the right) */}
+          <div className="flex items-center gap-2 ml-auto">
+            <ShaCreate />
+            <GroupShuttleAssignment date={date} />
+            <Button asChild size="sm" variant="secondary">
+              <Link href="/biz/reservations/new">Create Reservation</Link>
+            </Button>
+          </div>
         </div>
+
+        {/* HOUR CARDS */}
         {Object.keys(data).map((key, idx) => {
-          return (            
+          return (
             <HourCard
               data={data}
               key={idx}
@@ -127,10 +130,10 @@ const Landing = ({
             />
           );
         })}
-        
       </div>
     );
-  return <div>No data</div>;
+
+  return <div className="p-8 text-center text-gray-500">No data available</div>;
 };
 
 export default Landing;

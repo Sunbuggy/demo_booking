@@ -12,11 +12,21 @@
 //    - Locations start on fresh pages (Fixed Break Logic)
 //    - Departments stay together
 //    - "2025 Week #" Header
+//
+// UPDATES:
+// - Integrated Legacy DB Fetch for Las Vegas Daily Totals (People/Vehicles)
+// - Robust moment-based date normalization for accurate stat matching
 // ============================================================================
 
 import { useState, useEffect, Fragment, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { getLocationWeather, DailyWeather } from '@/app/actions/weather'; 
+
+// --- NEW IMPORTS FOR LEGACY STATS ---
+import { fetch_from_old_db } from '@/utils/old_db/actions';
+import { vehiclesList } from '@/utils/old_db/helpers';
+// ------------------------------------
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -129,6 +139,14 @@ interface ShiftDefaults {
     task?: string;
 }
 
+// --- NEW TYPE FOR LEGACY STATS ---
+interface ReservationStat {
+  sch_date: string;
+  ppl_count: string | number;
+  // Index signature to allow vehicle access (QA, SB1, etc)
+  [key: string]: string | number | boolean | null | undefined; 
+}
+
 // ============================================================================
 // 2. HELPER COMPONENTS
 // ============================================================================
@@ -212,6 +230,10 @@ export default function RosterPage() {
   const [liveStatus, setLiveStatus] = useState<Record<string, boolean>>({});
   const [weatherData, setWeatherData] = useState<Record<string, DailyWeather[]>>({});
   
+  // -- NEW STATE FOR LEGACY STATS --
+  // Stores { people: number, vehicles: string, fullString: "2-QA, 4-SB..." } keyed by "YYYY-MM-DD"
+  const [dailyStats, setDailyStats] = useState<Record<string, { people: number, vehicles: string, fullString: string }>>({});
+  
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [currentUserLevel, setCurrentUserLevel] = useState<number>(0);
 
@@ -262,6 +284,30 @@ export default function RosterPage() {
   useEffect(() => { 
       if (isMounted) fetchData(); 
   }, [currentDate, isMounted]);
+
+  // -- NEW HELPER TO CALCULATE DAILY STATS --
+  const calculateDailyStats = (reservations: ReservationStat[]) => {
+    const totalPeople = reservations.reduce((acc, r) => acc + (Number(r.ppl_count) || 0), 0);
+    
+    // Calculate vehicle breakdown string (e.g. "2-SB1")
+    const breakdown = vehiclesList
+      .map((key) => {
+        const count = reservations.reduce((acc, r) => acc + (Number(r[key]) || 0), 0);
+        return count > 0 ? `${count}-${key}${count > 1 ? 's' : ''}` : null;
+      })
+      .filter(Boolean)
+      .join(', ');
+      
+    const totalVehicles = vehiclesList.reduce((acc, key) => {
+         return acc + reservations.reduce((rAcc, r) => rAcc + (Number(r[key]) || 0), 0);
+    }, 0);
+
+    return {
+      people: totalPeople,
+      vehicles: totalVehicles > 0 ? `${totalVehicles} Veh` : '',
+      fullString: breakdown 
+    };
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -317,6 +363,36 @@ export default function RosterPage() {
             setLiveStatus(statusMap);
         }
     }
+
+    // --- NEW: FETCH RESERVATION STATS FOR LAS VEGAS ---
+    if (visibleLocs['Las Vegas']) {
+        const startIso = viewMode === 'week' ? startOfWeek.format('YYYY-MM-DD') : currentDate.format('YYYY-MM-DD');
+        const endIso = viewMode === 'week' ? startOfWeek.clone().add(6, 'days').format('YYYY-MM-DD') : currentDate.format('YYYY-MM-DD');
+        
+        const query = `SELECT * FROM reservations_modified WHERE sch_date >= '${startIso}' AND sch_date <= '${endIso}'`;
+        
+        try {
+            const resData = (await fetch_from_old_db(query)) as ReservationStat[];
+            
+            if (Array.isArray(resData)) {
+                const newStats: Record<string, any> = {};
+                const daysToCalc = viewMode === 'week' 
+                    ? Array.from({ length: 7 }, (_, i) => startOfWeek.clone().add(i, 'days')) 
+                    : [currentDate];
+
+                daysToCalc.forEach(day => {
+                    const dateKey = day.format('YYYY-MM-DD');
+                    // Use moment normalization for robust date matching
+                    const daysRes = resData.filter(r => moment(r.sch_date).format('YYYY-MM-DD') === dateKey);
+                    newStats[dateKey] = calculateDailyStats(daysRes);
+                });
+                setDailyStats(newStats);
+            }
+        } catch (error) {
+            console.error("Error fetching legacy stats:", error);
+        }
+    }
+    // --------------------------------------------------
 
     const weatherUpdates: Record<string, DailyWeather[]> = {};
     await Promise.all(Object.keys(LOCATIONS).map(async (loc) => {
@@ -732,10 +808,28 @@ export default function RosterPage() {
                                     </div>
                                 </td>
                                 {weekDays.map(day => {
-                                    const dailyTotal = sumDailyHours(locShifts, day.format('YYYY-MM-DD'));
+                                    const dateStr = day.format('YYYY-MM-DD');
+                                    const dailyTotal = sumDailyHours(locShifts, dateStr);
+                                    
+                                    // --- NEW: INJECT LEGACY STATS ---
+                                    const stats = locName === 'Las Vegas' ? dailyStats[dateStr] : null;
+                                    
                                     return (
-                                        <td key={day.toString()} className="border-l border-black bg-yellow-400 print-yellow text-center text-[10px] font-mono text-black">
-                                            {dailyTotal > 0 && <span>{dailyTotal.toFixed(1)}h</span>}
+                                        <td key={day.toString()} className="border-l border-black bg-yellow-400 print-yellow text-center text-[10px] font-mono text-black align-top p-1">
+                                            {/* Staff Hours */}
+                                            <div className="font-bold">{dailyTotal > 0 ? `${dailyTotal.toFixed(1)}h` : '-'}</div>
+                                            
+                                            {/* Reservation Stats (People & Vehicles) */}
+                                            {stats && stats.people > 0 && (
+                                                <div className="mt-1 pt-1 border-t border-black/20 flex flex-col items-center" title={stats.fullString}>
+                                                     <div className="font-bold text-orange-900 flex items-center gap-0.5">
+                                                        {stats.people} <span className="text-[8px] uppercase opacity-70">ppl</span>
+                                                     </div>
+                                                     <div className="text-[9px] leading-none opacity-80 whitespace-nowrap overflow-hidden text-ellipsis w-full max-w-[60px]">
+                                                        {stats.fullString}
+                                                     </div>
+                                                </div>
+                                            )}
                                         </td>
                                     );
                                 })}
@@ -882,7 +976,17 @@ export default function RosterPage() {
                     return (
                         <div key={locName} className="border rounded-lg overflow-hidden bg-card shadow-sm print:border-black print:shadow-none">
                             <div className="bg-slate-900 text-white p-3 font-bold uppercase flex justify-between items-center print:bg-white print:text-black print:border-b print:border-black">
-                                <div className="flex items-center"><MapPin className="w-4 h-4 inline mr-2" /> {locName}</div>
+                                <div className="flex flex-col">
+                                    <div className="flex items-center"><MapPin className="w-4 h-4 inline mr-2" /> {locName}</div>
+                                    
+                                    {/* --- NEW: DAY VIEW STATS FOR VEGAS --- */}
+                                    {locName === 'Las Vegas' && dailyStats[currentDate.format('YYYY-MM-DD')] && (
+                                        <div className="text-xs font-normal text-orange-300 normal-case mt-1 font-mono">
+                                            People: {dailyStats[currentDate.format('YYYY-MM-DD')].people} — {dailyStats[currentDate.format('YYYY-MM-DD')].fullString}
+                                        </div>
+                                    )}
+                                </div>
+                                
                                 {todayWeather && (<div className="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-slate-700 print:bg-white print:text-black print:border-black"><WeatherCell data={todayWeather} /></div>)}
                             </div>
                             <div className="divide-y divide-slate-100 dark:divide-slate-800 print:divide-black">
