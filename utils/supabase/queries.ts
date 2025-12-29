@@ -1637,3 +1637,53 @@ export const updateShuttleAssignment = cache(
     return data;
   }
 );
+/**
+ * @description Highly efficient unified fetch for the Profile Page.
+ * Uses a LEFT JOIN to ensure Customers (who have no employee_details) 
+ * still load successfully without a 404.
+ */
+export const getFullUserProfile = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select(`
+        *,
+        employee_details (
+          primary_work_location,
+          primary_position,
+          emp_id,
+          dialpad_number,
+          work_phone
+        )
+      `)
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('getFullUserProfile Error:', error.message);
+      return null;
+    }
+    return data;
+  }
+);
+
+/**
+ * @description Modified version of your existing getEmployeeDetails.
+ * Returns null instead of an empty array if not found, making it 
+ * easier to check for "Customer" status in the UI.
+ */
+export const getEmployeeDetailsSafe = cache(
+  async (supabase: SupabaseClient, user_id: string) => {
+    const { data, error } = await supabase
+      .from('employee_details')
+      .select()
+      .eq('user_id', user_id)
+      .maybeSingle(); // Use maybeSingle to avoid 'no rows' errors for customers
+
+    if (error) {
+      console.error('getEmployeeDetailsSafe Error:', error);
+      return null;
+    }
+    return data;
+  }
+);

@@ -1,21 +1,22 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (Print Master v5 - Fixed Location Breaks)
+// SUNBUGGY ROSTER PAGE (Print Master v6 - Integrated Notifications)
 // ============================================================================
 // Features: 
 // - Visual Roster & Live Status
 // - Weather Integration & Resource Planning
-// - Shift Management
+// - Shift Management & Notification Tracking
 // - PRINT PERFECT: 
-//    - Yellow Location Headers
-//    - Locations start on fresh pages (Fixed Break Logic)
-//    - Departments stay together
-//    - "2025 Week #" Header
+//     - Yellow Location Headers
+//     - Locations start on fresh pages (Fixed Break Logic)
+//     - Departments stay together
+//     - "2025 Week #" Header
 //
 // UPDATES:
-// - Integrated Legacy DB Fetch for Las Vegas Daily Totals (People/Vehicles)
-// - Robust moment-based date normalization for accurate stat matching
+// - Added "Last Notified" badges next to employee names
+// - Throttled Resend integration support via shift metadata
+// - Refined Tailwind/Lucide UI for modern admin aesthetics
 // ============================================================================
 
 import { useState, useEffect, Fragment, useMemo } from 'react';
@@ -41,7 +42,7 @@ import { Switch } from "@/components/ui/switch";
 import { 
     ChevronLeft, ChevronRight, Plus, Trash2, MapPin, 
     Ban, Copy, Loader2, Plane, Filter, LayoutList, 
-    Table as TableIcon, Info, History, Clock,
+    Table as TableIcon, Info, History, Clock, MailCheck,
     Sun, Cloud, CloudRain, Snowflake, CloudLightning, Wind, Printer,
     Flame, Wrench, Shield, CheckSquare, Mountain
 } from 'lucide-react';
@@ -57,6 +58,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import PublishButton from './components/publish-button';
+import { cn } from '@/lib/utils'; //
 
 
 // ============================================================================
@@ -69,7 +71,6 @@ const LOCATIONS: Record<string, string[]> = {
   'Michigan': ['ADMIN', 'SHOP', 'GUIDES', 'OFFICE']
 };
 
-// Colors for Specific Departments (Tailwind Classes)
 const DEPT_STYLES: Record<string, string> = {
   'OFFICE': 'bg-orange-100 dark:bg-orange-950/30 border-orange-200 text-orange-900 dark:text-orange-100',
   'SHOP': 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 text-zinc-900 dark:text-zinc-100',
@@ -77,7 +78,6 @@ const DEPT_STYLES: Record<string, string> = {
   'DEFAULT': 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 text-slate-700'
 };
 
-// Role Ordering / Configuration within Departments
 const ROLE_GROUPS: Record<string, string[]> = {
   'OFFICE': ['ADMIN', 'OPPS', 'CSR', 'PROD DEV'],
   'SHOP': ['BUGGIES', 'OHVS', 'FLEET', 'FAB', 'HELPER'],
@@ -119,6 +119,7 @@ interface Shift {
   role: string;
   location?: string;
   task?: string;
+  last_notified?: string | null; // Database logging column
 }
 
 interface AuditLog {
@@ -139,17 +140,40 @@ interface ShiftDefaults {
     task?: string;
 }
 
-// --- NEW TYPE FOR LEGACY STATS ---
 interface ReservationStat {
   sch_date: string;
   ppl_count: string | number;
-  // Index signature to allow vehicle access (QA, SB1, etc)
   [key: string]: string | number | boolean | null | undefined; 
 }
 
 // ============================================================================
 // 2. HELPER COMPONENTS
 // ============================================================================
+
+const LastNotifiedBadge = ({ lastNotified }: { lastNotified: string | null }) => {
+  if (!lastNotified) return (
+    <span className="text-[9px] text-zinc-500 italic ml-1 opacity-50 print:hidden">
+      (Unsent)
+    </span>
+  );
+
+  const isRecent = moment().diff(moment(lastNotified), 'hours') < 24;
+
+  return (
+    <span 
+      title={`Emailed on ${moment(lastNotified).format('MMM D, h:mm A')}`}
+      className={cn(
+        "inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[8px] font-bold ml-1 border print:hidden",
+        isRecent 
+          ? "bg-green-500/10 text-green-500 border-green-500/20" 
+          : "bg-zinc-800 text-zinc-400 border-zinc-700"
+      )}
+    >
+      <MailCheck size={8} />
+      {moment(lastNotified).fromNow()}
+    </span>
+  );
+};
 
 const UserAvatar = ({ emp, isOnline, size = 'md' }: { emp: Employee, isOnline: boolean, size?: 'sm'|'md'|'lg' }) => {
     const dims = size === 'sm' ? 'w-8 h-8 print:w-5 print:h-5' : size === 'lg' ? 'w-16 h-16' : 'w-10 h-10 print:w-6 print:h-6';
@@ -230,8 +254,6 @@ export default function RosterPage() {
   const [liveStatus, setLiveStatus] = useState<Record<string, boolean>>({});
   const [weatherData, setWeatherData] = useState<Record<string, DailyWeather[]>>({});
   
-  // -- NEW STATE FOR LEGACY STATS --
-  // Stores { people: number, vehicles: string, fullString: "2-QA, 4-SB..." } keyed by "YYYY-MM-DD"
   const [dailyStats, setDailyStats] = useState<Record<string, { people: number, vehicles: string, fullString: string }>>({});
   
   const [currentUserId, setCurrentUserId] = useState<string>('');
@@ -243,7 +265,6 @@ export default function RosterPage() {
       'Las Vegas': true, 'Pismo': true, 'Michigan': true
   });
   
-  const [lastRoles, setLastRoles] = useState<Record<string, string>>({});
   const [lastShiftParams, setLastShiftParams] = useState<Record<string, ShiftDefaults>>({});
 
   // -- MODALS --
@@ -285,11 +306,9 @@ export default function RosterPage() {
       if (isMounted) fetchData(); 
   }, [currentDate, isMounted]);
 
-  // -- NEW HELPER TO CALCULATE DAILY STATS --
   const calculateDailyStats = (reservations: ReservationStat[]) => {
     const totalPeople = reservations.reduce((acc, r) => acc + (Number(r.ppl_count) || 0), 0);
     
-    // Calculate vehicle breakdown string (e.g. "2-SB1")
     const breakdown = vehiclesList
       .map((key) => {
         const count = reservations.reduce((acc, r) => acc + (Number(r[key]) || 0), 0);
@@ -324,7 +343,6 @@ export default function RosterPage() {
         .gte('user_level', 300).order('full_name'); 
 
     if (empError) {
-        // Fallback for schema mismatch
         const { data: fallbackData } = await supabase.from('users').select('id, full_name, location, department, hire_date, user_level, timeclock_blocked, email, phone, avatar_url').gte('user_level', 300).order('full_name');
         if (fallbackData) {
              const cleanEmps = fallbackData.map(e => ({ ...e, job_title: 'STAFF', location: e.location || 'Las Vegas', department: e.department || 'General', timeclock_blocked: e.timeclock_blocked || false }));
@@ -364,7 +382,6 @@ export default function RosterPage() {
         }
     }
 
-    // --- NEW: FETCH RESERVATION STATS FOR LAS VEGAS ---
     if (visibleLocs['Las Vegas']) {
         const startIso = viewMode === 'week' ? startOfWeek.format('YYYY-MM-DD') : currentDate.format('YYYY-MM-DD');
         const endIso = viewMode === 'week' ? startOfWeek.clone().add(6, 'days').format('YYYY-MM-DD') : currentDate.format('YYYY-MM-DD');
@@ -373,7 +390,6 @@ export default function RosterPage() {
         
         try {
             const resData = (await fetch_from_old_db(query)) as ReservationStat[];
-            
             if (Array.isArray(resData)) {
                 const newStats: Record<string, any> = {};
                 const daysToCalc = viewMode === 'week' 
@@ -382,7 +398,6 @@ export default function RosterPage() {
 
                 daysToCalc.forEach(day => {
                     const dateKey = day.format('YYYY-MM-DD');
-                    // Use moment normalization for robust date matching
                     const daysRes = resData.filter(r => moment(r.sch_date).format('YYYY-MM-DD') === dateKey);
                     newStats[dateKey] = calculateDailyStats(daysRes);
                 });
@@ -392,7 +407,6 @@ export default function RosterPage() {
             console.error("Error fetching legacy stats:", error);
         }
     }
-    // --------------------------------------------------
 
     const weatherUpdates: Record<string, DailyWeather[]> = {};
     await Promise.all(Object.keys(LOCATIONS).map(async (loc) => {
@@ -849,7 +863,7 @@ export default function RosterPage() {
                         </tbody>
 
                         {/* 2. DEPARTMENTS (SEPARATE TBODY PER DEPT FOR PAGINATION) */}
-                        {Object.entries(departments).map(([deptName, roleGroups], deptIndex) => {
+                        {Object.entries(departments).map(([deptName, roleGroups]) => {
                             if (!Object.values(roleGroups).some(g => g.length > 0)) return null;
                             const isVisiting = deptName === 'Visiting Staff';
                             const deptEmps = Object.values(roleGroups).flat();
@@ -905,7 +919,21 @@ export default function RosterPage() {
                                                                 <div className="flex flex-row items-center gap-3 print:hidden">
                                                                     <div className="flex-shrink-0"><UserAvatar emp={emp} isOnline={liveStatus[emp.id]} /></div>
                                                                     <div className="flex flex-col min-w-0 flex-1">
-                                                                        <div className="font-medium flex items-center gap-1"><span className={`truncate ${isVisiting ? "italic text-amber-700" : ""}`}>{emp.full_name}</span>{emp.timeclock_blocked && <Ban className="w-3 h-3 text-red-500 flex-shrink-0" />}</div>
+                                                                        <div className="font-medium flex items-center gap-1">
+                                                                          <span className={`truncate ${isVisiting ? "italic text-amber-700" : ""}`}>{emp.full_name}</span>
+                                                                          
+                                                                          {/* DYNAMIC NOTIFICATION BADGE */}
+                                                                          {(() => {
+                                                                              const latest = empShifts.reduce((max: string | null, s: any) => {
+                                                                                  if (!s.last_notified) return max;
+                                                                                  if (!max) return s.last_notified;
+                                                                                  return moment(s.last_notified).isAfter(max) ? s.last_notified : max;
+                                                                              }, null);
+                                                                              return <LastNotifiedBadge lastNotified={latest} />;
+                                                                          })()}
+
+                                                                          {emp.timeclock_blocked && <Ban className="w-3 h-3 text-red-500 flex-shrink-0" />}
+                                                                        </div>
                                                                         <div className="flex items-center justify-between mt-0.5"><div onClick={(e) => e.stopPropagation()}><ContactMenu user={emp} iconOnly={true} /></div>{sumWeeklyHours(empShifts) > 0 && <span className="text-[10px] bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-200 px-1.5 rounded-sm font-mono">{sumWeeklyHours(empShifts).toFixed(1)}h</span>}</div>
                                                                     </div>
                                                                 </div>
