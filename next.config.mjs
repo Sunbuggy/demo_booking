@@ -1,16 +1,7 @@
 /** @type {import('next').NextConfig} */
 const config = {
   // Required for using @aws-sdk/client-s3 in server components / API routes
-  // This is valid and should stay
   serverExternalPackages: ['@aws-sdk/client-s3'],
-
-  // REMOVED: bodyParser and responseLimit
-  // These options were valid in the Pages Router api/ folder for individual route handlers,
-  // but they are NOT supported at the root next.config.js level in Next.js 13+ App Router.
-  // The warning you saw comes from these lines.
-  // If you need large payloads in specific API routes, handle it per-route using:
-  //   export const config = { api: { bodyParser: { sizeLimit: '500mb' } } };
-  // inside that route file.
 
   images: {
     remotePatterns: [
@@ -27,6 +18,12 @@ const config = {
       {
         protocol: 'https',
         hostname: 'usc1.contabostorage.com',
+        port: '',
+      },
+      // --- ADDED THIS ENTRY ---
+      {
+        protocol: 'https',
+        hostname: 'fztelytnkxwcobusnytq.supabase.co',
         port: '',
       },
     ],
