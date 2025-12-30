@@ -33,8 +33,7 @@ export async function addStaffMember(prevState: any, formData: FormData) {
 
   // 1. Create Identity in Auth/Users
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-    data: { full_name: fullName },
-    skip_sent: mode === 'silent'
+    data: { full_name: fullName }
   });
 
   if (authError) return { message: authError.message, success: false };
