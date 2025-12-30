@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { useState, useEffect, useCallback } from 'react';
+// import { createClient } from '@/utils/supabase/client'; // (Assuming you have this)
 import BookingProgress from './components/bookingProgress';
 import ReservationHolderForm from './components/reservationForm';
 import DateTimeSelector from './components/dateTimeSelector';
@@ -42,8 +42,11 @@ export default function PismoBookingPage() {
   }, [selections, goggles, bandannas, pricingCategories, durationHours]);
 
   // === The Payment Logic ===
-  const handlePayment = async (token: string) => {
-    if (!token) return setMessage('Invalid payment token.');
+  const handlePayment = useCallback(async (token: string) => {
+    if (!token) {
+      setMessage('Invalid payment token.');
+      return;
+    }
     
     setLoading(true);
     setMessage('Processing your payment...');
@@ -72,17 +75,16 @@ export default function PismoBookingPage() {
 
       if (result.success) {
         setMessage(`Confirmed! Transaction ID: ${result.transaction_id}`);
-        // Optional: Save to Supabase here or in the API route
-        // router.push('/success'); 
       } else {
         setMessage(`Payment Failed: ${result.error || 'Check card details.'}`);
       }
     } catch (err) {
+      console.error(err);
       setMessage('Error connecting to payment server.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [total, holderInfo, selectedDate, startTime, endTime, durationHours, selections, goggles, bandannas]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 pb-64 md:p-8">
@@ -110,7 +112,7 @@ export default function PismoBookingPage() {
           setMessage={setMessage}
         />
 
-        {loading && <p className="text-center text-2xl text-orange-400 mb-12">Updating information...</p>}
+        {loading && !isCheckoutExpanded && <p className="text-center text-2xl text-orange-400 mb-12">Updating information...</p>}
 
         {pricingCategories.length > 0 && (
           <VehicleGrid 
@@ -126,11 +128,11 @@ export default function PismoBookingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
             <div className="text-center">
               <label className="text-2xl block mb-4">Goggles ($4)</label>
-              <input type="number" min="0" value={goggles} onChange={e => setGoggles(parseInt(e.target.value) || 0)} className="p-4 bg-gray-700 rounded w-32 text-xl" />
+              <input type="number" min="0" value={goggles} onChange={e => setGoggles(parseInt(e.target.value) || 0)} className="p-4 bg-gray-700 rounded w-32 text-xl text-center" />
             </div>
             <div className="text-center">
               <label className="text-2xl block mb-4">Bandannas ($5)</label>
-              <input type="number" min="0" value={bandannas} onChange={e => setBandannas(parseInt(e.target.value) || 0)} className="p-4 bg-gray-700 rounded w-32 text-xl" />
+              <input type="number" min="0" value={bandannas} onChange={e => setBandannas(parseInt(e.target.value) || 0)} className="p-4 bg-gray-700 rounded w-32 text-xl text-center" />
             </div>
           </div>
         </section>
@@ -139,7 +141,7 @@ export default function PismoBookingPage() {
       <CheckoutForm 
         total={total}
         holderInfo={holderInfo}
-        selectedItems={pricingCategories.filter(cat => selections[cat.id]?.qty > 0).map(cat => ({
+        selectedItems={pricingCategories.filter(cat => (selections[cat.id]?.qty || 0) > 0).map(cat => ({
             id: cat.id,
             name: cat.vehicle_name,
             qty: selections[cat.id].qty,

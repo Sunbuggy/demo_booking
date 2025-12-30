@@ -1,6 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+
+declare global {
+  interface Window {
+    CollectJS: any;
+  }
+}
 
 export default function CheckoutForm({ 
   total, 
@@ -9,82 +15,133 @@ export default function CheckoutForm({
   onPayment, 
   message, 
   loading, 
-  selectedItems 
 }: any) {
   const [agreed, setAgreed] = useState(false);
-  const [collectLoaded, setCollectLoaded] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  
+  // Guard to prevent double configuration
+  const initializationAttempted = useRef(false);
 
-  // Initialize NMI Collect.js
-  useEffect(() => {
-    // Only load the script if the drawer is expanded and we haven't loaded it yet
-    if (!isExpanded || collectLoaded) return;
+  // === 1. The Configuration Function ===
+  const configurePayment = useCallback(() => {
+    if (!window.CollectJS) return;
+    if (initializationAttempted.current) return;
 
-    const script = document.createElement('script');
-    script.src = 'https://secure.networkmerchants.com/token/Collect.js';
-    // Ensure this variable is in your .env.local file!
-    script.setAttribute('data-tokenization-key', process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY || '');
-    script.async = true;
-
-    script.onload = () => {
-      if ((window as any).CollectJS) {
-        (window as any).CollectJS.configure({
-          variant: 'inline',
-          fields: {
-            ccnumber: { 
-              selector: '#cc-number',
-              placeholder: '0000 0000 0000 0000' 
-            },
-            ccexp: { 
-              selector: '#cc-exp',
-              placeholder: 'MM / YY' 
-            },
-            cvv: { 
-              selector: '#cc-cvv',
-              placeholder: 'CVV' 
-            },
-          },
-          // Custom styling for the iFrames to match your UI
-          style: {
-            'display': 'block',
-            'width': '100%',
-            'height': '24px',
-            'color': '#ffffff',
-            'font-size': '16px',
-            'background-color': 'transparent',
-            'border': 'none'
-          },
-          callback: (response: { token: string }) => {
-            console.log("Token received:", response.token);
-            onPayment(response.token);
-          }
-        });
-        setCollectLoaded(true);
-      }
-    };
-
-    document.body.appendChild(script);
-
-    return () => {
-      // Clean up script on unmount if needed
-      if (document.body.contains(script)) {
-        // document.body.removeChild(script); 
-      }
-    };
-  }, [isExpanded, collectLoaded, onPayment]);
-
-  const handlePayClick = () => {
-    if (!agreed) return;
-    if (!(window as any).CollectJS) {
-      console.error("Collect.js not loaded yet");
+    // Check if the HTML elements exist
+    const fieldElement = document.getElementById('cc-number');
+    if (!fieldElement) {
+      setTimeout(configurePayment, 200);
       return;
     }
-    // This triggers the NMI tokenization process
-    (window as any).CollectJS.startPaymentRequest();
+
+    try {
+      console.log("Initializing NMI with Validation Data...");
+
+      // FIX: We must provide price/currency/country to satisfy NMI's internal 
+      // "PaymentRequestAbstraction" checks, even if we don't use Apple Pay.
+      const config = {
+        variant: 'inline',
+        // Common Required Fields for successful init
+        price: total.toFixed(2),
+        currency: 'USD',
+        country: 'US',
+        
+        fields: {
+          ccnumber: {
+            selector: '#cc-number',
+            placeholder: '0000 0000 0000 0000'
+          },
+          ccexp: {
+            selector: '#cc-exp',
+            placeholder: 'MM / YY'
+          },
+          cvv: {
+            selector: '#cc-cvv',
+            placeholder: '123'
+          }
+        },
+        // The callback handles the response from tokenise()
+        callback: (response: { token?: string; error?: string }) => {
+          console.log("Payment Callback:", response);
+          if (response.token) {
+            onPayment(response.token);
+          } else {
+            // Log raw error for debugging
+            console.error("NMI Validation Error:", response);
+            alert("Payment Error: " + (response.error || "Please check card details."));
+          }
+        }
+      };
+
+      window.CollectJS.configure(config);
+      
+      initializationAttempted.current = true;
+      setIsReady(true);
+      console.log("NMI Ready & Configured");
+
+    } catch (err) {
+      console.error("NMI Configuration Crash:", err);
+    }
+  }, [total, onPayment]);
+
+  // === 2. Script Loader ===
+  useEffect(() => {
+    // Reset state when form closes
+    if (!isExpanded) {
+      initializationAttempted.current = false;
+      setIsReady(false);
+      return;
+    }
+
+    const tokenKey = process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY;
+    if (!tokenKey) {
+       console.error("Missing NMI Key");
+       return;
+    }
+
+    const loadScript = () => {
+       if (window.CollectJS) {
+          // If script exists, just configure
+          configurePayment();
+       } else {
+          // Load fresh script
+          const script = document.createElement('script');
+          script.src = "https://secure.networkmerchants.com/token/Collect.js";
+          script.setAttribute('data-tokenization-key', tokenKey);
+          script.async = true;
+          script.onload = () => setTimeout(configurePayment, 500);
+          document.body.appendChild(script);
+       }
+    };
+
+    // Small delay to ensure DOM is rendered before script logic runs
+    setTimeout(loadScript, 300);
+
+  }, [isExpanded, configurePayment]);
+
+  // === 3. Pay Button Handler ===
+  const handleSubmit = () => {
+    if (!window.CollectJS || !isReady) {
+      console.error("Payment system not ready");
+      return;
+    }
+
+    console.log("Submitting Token Request...");
+
+    // FIX: Try both spellings just in case, though tokenise is standard.
+    if (typeof window.CollectJS.tokenise === 'function') {
+      window.CollectJS.tokenise();
+    } else if (typeof window.CollectJS.tokenize === 'function') {
+      window.CollectJS.tokenize();
+    } else {
+      console.error("Critical: tokenise function missing. Config likely failed.");
+      alert("Payment system failed to load. Please refresh.");
+    }
   };
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isExpanded ? 'bg-gray-800 h-[85vh] rounded-t-3xl shadow-2xl' : 'bg-orange-600 h-20 cursor-pointer'
+    <div className={`fixed bottom-0 left-0 right-0 z-[100] transition-all duration-300 ${
+      isExpanded ? 'bg-gray-900 h-[90vh] rounded-t-3xl shadow-2xl border-t border-gray-700' : 'bg-orange-600 h-20 cursor-pointer'
     }`}>
       
       {!isExpanded ? (
@@ -94,66 +151,67 @@ export default function CheckoutForm({
         </div>
       ) : (
         <div className="p-6 md:p-8 overflow-y-auto h-full max-w-2xl mx-auto">
-          <button onClick={() => setIsExpanded(false)} className="text-orange-400 underline mb-6">← Edit Selection</button>
+          <div className="flex justify-between items-center mb-6">
+            <button onClick={() => setIsExpanded(false)} className="text-orange-400 hover:text-orange-300">← Back</button>
+            <h2 className="text-xl font-bold text-white">Secure Payment</h2>
+          </div>
           
-          <h2 className="text-2xl font-bold mb-4">Summary</h2>
-          <div className="bg-gray-900/50 p-4 rounded-xl mb-6 space-y-2">
-            {selectedItems.map((item: any) => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span>{item.qty}x {item.name}</span>
-                <span>${item.price.toFixed(2)}</span>
-              </div>
-            ))}
-            <div className="border-t border-gray-700 pt-2 mt-2 flex justify-between font-bold text-lg">
-              <span>Total Due:</span>
+          <div className="bg-gray-800 p-4 rounded-xl mb-6 border border-gray-700">
+             <div className="flex justify-between font-bold text-lg text-white">
+              <span>Total Amount:</span>
               <span>${total.toFixed(2)}</span>
             </div>
           </div>
 
-          <label className="flex gap-4 items-start bg-red-950/20 p-4 rounded-xl mb-8 cursor-pointer border border-red-900">
+          <label className="flex gap-4 items-start bg-red-950/30 p-4 rounded-xl mb-8 cursor-pointer border border-red-800/50">
             <input 
               type="checkbox" 
               checked={agreed} 
               onChange={e => setAgreed(e.target.checked)} 
-              className="w-6 h-6 mt-1" 
+              className="w-6 h-6 mt-1 accent-orange-500" 
             />
-            <span className="text-sm">I agree to the liability waiver and assume responsibility for any damages to the equipment.</span>
+            <span className="text-sm text-gray-200 font-medium">
+                I agree to the liability waiver and assume responsibility for equipment damages.
+            </span>
           </label>
 
-          {/* IMPORTANT: We keep these in the DOM but hide them visually until 'agreed' is true.
-            This allows NMI's script to find and inject the iframes correctly.
-          */}
-          <div className={`space-y-4 pb-20 transition-opacity duration-300 ${agreed ? 'opacity-100' : 'opacity-20 pointer-events-none'}`}>
-            <div className="group">
-              <label className="text-xs text-gray-400 mb-1 block">Card Number</label>
-              <div id="cc-number" className="p-4 bg-gray-900 rounded-lg border border-gray-700 h-14 flex items-center" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Expiry (MM/YY)</label>
-                <div id="cc-exp" className="p-4 bg-gray-900 rounded-lg border border-gray-700 h-14 flex items-center" />
+          {/* Form Container */}
+          <div className={`space-y-6 pb-24 transition-all duration-500 ${agreed ? 'opacity-100' : 'opacity-20 pointer-events-none grayscale'}`}>
+              
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-gray-400 uppercase ml-1">Card Number</label>
+                <div id="cc-number" className="p-4 bg-gray-100 rounded-lg h-14 w-full text-black shadow-inner" />
               </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">CVV</label>
-                <div id="cc-cvv" className="p-4 bg-gray-900 rounded-lg border border-gray-700 h-14 flex items-center" />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-400 uppercase ml-1">Expiration</label>
+                  <div id="cc-exp" className="p-4 bg-gray-100 rounded-lg h-14 w-full text-black shadow-inner" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-400 uppercase ml-1">CVV</label>
+                  <div id="cc-cvv" className="p-4 bg-gray-100 rounded-lg h-14 w-full text-black shadow-inner" />
+                </div>
               </div>
-            </div>
 
-            {message && (
-              <p className={`text-center font-bold p-3 rounded ${
-                message.includes('Confirmed') ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'
-              }`}>
-                {message}
-              </p>
-            )}
+              {message && (
+                <div className={`text-center font-bold p-4 rounded-lg border ${
+                  message.includes('Confirmed') 
+                  ? 'bg-green-900/40 text-green-400 border-green-800' 
+                  : 'bg-red-900/40 text-red-400 border-red-800'
+                }`}>
+                  {message}
+                </div>
+              )}
 
-            <button 
-              onClick={handlePayClick} 
-              disabled={loading || !collectLoaded || !agreed}
-              className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all"
-            >
-              {loading ? 'Processing...' : `Pay $${total.toFixed(2)} & Book Now`}
-            </button>
+              <button 
+                type="button"
+                onClick={handleSubmit} 
+                disabled={loading || !isReady || !agreed}
+                className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 text-white py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-95"
+              >
+                {loading ? 'Processing...' : `Pay $${total.toFixed(2)} Now`}
+              </button>
           </div>
         </div>
       )}
