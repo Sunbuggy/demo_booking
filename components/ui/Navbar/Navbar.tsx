@@ -1,11 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import Navlinks from './Navlinks';
-import {
-  fetchTimeEntryByUserId,
-  getUser,
-  getUserDetails
-} from '@/utils/supabase/queries';
-import { TimeEntry } from '@/app/account/page';
+import { getUser, getUserDetails } from '@/utils/supabase/queries';
 
 export async function getServerSideProps() {
   const supabase =  await createClient();
@@ -18,31 +13,21 @@ export async function getServerSideProps() {
 
 export default async function Navbar() {
   const supabase =  await createClient();
-  const user = await getUserDetails(supabase); // Expecting user to be of type UserType | null
+  
+  // We still fetch basic user details to decide if we should show the "Log In" button
+  const user = await getUserDetails(supabase); 
   const usr = await getUser(supabase);
-  const clockinStatus =
-    user && (user[0]?.time_entry_status as string | null | undefined);
-  const timeEntry = user
-    ? await fetchTimeEntryByUserId(supabase, user[0]?.id)
-    : null;
-  // ✅ NEW (Safe for Arrays and Objects)
-const timeEnt = user ? (timeEntry as unknown as TimeEntry[]) : null;
 
-// Helper to grab the data safely
-const rawClockIn = timeEnt?.[0]?.clock_in;
+  // NOTE: Removed heavy time_entry fetching. 
+  // The <CurrentUserAvatar /> client component now handles real-time status fetching directly.
 
-const clockInTimeStamp = user
-  ? Array.isArray(rawClockIn)
-    ? rawClockIn[0]?.clock_in_time // If Array, grab first item
-    : rawClockIn?.clock_in_time    // If Object, grab property directly
-  : undefined;
   return (
-    <nav className="z-50 w-[99.7%] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 h-15 p-1">
+    // Reduced height: Changed p-2 to p-1. Explicit h-12 caps height.
+    <nav className="z-50 w-[99.7%] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 h-12 p-1">
       <Navlinks
         user={user ? user[0] : null}
         usr={usr}
-        status={clockinStatus}
-        clockInTimeStamp={clockInTimeStamp}
+        // No longer passing status/timestamps—they are handled internally by the avatar
       />
     </nav>
   );
