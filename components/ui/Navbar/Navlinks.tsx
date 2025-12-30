@@ -16,10 +16,11 @@ import { UserType } from '@/app/(biz)/biz/users/types';
 import { usePathname } from 'next/navigation';
 import { BarcodeScanner } from '@/components/qr-scanner/scanner';
 import DialogFactory from '@/components/dialog-factory';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '../button';
 import { User } from '@supabase/supabase-js';
 import { MenuIcon } from 'lucide-react';
+
 interface NavlinksProps {
   user: UserType | null;
   usr: User | null | undefined;
@@ -34,7 +35,14 @@ export default function Navlinks({
   clockInTimeStamp
 }: NavlinksProps) {
   const path = usePathname();
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // === HYDRATION FIX ===
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="flex justify-between">
@@ -42,13 +50,17 @@ export default function Navlinks({
       <div className="ml-5 flex gap-4">
         <Sheet>
           <SheetTrigger asChild>
-            <button aria-label="Logo">
-              <div className="hidden dark:block">
-                <MenuIcon size={40} />
-              </div>
-              <div className="dark:hidden absolute pt-[5px] pl-[10px] transform -translate-y-1/2 block w-[50px] h-[38px] bg-transparent border-0 cursor-pointer z-[1000]">
-                <MenuIcon size={40} className="text-black" />
-              </div>
+            <button aria-label="Menu" className="relative h-10 w-10 flex items-center justify-center">
+              {/* Only render content once mounted to prevent hydration mismatch */}
+              {mounted ? (
+                <>
+                  {/* Simplfied logic: One icon, CSS handles theme coloring */}
+                  <MenuIcon size={40} className="text-black dark:text-white" />
+                </>
+              ) : (
+                /* Placeholder during server-render to maintain layout height/width */
+                <div className="w-10 h-10" />
+              )}
             </button>
           </SheetTrigger>
           <SheetContent
@@ -94,21 +106,20 @@ export default function Navlinks({
           </svg>
         </Button>
         <DialogFactory
-          children={
-            <BarcodeScanner user={usr} setIsDialogOpen={setIsDialogOpen} />
-          }
           isDialogOpen={isDialogOpen}
           setIsDialogOpen={setIsDialogOpen}
           title="QR Scanner"
           description="Scan a QR Code"
           disableCloseButton={true}
-        />
+        >
+          <BarcodeScanner user={usr} setIsDialogOpen={setIsDialogOpen} />
+        </DialogFactory>
 
         {/* Conditional Rendering for User */}
         {user ? (
           <UserNav
             email={user.email}
-            userInitials={user.full_name[0]}
+            userInitials={user.full_name ? user.full_name[0] : 'U'}
             userImage={user.avatar_url}
             userName={user.full_name}
             status={status}
@@ -117,8 +128,7 @@ export default function Navlinks({
             user_level={user.user_level}
           />
         ) : (
-          path &&
-          !path.includes('signin') && (
+          mounted && path && !path.includes('signin') && (
             <Link
               href="/signin"
               className="inline-flex underline items-center leading-6 font-medium transition ease-in-out duration-75 cursor-pointer dark:text-yellow-500 text-black rounded-md h-[36px]"

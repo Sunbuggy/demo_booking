@@ -37,10 +37,7 @@ const clockInTimeStamp = user
     : rawClockIn?.clock_in_time    // If Object, grab property directly
   : undefined;
   return (
-    // Reduced height: Changed p-2 (padding: 0.5rem/8px) to p-1 (0.25rem/4px) to shorten the nav bar vertically.
-    // Also added explicit h-12 (48px) to cap the height, overriding h-fit. This makes the bar take less space (~64px to ~48px total).
-    // Kept semi-transparency (bg-background/95 backdrop-blur) intact. If content overflows, adjust child elements in Navlinks.tsx (e.g., reduce font sizes or padding).
-    <nav className="z-50 w-[99.7%] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 h-12 p-1">
+    <nav className="z-50 w-[99.7%] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 h-15 p-1">
       <Navlinks
         user={user ? user[0] : null}
         usr={usr}
