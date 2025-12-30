@@ -35,7 +35,8 @@ export default function UserStatusAvatar({
   user: any; 
   currentUserLevel?: number;
   isCurrentUser?: boolean;
-  size?: 'sm' | 'md' | 'lg' 
+  size?: 'sm' | 'md' | 'lg' ;
+  onClick?: () => void;
 }) {
   const supabase = createClient();
   const router = useRouter();

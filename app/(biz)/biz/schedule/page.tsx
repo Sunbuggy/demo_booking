@@ -26,15 +26,13 @@ import { Switch } from "@/components/ui/switch";
 import { 
     ChevronLeft, ChevronRight, Plus, Trash2, MapPin, 
     Ban, Copy, Loader2, Plane, Filter, LayoutList, 
-    Table as TableIcon, Info, History, MailCheck,
+    Table as TableIcon, History, MailCheck,
     Sun, Cloud, CloudRain, Snowflake, CloudLightning, Wind, Printer,
-    Flame, Wrench, Shield, CheckSquare, Mountain
+    Flame, Wrench, Shield, CheckSquare, Mountain, LucideIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import moment from 'moment';
 import { Badge } from '@/components/ui/badge';
-import Image from 'next/image';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Popover,
   PopoverContent,
@@ -43,7 +41,7 @@ import {
 import PublishButton from './components/publish-button';
 import { cn } from '@/lib/utils';
 
-// ... [LOCATIONS, DEPT_STYLES, ROLE_GROUPS, TASKS Constants omitted for brevity, assume they are present] ...
+// --- CONSTANTS ---
 const LOCATIONS: Record<string, string[]> = {
   'Las Vegas': ['ADMIN', 'OFFICE', 'DUNES', 'SHUTTLES', 'SHOP'],
   'Pismo': ['ADMIN', 'CSR', 'BEACH', 'SHOP'],
@@ -68,7 +66,7 @@ const ROLE_GROUPS: Record<string, string[]> = {
   'GUIDES': ['GUIDE', 'LEAD']
 };
 
-const TASKS: Record<string, { label: string, color: string, code: string, icon: any }> = {
+const TASKS: Record<string, { label: string, color: string, code: string, icon: LucideIcon }> = {
   'TORCH': { label: 'TORCH (Dispatch)', color: 'bg-red-600', code: 'T', icon: Flame },
   'SST': { label: 'SST (Support)', color: 'bg-blue-600', code: 'S', icon: Wrench },
   'SITE_MGR': { label: 'Site Manager', color: 'bg-green-600', code: 'SM', icon: Shield },
@@ -76,6 +74,7 @@ const TASKS: Record<string, { label: string, color: string, code: string, icon: 
   'VOF': { label: 'Valley of Fire', color: 'bg-orange-500', code: 'V', icon: Mountain }
 };
 
+// --- INTERFACES ---
 interface Employee {
   id: string;
   full_name: string;
@@ -125,6 +124,53 @@ interface ReservationStat {
   [key: string]: string | number | boolean | null | undefined; 
 }
 
+// --- HELPER COMPONENTS ---
+
+const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: string }) => {
+    const [open, setOpen] = useState(false);
+    const [logs, setLogs] = useState<AuditLog[]>([]);
+    const [loading, setLoading] = useState(false);
+    const supabase = createClient();
+
+    const loadLogs = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('audit_logs')
+            .select('id, created_at, action, user_id, table_name, row')
+            .eq('table_name', tableName)
+            .eq('row', rowId)
+            .order('created_at', { ascending: false });
+        
+        if (data) setLogs(data as AuditLog[]);
+        setLoading(false);
+    };
+
+    return (
+        <Popover open={open} onOpenChange={(isOpen) => { setOpen(isOpen); if(isOpen) loadLogs(); }}>
+            <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"><History className="h-4 w-4" /></Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0" align="end">
+                <div className="p-4 space-y-2">
+                    <h4 className="font-medium leading-none mb-2">Change History</h4>
+                    {loading ? <div className="flex justify-center p-4"><Loader2 className="h-4 w-4 animate-spin" /></div> : (
+                        <div className="max-h-[200px] overflow-y-auto text-xs space-y-2">
+                            {logs.length === 0 ? <div className="text-muted-foreground italic">No history found.</div> : 
+                                logs.map(log => (
+                                    <div key={log.id} className="border-b pb-1 last:border-0">
+                                        <div className="font-bold text-foreground">{log.action}</div>
+                                        <div className="text-[10px] text-muted-foreground">{moment(log.created_at).format('MMM D, h:mm A')}</div>
+                                    </div>
+                                ))
+                            }
+                        </div>
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+};
+
 const LastNotifiedBadge = ({ lastNotified }: { lastNotified: string | null }) => {
   if (!lastNotified) return (
     <span className="text-[9px] text-zinc-500 italic ml-1 opacity-50 print:hidden">(Unsent)</span>
@@ -159,6 +205,7 @@ const TaskBadge = ({ taskKey }: { taskKey: string }) => {
     return <div className={`${task.color} text-white text-[9px] font-bold px-1 rounded-sm flex items-center justify-center h-4 min-w-[14px] print-color-exact`} title={task.label}>{task.code}</div>;
 };
 
+// --- MAIN COMPONENT ---
 export default function RosterPage() {
   const supabase = createClient();
   const [isMounted, setIsMounted] = useState(false);
@@ -190,8 +237,6 @@ export default function RosterPage() {
   const [formLocation, setFormLocation] = useState('Las Vegas');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileEmp, setProfileEmp] = useState<Employee | null>(null);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [loadingLogs, setLoadingLogs] = useState(false);
 
   const startOfWeek = currentDate.clone().startOf('isoWeek');
   const weekDays = Array.from({ length: 7 }, (_, i) => startOfWeek.clone().add(i, 'days'));
@@ -272,17 +317,6 @@ export default function RosterPage() {
   };
   const sumWeeklyHours = (shiftList: Shift[]): number => {
       return shiftList.reduce((acc, s) => acc + getHours(s.start_time, s.end_time), 0);
-  };
-
-  const fetchLogs = async (tableName: string, rowId: string) => {
-      setLoadingLogs(true);
-      const { data: logs, error } = await supabase.from('audit_logs').select('id, created_at, action, user_id, table_name, row').eq('table_name', tableName).eq('row', rowId).order('created_at', { ascending: false });
-      if (!error && logs) {
-          const actorIds = Array.from(new Set(logs.map(l => l.user_id)));
-          const { data: actors } = await supabase.from('users').select('id, full_name').in('id', actorIds);
-          setAuditLogs(logs.map(log => ({ ...log, actor_name: actors?.find(a => a.id === log.user_id)?.full_name || 'Unknown' })));
-      }
-      setLoadingLogs(false);
   };
 
   const logChange = async (action: string, table: string, rowId: string) => {
@@ -505,8 +539,8 @@ export default function RosterPage() {
                         </tbody>
 
                         {Object.entries(departments).map(([deptName, roleGroups]) => {
-                            if (!Object.values(roleGroups).some(g => (g as any[]).length > 0)) return null;
-                            const deptEmps = Object.values(roleGroups).flat();
+                            if (!Object.values(roleGroups as Record<string, Employee[]>).some(g => (g).length > 0)) return null;
+                            const deptEmps = Object.values(roleGroups as Record<string, Employee[]>).flat();
                             const deptShifts = locShifts.filter(s => (deptEmps as any[]).some(e => e.id === s.user_id));
                             const isVisiting = deptName === 'Visiting Staff';
                             const deptColorClass = DEPT_STYLES[deptName] || DEPT_STYLES['DEFAULT'];
@@ -527,7 +561,7 @@ export default function RosterPage() {
                                         ))}
                                     </tr>
 
-                                    {Object.entries(roleGroups).map(([roleName, emps]: [string, any]) => {
+                                    {Object.entries(roleGroups as Record<string, Employee[]>).map(([roleName, emps]) => {
                                         if (emps.length === 0) return null;
                                         return (
                                             <Fragment key={roleName}>
@@ -622,7 +656,7 @@ export default function RosterPage() {
                 {Object.entries(groupedEmployees).map(([locName, departments]) => {
                     if (!visibleLocs[locName]) return null;
                     const activeDepts = Object.entries(departments).filter(([deptName, roleGroups]) => 
-                         Object.values(roleGroups).some((group: any) => group.some((emp: any) => shifts.some(s => s.user_id === emp.id && moment(s.start_time).format('YYYY-MM-DD') === currentDate.format('YYYY-MM-DD'))))
+                         Object.values(roleGroups as Record<string, Employee[]>).some((group: any) => group.some((emp: any) => shifts.some(s => s.user_id === emp.id && moment(s.start_time).format('YYYY-MM-DD') === currentDate.format('YYYY-MM-DD'))))
                     );
 
                     if (activeDepts.length === 0) return null;
@@ -643,7 +677,7 @@ export default function RosterPage() {
                             </div>
                             <div className="divide-y divide-slate-100 dark:divide-slate-800 print:divide-black">
                                 {activeDepts.map(([deptName, roleGroups]) => {
-                                    const allDeptEmps = Object.values(roleGroups).flat();
+                                    const allDeptEmps = Object.values(roleGroups as Record<string, Employee[]>).flat();
                                     return (
                                     <div key={deptName} className="p-0 print:break-before">
                                         <div className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-b ${DEPT_STYLES[deptName] || 'bg-muted'} print:bg-gray-100 print:text-black print:border-black`}>
@@ -692,7 +726,12 @@ export default function RosterPage() {
       <div className="print-hide">
           <Dialog open={isShiftModalOpen} onOpenChange={setIsShiftModalOpen}>
             <DialogContent className="max-w-sm">
-                <DialogHeader><DialogTitle className="flex items-center justify-between"><span>Shift Details</span>{selectedShiftId && <ChangeLogViewer tableName="employee_schedules" rowId={selectedShiftId} />}</DialogTitle></DialogHeader>
+                <DialogHeader>
+                    <DialogTitle className="flex items-center justify-between w-full">
+                        <span>Shift Details</span>
+                        {selectedShiftId && <ChangeLogViewer tableName="employee_schedules" rowId={selectedShiftId} />}
+                    </DialogTitle>
+                </DialogHeader>
                 <div className="grid gap-4 py-2">
                     <div className="text-sm font-semibold">{selectedEmpName} <span className="font-normal text-muted-foreground">- {moment(selectedDate).format('MMM Do')}</span></div>
                     <div className="grid grid-cols-2 gap-4">
@@ -714,7 +753,12 @@ export default function RosterPage() {
           
           <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
             <DialogContent className="max-w-md">
-                <DialogHeader><DialogTitle className="flex items-center justify-between"><span>Edit Employee</span>{profileEmp && <ChangeLogViewer tableName="users" rowId={profileEmp.id} />}</DialogTitle></DialogHeader>
+                <DialogHeader>
+                    <DialogTitle className="flex items-center justify-between w-full">
+                        <span>Edit Employee</span>
+                        {profileEmp && <ChangeLogViewer tableName="users" rowId={profileEmp.id} />}
+                    </DialogTitle>
+                </DialogHeader>
                 {profileEmp && (
                 <div className="grid gap-4 py-2">
                     <div className="flex items-center gap-4 border-b pb-4 mb-2"><UserStatusAvatar user={profileEmp} currentUserLevel={currentUserLevel} size="lg" /><div><div className="text-lg font-bold">{profileEmp.full_name}</div><div className="text-xs text-muted-foreground">{profileEmp.email}</div></div></div>
