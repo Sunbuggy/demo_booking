@@ -17,6 +17,7 @@ interface TimeEntry {
   end_time: string | null;
   role: string;
   status: 'active' | 'break' | 'closed'; 
+  is_on_break: boolean;
   break_start: string | null;
   total_break_minutes: number;
   location?: string;
@@ -31,7 +32,12 @@ interface Schedule {
   location: string;
 }
 
-export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
+interface SmartTimeClockProps {
+    employeeId: string;
+    onClose?: () => void; // NEW: Optional prop for Modal mode
+}
+
+export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockProps) {
   const supabase = createClient();
   const router = useRouter();
   
@@ -39,9 +45,6 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
   const [loading, setLoading] = useState(true);
   const [activeShift, setActiveShift] = useState<TimeEntry | null>(null);
   const [todaySchedule, setTodaySchedule] = useState<Schedule | null>(null);
-  
-  // "manualBlock" = true means the manager has explicitly restricted this user
-  // to ONLY clock in when scheduled.
   const [manualBlock, setManualBlock] = useState(false);
   
   // Camera & GPS State
@@ -54,116 +57,70 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
   const [locationCoords, setLocationCoords] = useState<{lat: number, lon: number} | null>(null);
   const [gpsError, setGpsError] = useState(false); 
 
-  // Post-Clock-In Flow State
+  // Flow State
   const [successAction, setSuccessAction] = useState<'in' | 'out' | null>(null);
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(3); // Reduced to 3s for modal
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
   const [successLocation, setSuccessLocation] = useState<string>(''); 
 
-  // --- 1. INITIAL DATA FETCH & CAMERA INIT ---
+  // --- 1. INITIAL FETCH & CAMERA ---
   useEffect(() => {
     let isMounted = true;
-
     fetchStatus();
     getCurrentLocation();
     
     const startCamera = async () => {
-        // Clean up old stream if it exists
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(t => t.stop());
-        }
-        
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+        if (!navigator.mediaDevices?.getUserMedia) {
              if(isMounted) setCameraError(true);
              return;
         }
-
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } 
+                video: { facingMode: 'user', width: 640, height: 480 } 
             });
-            
-            if (!isMounted) {
-                stream.getTracks().forEach(t => t.stop());
-                return;
-            }
-
+            if (!isMounted) { stream.getTracks().forEach(t => t.stop()); return; }
             streamRef.current = stream;
-            
-            // Attach to video element immediately
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                // Attempt to play
-                videoRef.current.play().catch(e => console.warn("Autoplay blocked:", e));
+                videoRef.current.play().catch(() => {});
             }
-            
             setCameraActive(true);
-            setCameraError(false);
-
-        } catch (err) {
-            console.error("Camera Init Error:", err);
-            if(isMounted) setCameraError(true);
-        }
+        } catch (err) { if(isMounted) setCameraError(true); }
     };
-
     startCamera();
-
-    return () => {
-        isMounted = false;
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-        }
-    };
+    return () => { isMounted = false; streamRef.current?.getTracks().forEach(t => t.stop()); };
   }, [employeeId]);
 
-  // --- 2. RE-ATTACH STREAM ON RENDER ---
-  useEffect(() => {
-      if (videoRef.current && streamRef.current && !videoRef.current.srcObject) {
-          videoRef.current.srcObject = streamRef.current;
-          videoRef.current.play().catch(e => console.warn("Re-attach play error:", e));
-      }
-  });
-
-  // --- 3. REDIRECT LOGIC ---
+  // --- 2. SUCCESS REDIRECT / CLOSE ---
   useEffect(() => {
       if (!successAction) return;
 
       if (countdown === 0) {
-          const locationSlug = getLocationSlug(successLocation);
-          let target = '/biz/users/admin/dashboard'; // Fallback
-          
-          if (successAction === 'in' && locationSlug) {
-            target = `/biz/${locationSlug}`;
-          } else if (successAction === 'out') {
-            target = '/biz/my-schedule'; // Redirect to schedule after clock out
+          if (onClose) {
+              // If in Modal Mode, just close the modal
+              onClose();
+          } else {
+              // If in Page Mode, run standard redirects
+              const locationSlug = getLocationSlug(successLocation);
+              let target = '/biz/users/admin/dashboard'; 
+              if (successAction === 'in' && locationSlug) target = `/biz/${locationSlug}`;
+              else if (successAction === 'out') target = '/biz/my-schedule'; 
+              router.push(target);
           }
-
-          router.push(target);
           return;
       }
 
-      const timer = setTimeout(() => {
-          setCountdown((prev) => prev - 1);
-      }, 1000);
-
+      const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
       return () => clearTimeout(timer);
-  }, [successAction, countdown, router, successLocation]);
+  }, [successAction, countdown, router, successLocation, onClose]);
 
-
-  // --- HELPER FUNCTIONS ---
-
-  const handleRetryCamera = () => {
-      window.location.reload(); 
-  };
-
+  // --- 3. HELPER FUNCTIONS ---
+  const handleRetryCamera = () => window.location.reload(); 
+  
   const getLocationSlug = (locationName?: string) => {
-      if (!locationName) return '';
-      const map: Record<string, string> = {
-          'Las Vegas': 'vegas',
-          'Pismo': 'pismo',
-          'Michigan': 'michigan'
-      };
-      return map[locationName] || '';
+      const map: Record<string, string> = { 'Las Vegas': 'vegas', 'Pismo': 'pismo', 'Michigan': 'michigan' };
+      return locationName ? map[locationName] || '' : '';
   };
 
   const fetchStatus = async () => {
@@ -171,37 +128,24 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
     const startOfDay = moment().startOf('day').toISOString();
     const endOfDay = moment().endOf('day').toISOString();
 
-    // 1. Check if user is restricted
     const { data: userData } = await supabase.from('users').select('timeclock_blocked').eq('id', employeeId).single();
     if (userData?.timeclock_blocked) setManualBlock(true);
 
-    // 2. Check if already clocked in
     const { data: currentEntry } = await supabase.from('time_entries').select('*').eq('user_id', employeeId).is('end_time', null).single();
     if (currentEntry) {
         setActiveShift(currentEntry);
         setSuccessLocation(currentEntry.location || 'Las Vegas');
     }
 
-    // 3. Get today's schedule (if any)
     const { data: schedule } = await supabase.from('employee_schedules').select('*').eq('user_id', employeeId).gte('start_time', startOfDay).lte('start_time', endOfDay).single();
     if (schedule) setTodaySchedule(schedule);
-
     setLoading(false);
   };
 
-  // --- UPDATED LOGIC: OPEN ACCESS BY DEFAULT ---
   const getScheduleStatus = () => {
-      // 1. If not manually blocked by manager, allow access immediately
-      if (!manualBlock) {
-          return { allowed: true, reason: "" };
-      }
-
-      // 2. If blocked, STRICTLY check for schedule
-      if (!todaySchedule) {
-          return { allowed: false, reason: "Restricted Access: You are marked as 'Blocked' and have no schedule for today." };
-      }
+      if (!manualBlock) return { allowed: true, reason: "" };
+      if (!todaySchedule) return { allowed: false, reason: "Restricted Access: You are marked as 'Blocked' and have no schedule for today." };
       
-      // 3. If scheduled, enforce time window (e.g. can't clock in 2 hours early)
       const now = moment();
       const start = moment(todaySchedule.start_time);
       const earlyLimit = start.clone().subtract(15, 'minutes');
@@ -214,11 +158,10 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
   };
 
   const getCurrentLocation = () => {
-      setGpsError(false);
       if (!navigator.geolocation) { setGpsError(true); return; }
       navigator.geolocation.getCurrentPosition(
-          (pos) => { setLocationCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude }); setGpsError(false); },
-          (err) => { console.warn(err); setGpsError(true); },
+          (pos) => setLocationCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          () => setGpsError(true),
           { enableHighAccuracy: true, timeout: 10000 }
       );
   };
@@ -253,40 +196,28 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
     } catch (e) { console.error("Photo failed", e); }
 
     const now = new Date().toISOString();
-    
-    // UPDATED: Safe defaults for Unscheduled Clock-Ins
     const role = todaySchedule?.role || 'Staff'; 
     const loc = todaySchedule?.location || 'Las Vegas'; 
 
-    const { data, error } = await supabase.from('time_entries').insert([
-      {
+    const { data, error } = await supabase.from('time_entries').insert([{
         user_id: employeeId,
         start_time: now,
         role: role,
         location: loc,
         status: 'active',
+        is_on_break: false,
         clock_in_lat: locationCoords?.lat || null,
         clock_in_lon: locationCoords?.lon || null,
         clock_in_photo_url: photoUrl
-      }
-    ]).select().single();
+    }]).select().single();
 
-    if (error) {
-        toast.error(`Error: ${error.message}`);
-        setLoading(false);
-    } else {
-      setActiveShift(data);
-      setSuccessLocation(loc);
-      setCapturedPhotoUrl(photoUrl);
-      setSuccessAction('in');
-      setLoading(false);
-    }
+    if (error) { toast.error(`Error: ${error.message}`); setLoading(false); } 
+    else { setActiveShift(data); setSuccessLocation(loc); setCapturedPhotoUrl(photoUrl); setSuccessAction('in'); setLoading(false); }
   };
 
   const handleClockOut = async () => {
     if (!activeShift) return;
     setLoading(true);
-
     let photoUrl = null;
     try {
         const photoBlob = await capturePhoto();
@@ -294,26 +225,21 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
     } catch (e) { console.warn("Photo error", e); }
 
     const { error } = await supabase.from('time_entries').update({ 
-          end_time: new Date().toISOString(), status: 'closed',
-          clock_out_lat: locationCoords?.lat || null, clock_out_lon: locationCoords?.lon || null,
-          clock_out_photo_url: photoUrl
+          end_time: new Date().toISOString(), status: 'closed', is_on_break: false,
+          clock_out_lat: locationCoords?.lat || null, clock_out_lon: locationCoords?.lon || null, clock_out_photo_url: photoUrl
       }).eq('id', activeShift.id);
 
-    if (error) {
-        toast.error(error.message);
-        setLoading(false);
-    } else { 
-        setActiveShift(null); 
-        setCapturedPhotoUrl(photoUrl);
-        setSuccessAction('out');
-        setLoading(false);
-    }
+    if (error) { toast.error(error.message); setLoading(false); } 
+    else { setActiveShift(null); setCapturedPhotoUrl(photoUrl); setSuccessAction('out'); setLoading(false); }
   };
 
   const handleStartBreak = async () => {
       if(!activeShift) return; setLoading(true);
-      await supabase.from('time_entries').update({ status: 'break', break_start: new Date().toISOString() }).eq('id', activeShift.id);
-      setActiveShift({ ...activeShift, status: 'break', break_start: new Date().toISOString() }); setLoading(false);
+      const now = new Date().toISOString();
+      const { error } = await supabase.from('time_entries').update({ status: 'break', is_on_break: true, break_start: now }).eq('id', activeShift.id);
+      if (error) toast.error("Sync Error");
+      else setActiveShift({ ...activeShift, status: 'break', is_on_break: true, break_start: now });
+      setLoading(false);
   };
 
   const handleEndBreak = async () => {
@@ -321,58 +247,40 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
       const start = new Date(activeShift.break_start);
       const mins = Math.round((new Date().getTime() - start.getTime())/60000);
       const total = (activeShift.total_break_minutes || 0) + mins;
-      await supabase.from('time_entries').update({ status: 'active', break_start: null, total_break_minutes: total }).eq('id', activeShift.id);
-      setActiveShift({ ...activeShift, status: 'active', break_start: null, total_break_minutes: total }); setLoading(false);
+      const { error } = await supabase.from('time_entries').update({ status: 'active', is_on_break: false, break_start: null, total_break_minutes: total }).eq('id', activeShift.id);
+      if (error) toast.error("Sync Error");
+      else setActiveShift({ ...activeShift, status: 'active', is_on_break: false, break_start: null, total_break_minutes: total });
+      setLoading(false);
   };
 
-  const wrapperClass = "w-full flex justify-center items-center min-h-[50vh]";
+  // --- RENDER ---
+  const wrapperClass = onClose ? "w-full flex justify-center items-center py-4" : "w-full flex justify-center items-center min-h-[50vh]";
   
-  // --- CAMERA PREVIEW JSX ---
   const cameraPreviewContent = (
     <div className="relative w-full h-56 bg-slate-900 rounded-lg overflow-hidden group border border-slate-700 shadow-inner">
-        <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-            muted 
-            className={`w-full h-full object-cover transform scale-x-[-1] transition-opacity duration-700 ${cameraActive ? 'opacity-100' : 'opacity-0'}`} 
-        />
-        
-        {(!cameraActive) && (
+        <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transform scale-x-[-1] transition-opacity duration-700 ${cameraActive ? 'opacity-100' : 'opacity-0'}`} />
+        {!cameraActive && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-900 z-10">
                 {cameraError ? (
                     <div className="flex flex-col items-center animate-in fade-in">
-                        <Ban className="w-8 h-8 text-red-500 mb-2" />
-                        <p className="text-xs text-red-400 mb-3">Camera Failed</p>
-                        <Button size="sm" variant="secondary" onClick={handleRetryCamera}>
-                            <RefreshCw className="w-3 h-3 mr-1" /> Retry
-                        </Button>
+                        <Ban className="w-8 h-8 text-red-500 mb-2" /><p className="text-xs text-red-400 mb-3">Camera Failed</p>
+                        <Button size="sm" variant="secondary" onClick={handleRetryCamera}><RefreshCw className="w-3 h-3 mr-1" /> Retry</Button>
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center">
-                        <Camera className="w-8 h-8 animate-pulse mb-2 text-blue-400" />
-                        <p className="text-xs">Initializing Camera...</p>
-                    </div>
+                    <div className="flex flex-col items-center"><Camera className="w-8 h-8 animate-pulse mb-2 text-blue-400" /><p className="text-xs">Initializing Camera...</p></div>
                 )}
             </div>
         )}
         <canvas ref={canvasRef} width="320" height="240" className="hidden" />
-        
-        <div className={`absolute top-2 left-2 text-[10px] px-2 py-1 rounded-full flex items-center shadow-md z-20 ${
-            gpsError ? 'bg-red-500 text-white' : 
-            locationCoords ? 'bg-green-600 text-white' : 'bg-yellow-500 text-white animate-pulse'
-        }`}>
-            {gpsError ? <><MapPinOff className="w-3 h-3 mr-1" /> No GPS</> : 
-             locationCoords ? <><MapPin className="w-3 h-3 mr-1" /> GPS Ready</> : 
-             <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Locating...</>}
+        <div className={`absolute top-2 left-2 text-[10px] px-2 py-1 rounded-full flex items-center shadow-md z-20 ${gpsError ? 'bg-red-500 text-white' : locationCoords ? 'bg-green-600 text-white' : 'bg-yellow-500 text-white animate-pulse'}`}>
+            {gpsError ? <><MapPinOff className="w-3 h-3 mr-1" /> No GPS</> : locationCoords ? <><MapPin className="w-3 h-3 mr-1" /> GPS Ready</> : <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Locating...</>}
         </div>
     </div>
   );
 
-  // --- RENDER STATES ---
-
   if (loading && !successAction) return <div className={wrapperClass}><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
+  // SUCCESS STATE
   if (successAction) {
       return (
         <div className={wrapperClass}>
@@ -380,11 +288,7 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
             <CardHeader className="text-center pb-2">
                 <CheckCircle2 className={`w-16 h-16 mx-auto mb-2 ${successAction === 'in' ? 'text-green-600' : 'text-blue-600'}`} />
                 <CardTitle className="text-2xl">{successAction === 'in' ? 'Clock In Successful!' : 'Clock Out Successful!'}</CardTitle>
-                <p className="text-muted-foreground">
-                    {successAction === 'in' 
-                        ? `Have a great shift at ${successLocation}.` 
-                        : 'Shift Complete. See you next time!'}
-                </p>
+                <p className="text-muted-foreground">{successAction === 'in' ? `Have a great shift at ${successLocation}.` : 'Shift Complete. See you next time!'}</p>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
                 {capturedPhotoUrl && (
@@ -394,7 +298,7 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
                 )}
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-background/50 px-3 py-1 rounded-full">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    {successAction === 'out' ? 'Opening Schedule...' : 'Redirecting...'} in {countdown}s
+                    {onClose ? 'Closing' : 'Redirecting'} in {countdown}s
                 </div>
             </CardContent>
         </Card>
@@ -402,7 +306,7 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
       );
   }
 
-  // --- UI FOR BLOCKED USERS ---
+  // BLOCKED STATE
   const scheduleStatus = getScheduleStatus();
   if (!activeShift && !scheduleStatus.allowed) {
       return (
@@ -418,34 +322,8 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
       );
   }
 
-  if (activeShift && activeShift.status === 'active') {
-      return (
-        <div className={wrapperClass}>
-        <Card className="w-full max-w-md border-green-500 shadow-xl bg-green-50/50 dark:bg-green-900/10">
-            <CardHeader className="text-center pb-2">
-                <div className="flex justify-center items-center gap-2 mb-2">
-                    <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1 font-bold uppercase tracking-wider">Current Shift</Badge>
-                </div>
-                <h1 className="text-4xl font-black tracking-tight text-green-900 dark:text-green-100">{moment(activeShift.start_time).format('h:mm A')}</h1>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{activeShift.role} â€¢ {activeShift.location}</p>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4 pt-2">
-                {cameraPreviewContent}
-                <div className="grid grid-cols-2 gap-3">
-                    <Button variant="secondary" className="h-14 font-medium" onClick={handleStartBreak} disabled={loading}>
-                        <Coffee className="w-4 h-4 mr-2" /> Start Break
-                    </Button>
-                    <Button variant="destructive" className="h-14 font-bold shadow-md" onClick={handleClockOut} disabled={loading || (!cameraActive && !cameraError)}>
-                        {loading ? <Loader2 className="animate-spin mr-2" /> : <><LogOut className="w-4 h-4 mr-2" /> CLOCK OUT</>}
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-        </div>
-      );
-  }
-  
-  if (activeShift && activeShift.status === 'break') {
+  // ON BREAK STATE
+  if (activeShift?.status === 'break') {
       return (
         <div className={wrapperClass}>
         <Card className="w-full max-w-md border-orange-400 bg-orange-50 dark:bg-orange-950/20 shadow-lg">
@@ -456,18 +334,37 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
       );
   }
 
+  // ACTIVE SHIFT STATE
+  if (activeShift?.status === 'active') {
+      return (
+        <div className={wrapperClass}>
+        <Card className="w-full max-w-md border-green-500 shadow-xl bg-green-50/50 dark:bg-green-900/10">
+            <CardHeader className="text-center pb-2">
+                <div className="flex justify-center items-center gap-2 mb-2"><Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 px-3 py-1 font-bold uppercase tracking-wider">Current Shift</Badge></div>
+                <h1 className="text-4xl font-black tracking-tight text-green-900 dark:text-green-100">{moment(activeShift.start_time).format('h:mm A')}</h1>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{activeShift.role} • {activeShift.location}</p>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4 pt-2">
+                {cameraPreviewContent}
+                <div className="grid grid-cols-2 gap-3">
+                    <Button variant="secondary" className="h-14 font-medium" onClick={handleStartBreak} disabled={loading}><Coffee className="w-4 h-4 mr-2" /> Start Break</Button>
+                    <Button variant="destructive" className="h-14 font-bold shadow-md" onClick={handleClockOut} disabled={loading || (!cameraActive && !cameraError)}>{loading ? <Loader2 className="animate-spin mr-2" /> : <><LogOut className="w-4 h-4 mr-2" /> CLOCK OUT</>}</Button>
+                </div>
+            </CardContent>
+        </Card>
+        </div>
+      );
+  }
+
+  // DEFAULT: CLOCK IN
   return (
     <div className={wrapperClass}>
     <Card className="w-full max-w-md shadow-xl border-t-4 border-t-blue-500">
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           Time Clock 
-          {/* UPDATED UI: Show "Open Clock-In" if not scheduled but allowed */}
           <Badge className="bg-blue-100 text-blue-800">
-            {todaySchedule 
-              ? moment(todaySchedule.start_time).format('h:mm A') 
-              : (manualBlock ? 'Off Schedule' : 'Open Clock-In')
-            }
+            {todaySchedule ? moment(todaySchedule.start_time).format('h:mm A') : (manualBlock ? 'Off Schedule' : 'Open Clock-In')}
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -475,24 +372,11 @@ export default function SmartTimeClock({ employeeId }: { employeeId: string }) {
         {todaySchedule && (
            <div className="p-3 rounded-md bg-slate-100 dark:bg-slate-800 flex gap-3 items-center border border-slate-200 dark:border-slate-700">
              <div className="bg-white p-2 rounded-full shadow-sm"><Clock className="w-5 h-5 text-blue-500" /></div>
-             <div>
-               <p className="font-bold text-sm text-slate-900 dark:text-white">
-                  {todaySchedule.role} â€¢ {todaySchedule.location || 'Las Vegas'}
-               </p>
-               <p className="text-xs text-muted-foreground">
-                  Shift: {moment(todaySchedule.start_time).format('h:mm A')} - {moment(todaySchedule.end_time).format('h:mm A')}
-               </p>
-             </div>
+             <div><p className="font-bold text-sm text-slate-900 dark:text-white">{todaySchedule.role} • {todaySchedule.location || 'Las Vegas'}</p><p className="text-xs text-muted-foreground">Shift: {moment(todaySchedule.start_time).format('h:mm A')} - {moment(todaySchedule.end_time).format('h:mm A')}</p></div>
            </div>
         )}
-
         {cameraPreviewContent}
-
-        <Button 
-          className="w-full h-20 text-xl font-bold bg-blue-600 hover:bg-blue-700 shadow-lg transition-all active:scale-[0.98]"
-          onClick={handleClockIn}
-          disabled={loading || (!cameraActive && !cameraError)}
-        >
+        <Button className="w-full h-20 text-xl font-bold bg-blue-600 hover:bg-blue-700 shadow-lg transition-all active:scale-[0.98]" onClick={handleClockIn} disabled={loading || (!cameraActive && !cameraError)}>
           {loading ? <Loader2 className="animate-spin mr-2" /> : "TAKE PHOTO & CLOCK IN"}
         </Button>
       </CardContent>

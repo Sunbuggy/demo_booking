@@ -11,7 +11,8 @@ import {
   SheetTitle,
   SheetDescription
 } from '@/components/ui/sheet';
-import { UserNav } from '@/app/(biz)/biz/users/admin/tables/components/user-nav';
+// --- REPLACED UserNav WITH NEW COMPONENT ---
+import CurrentUserAvatar from '@/components/CurrentUserAvatar'; 
 import { UserType } from '@/app/(biz)/biz/users/types';
 import { usePathname } from 'next/navigation';
 import { BarcodeScanner } from '@/components/qr-scanner/scanner';
@@ -20,18 +21,16 @@ import React from 'react';
 import { Button } from '../button';
 import { User } from '@supabase/supabase-js';
 import { MenuIcon } from 'lucide-react';
+
 interface NavlinksProps {
   user: UserType | null;
   usr: User | null | undefined;
-  status?: string | null | undefined;
-  clockInTimeStamp?: string;
+  // REMOVED: status & clockInTimeStamp are no longer needed here
 }
 
 export default function Navlinks({
   user,
   usr,
-  status,
-  clockInTimeStamp
 }: NavlinksProps) {
   const path = usePathname();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -106,16 +105,8 @@ export default function Navlinks({
 
         {/* Conditional Rendering for User */}
         {user ? (
-          <UserNav
-            email={user.email}
-            userInitials={user.full_name[0]}
-            userImage={user.avatar_url}
-            userName={user.full_name}
-            status={status}
-            user_id={user.id}
-            clockInTimeStamp={clockInTimeStamp}
-            user_level={user.user_level}
-          />
+          /* NEW: Replaced massive prop list with self-contained component */
+          <CurrentUserAvatar />
         ) : (
           path &&
           !path.includes('signin') && (

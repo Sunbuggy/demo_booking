@@ -21,9 +21,11 @@ import {
 import UserImage from './components/user-image';
 import UserForm from './user-form';
 import ScanHistory from './components/scan-history'; 
-import HistoryTimeClockEvents from '@/app/(biz)/biz/users/admin/tables/employee/time-clock/time-history';
 import AdminAvailability from './components/admin-availability';
 import AdminTimeOff from './components/admin-time-off';
+
+// NEW: Import the robust Time Sheet component
+import UserTimeSheet from '@/components/UserTimeSheet';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -64,10 +66,11 @@ export default async function AdminUserProfilePage({
   }
 
   const isStaff = (targetUser.user_level || 0) >= 300;
-  const empDetails = targetUser.employee_details; // Joined via LEFT JOIN
+  const empDetails = targetUser.employee_details; 
 
   // 3. Supplemental Data Parallel Fetch
   const [timeEntries, activeEntry, qrRes, availabilityRes, timeOffRes] = await Promise.all([
+    // Keep fetching THIS WEEK'S entries for the sidebar "Weekly Hours" widget calculation
     isStaff ? fetchEmployeeTimeClockEntryData(supabase, targetUserId, startOfWeek, endOfWeek) : Promise.resolve([]),
     isStaff ? fetchTimeEntryByUserId(supabase, targetUserId) : Promise.resolve([]),
     supabase.from('qr_history').select('*, vehicle:vehicles(*)').eq('user', targetUserId).order('scanned_at', { ascending: false }),
@@ -77,10 +80,9 @@ export default async function AdminUserProfilePage({
 
   const isClockedIn = activeEntry && activeEntry.length > 0;
   
-  // 4. Payroll Math
+  // 4. Payroll Math (Sidebar Summary Only)
   let totalMinutes = 0;
   timeEntries?.forEach((e: any) => {
-    // Handling nested join structure from fetchEmployeeTimeClockEntryData
     if (e.clock_in?.clock_in_time && e.clock_out?.clock_out_time) {
       totalMinutes += moment(e.clock_out.clock_out_time).diff(moment(e.clock_in.clock_in_time), 'minutes');
     }
@@ -90,7 +92,7 @@ export default async function AdminUserProfilePage({
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-8 space-y-8 pb-32">
       
-      {/* --- HEADER (Conditional Branding) --- */}
+      {/* --- HEADER --- */}
       <div className={`relative overflow-hidden rounded-3xl border shadow-sm transition-all ${isStaff ? 'bg-card border-zinc-800' : 'bg-zinc-950 border-blue-500/20'}`}>
         <div className={`absolute inset-0 pointer-events-none opacity-20 ${
           isStaff ? 'bg-gradient-to-br from-orange-500 via-transparent to-red-600' : 'bg-gradient-to-br from-blue-600 via-transparent to-indigo-600'
@@ -134,7 +136,6 @@ export default async function AdminUserProfilePage({
                     <DialogHeader>
                       <DialogTitle className="text-xl font-bold italic uppercase tracking-tighter">Sync Profile: <span className="text-orange-500">{targetUser.full_name}</span></DialogTitle>
                     </DialogHeader>
-                    {/* Passing empDetails as an object (wrapped in array if your UserForm needs it) */}
                     <UserForm user={targetUser} empDetails={empDetails ? [empDetails] : []} />
                  </DialogContent>
                </Dialog>
@@ -200,10 +201,8 @@ export default async function AdminUserProfilePage({
 
               {isStaff && (
                 <TabsContent value="timesheet">
-                   <Card className="bg-zinc-950 border-zinc-800">
-                      <CardHeader><CardTitle className="italic uppercase tracking-tighter">Punch History</CardTitle></CardHeader>
-                      <CardContent className="pt-0"><HistoryTimeClockEvents user={targetUser} /></CardContent>
-                   </Card>
+                   {/* NEW COMPONENT INTEGRATION */}
+                   <UserTimeSheet userId={targetUserId} />
                 </TabsContent>
               )}
 
