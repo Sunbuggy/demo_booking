@@ -1,7 +1,10 @@
+/**
+ * @file /app/actions/add-staff.ts
+ * @description Dual-table onboarding for SunBuggy Employees.
+ */
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
-import { createClient as createUserClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -11,92 +14,58 @@ const AddStaffSchema = z.object({
   fullName: z.string().min(2),
   phone: z.string().optional(),
   employeeId: z.string().optional(),
-  position: z.string().min(2, "Position is required"),
-  userLevel: z.coerce.number().min(300),
-  location: z.string().min(2, "Location is required"),
+  department: z.string().min(2), // Captured from UI
+  location: z.string().min(2),   // Captured from UI
+  userLevel: z.coerce.number().default(300),
 });
 
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-}
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function addStaffMember(prevState: any, formData: FormData) {
-  const userClient = await createUserClient();
-  const { data: { user: actor } } = await userClient.auth.getUser();
-  if (!actor) return { message: 'Unauthorized', success: false };
+  const validated = AddStaffSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!validated.success) return { message: 'Validation failed', success: false };
 
-  const supabaseAdmin = getAdminClient();
-
-  // Validate Input
-  const validated = AddStaffSchema.safeParse({
-    mode: formData.get('mode'),
-    email: formData.get('email'),
-    fullName: formData.get('fullName'),
-    phone: formData.get('phone'),
-    employeeId: formData.get('employeeId'),
-    position: formData.get('position'),
-    userLevel: formData.get('userLevel'),
-    location: formData.get('location'),
-  });
-
-  if (!validated.success) {
-    return { message: 'Invalid input data', success: false };
-  }
-
-  const { mode, email, fullName, phone, employeeId, position, userLevel, location } = validated.data;
+  const { mode, email, fullName, phone, employeeId, department, location, userLevel } = validated.data;
   let newUserId = '';
 
-  // 1. Create the User (Invite vs Silent)
-  if (mode === 'invite') {
-    const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: fullName }
-    });
-    if (error) return { message: `Invite failed: ${error.message}`, success: false };
-    newUserId = data.user.id;
-  } else {
-    // Silent: Random password, auto-confirmed
-    const tempPassword = crypto.randomUUID() + "!!A1";
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
-      email: email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: { full_name: fullName }
-    });
-    if (error) return { message: `Create failed: ${error.message}`, success: false };
-    newUserId = data.user.id;
-  }
+  // 1. Create Identity in Auth/Users
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+    data: { full_name: fullName },
+    skip_sent: mode === 'silent'
+  });
 
-  // 2. Update Public Profile
+  if (authError) return { message: authError.message, success: false };
+  newUserId = authData.user.id;
+
+  // 2. Step One: Update the 'users' table (Core Info)
   await supabaseAdmin
     .from('users')
     .update({ 
       full_name: fullName,
+      phone: phone, 
       user_level: userLevel,
       user_type: 'employee' 
     })
     .eq('id', newUserId);
 
-  // 3. Create Employee Details
-  const { error: empError } = await supabaseAdmin
+  // 3. Step Two: Populate 'employee_details' (Work Info)
+  // This ensures the Roster knows EXACTLY where they belong immediately.
+  const { error: detailError } = await supabaseAdmin
     .from('employee_details')
     .upsert({
       user_id: newUserId,
-      primary_position: position,
       primary_work_location: location,
+      primary_position: department,
       emp_id: employeeId,
       work_phone: phone,
-      time_correction_count: 0
-    }, { onConflict: 'user_id' });
+    });
 
-  if (empError) console.error("Employee Details Error:", empError);
+  if (detailError) console.error("Employee Detail Sync Error:", detailError);
 
   revalidatePath('/biz/users');
-  return { 
-    message: mode === 'invite' ? `Invited ${fullName}` : `Added ${fullName} to roster`, 
-    success: true 
-  };
+  revalidatePath('/biz/schedule');
+  return { success: true, message: `Onboarded ${fullName} successfully.` };
 }
