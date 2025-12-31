@@ -25,7 +25,6 @@ import { MenuIcon } from 'lucide-react';
 interface NavlinksProps {
   user: UserType | null;
   usr: User | null | undefined;
-  // REMOVED: status & clockInTimeStamp are no longer needed here
 }
 
 export default function Navlinks({

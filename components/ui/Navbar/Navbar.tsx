@@ -18,12 +18,8 @@ export default async function Navbar() {
   const user = await getUserDetails(supabase); 
   const usr = await getUser(supabase);
 
-  // NOTE: Removed heavy time_entry fetching. 
-  // The <CurrentUserAvatar /> client component now handles real-time status fetching directly.
-
   return (
-    // Reduced height: Changed p-2 to p-1. Explicit h-12 caps height.
-    <nav className="z-50 w-[99.7%] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 h-12 p-1">
+    <nav className="z-50 w-[99.7%] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 h-15 p-1">
       <Navlinks
         user={user ? user[0] : null}
         usr={usr}
