@@ -5,18 +5,31 @@ import Link from 'next/link';
 import { BsArrowReturnRight } from 'react-icons/bs';
 import { Reservation } from '../../types';
 
+// Import the shared component from the correct path
+import SplitShuttleAssigner from '@/components/biz/split-shuttle-assigner'; 
+
 interface BookingCardProps {
   reservation: Reservation;
-  vehiclesList: readonly string[]; // readonly to match your const array
+  vehiclesList: readonly string[]; 
   display_cost: boolean;
+  
+  // --- NEW SHUTTLE PROPS ---
+  activeFleet: any[];
+  reservationStatusMap: any;
+  hourlyUtilization: any;
+  hourContext: string;
 }
 
 const BookingCard: React.FC<BookingCardProps> = ({
   reservation,
   vehiclesList,
-  display_cost
+  display_cost,
+  activeFleet,
+  reservationStatusMap,
+  hourlyUtilization,
+  hourContext
 }) => {
-  // Build list of vehicles actually booked (with count > 0)
+  // 1. Helper: Format Vehicle List
   const bookedVehicles = vehiclesList
     .filter((key) => {
       const count = Number(reservation[key as keyof Reservation]);
@@ -28,10 +41,17 @@ const BookingCard: React.FC<BookingCardProps> = ({
     })
     .join(', ');
 
+  // 2. Logic: Should we show the shuttle icon?
+  // We exclude anyone whose location is "Drive Here".
+  const pickupLoc = reservation.pickup_location || reservation.hotel || '';
+  const isSelfDrive = pickupLoc.toLowerCase().includes('drive here');
+
+  // 3. Get Current Assignment Status (if any)
+  const currentStatus = reservationStatusMap?.[reservation.res_id];
+
   return (
     <Card
       key={reservation.res_id}
-      // Added dark:bg-slate-950 to make the card slightly darker than the background in dark mode for contrast
       className={`bookingcard mb-1 border-gray-200 dark:border-gray-800 dark:bg-slate-950 ${reservation.is_special_event ? 'text-orange-500 dark:text-orange-500' : ''}`}
     >
       <CardContent className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2 text-sm leading-tight">
@@ -44,12 +64,12 @@ const BookingCard: React.FC<BookingCardProps> = ({
           {reservation.res_id}
         </Link>
 
-        {/* 2. Customer Name - FIX: Changed text-white to dark:text-white */}
+        {/* 2. Customer Name */}
         <span className="font-bold text-gray-900 dark:text-white whitespace-nowrap">
           {reservation.full_name || '—'}
         </span>
 
-        {/* 3. Tags (Occasion & Hotel) - Compact badges adjusted for light/dark mode */}
+        {/* 3. Tags (Occasion & Hotel) */}
         {reservation.occasion && (
           <span className="occasionbox px-1.5 py-0.5 text-xs rounded border border-gray-300 bg-gray-100 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 whitespace-nowrap">
             {reservation.occasion.toLowerCase().slice(0, 20)}
@@ -62,7 +82,26 @@ const BookingCard: React.FC<BookingCardProps> = ({
           </span>
         )}
 
-        {/* 4. Stats (People & Vehicles) - Side by Side */}
+        {/* --- 4. NEW SHUTTLE ICON (Right after Location) --- */}
+        {!isSelfDrive && (
+          <div className="ml-1">
+            <SplitShuttleAssigner
+              reservationId={reservation.res_id.toString()}
+              totalGroupSize={reservation.ppl_count || 0}
+              reservationHour={hourContext}
+              currentStatus={currentStatus}
+              activeFleet={activeFleet || []}
+              hourlyUtilization={hourlyUtilization || {}}
+              dateContext={reservation.sch_date} 
+              
+              // --- PASS CONTEXT PROPS FOR DIALOG HEADER ---
+              pickupLocation={pickupLoc || 'Unknown Location'}
+              groupName={reservation.full_name || 'Guest'}
+            />
+          </div>
+        )}
+
+        {/* 5. Stats (People & Vehicles) */}
         <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
           <span className="font-semibold whitespace-nowrap">
             {reservation.ppl_count || 0}-PPL
@@ -75,14 +114,14 @@ const BookingCard: React.FC<BookingCardProps> = ({
           )}
         </div>
 
-        {/* 5. Cost (Optional) */}
+        {/* 6. Cost (Optional) */}
         {display_cost && (
           <span className="text-green-600 dark:text-green-500 font-bold ml-1">
             ${Number(reservation.total_cost || 0).toFixed(0)}
           </span>
         )}
 
-        {/* 6. Edit Link (Pushed to far right) */}
+        {/* 7. Edit Link (Pushed to far right) */}
         <Link
           href={`https://www.sunbuggy.biz/edt_res.php?Id=${reservation.res_id}`}
           target="_blank"
