@@ -1,6 +1,5 @@
 // app/(biz)/biz/components/landing.tsx
 
-// NOTE: No 'use client' here! This must be a Server Component.
 import React from 'react';
 import { Reservation } from '../types';
 import HourCard from './cards/hour-card';
@@ -22,7 +21,8 @@ const Landing = ({
   activeFleet,
   reservationStatusMap,
   hourlyUtilization,
-  drivers
+  drivers,
+  todaysShifts // <--- NEW PROP
 }: {
   data: Record<string, Record<string, Reservation[]>>;
   display_cost: boolean;
@@ -32,7 +32,8 @@ const Landing = ({
   activeFleet: any[];         
   reservationStatusMap: any;  
   hourlyUtilization: any;
-  drivers: any[];             
+  drivers: any[];
+  todaysShifts: any[]; // <--- NEW TYPE DEFINITION
 }): JSX.Element => {
   
   if (!data) return <div className="p-8 text-center text-gray-500">No data available</div>;
@@ -123,12 +124,15 @@ const Landing = ({
 
           {/* Buttons */}
           <div className="flex items-center gap-2 ml-auto">
-            {/* UPDATED: Pass activeFleet so the dialog can list/delete drivers */}
-            <FleetManagerDialog 
-              date={date} 
-              drivers={drivers} 
-              activeFleet={activeFleet} 
-            />
+            {/* UPDATED: Only show if role >= 500 (Manager) OR user is Fleet/Shop */}
+            {role !== undefined && role >= 500 && (
+              <FleetManagerDialog 
+                date={date} 
+                drivers={drivers} 
+                activeFleet={activeFleet}
+                todaysShifts={todaysShifts} // <--- PASS DATA DOWN
+              />
+            )}
             
             <Button asChild size="sm" variant="secondary">
               <Link href="/biz/reservations/new">Create Reservation</Link>
@@ -146,10 +150,7 @@ const Landing = ({
              {activeFleet.map((fleet: any) => {
                 const shortId = fleet.vehicleName.split(' - ')[0] || fleet.vehicleName;
                 
-                // Find the full user object to pass to the Avatar component
                 const driverUser = drivers.find((d: any) => d.id === fleet.driverId);
-                
-                // Fallback user object if not found
                 const avatarUser = driverUser || {
                   id: fleet.driverId || 'unknown',
                   full_name: fleet.driverName,
@@ -160,30 +161,32 @@ const Landing = ({
                 return (
                   <div 
                     key={fleet.id} 
-                    className="flex items-center gap-2 px-2 py-1 rounded border bg-slate-900 border-slate-700 shadow-sm"
+                    className="flex items-center px-2 py-1 rounded border bg-slate-900 border-slate-700 shadow-sm"
                   >
-                    {/* TINY AVATAR - CLICKABLE */}
-                    <div className="scale-75 origin-left">
-                       <UserStatusAvatar user={avatarUser} size="xs" />
+                    {/* FIXED AVATAR CONTAINER */}
+                    <div className="w-5 h-5 relative flex items-center justify-center mr-2">
+                       <div className="scale-50 origin-center transform">
+                          <UserStatusAvatar user={avatarUser} size="xs" />
+                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 -ml-1">
+                    <div className="flex items-center gap-1.5">
                       {/* Driver Name */}
-                      <span className="font-bold text-yellow-500 whitespace-nowrap">
+                      <span className="font-bold text-yellow-500 whitespace-nowrap text-xs">
                         {fleet.driverName}
                       </span>
                       
                       <span className="text-slate-600">-</span>
                       
                       {/* Vehicle ID */}
-                      <span className="text-slate-300 font-mono font-medium uppercase">
+                      <span className="text-slate-300 font-mono font-medium uppercase text-xs">
                         {shortId}
                       </span>
 
                       <span className="text-slate-600">-</span>
 
                       {/* Capacity */}
-                      <span className="text-slate-400 font-mono">
+                      <span className="text-slate-400 font-mono text-xs">
                         {fleet.capacity}pax
                       </span>
                     </div>
@@ -212,6 +215,7 @@ const Landing = ({
             activeFleet={activeFleet}
             reservationStatusMap={reservationStatusMap}
             hourlyUtilization={hourlyUtilization}
+            drivers={drivers}
           />
         );
       })}

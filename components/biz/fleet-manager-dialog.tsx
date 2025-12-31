@@ -1,12 +1,12 @@
-// components/biz/fleet-manager-dialog.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { createFleetPairing, removeFleetPairing } from '@/app/actions/shuttle-operations'; // Import remove function
+import { createFleetPairing, removeFleetPairing } from '@/app/actions/shuttle-operations';
 import { toast } from 'sonner';
 import { FaBus, FaUserPlus, FaTrash } from 'react-icons/fa';
+import { Switch } from '@/components/ui/switch'; 
 
 // Matches IDs in your system
 const FLEET_VEHICLES = [
@@ -22,14 +22,27 @@ const FLEET_VEHICLES = [
 interface Props { 
   date: string; 
   drivers: { id: string; full_name: string }[]; 
-  activeFleet: any[]; // Receive the list of current drivers
+  activeFleet: any[]; 
+  todaysShifts: any[]; // <--- NEW PROP: List of scheduled shifts
 }
 
-export default function FleetManagerDialog({ date, drivers, activeFleet }: Props) {
+export default function FleetManagerDialog({ date, drivers, activeFleet, todaysShifts }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState('');
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
+  const [showAllStaff, setShowAllStaff] = useState(false); // Toggle state
+
+  // --- FILTER LOGIC ---
+  const filteredDrivers = useMemo(() => {
+    // If "Show All" is checked, or if we have no shift data, show everyone
+    if (showAllStaff || !todaysShifts) return drivers;
+    
+    // Otherwise, only show drivers whose ID exists in todaysShifts
+    return drivers.filter(d => 
+      todaysShifts.some(shift => shift.user_id === d.id)
+    );
+  }, [drivers, todaysShifts, showAllStaff]);
 
   // --- HANDLER: ADD ---
   const handlePair = async () => {
@@ -37,15 +50,28 @@ export default function FleetManagerDialog({ date, drivers, activeFleet }: Props
       toast.error('Please select both a driver and a vehicle');
       return;
     }
+    
     setIsSubmitting(true);
     const vehicle = FLEET_VEHICLES.find(v => v.id === selectedVehicleId);
+    
     try {
-      await createFleetPairing(date, selectedDriverId, selectedVehicleId, vehicle?.name || selectedVehicleId, vehicle?.capacity || 14);
+      await createFleetPairing(
+        date, 
+        selectedDriverId, 
+        selectedVehicleId, 
+        vehicle?.name || selectedVehicleId, 
+        vehicle?.capacity || 14
+      );
+      
       toast.success('Driver added to schedule');
+      // Reset fields for quick entry of next driver
       setSelectedDriverId('');
       setSelectedVehicleId('');
+      
     } catch (error: any) {
-      toast.error('Failed to add driver');
+      console.error(error);
+      // SHOW ACTUAL SERVER ERROR
+      toast.error(error.message || 'Failed to add driver');
     } finally {
       setIsSubmitting(false);
     }
@@ -59,8 +85,9 @@ export default function FleetManagerDialog({ date, drivers, activeFleet }: Props
     try {
       await removeFleetPairing(manifestId, date);
       toast.success(`${driverName} removed.`);
-    } catch (error) {
-      toast.error("Failed to remove driver.");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to remove driver.");
     } finally {
       setIsSubmitting(false);
     }
@@ -87,27 +114,57 @@ export default function FleetManagerDialog({ date, drivers, activeFleet }: Props
         <div className="space-y-6 py-4">
           {/* SECTION 1: ADD NEW DRIVER */}
           <div className="grid gap-4 p-4 bg-slate-950 rounded border border-slate-800">
-             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Add to Schedule</h4>
+             <div className="flex items-center justify-between">
+               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Add to Schedule</h4>
+               
+               {/* TOGGLE: Show All Staff */}
+               <div className="flex items-center gap-2">
+                 <label htmlFor="show-all" className="text-[10px] text-slate-400 cursor-pointer select-none">Show Unscheduled</label>
+                 <Switch 
+                   id="show-all"
+                   checked={showAllStaff}
+                   onCheckedChange={setShowAllStaff}
+                   className="scale-75 data-[state=checked]:bg-yellow-500"
+                 />
+               </div>
+             </div>
+
              <div className="grid gap-2">
+               {/* DRIVER SELECT */}
                <select
                  className="w-full h-10 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
                  value={selectedDriverId}
-                 onChange={(e) => { setSelectedDriverId(e.target.value); e.target.blur(); }}
+                 onChange={(e) => { 
+                    setSelectedDriverId(e.target.value); 
+                    e.target.blur(); // Remove focus
+                 }}
                >
-                 <option value="">-- Choose Driver --</option>
-                 {drivers.map((d) => (<option key={d.id} value={d.id}>{d.full_name}</option>))}
+                 <option value="">
+                   {filteredDrivers.length === 0 ? '-- No Scheduled Drivers Found --' : '-- Choose Driver --'}
+                 </option>
+                 {filteredDrivers.map((d) => (
+                   <option key={d.id} value={d.id}>{d.full_name}</option>
+                 ))}
                </select>
 
+               {/* VEHICLE SELECT */}
                <select
                  className="w-full h-10 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
                  value={selectedVehicleId}
-                 onChange={(e) => { setSelectedVehicleId(e.target.value); e.target.blur(); }}
+                 onChange={(e) => { 
+                    setSelectedVehicleId(e.target.value); 
+                    e.target.blur(); // Remove focus
+                 }}
                >
                  <option value="">-- Choose Vehicle --</option>
                  {FLEET_VEHICLES.map((v) => (<option key={v.id} value={v.id}>{v.name}</option>))}
                </select>
 
-               <Button onClick={handlePair} disabled={isSubmitting} className="mt-2 bg-yellow-500 text-black hover:bg-yellow-400 w-full">
+               <Button 
+                 onClick={handlePair} 
+                 disabled={isSubmitting} 
+                 className="mt-2 bg-yellow-500 text-black hover:bg-yellow-400 w-full"
+               >
                  {isSubmitting ? 'Saving...' : 'Add Driver'}
                </Button>
              </div>
@@ -116,7 +173,9 @@ export default function FleetManagerDialog({ date, drivers, activeFleet }: Props
           {/* SECTION 2: CURRENT ROSTER LIST */}
           {activeFleet && activeFleet.length > 0 && (
             <div>
-              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Current Roster ({activeFleet.length})</h4>
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                Current Roster ({activeFleet.length})
+              </h4>
               <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1">
                 {activeFleet.map((item) => (
                   <div key={item.id} className="flex items-center justify-between p-2 rounded bg-slate-800 border border-slate-700">

@@ -33,6 +33,7 @@ async function fetchReservationsForDate(date: string): Promise<Reservation[]> {
 function BizContent({
   date, dcos, role, full_name, reservations, yesterday, tomorrow,
   activeFleet, reservationStatusMap, hourlyUtilization, drivers,
+  todaysShifts
 }: any) {
   const hasReservations = reservations.length > 0;
   let sortedData = hasReservations ? getTimeSortedData(reservations) : null;
@@ -46,20 +47,39 @@ function BizContent({
   } 
 
   return (
-    <div className="min-h-screen w-full flex flex-col gap-5">
+    <div className="min-h-screen w-full flex flex-col gap-5 relative">
+      
+      {/* --- STICKY "FLOATING ISLAND" NAVIGATION --- */}
       {role > 299 && (
-        <div className="flex gap-4 justify-center items-center pt-6">
-          <Link href={`/biz/${yesterday}${dcos ? '?dcos=true' : ''}`}>
-            <RiArrowLeftWideFill className="text-4xl hover:text-gray-600 transition" />
-          </Link>
-          <Link href="/biz/calendar">
-            <Button variant="outline" size="lg">
-              {dayjs(date).format('dddd, MMMM D, YYYY')}
-            </Button>
-          </Link>
-          <Link href={`/biz/${tomorrow}${dcos ? '?dcos=true' : ''}`}>
-            <RiArrowRightWideFill className="text-4xl hover:text-gray-600 transition" />
-          </Link>
+        <div className="sticky top-2 z-50 mx-auto w-fit flex justify-center">
+          <div className="flex gap-4 items-center bg-slate-950/80 backdrop-blur-md border border-slate-700/50 rounded-xl px-4 py-1.5 shadow-2xl">
+            {/* Prev Day */}
+            <Link 
+              href={`/biz/${yesterday}${dcos ? '?dcos=true' : ''}`}
+              className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-800 rounded-full"
+            >
+              <RiArrowLeftWideFill className="text-2xl" />
+            </Link>
+
+            {/* Calendar Button */}
+            <Link href="/biz/calendar">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="font-mono font-bold h-8 bg-transparent text-slate-200 hover:bg-slate-800 hover:text-white"
+              >
+                {dayjs(date).format('ddd, MMM D, YYYY')}
+              </Button>
+            </Link>
+
+            {/* Next Day */}
+            <Link 
+              href={`/biz/${tomorrow}${dcos ? '?dcos=true' : ''}`}
+              className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-800 rounded-full"
+            >
+              <RiArrowRightWideFill className="text-2xl" />
+            </Link>
+          </div>
         </div>
       )}
 
@@ -74,10 +94,11 @@ function BizContent({
           reservationStatusMap={reservationStatusMap}
           hourlyUtilization={hourlyUtilization}
           drivers={drivers}
+          todaysShifts={todaysShifts} 
         />
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
-          <h2 className="text-3xl font-semibold mb-4">No reservations for {dayjs(date).format('MMMM D, YYYY')}</h2>
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 mt-10">
+          <h2 className="text-3xl font-semibold mb-4 text-slate-500">No reservations for {dayjs(date).format('MMMM D, YYYY')}</h2>
         </div>
       )}
     </div>
@@ -101,12 +122,24 @@ export default async function BizPage({ params, searchParams }: any) {
   const yesterday = dayjs(date).subtract(1, 'day').format('YYYY-MM-DD');
   const tomorrow = dayjs(date).add(1, 'day').format('YYYY-MM-DD');
 
+  // 1. Fetch Legacy Reservations
   const reservations = await fetchReservationsForDate(date);
   
-  const [operationsData, drivers] = await Promise.all([
+  // 2. Prepare the Schedule Query
+  const shiftsQuery = supabase
+    .from('employee_schedules')
+    .select('user_id, role, location, task')
+    .gte('start_time', `${date}T00:00:00`)
+    .lte('start_time', `${date}T23:59:59`);
+
+  // 3. Run all fetches in parallel
+  const [operationsData, drivers, shiftsResult] = await Promise.all([
     getDailyOperations(date, reservations),
-    getVegasShuttleDrivers()
+    getVegasShuttleDrivers(),
+    shiftsQuery
   ]);
+
+  const todaysShifts = shiftsResult.data || [];
 
   return (
     <Suspense fallback={<LoadingModal />}>
@@ -122,6 +155,7 @@ export default async function BizPage({ params, searchParams }: any) {
         reservationStatusMap={operationsData.reservationStatusMap}
         hourlyUtilization={operationsData.hourlyUtilization}
         drivers={drivers}
+        todaysShifts={todaysShifts} 
       />
     </Suspense>
   );

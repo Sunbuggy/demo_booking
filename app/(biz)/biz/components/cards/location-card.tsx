@@ -15,7 +15,8 @@ const LocationCard = ({
   activeFleet,
   reservationStatusMap,
   hourlyUtilization,
-  hourContext
+  hourContext,
+  drivers // <--- NEW PROP: The full list of employees
 }: {
   id: string; // The specific hour string (e.g. "08:00:00")
   data: Record<string, Record<string, Reservation[]>>;
@@ -26,6 +27,7 @@ const LocationCard = ({
   reservationStatusMap: any;
   hourlyUtilization: any;
   hourContext: string; // The simple hour (e.g. "8")
+  drivers: any[]; // <--- TYPE DEFINITION
 }) => {
   // Helper: count vehicles booked in a single reservation
   const getVehicleCount = (reservation: Reservation): number => {
@@ -78,7 +80,7 @@ const LocationCard = ({
           */}
           <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-orange-700 dark:text-orange-500">
             <span>{totalPeople} People</span>
-            <span className="hidden sm:inline text-slate-400">â€¢</span>
+            <span className="hidden sm:inline text-slate-400">•</span>
             <span>{totalVehicles} Vehicles</span>
             
             {/* 3. Vehicle Breakdown */}
@@ -111,6 +113,7 @@ const LocationCard = ({
             reservationStatusMap={reservationStatusMap}
             hourlyUtilization={hourlyUtilization}
             hourContext={hourContext}
+            drivers={drivers} // <--- PASSING DRIVERS DOWN
           />
         ))}
       </CardContent>

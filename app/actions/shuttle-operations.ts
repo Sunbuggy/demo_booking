@@ -16,8 +16,27 @@ export interface ManifestItem {
 
 export type HourlyUtilization = Record<string, Record<string, number>>;
 
+// --- AUTHORIZATION HELPER (Level 300+) ---
+async function requireStaff() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('user_level')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || profile.user_level < 300) {
+    throw new Error("Unauthorized: Staff Access (Level 300+) required");
+  }
+  return user;
+}
+
 // ============================================================================
-// 1. GET DATA (READ)
+// 1. GET DATA (READ ENGINE)
 // ============================================================================
 export async function getDailyOperations(date: string, legacyReservations: Reservation[]) {
   const supabase = await createClient();
@@ -52,6 +71,7 @@ export async function getDailyOperations(date: string, legacyReservations: Reser
   // C. Build Active Fleet
   const activeFleet: ManifestItem[] = manifest.map(m => {
     const driverUser = drivers?.find(d => d.id === m.driver_id);
+    // Prefer stage_name
     const displayName = driverUser?.stage_name || driverUser?.full_name || 'Unknown Driver';
 
     return {
@@ -103,8 +123,13 @@ export async function getDailyOperations(date: string, legacyReservations: Reser
         const hourVal = parseInt(res.time, 10);
         if (!isNaN(hourVal)) {
           const hourKey = hourVal.toString(); 
-          if (!hourlyUtilization[assign.manifest_id]) hourlyUtilization[assign.manifest_id] = {};
-          if (!hourlyUtilization[assign.manifest_id][hourKey]) hourlyUtilization[assign.manifest_id][hourKey] = 0;
+          
+          if (!hourlyUtilization[assign.manifest_id]) {
+             hourlyUtilization[assign.manifest_id] = {};
+          }
+          if (!hourlyUtilization[assign.manifest_id][hourKey]) {
+             hourlyUtilization[assign.manifest_id][hourKey] = 0;
+          }
           hourlyUtilization[assign.manifest_id][hourKey] += (assign.pax_count || 0);
         }
       }
@@ -115,11 +140,12 @@ export async function getDailyOperations(date: string, legacyReservations: Reser
 }
 
 // ============================================================================
-// 2. WRITE FUNCTIONS
+// 2. WRITE FUNCTIONS (SECURED)
 // ============================================================================
+
 export async function createFleetPairing(date: string, driverId: string, vehicleId: string, vehicleName: string, capacity: number) {
+  const user = await requireStaff(); // Security Check
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
   const { error } = await supabase
     .from('daily_shuttle_manifest')
@@ -129,7 +155,7 @@ export async function createFleetPairing(date: string, driverId: string, vehicle
       vehicle_id: vehicleId,
       vehicle_name: vehicleName,
       capacity,
-      created_by: user?.id
+      created_by: user.id
     }, {
       onConflict: 'date, driver_id' 
     });
@@ -141,8 +167,8 @@ export async function createFleetPairing(date: string, driverId: string, vehicle
   revalidatePath(`/biz/${date}`);
 }
 
-// --- NEW DELETE FUNCTION ---
 export async function removeFleetPairing(manifestId: string, dateContext: string) {
+  await requireStaff(); // Security Check
   const supabase = await createClient();
   
   const { error } = await supabase
@@ -156,8 +182,8 @@ export async function removeFleetPairing(manifestId: string, dateContext: string
 }
 
 export async function assignShuttleSegment(reservationId: string, manifestId: string, paxCount: number, dateContext: string) {
+  const user = await requireStaff(); // Security Check
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
   if (!reservationId || !manifestId || paxCount <= 0) throw new Error("Invalid assignment details");
 
@@ -165,7 +191,7 @@ export async function assignShuttleSegment(reservationId: string, manifestId: st
     reservation_id: reservationId.toString(),
     manifest_id: manifestId,
     pax_count: paxCount,
-    assigned_by: user?.id
+    assigned_by: user.id
   }, { onConflict: 'reservation_id, manifest_id' });
 
   if (error) throw new Error("Failed to save assignment");
@@ -173,7 +199,9 @@ export async function assignShuttleSegment(reservationId: string, manifestId: st
 }
 
 export async function removeShuttleSegment(reservationId: string, manifestId: string, dateContext: string) {
+  await requireStaff(); // Security Check
   const supabase = await createClient();
+  
   const { error } = await supabase
     .from('reservation_assignments')
     .delete()
