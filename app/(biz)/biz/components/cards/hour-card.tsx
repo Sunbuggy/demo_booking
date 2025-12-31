@@ -1,16 +1,25 @@
 // app/(biz)/biz/components/cards/hour-card.tsx
 
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import React from 'react';
+import Link from 'next/link'; 
+import { Plus } from 'lucide-react'; 
+import { Button } from '@/components/ui/button'; 
+
+// Sub-components
 import LocationCard from './location-card';
-import { Reservation } from '../../types';
 import MainGroups from '../groups/main';
 import GroupSheet from '../groups/group-sheet';
 import CreateGroupWizard from '../groups/create-group-wizard';
 
+// Types
+import { Reservation } from '../../types';
+
 /**
  * HourCard Component
- * Displays a compact summary of the hour's operations with a hard yellow border.
+ * ------------------
+ * Displays a summary of operations for a specific hour block.
+ * Includes stats, driver loads, active groups, and reservation lists.
  */
 const HourCard = async ({
   hr,
@@ -23,28 +32,25 @@ const HourCard = async ({
   hourlyUtilization,
   drivers 
 }: {
-  hr: string;
-  data: Record<string, Record<string, Reservation[]>>;
+  hr: string; 
+  data: Record<string, Record<string, Reservation[]>>; 
   display_cost: boolean;
-  date: string;
-  full_name: string;
-  activeFleet: any[];        
+  date: string; 
+  full_name: string; 
+  activeFleet: any[]; 
   reservationStatusMap: any; 
   hourlyUtilization: any;    
   drivers: any[]; 
 }) => {
   
-  // 1. Get all reservations for this hour (flatten locations)
+  // --- 1. DATA PREPARATION ---
   const reservationsInThisHour = Object.values(data[hr]).flat();
-  
-  // 2. Simple Hour String (e.g. "09")
-  const groupHr = hr.split(':')[0];
+  const groupHr = hr.split(':')[0]; 
   const displayTime = `${groupHr}:00`; 
 
-  // 3. CALCULATE TOTALS
+  // --- 2. CALCULATE TOTALS ---
   const totalPeople = reservationsInThisHour.reduce((acc, r) => acc + (r.ppl_count || 0), 0);
   
-  // Calculate Vehicle Breakdown
   const vehicleCounts: Record<string, number> = {};
   reservationsInThisHour.forEach(r => {
     const keys = ['QB', 'SB1', 'SB2', 'SB4', 'CanAm', 'ATV']; 
@@ -61,8 +67,9 @@ const HourCard = async ({
     .map(([k, v]) => `${v}-${k}`)
     .join(', ');
 
-  // 4. CALCULATE DRIVER LOADS
+  // --- 3. CALCULATE DRIVER WORKLOAD ---
   const driverLoadMap: Record<string, { name: string; vehicle: string; stops: number; pax: number }> = {};
+  
   reservationsInThisHour.forEach(res => {
     const status = reservationStatusMap?.[res.res_id];
     if (status && status.assignments) {
@@ -73,7 +80,7 @@ const HourCard = async ({
            if (!driverLoadMap[key]) {
              driverLoadMap[key] = {
                name: fleetRow.driverName.split(' ')[0], 
-               vehicle: fleetRow.vehicleName.split(' - ')[0],
+               vehicle: fleetRow.vehicleName.split(' - ')[0], 
                stops: 0,
                pax: 0
              };
@@ -89,34 +96,53 @@ const HourCard = async ({
     return `${d.name}-${d.vehicle}-${d.stops}s-${d.pax}p`;
   });
 
+  // --- 4. RENDER ---
   return (
     <Card key={hr} className="border-2 border-yellow-500 bg-slate-950/20 overflow-hidden shadow-sm mb-4 rounded-lg">
       
-      {/* --- HEADER SECTION --- */}
+      {/* HEADER SECTION */}
       <div className="flex flex-col border-b border-slate-800 bg-slate-950">
          
-         {/* Row 1: Time | Totals */}
-         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-3 py-2">
-            <span className="text-2xl font-bold text-white tracking-tight">
-              {displayTime}
-            </span>
+         <div className="flex items-center justify-between px-3 py-2">
+            
+            {/* Left Side: Time and Totals */}
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <span className="text-2xl font-bold text-white tracking-tight">
+                  {displayTime}
+                </span>
 
-            <div className="flex items-baseline gap-3 text-sm">
-               <span className="font-bold text-orange-500">
-                 {totalPeople}-People
-               </span>
-               <span className="font-bold text-orange-600">
-                 {totalVehicles}-Vehicles
-               </span>
-               {vehicleString && (
-                 <span className="font-mono text-xs text-slate-500 italic hidden sm:inline">
-                   ({vehicleString})
-                 </span>
-               )}
+                <div className="flex items-baseline gap-3 text-sm">
+                   <span className="font-bold text-orange-500">
+                     {totalPeople}-People
+                   </span>
+                   <span className="font-bold text-orange-600">
+                     {totalVehicles}-Vehicles
+                   </span>
+                   {vehicleString && (
+                     <span className="font-mono text-xs text-slate-500 italic hidden sm:inline">
+                       ({vehicleString})
+                     </span>
+                   )}
+                </div>
             </div>
+
+            {/* Right Side: Create Reservation Button */}
+            {/* UPDATED: Green circular button styling */}
+            <Button 
+              size="icon" 
+              // Removed variant="ghost" to use custom background colors
+              // Added bg-green-600, hover:bg-green-700, text-white, shadow-sm
+              className="ml-2 h-8 w-8 rounded-full bg-green-600 hover:bg-green-700 text-white transition-colors shadow-sm border border-green-500 flex items-center justify-center"
+              title={`Create reservation for ${displayTime}`}
+              asChild
+            >
+              <Link href={`/biz/reservations/new?date=${date}&time=${groupHr}:00`}>
+                 <Plus className="w-5 h-5" />
+              </Link>
+            </Button>
          </div>
          
-         {/* Row 2: Driver Loads - Compact List */}
+         {/* Bottom Row: Compact Driver Load List */}
          {driverSummaryStrings.length > 0 && (
            <div className="px-3 pb-2 flex flex-wrap gap-x-3 gap-y-1">
              {driverSummaryStrings.map((str, idx) => (
@@ -128,9 +154,9 @@ const HourCard = async ({
          )}
       </div>
       
-      {/* --- GROUPS SECTION (Rows Layout) --- */}
-      {/* Reduced padding (p-2 -> px-2 py-1) for compactness */}
+      {/* GROUPS SECTION */}
       <div className="bg-slate-900/40 border-b border-slate-800 px-2 py-1">
+        
         <div className="flex items-center justify-between mb-1">
              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider pl-1">
                Active Groups
@@ -153,7 +179,6 @@ const HourCard = async ({
               /> 
         </div>
 
-        {/* Vertical Stack for Group Rows */}
         <div className="flex flex-col gap-1 w-full pl-1">
           <MainGroups
             date={date}
@@ -163,7 +188,7 @@ const HourCard = async ({
         </div>
       </div>
 
-      {/* --- RESERVATIONS CONTENT --- */}
+      {/* RESERVATIONS LIST */}
       <div className="p-1 flex flex-col gap-2 bg-slate-950/30">
         {Object.keys(data[hr]).map((locationKey) => {
           return (

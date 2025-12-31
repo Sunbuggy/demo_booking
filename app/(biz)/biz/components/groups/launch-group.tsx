@@ -5,17 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
-import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
 import { CalendarClock, PlaneLanding, RotateCcw, Trash2, Clock, CheckCircle2 } from 'lucide-react';
-import { launchGroup, unLaunchGroup, updateGroupLaunchTime, landGroup } from '@/app/actions/group-launch-actions';
+
+// ✅ FIXED IMPORT: This is the line causing the red screen. 
+// It MUST point to 'app/actions/group-launch-actions', NOT 'utils/old_db/actions'.
+import { 
+  launchGroup, 
+  unLaunchGroup, 
+  updateGroupLaunchTime, 
+  landGroup 
+} from '@/app/actions/group-launch-actions'; 
 
 interface LaunchGroupProps {
   groupId: string;
-  launchedAt: string | null; // ISO String
-  landedAt: string | null;   // ISO String
+  launchedAt: string | null;
+  landedAt: string | null;
   groupName: string;
-  durationMinutes?: number;  // Default to 60 if not passed
+  durationMinutes?: number;
 }
 
 export default function LaunchGroup({
@@ -31,16 +37,6 @@ export default function LaunchGroup({
   const [manualTime, setManualTime] = useState('');
   
   const { toast } = useToast();
-  const router = useRouter();
-  const supabase = createClient();
-
-  // --- REALTIME SUBSCRIPTION ---
-  useEffect(() => {
-    const channel = supabase.channel('realtime_groups_launch')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'groups' }, () => router.refresh())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [supabase, router]);
 
   // --- COUNTDOWN TIMER LOGIC ---
   useEffect(() => {
@@ -53,12 +49,10 @@ export default function LaunchGroup({
       const diff = end - now;
 
       if (diff < 0) {
-        // Overdue
         const overdueMins = Math.abs(Math.floor(diff / 60000));
         setTimeLeft(`+${overdueMins}m`);
         setIsOverdue(true);
       } else {
-        // Remaining
         const mins = Math.floor(diff / 60000);
         setTimeLeft(`${mins}m`);
         setIsOverdue(false);
@@ -71,16 +65,13 @@ export default function LaunchGroup({
   }, [launchedAt, landedAt, durationMinutes]);
 
   // --- ACTIONS ---
-
   const handleLaunchNow = async () => {
-    // Default launch logic
     const res = await launchGroup(groupId);
     if (res?.error) toast({ title: 'Error', description: res.error, variant: 'destructive' });
     else toast({ title: 'Launched!', description: `${groupName} is go.`, variant: 'success' });
   };
 
   const handleLandNow = async () => {
-    // Record current time as landed_at
     const res = await landGroup(groupId); 
     if (res?.error) toast({ title: 'Error', description: res.error, variant: 'destructive' });
     else toast({ title: 'Landed', description: 'Welcome back.', variant: 'success' });
@@ -88,7 +79,6 @@ export default function LaunchGroup({
 
   const handleUpdateLaunchTime = async () => {
     if (!manualTime) return;
-    // Combine today's date with the manual time input
     const [hours, minutes] = manualTime.split(':');
     const newDate = new Date();
     newDate.setHours(parseInt(hours), parseInt(minutes), 0);
@@ -111,14 +101,11 @@ export default function LaunchGroup({
     }
   };
 
-  // --- HELPERS ---
   const formatTime = (iso: string) => {
     return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
 
   // --- RENDER STATES ---
-
-  // 1. LANDED STATE (Complete)
   if (landedAt && launchedAt) {
     const duration = Math.round((new Date(landedAt).getTime() - new Date(launchedAt).getTime()) / 60000);
     return (
@@ -134,11 +121,9 @@ export default function LaunchGroup({
     );
   }
 
-  // 2. LAUNCHED STATE (Active)
   if (launchedAt) {
     return (
       <div className="flex items-center gap-1">
-        {/* LAUNCH INFO WIDGET */}
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <button className={`
@@ -155,19 +140,15 @@ export default function LaunchGroup({
                    {formatTime(launchedAt)}
                 </span>
               </div>
-              
               <div className={`text-sm font-bold font-mono ${isOverdue ? 'text-red-500' : 'text-slate-200'}`}>
                  {timeLeft}
               </div>
             </button>
           </PopoverTrigger>
-
-          {/* EDIT POPOVER */}
           <PopoverContent className="w-64 p-3 bg-slate-950 border-slate-800" align="end">
             <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">
               <CalendarClock className="w-3 h-3" /> Adjust Launch
             </h4>
-            
             <div className="space-y-3">
               <div className="flex gap-2">
                 <Button variant="secondary" size="sm" className="flex-1 text-xs" onClick={handleLaunchNow}>
@@ -177,7 +158,6 @@ export default function LaunchGroup({
                   <Trash2 className="w-3 h-3 mr-1" /> Reset
                 </Button>
               </div>
-
               <div className="pt-2 border-t border-slate-800">
                 <label className="text-[10px] text-slate-500 mb-1 block">Manual Start Time</label>
                 <div className="flex gap-2">
@@ -195,8 +175,6 @@ export default function LaunchGroup({
             </div>
           </PopoverContent>
         </Popover>
-
-        {/* LAND BUTTON */}
         <Button 
           size="sm" 
           onClick={handleLandNow}
@@ -208,7 +186,6 @@ export default function LaunchGroup({
     );
   }
 
-  // 3. READY STATE (Default)
   return (
     <Button 
       size="sm" 

@@ -15,6 +15,9 @@ import { getTimeSortedData } from '@/utils/old_db/helpers';
 import { getDailyOperations } from '@/app/actions/shuttle-operations'; 
 import { getVegasShuttleDrivers } from '@/app/actions/user-actions'; 
 
+// IMPORT THE NEW GLOBAL LISTENER
+import RealtimeGroupsListener from '../components/realtime-groups-listener';
+
 export const dynamic = 'force-dynamic';
 
 async function fetchReservationsForDate(date: string): Promise<Reservation[]> {
@@ -49,6 +52,10 @@ function BizContent({
   return (
     <div className="min-h-screen w-full flex flex-col gap-5 relative">
       
+      {/* --- GLOBAL REALTIME LISTENER --- */}
+      {/* This single component handles all group/timing updates to prevent network saturation */}
+      <RealtimeGroupsListener />
+
       {/* --- STICKY "FLOATING ISLAND" NAVIGATION --- */}
       {role > 299 && (
         <div className="sticky top-2 z-50 mx-auto w-fit flex justify-center">

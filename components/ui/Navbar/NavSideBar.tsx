@@ -54,13 +54,13 @@ export default function NavSideBar({ user }: NavSideBarProps) {
 
   // Fleet and Operations Specific Links
   const dashboardLinks: NavLink[] = [
-    { href: `/biz/vegas`, label: 'NV Operations', minLevel: 300 },
-    { href: `/biz/pismo`, label: 'CA Operations', minLevel: 300 },
-    { href: `/biz/michigan`, label: 'MI Operations', minLevel: 300, external: true },
+    { href: `/biz/vegas`, label: 'NV DASH', minLevel: 300 },
+    { href: `/biz/pismo`, label: 'CA DASH', minLevel: 300 },
+    { href: `/biz/michigan`, label: 'MI DASH', minLevel: 300, external: true },
     { href: '/biz/my-schedule', label: 'My Schedule', minLevel: 300 },
-    { href: '/biz/schedule', label: 'Full Schedule', minLevel: 300 },
+    { href: '/biz/schedule', label: 'ROSTER', minLevel: 300 },
     { href: '/biz/vehicles/admin', label: 'Fleet Management', minLevel: 300 },
-    { href: '/biz/sst', label: 'SST Logs', minLevel: 300 },
+    { href: '/biz/sst', label: 'SST', minLevel: 300 },
     { href: '/biz/qr', label: 'QR Generator', minLevel: 300 },
     { href: '/biz/admin/charge_pismo', label: 'Pismo Billing', minLevel: 300 },
   ];

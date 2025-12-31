@@ -23,15 +23,16 @@ interface Props {
   date: string; 
   drivers: { id: string; full_name: string }[]; 
   activeFleet: any[]; 
-  todaysShifts: any[]; // <--- NEW PROP: List of scheduled shifts
+  todaysShifts: any[]; // List of scheduled shifts
+  trigger?: React.ReactNode; // Custom trigger element passed from Landing.tsx
 }
 
-export default function FleetManagerDialog({ date, drivers, activeFleet, todaysShifts }: Props) {
+export default function FleetManagerDialog({ date, drivers, activeFleet, todaysShifts, trigger }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState('');
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
-  const [showAllStaff, setShowAllStaff] = useState(false); // Toggle state
+  const [showAllStaff, setShowAllStaff] = useState(false); 
 
   // --- FILTER LOGIC ---
   const filteredDrivers = useMemo(() => {
@@ -64,13 +65,11 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
       );
       
       toast.success('Driver added to schedule');
-      // Reset fields for quick entry of next driver
       setSelectedDriverId('');
       setSelectedVehicleId('');
       
     } catch (error: any) {
       console.error(error);
-      // SHOW ACTUAL SERVER ERROR
       toast.error(error.message || 'Failed to add driver');
     } finally {
       setIsSubmitting(false);
@@ -96,9 +95,18 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-slate-900 border border-slate-700 text-yellow-500 hover:bg-slate-800 hover:text-yellow-400 transition-all gap-2">
-          <FaBus /> Morning Roll Call
-        </Button>
+        {/* UPDATE: Wrapped in a div bridge to ensure DialogTrigger's 
+            click event propagates correctly to the custom trigger node. 
+        */}
+        <div className="inline-block cursor-pointer">
+          {trigger ? (
+            trigger
+          ) : (
+            <Button className="bg-slate-900 border border-slate-700 text-yellow-500 hover:bg-slate-800 hover:text-yellow-400 transition-all gap-2">
+              <FaBus /> Morning Roll Call
+            </Button>
+          )}
+        </div>
       </DialogTrigger>
       
       <DialogContent 
@@ -117,7 +125,6 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
              <div className="flex items-center justify-between">
                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Add to Schedule</h4>
                
-               {/* TOGGLE: Show All Staff */}
                <div className="flex items-center gap-2">
                  <label htmlFor="show-all" className="text-[10px] text-slate-400 cursor-pointer select-none">Show Unscheduled</label>
                  <Switch 
@@ -130,13 +137,12 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
              </div>
 
              <div className="grid gap-2">
-               {/* DRIVER SELECT */}
                <select
                  className="w-full h-10 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
                  value={selectedDriverId}
                  onChange={(e) => { 
                     setSelectedDriverId(e.target.value); 
-                    e.target.blur(); // Remove focus
+                    e.target.blur(); 
                  }}
                >
                  <option value="">
@@ -147,13 +153,12 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
                  ))}
                </select>
 
-               {/* VEHICLE SELECT */}
                <select
                  className="w-full h-10 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
                  value={selectedVehicleId}
                  onChange={(e) => { 
                     setSelectedVehicleId(e.target.value); 
-                    e.target.blur(); // Remove focus
+                    e.target.blur(); 
                  }}
                >
                  <option value="">-- Choose Vehicle --</option>

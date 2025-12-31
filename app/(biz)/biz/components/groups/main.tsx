@@ -9,6 +9,13 @@ import { PopoverGroupEdit } from './popover_group_edit';
 import LaunchGroup from './launch-group';
 import GroupPics from '../pictures/group-pics';
 
+// --- TYPE DEFINITIONS ---
+interface GroupTiming {
+  group_id: string;
+  launched_at: string | null;
+  landed_at: string | null;
+}
+
 // --- HELPER: Fetch Scheduled Guides ---
 async function fetchScheduledGuides(supabase: any, date: string) {
   const { data: schedules } = await supabase
@@ -68,7 +75,10 @@ const MainGroups = async ({
   const timings = await fetchGroupTimings(await supabase, groupIds);
 
   // 3. Merge Data: Create a map for fast lookup
-  const timingsMap = new Map(timings.map((t: any) => [t.group_id, t]));
+  // FIX: Explicitly type the Map so TypeScript knows values are GroupTiming objects
+  const timingsMap = new Map<string, GroupTiming>(
+    timings.map((t: any) => [t.group_id, t])
+  );
 
   function filterGroupsByHour(groups: GroupsType[], hr: string) {
     const targetHour = hr.split(':')[0];
@@ -133,6 +143,7 @@ const MainGroups = async ({
           const sweep = group.sweep;
           
           // MERGE: Get timing data for this group
+          // FIX: This now returns GroupTiming | undefined, so properties are safe to access
           const timingData = timingsMap.get(groupId);
           const launchedAt = timingData?.launched_at || null;
           const landedAt = timingData?.landed_at || null;

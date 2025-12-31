@@ -3,7 +3,8 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { Reservation } from '@/types'; 
+// We explicitly point to where the types actually live
+import { Reservation } from '@/app/(biz)/biz/types';
 
 // --- TYPES ---
 export interface ManifestItem {
@@ -116,11 +117,11 @@ export async function getDailyOperations(date: string, legacyReservations: Reser
       if (!assign.reservation_id) return;
 
       const res = legacyReservations.find(r => 
-        r && r.id && String(r.id) === String(assign.reservation_id)
+        r && r.res_id && String(r.res_id) === String(assign.reservation_id)
       );
       
-      if (res && res.time) {
-        const hourVal = parseInt(res.time, 10);
+      if (res && res.sch_time) {
+        const hourVal = parseInt(res.sch_time, 10);
         if (!isNaN(hourVal)) {
           const hourKey = hourVal.toString(); 
           
