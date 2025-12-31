@@ -224,7 +224,7 @@ export default function UserStatusAvatar({
           </div>
           {/* Admin Edit Shortcut (Only if not self) */}
           {(isAdmin && !isCurrentUser) && (
-            <Link href={`/biz/users/admin/employee/${user.id}`}>
+            <Link href={`/biz/users/${user.id}`}>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30" title="Edit Profile">
                 <Pencil className="w-4 h-4" />
               </Button>

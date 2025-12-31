@@ -1,3 +1,5 @@
+// app/(biz)/biz/components/cards/location-card.tsx
+
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import React from 'react';
 import { Reservation } from '../../types';
@@ -8,12 +10,24 @@ const LocationCard = ({
   id,
   data,
   locationKey,
-  display_cost
+  display_cost,
+  // --- NEW SHUTTLE PROPS ---
+  activeFleet,
+  reservationStatusMap,
+  hourlyUtilization,
+  hourContext,
+  drivers // <--- NEW PROP: The full list of employees
 }: {
-  id: string;
+  id: string; // The specific hour string (e.g. "08:00:00")
   data: Record<string, Record<string, Reservation[]>>;
   locationKey: string;
   display_cost: boolean;
+  // New Props to pass down to the row
+  activeFleet: any[];
+  reservationStatusMap: any;
+  hourlyUtilization: any;
+  hourContext: string; // The simple hour (e.g. "8")
+  drivers: any[]; // <--- TYPE DEFINITION
 }) => {
   // Helper: count vehicles booked in a single reservation
   const getVehicleCount = (reservation: Reservation): number => {
@@ -93,6 +107,13 @@ const LocationCard = ({
             key={index}
             vehiclesList={vehiclesList as readonly string[]}
             display_cost={display_cost}
+            
+            // --- PROP DRILLING: PASS DATA TO ROW ---
+            activeFleet={activeFleet}
+            reservationStatusMap={reservationStatusMap}
+            hourlyUtilization={hourlyUtilization}
+            hourContext={hourContext}
+            drivers={drivers} // <--- PASSING DRIVERS DOWN
           />
         ))}
       </CardContent>

@@ -1,109 +1,95 @@
 // app/(biz)/biz/[date]/page.tsx
 
-import Landing from '../components/landing';
-import { getTimeSortedData } from '@/utils/old_db/helpers';
-import { Reservation } from '../types';
-import { getUserDetails } from '@/utils/supabase/queries';
-import AdminPanel from '../components/panels/admin-panel';
-import TorchPanel from '../components/panels/torch-panel';
-import PanelSelector from '../components/panels/panel-selector';
-import LoadingModal from '../components/loading-modal';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { RiArrowLeftWideFill, RiArrowRightWideFill } from 'react-icons/ri';
-import dayjs from 'dayjs';
-import { createClient } from '@/utils/supabase/server';
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import dayjs from 'dayjs';
+import { RiArrowLeftWideFill, RiArrowRightWideFill } from 'react-icons/ri';
+import { Button } from '@/components/ui/button';
+import LoadingModal from '../components/loading-modal';
+import Landing from '../components/landing';
+import { createClient } from '@/utils/supabase/server';
+import { getUserDetails } from '@/utils/supabase/queries';
+import { Reservation } from '../types';
+import { getTimeSortedData } from '@/utils/old_db/helpers';
+import { getDailyOperations } from '@/app/actions/shuttle-operations'; 
+import { getVegasShuttleDrivers } from '@/app/actions/user-actions'; 
 
-// Force dynamic rendering (we fetch fresh data for each date)
+// IMPORT THE NEW GLOBAL LISTENER
+import RealtimeGroupsListener from '../components/realtime-groups-listener';
+
 export const dynamic = 'force-dynamic';
 
-// Isolated server action for DB fetch
 async function fetchReservationsForDate(date: string): Promise<Reservation[]> {
   'use server';
-
   const { fetch_from_old_db } = await import('@/utils/old_db/actions');
   const query = `SELECT * FROM reservations_modified WHERE sch_date = '${date}'`;
-
   try {
     const data = (await fetch_from_old_db(query)) as Reservation[];
     return data || [];
   } catch (error) {
-    console.error('Error fetching reservations for date:', date, error);
+    console.error('Error fetching reservations:', error);
     return [];
   }
 }
 
-// Client-side content (receives pre-fetched data)
 function BizContent({
-  date,
-  dcos,
-  role,
-  full_name,
-  reservations,
-  yesterday,
-  tomorrow,
-}: {
-  date: string;
-  dcos: boolean;
-  role: number;
-  full_name: string;
-  reservations: Reservation[];
-  yesterday: string;
-  tomorrow: string;
-}) {
+  date, dcos, role, full_name, reservations, yesterday, tomorrow,
+  activeFleet, reservationStatusMap, hourlyUtilization, drivers,
+  todaysShifts
+}: any) {
   const hasReservations = reservations.length > 0;
-  
-  // 1. Get the data from the helper
   let sortedData = hasReservations ? getTimeSortedData(reservations) : null;
 
-  // 2. FORCE RE-SORT: The Bug Fix
-  // If sortedData is an array (which it likely is for the Landing component), we sort it numerically.
-  // This fixes the issue where "10" comes before "8" because of alphabetical string sorting.
   if (Array.isArray(sortedData)) {
     sortedData = sortedData.sort((a: any, b: any) => {
-      // Safely parse the time keys (assuming property is 'time' or the first element if it's an entry)
-      // Adjust 'time' below to match the exact key in your data structure (e.g., a.time or a.key)
       const timeA = parseInt(a.time || a.key || a, 10); 
       const timeB = parseInt(b.time || b.key || b, 10);
       return timeA - timeB;
     });
   } 
-  // If sortedData is an Object (dictionary), we can't easily sort it here without changing <Landing>.
-  // However, most "Board" views convert to an array before rendering. 
-  // If your Landing page accepts an Object, the sort order depends on Object.keys().
-  // If the issue persists after this patch, 'getTimeSortedData' in utils needs to return an Array, not an Object.
 
   return (
-    <div className="min-h-screen w-full flex flex-col gap-5">
-      {/* Navigation arrows + calendar button */}
+    <div className="min-h-screen w-full flex flex-col gap-5 relative">
+      
+      {/* --- GLOBAL REALTIME LISTENER --- */}
+      {/* This single component handles all group/timing updates to prevent network saturation */}
+      <RealtimeGroupsListener />
+
+      {/* --- STICKY "FLOATING ISLAND" NAVIGATION --- */}
       {role > 299 && (
-        <div className="flex gap-4 justify-center items-center pt-6">
-          <Link href={`/biz/${yesterday}${dcos ? '?dcos=true' : ''}`}>
-            <RiArrowLeftWideFill className="text-4xl hover:text-gray-600 transition" />
-          </Link>
-          <Link href="/biz/calendar">
-            <Button variant="outline" size="lg">
-              {dayjs(date).format('dddd, MMMM D, YYYY')}
-            </Button>
-          </Link>
-          <Link href={`/biz/${tomorrow}${dcos ? '?dcos=true' : ''}`}>
-            <RiArrowRightWideFill className="text-4xl hover:text-gray-600 transition" />
-          </Link>
+        <div className="sticky top-2 z-50 mx-auto w-fit flex justify-center">
+          <div className="flex gap-4 items-center bg-slate-950/80 backdrop-blur-md border border-slate-700/50 rounded-xl px-4 py-1.5 shadow-2xl">
+            {/* Prev Day */}
+            <Link 
+              href={`/biz/${yesterday}${dcos ? '?dcos=true' : ''}`}
+              className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-800 rounded-full"
+            >
+              <RiArrowLeftWideFill className="text-2xl" />
+            </Link>
+
+            {/* Calendar Button */}
+            <Link href="/biz/calendar">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="font-mono font-bold h-8 bg-transparent text-slate-200 hover:bg-slate-800 hover:text-white"
+              >
+                {dayjs(date).format('ddd, MMM D, YYYY')}
+              </Button>
+            </Link>
+
+            {/* Next Day */}
+            <Link 
+              href={`/biz/${tomorrow}${dcos ? '?dcos=true' : ''}`}
+              className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-800 rounded-full"
+            >
+              <RiArrowRightWideFill className="text-2xl" />
+            </Link>
+          </div>
         </div>
       )}
 
-      {/* Admin / Torch control panels */}
-      {role > 650 && (
-        <PanelSelector
-          role={role}
-          admin={<AdminPanel display_cost={dcos} full_name={full_name} />}
-          torch={<TorchPanel full_name={full_name} />}
-        />
-      )}
-
-      {/* Main content */}
       {hasReservations && sortedData ? (
         <Landing
           data={sortedData}
@@ -111,64 +97,56 @@ function BizContent({
           role={role}
           date={date}
           full_name={full_name}
+          activeFleet={activeFleet}
+          reservationStatusMap={reservationStatusMap}
+          hourlyUtilization={hourlyUtilization}
+          drivers={drivers}
+          todaysShifts={todaysShifts} 
         />
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
-          <h2 className="text-3xl font-semibold mb-4">
-            No reservations for {dayjs(date).format('MMMM D, YYYY')}
-          </h2>
-          <p className="text-lg text-gray-600">
-            There are no bookings scheduled for this date.
-          </p>
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 mt-10">
+          <h2 className="text-3xl font-semibold mb-4 text-slate-500">No reservations for {dayjs(date).format('MMMM D, YYYY')}</h2>
         </div>
       )}
     </div>
   );
 }
 
-// Main server component
-export default async function BizPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ date: string }>;
-  searchParams: Promise<{ dcos?: string }>;
-}) {
+export default async function BizPage({ params, searchParams }: any) {
   const { date } = await params;
   const search = await searchParams;
   const dcos = search.dcos === 'true';
 
-  // Validate date format
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    console.error('Invalid date format in /biz/[date]:', date);
-    redirect('/biz/calendar');
-  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) redirect('/biz/calendar');
 
-  // Auth + user details
-  const supabase = await createClient(); // Fixed: Removed double 'await'
+  const supabase = await createClient(); 
   const user = await getUserDetails(supabase);
-
-  if (!user || !user[0]) {
-    redirect('/signin');
-  }
+  if (!user || !user[0]) redirect('/signin');
 
   const role = user[0].user_level;
-  const full_name = user[0].full_name || '';
-
-  // Permission check
-  if (role < 299) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-2xl text-red-600">Unauthorized - Insufficient permissions</p>
-      </div>
-    );
-  }
+  if (role < 299) return <div>Unauthorized</div>;
 
   const yesterday = dayjs(date).subtract(1, 'day').format('YYYY-MM-DD');
   const tomorrow = dayjs(date).add(1, 'day').format('YYYY-MM-DD');
 
-  // Fetch reservations
+  // 1. Fetch Legacy Reservations
   const reservations = await fetchReservationsForDate(date);
+  
+  // 2. Prepare the Schedule Query
+  const shiftsQuery = supabase
+    .from('employee_schedules')
+    .select('user_id, role, location, task')
+    .gte('start_time', `${date}T00:00:00`)
+    .lte('start_time', `${date}T23:59:59`);
+
+  // 3. Run all fetches in parallel
+  const [operationsData, drivers, shiftsResult] = await Promise.all([
+    getDailyOperations(date, reservations),
+    getVegasShuttleDrivers(),
+    shiftsQuery
+  ]);
+
+  const todaysShifts = shiftsResult.data || [];
 
   return (
     <Suspense fallback={<LoadingModal />}>
@@ -176,10 +154,15 @@ export default async function BizPage({
         date={date}
         dcos={dcos}
         role={role}
-        full_name={full_name}
+        full_name={user[0].full_name}
         reservations={reservations}
         yesterday={yesterday}
         tomorrow={tomorrow}
+        activeFleet={operationsData.activeFleet}
+        reservationStatusMap={operationsData.reservationStatusMap}
+        hourlyUtilization={operationsData.hourlyUtilization}
+        drivers={drivers}
+        todaysShifts={todaysShifts} 
       />
     </Suspense>
   );
