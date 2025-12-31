@@ -1,99 +1,132 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
-import { BsArrowReturnRight } from 'react-icons/bs';
+import { BsArrowRight } from 'react-icons/bs';
 import { Reservation } from '../../types';
+import SplitShuttleAssigner from '@/components/biz/split-shuttle-assigner'; 
+import { cn } from '@/lib/utils';
 
 interface BookingCardProps {
   reservation: Reservation;
-  vehiclesList: readonly string[]; // readonly to match your const array
+  vehiclesList: readonly string[]; 
   display_cost: boolean;
+  activeFleet: any[];
+  reservationStatusMap: any;
+  hourlyUtilization: any;
+  hourContext: string;
+  drivers: any[];
 }
 
 const BookingCard: React.FC<BookingCardProps> = ({
   reservation,
   vehiclesList,
-  display_cost
+  display_cost,
+  activeFleet,
+  reservationStatusMap,
+  hourlyUtilization,
+  hourContext,
+  drivers
 }) => {
-  // Build list of vehicles actually booked (with count > 0)
-  const bookedVehicles = vehiclesList
-    .filter((key) => {
-      const count = Number(reservation[key as keyof Reservation]);
-      return count > 0;
-    })
+  // 1. Format Vehicles string (e.g. "9-SB1, 4-SB2")
+  const vehicleString = vehiclesList
+    .filter((key) => Number(reservation[key as keyof Reservation]) > 0)
     .map((key) => {
       const count = Number(reservation[key as keyof Reservation]);
-      return `${count}-${key}`;
+      return `${count}-${key}`; 
     })
     .join(', ');
 
+  // 2. Logic vars
+  const pickupLoc = (reservation as any).pickup_location || reservation.hotel || '';
+  const isSelfDrive = pickupLoc.toLowerCase().includes('drive here');
+  const currentStatus = reservationStatusMap?.[reservation.res_id];
+  const isSpecial = reservation.is_special_event;
+
   return (
-    <Card
-      key={reservation.res_id}
-      // Added dark:bg-slate-950 to make the card slightly darker than the background in dark mode for contrast
-      className={`bookingcard mb-1 border-gray-200 dark:border-gray-800 dark:bg-slate-950 ${reservation.is_special_event ? 'text-orange-500 dark:text-orange-500' : ''}`}
-    >
-      <CardContent className="flex flex-wrap items-center gap-x-3 gap-y-1 p-2 text-sm leading-tight">
-        
-        {/* 1. Reservation ID */}
+    <div className={cn(
+      "relative flex flex-col gap-2 p-3 border-b border-slate-800 bg-slate-900/40 hover:bg-slate-900 transition-colors min-h-[90px]",
+      isSpecial && "bg-orange-950/20 border-l-2 border-l-orange-500 pl-2.5" 
+    )}>
+      
+      {/* --- ROW 1: CUSTOMER INFO (ID + Name + Occasion) --- */}
+      <div className="flex flex-wrap items-baseline gap-2 w-full leading-none">
         <Link
           href={`/biz/reservations/${reservation.res_id}`}
-          className="text-pink-500 hover:underline font-mono italic"
+          className="text-xs font-mono text-pink-500 hover:text-pink-400 font-bold shrink-0"
         >
           {reservation.res_id}
         </Link>
-
-        {/* 2. Customer Name - FIX: Changed text-white to dark:text-white */}
-        <span className="font-bold text-gray-900 dark:text-white whitespace-nowrap">
+        
+        <span className="text-sm font-bold text-slate-100 truncate">
           {reservation.full_name || '—'}
         </span>
-
-        {/* 3. Tags (Occasion & Hotel) - Compact badges adjusted for light/dark mode */}
-        {reservation.occasion && (
-          <span className="occasionbox px-1.5 py-0.5 text-xs rounded border border-gray-300 bg-gray-100 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 whitespace-nowrap">
-            {reservation.occasion.toLowerCase().slice(0, 20)}
-          </span>
-        )}
         
-        {reservation.hotel && (
-          <span className="HotelListing px-1.5 py-0.5 text-xs rounded border border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-900/40 dark:bg-yellow-900/20 dark:text-yellow-500 whitespace-nowrap">
-            {reservation.hotel.toLowerCase().slice(0, 20)}
+        {reservation.occasion && (
+          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-purple-900/40 text-purple-300 border border-purple-800 uppercase tracking-wide whitespace-nowrap">
+            {reservation.occasion.slice(0, 15)}
           </span>
         )}
+      </div>
 
-        {/* 4. Stats (People & Vehicles) - Side by Side */}
-        <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
-          <span className="font-semibold whitespace-nowrap">
-            {reservation.ppl_count || 0}-PPL
-          </span>
-          
-          {bookedVehicles && (
-            <span className="italic font-light text-orange-600/90 dark:text-orange-400/90 whitespace-nowrap">
-              {bookedVehicles}
-            </span>
-          )}
+      {/* --- ROW 2: LOGISTICS (Location + Shuttle Assignment) --- */}
+      <div className="flex flex-wrap items-center gap-2 w-full min-h-[24px]">
+        {/* Location Badge */}
+        {reservation.hotel && (
+           <div className="flex items-center gap-1 text-[11px] font-medium text-amber-500/90 bg-slate-950 px-2 py-1 rounded border border-slate-800 max-w-[200px] truncate">
+              <span className="truncate">{reservation.hotel}</span>
+           </div>
+        )}
+
+        {/* Driver/Shuttle Assignment */}
+        {!isSelfDrive && (
+          <SplitShuttleAssigner
+            reservationId={reservation.res_id.toString()}
+            totalGroupSize={reservation.ppl_count || 0}
+            reservationHour={hourContext}
+            currentStatus={currentStatus}
+            activeFleet={activeFleet || []}
+            hourlyUtilization={hourlyUtilization || {}}
+            dateContext={reservation.sch_date.toISOString()} 
+            pickupLocation={pickupLoc || 'Unknown'}
+            groupName={reservation.full_name || 'Guest'}
+            drivers={drivers || []}
+          />
+        )}
+      </div>
+
+      {/* --- ROW 3: FLEET STATS + GROUP ASSIGNMENT (Bottom Left) | ARROW (Bottom Right) --- */}
+      <div className="flex items-center justify-between w-full mt-1 pt-1 border-t border-slate-800/30">
+        
+        {/* LEFT: Fleet Info "17P (9-SB1, 4-SB2)" & Group Assignment Slot */}
+        <div className="flex items-center gap-2">
+           <span className="font-mono text-xs font-bold text-orange-400">
+             <span className="text-sm text-orange-500">{reservation.ppl_count}P</span>
+             {vehicleString && <span className="text-orange-400/80 ml-1">({vehicleString})</span>}
+           </span>
+           
+           {/* Placeholder for future Group Assignment Pill */}
+           {/* <span className="text-[10px] border border-blue-800 text-blue-400 px-1 rounded">Group A</span> */}
         </div>
 
-        {/* 5. Cost (Optional) */}
-        {display_cost && (
-          <span className="text-green-600 dark:text-green-500 font-bold ml-1">
-            ${Number(reservation.total_cost || 0).toFixed(0)}
-          </span>
-        )}
+        {/* RIGHT: Arrow & Cost */}
+        <div className="flex items-center gap-3">
+           {display_cost && (
+             <span className="text-[10px] font-mono text-green-600 font-bold">
+               ${Number(reservation.total_cost || 0).toFixed(0)}
+             </span>
+           )}
+           
+           <Link
+             href={`https://www.sunbuggy.biz/edt_res.php?Id=${reservation.res_id}`}
+             target="_blank"
+             className="text-pink-600 hover:text-pink-400 transition-colors p-1"
+           >
+             <BsArrowRight size={18} />
+           </Link>
+        </div>
+      </div>
 
-        {/* 6. Edit Link (Pushed to far right) */}
-        <Link
-          href={`https://www.sunbuggy.biz/edt_res.php?Id=${reservation.res_id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="ml-auto pl-2"
-        >
-          <BsArrowReturnRight className="text-xl text-pink-500 hover:text-pink-600 transition-colors" />
-        </Link>
-
-      </CardContent>
-    </Card>
+    </div>
   );
 };
 

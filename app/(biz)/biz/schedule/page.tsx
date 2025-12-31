@@ -44,7 +44,7 @@ import { cn } from '@/lib/utils';
 // --- CONSTANTS ---
 const LOCATIONS: Record<string, string[]> = {
   'Las Vegas': ['ADMIN', 'OFFICE', 'DUNES', 'SHUTTLES', 'SHOP'],
-  'Pismo': ['ADMIN', 'CSR', 'BEACH', 'SHOP'],
+  'Pismo': ['ADMIN', 'CLUBHOUSE', 'BEACH', 'SHOP'],
   'Michigan': ['ADMIN', 'SHOP', 'GUIDES', 'OFFICE']
 };
 

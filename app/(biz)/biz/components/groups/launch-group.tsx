@@ -1,142 +1,198 @@
 'use client';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
-import { launchGroup, unLaunchGroup } from '@/utils/old_db/actions';
-import React from 'react';
-import { PopoverGroups } from './popover_group';
-import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
-import { PopoverClose } from '@radix-ui/react-popover';
+import { CalendarClock, PlaneLanding, RotateCcw, Trash2, Clock, CheckCircle2 } from 'lucide-react';
 
-const LaunchGroup = ({
-  groupId,
-  launched,
-  groupName
-}: {
+// ✅ FIXED IMPORT: This is the line causing the red screen. 
+// It MUST point to 'app/actions/group-launch-actions', NOT 'utils/old_db/actions'.
+import { 
+  launchGroup, 
+  unLaunchGroup, 
+  updateGroupLaunchTime, 
+  landGroup 
+} from '@/app/actions/group-launch-actions'; 
+
+interface LaunchGroupProps {
   groupId: string;
-  launched: string | null; 
+  launchedAt: string | null;
+  landedAt: string | null;
   groupName: string;
-}) => {
-  const [initLaunch, setInitLaunch] = React.useState(false);
-  const [unlounch, setUnlaunch] = React.useState(false);
-  const { toast } = useToast();
-  const supabase = createClient();
-  const router = useRouter();
+  durationMinutes?: number;
+}
 
-  React.useEffect(() => {
-    const channel = supabase
-      .channel('realtime groups')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'groups'
-        },
-        () => {
-          router.refresh();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, router]);
-
-  React.useEffect(() => {
-    if (initLaunch && !launched) {
-      launchGroup(groupId).then((res) => {
-        res.error
-          ? toast({
-              title: 'Error',
-              description: 'An error occurred while launching group.',
-              duration: 4000,
-              variant: 'destructive'
-            })
-          : toast({
-              title: 'Group Launched',
-              description: `Group ${groupName} has been launched.`,
-              duration: 2000,
-              variant: 'success'
-            });
-      });
-    }
-    if (unlounch && launched) {
-      unLaunchGroup(groupId).then((res) => {
-        res.error
-          ? toast({
-              title: 'Error',
-              description: 'An error occurred while unlaunching group.',
-              duration: 4000,
-              variant: 'destructive'
-            })
-          : toast({
-              title: 'Group Unlaunched',
-              description: `Group ${groupName} has been unlaunched.`,
-              duration: 2000,
-              variant: 'success'
-            });
-      });
-    }
-    setUnlaunch(false);
-    setInitLaunch(false);
-  }, [initLaunch, unlounch]);
-
-const formatPSTTime = (isoString: string | null) => {
-  if (!isoString) return 'Not launched';
+export default function LaunchGroup({
+  groupId,
+  launchedAt,
+  landedAt,
+  groupName,
+  durationMinutes = 60
+}: LaunchGroupProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<string>('');
+  const [isOverdue, setIsOverdue] = useState(false);
+  const [manualTime, setManualTime] = useState('');
   
-  try {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString('en-US', {
-      timeZone: 'America/Los_Angeles',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  } catch (e) {
-    console.error('Invalid date format:', isoString);
-    return 'Invalid time';
+  const { toast } = useToast();
+
+  // --- COUNTDOWN TIMER LOGIC ---
+  useEffect(() => {
+    if (!launchedAt || landedAt) return;
+
+    const calculateTime = () => {
+      const start = new Date(launchedAt).getTime();
+      const now = new Date().getTime();
+      const end = start + (durationMinutes * 60 * 1000);
+      const diff = end - now;
+
+      if (diff < 0) {
+        const overdueMins = Math.abs(Math.floor(diff / 60000));
+        setTimeLeft(`+${overdueMins}m`);
+        setIsOverdue(true);
+      } else {
+        const mins = Math.floor(diff / 60000);
+        setTimeLeft(`${mins}m`);
+        setIsOverdue(false);
+      }
+    };
+
+    calculateTime();
+    const timer = setInterval(calculateTime, 60000); // Update every min
+    return () => clearInterval(timer);
+  }, [launchedAt, landedAt, durationMinutes]);
+
+  // --- ACTIONS ---
+  const handleLaunchNow = async () => {
+    const res = await launchGroup(groupId);
+    if (res?.error) toast({ title: 'Error', description: res.error, variant: 'destructive' });
+    else toast({ title: 'Launched!', description: `${groupName} is go.`, variant: 'success' });
+  };
+
+  const handleLandNow = async () => {
+    const res = await landGroup(groupId); 
+    if (res?.error) toast({ title: 'Error', description: res.error, variant: 'destructive' });
+    else toast({ title: 'Landed', description: 'Welcome back.', variant: 'success' });
+  };
+
+  const handleUpdateLaunchTime = async () => {
+    if (!manualTime) return;
+    const [hours, minutes] = manualTime.split(':');
+    const newDate = new Date();
+    newDate.setHours(parseInt(hours), parseInt(minutes), 0);
+    
+    const res = await updateGroupLaunchTime(groupId, newDate.toISOString());
+    if (res?.error) toast({ title: 'Error', description: res.error, variant: 'destructive' });
+    else {
+      toast({ title: 'Updated', description: 'Launch time adjusted.', variant: 'success' });
+      setIsOpen(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!confirm('Are you sure you want to completely reset the launch status?')) return;
+    const res = await unLaunchGroup(groupId);
+    if (res?.error) toast({ title: 'Error', description: res.error, variant: 'destructive' });
+    else {
+      toast({ title: 'Reset', description: 'Group status cleared.', variant: 'success' });
+      setIsOpen(false);
+    }
+  };
+
+  const formatTime = (iso: string) => {
+    return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
+
+  // --- RENDER STATES ---
+  if (landedAt && launchedAt) {
+    const duration = Math.round((new Date(landedAt).getTime() - new Date(launchedAt).getTime()) / 60000);
+    return (
+      <div className="flex items-center gap-2 bg-slate-900/50 border border-slate-700 rounded px-2 py-0.5 opacity-70">
+        <CheckCircle2 className="w-3 h-3 text-green-500" />
+        <div className="flex flex-col leading-none">
+          <span className="text-[10px] text-slate-400 font-mono">DONE ({duration}m)</span>
+          <span className="text-[9px] text-slate-600">
+            {formatTime(launchedAt)} - {formatTime(landedAt)}
+          </span>
+        </div>
+      </div>
+    );
   }
-};
+
+  if (launchedAt) {
+    return (
+      <div className="flex items-center gap-1">
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            <button className={`
+              flex items-center gap-2 px-2 py-0.5 rounded border transition-all
+              ${isOverdue 
+                ? 'bg-red-950/30 border-red-900 text-red-400 animate-pulse' 
+                : 'bg-green-950/30 border-green-900 text-green-400'}
+            `}>
+              <div className="flex flex-col items-start leading-none">
+                <span className="text-[10px] font-bold uppercase tracking-wider">
+                  {isOverdue ? 'Overdue' : 'Active'}
+                </span>
+                <span className="text-xs font-mono font-bold">
+                   {formatTime(launchedAt)}
+                </span>
+              </div>
+              <div className={`text-sm font-bold font-mono ${isOverdue ? 'text-red-500' : 'text-slate-200'}`}>
+                 {timeLeft}
+              </div>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-3 bg-slate-950 border-slate-800" align="end">
+            <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">
+              <CalendarClock className="w-3 h-3" /> Adjust Launch
+            </h4>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button variant="secondary" size="sm" className="flex-1 text-xs" onClick={handleLaunchNow}>
+                  <RotateCcw className="w-3 h-3 mr-1" /> Set to Now
+                </Button>
+                <Button variant="destructive" size="sm" className="flex-1 text-xs" onClick={handleReset}>
+                  <Trash2 className="w-3 h-3 mr-1" /> Reset
+                </Button>
+              </div>
+              <div className="pt-2 border-t border-slate-800">
+                <label className="text-[10px] text-slate-500 mb-1 block">Manual Start Time</label>
+                <div className="flex gap-2">
+                  <Input 
+                    type="time" 
+                    className="h-8 text-xs" 
+                    value={manualTime}
+                    onChange={(e) => setManualTime(e.target.value)}
+                  />
+                  <Button size="sm" onClick={handleUpdateLaunchTime} disabled={!manualTime}>
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+        <Button 
+          size="sm" 
+          onClick={handleLandNow}
+          className="h-[34px] px-3 bg-slate-800 border border-slate-600 hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all text-slate-300 font-bold gap-1"
+        >
+          <PlaneLanding className="w-3 h-3" /> Land
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div>
-    <PopoverGroups
-      openText={
-        launched ? (
-          <span className="text-green-500">
-            {formatPSTTime(launched)}
-          </span>
-        ) : (
-          <span className="text-muted-foreground">Launch</span>
-        )
-      }
+    <Button 
+      size="sm" 
+      onClick={handleLaunchNow}
+      className="h-[28px] bg-slate-800 border border-slate-700 text-slate-400 hover:bg-green-600 hover:text-white hover:border-green-500 transition-all gap-2"
     >
-        <h1>
-          {launched
-            ? 'Are you sure you want to remove the launch status from this group?'
-            : `Are you sure you want to launch Group ${groupName}?`}
-        </h1>
-        <div className="flex justify-between mt-4">
-          <PopoverClose asChild>
-            <Button
-              variant={launched ? 'destructive' : 'positive'}
-              onClick={() => {
-                !launched && setInitLaunch(true);
-                launched && setUnlaunch(true);
-              }}
-            >
-              Yes
-            </Button>
-          </PopoverClose>
-          <PopoverClose asChild>
-            <Button>No</Button>
-          </PopoverClose>
-        </div>
-      </PopoverGroups>
-    </div>
+       <Clock className="w-3 h-3" /> Launch
+    </Button>
   );
-};
-
-export default LaunchGroup;
+}

@@ -4,9 +4,10 @@ import { SelectAlphabet, SelectNums } from './select-components';
 import { Button } from '@/components/ui/button';
 import { createGroups } from '@/utils/old_db/actions';
 import { useToast } from '@/components/ui/use-toast';
-import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
+
+// NOTE: We don't import createClient anymore as we rely on the global listener for updates
+import { useRouter } from 'next/navigation';
 
 interface CreateGroupWizardProps {
   hour: string;
@@ -27,32 +28,27 @@ const CreateGroupWizard: React.FC<CreateGroupWizardProps> = ({
   const [sweep, setSweep] = React.useState('');
   const [hr] = React.useState(hour);
   const { toast } = useToast();
+  const router = useRouter();
   
+  // Format group name when selections change
   React.useEffect(() => {
     setGroupName(`${hr}${selectedAlphabet}${selectedNum}`);
   }, [selectedAlphabet, selectedNum, hr]);
 
+  // Handle creation
   React.useEffect(() => {
     if (createGroup) {
-      // Pad the hour with zero only when creating the group in the database
       const dbHour = hr.padStart(2, '0');
       const dbGroupName = `${dbHour}${selectedAlphabet}${selectedNum}`;
       
       createGroups(dbGroupName, group_date, full_name, lead, sweep).then(
         (res) => {
           res.error
-            ? toast({
-                title: 'Error',
-                description: res.error as string,
-                duration: 4000,
-                variant: 'destructive'
-              })
-            : toast({
-                title: 'Group Created',
-                description: `Group ${dbGroupName} has been created.`,
-                duration: 2000,
-                variant: 'success'
-              });
+            ? toast({ title: 'Error', description: res.error as string, variant: 'destructive' })
+            : toast({ title: 'Group Created', description: `Group ${dbGroupName} created.`, variant: 'success' });
+          
+          // Force a refresh after creation
+          router.refresh();
         }
       );
       setSelectedAlphabet('');
@@ -62,30 +58,9 @@ const CreateGroupWizard: React.FC<CreateGroupWizardProps> = ({
       setSweep('');
       setGroupName('');
     }
-  }, [groupName, createGroup]);
+  }, [groupName, createGroup, hr, group_date, full_name, lead, sweep, toast, router, selectedAlphabet, selectedNum]);
   
-  const supabase = createClient();
-  const router = useRouter();
-  React.useEffect(() => {
-    const channel = supabase
-      .channel('realtime group vehicles')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'groups'
-        },
-        () => {
-          router.refresh();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, router]);
+  // --- REMOVED REALTIME LISTENER ---
 
   const displayHour = (hourStr: string) => {
     const num = parseInt(hourStr);
@@ -97,9 +72,6 @@ const CreateGroupWizard: React.FC<CreateGroupWizardProps> = ({
     setGroupName(`${formattedHour}${selectedAlphabet}${selectedNum}`);
   }, [selectedAlphabet, selectedNum, formattedHour]);
 
-   const dbGroupName = `${formattedHour}${selectedAlphabet}${selectedNum}`;
-
-
   return (
     <div className="flex items-center flex-col">
       <h1 className="mb-5 text-xl">Create a Group</h1>
@@ -109,22 +81,12 @@ const CreateGroupWizard: React.FC<CreateGroupWizardProps> = ({
         <SelectNums setSelectedNum={setSelectedNum} selectedNum={selectedNum} />
         {selectedAlphabet && (
           <div className="font-bold text-2xl text-green-400 underline">
-            {formattedHour}
-            {selectedAlphabet}
-            {selectedNum}
+            {formattedHour}{selectedAlphabet}{selectedNum}
           </div>
         )}
         <div className="flex flex-col gap-3 mb-3">
-          <Input
-            type="text"
-            placeholder="lead"
-            onChange={(e) => setLead(e.target.value)}
-          />
-          <Input
-            type="text"
-            placeholder="sweep"
-            onChange={(e) => setSweep(e.target.value)}
-          />
+          <Input type="text" placeholder="lead" onChange={(e) => setLead(e.target.value)} />
+          <Input type="text" placeholder="sweep" onChange={(e) => setSweep(e.target.value)} />
         </div>
       </div>
       <Button onClick={() => setCreateGroup(true)}>Confirm</Button>
