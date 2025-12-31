@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 declare global {
   interface Window {
@@ -14,84 +14,23 @@ export default function CheckoutForm({
   setIsExpanded, 
   onPayment, 
   message, 
-  loading, 
+  loading 
 }: any) {
   const [agreed, setAgreed] = useState(false);
-  const [isReady, setIsReady] = useState(false);
+  const [billing, setBilling] = useState({ address: '', city: '', state: '', zip: '' });
   
-  // Guard to prevent double configuration
+  // Track if NMI is loaded and ready
   const initializationAttempted = useRef(false);
 
-  // === 1. The Configuration Function ===
-  const configurePayment = useCallback(() => {
-    if (!window.CollectJS) return;
-    if (initializationAttempted.current) return;
-
-    // Check if the HTML elements exist
-    const fieldElement = document.getElementById('cc-number');
-    if (!fieldElement) {
-      setTimeout(configurePayment, 200);
-      return;
-    }
-
-    try {
-      console.log("Initializing NMI with Validation Data...");
-
-      // FIX: We must provide price/currency/country to satisfy NMI's internal 
-      // "PaymentRequestAbstraction" checks, even if we don't use Apple Pay.
-      const config = {
-        variant: 'inline',
-        // Common Required Fields for successful init
-        price: total.toFixed(2),
-        currency: 'USD',
-        country: 'US',
-        
-        fields: {
-          ccnumber: {
-            selector: '#cc-number',
-            placeholder: '0000 0000 0000 0000'
-          },
-          ccexp: {
-            selector: '#cc-exp',
-            placeholder: 'MM / YY'
-          },
-          cvv: {
-            selector: '#cc-cvv',
-            placeholder: '123'
-          }
-        },
-        // The callback handles the response from tokenise()
-        callback: (response: { token?: string; error?: string }) => {
-          console.log("Payment Callback:", response);
-          if (response.token) {
-            onPayment(response.token);
-          } else {
-            // Log raw error for debugging
-            console.error("NMI Validation Error:", response);
-            alert("Payment Error: " + (response.error || "Please check card details."));
-          }
-        }
-      };
-
-      window.CollectJS.configure(config);
-      
-      initializationAttempted.current = true;
-      setIsReady(true);
-      console.log("NMI Ready & Configured");
-
-    } catch (err) {
-      console.error("NMI Configuration Crash:", err);
-    }
-  }, [total, onPayment]);
-
-  // === 2. Script Loader ===
+  // === 1. Configure NMI (Strict Mode Safe) ===
   useEffect(() => {
-    // Reset state when form closes
+    // If drawer is closed, reset logic so it re-runs correctly when opened
     if (!isExpanded) {
       initializationAttempted.current = false;
-      setIsReady(false);
       return;
     }
+
+    if (initializationAttempted.current) return;
 
     const tokenKey = process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY;
     if (!tokenKey) {
@@ -99,43 +38,89 @@ export default function CheckoutForm({
        return;
     }
 
-    const loadScript = () => {
-       if (window.CollectJS) {
-          // If script exists, just configure
-          configurePayment();
-       } else {
-          // Load fresh script
-          const script = document.createElement('script');
-          script.src = "https://secure.networkmerchants.com/token/Collect.js";
-          script.setAttribute('data-tokenization-key', tokenKey);
-          script.async = true;
-          script.onload = () => setTimeout(configurePayment, 500);
-          document.body.appendChild(script);
-       }
+    // Helper: Run the actual configuration
+    const runConfig = () => {
+      const field = document.getElementById('cc-number');
+      if (!field) {
+        setTimeout(runConfig, 100);
+        return;
+      }
+
+      try {
+        console.log("Configuring NMI...");
+
+        // CRITICAL: We pass ONLY the required fields. 
+        // We do NOT pass 'style', 'googlePay', or 'applePay' to avoid validation errors.
+        const config = {
+          variant: 'inline',
+          price: total.toFixed(2),
+          currency: 'USD',
+          country: 'US',
+          fields: {
+            ccnumber: {
+              selector: '#cc-number',
+              placeholder: '0000 0000 0000 0000'
+            },
+            ccexp: {
+              selector: '#cc-exp',
+              placeholder: 'MM / YY'
+            },
+            cvv: {
+              selector: '#cc-cvv',
+              placeholder: '123'
+            }
+          },
+          callback: (response: { token?: string; error?: string }) => {
+            if (response.token) {
+              onPayment(response.token, billing);
+            } else {
+              console.error("Token Error:", response);
+              alert("Payment Error: " + (response.error || "Check card details"));
+            }
+          }
+        };
+
+        window.CollectJS.configure(config);
+        initializationAttempted.current = true;
+        console.log("NMI Configured.");
+
+      } catch (err) {
+        console.error("NMI Config Error:", err);
+      }
     };
 
-    // Small delay to ensure DOM is rendered before script logic runs
-    setTimeout(loadScript, 300);
-
-  }, [isExpanded, configurePayment]);
-
-  // === 3. Pay Button Handler ===
-  const handleSubmit = () => {
-    if (!window.CollectJS || !isReady) {
-      console.error("Payment system not ready");
-      return;
-    }
-
-    console.log("Submitting Token Request...");
-
-    // FIX: Try both spellings just in case, though tokenise is standard.
-    if (typeof window.CollectJS.tokenise === 'function') {
-      window.CollectJS.tokenise();
-    } else if (typeof window.CollectJS.tokenize === 'function') {
-      window.CollectJS.tokenize();
+    // Load Script if missing
+    if (window.CollectJS) {
+      runConfig();
     } else {
-      console.error("Critical: tokenise function missing. Config likely failed.");
-      alert("Payment system failed to load. Please refresh.");
+      const script = document.createElement('script');
+      script.src = "https://secure.networkmerchants.com/token/Collect.js";
+      script.setAttribute('data-tokenization-key', tokenKey);
+      script.async = true;
+      script.onload = () => setTimeout(runConfig, 200);
+      document.body.appendChild(script);
+    }
+  }, [isExpanded, total, onPayment, billing]);
+
+  // === 2. Submit Handler (FIXED) ===
+  const handleSubmit = () => {
+    if (!billing.zip || !billing.address) {
+        alert("Please enter billing address.");
+        return;
+    }
+    
+    if (window.CollectJS) {
+       // FIX: Check for British spelling ('tokenise') first, then American ('tokenize')
+       if (typeof window.CollectJS.tokenise === 'function') {
+          window.CollectJS.tokenise();
+       } else if (typeof window.CollectJS.tokenize === 'function') {
+          window.CollectJS.tokenize();
+       } else {
+          console.error("CollectJS loaded but token function missing.", window.CollectJS);
+          alert("System Error: Payment library incomplete. Please refresh page.");
+       }
+    } else {
+       alert("Payment system loading...");
     }
   };
 
@@ -163,40 +148,74 @@ export default function CheckoutForm({
             </div>
           </div>
 
-          <label className="flex gap-4 items-start bg-red-950/30 p-4 rounded-xl mb-8 cursor-pointer border border-red-800/50">
+          {/* Billing Info */}
+          <div className="space-y-4 mb-8">
+              <h3 className="text-white font-semibold mb-2">Billing Address</h3>
+              <input 
+                placeholder="Street Address" 
+                value={billing.address}
+                onChange={e => setBilling({...billing, address: e.target.value})}
+                className="w-full p-3 bg-white rounded text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+              <div className="grid grid-cols-2 gap-4">
+                 <input 
+                    placeholder="City" 
+                    value={billing.city}
+                    onChange={e => setBilling({...billing, city: e.target.value})}
+                    className="p-3 bg-white rounded text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+                 />
+                 <div className="grid grid-cols-2 gap-2">
+                    <input 
+                        placeholder="State" 
+                        maxLength={2}
+                        value={billing.state}
+                        onChange={e => setBilling({...billing, state: e.target.value.toUpperCase()})}
+                        className="p-3 bg-white rounded text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                    <input 
+                        placeholder="ZIP" 
+                        value={billing.zip}
+                        onChange={e => setBilling({...billing, zip: e.target.value})}
+                        className="p-3 bg-white rounded text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                 </div>
+              </div>
+          </div>
+
+          <label className="flex gap-4 items-start bg-red-950/30 p-4 rounded-xl mb-8 cursor-pointer border border-red-800/50 hover:bg-red-900/40 transition-colors">
             <input 
               type="checkbox" 
               checked={agreed} 
               onChange={e => setAgreed(e.target.checked)} 
-              className="w-6 h-6 mt-1 accent-orange-500" 
+              className="w-6 h-6 mt-1 accent-orange-500 cursor-pointer" 
             />
             <span className="text-sm text-gray-200 font-medium">
                 I agree to the liability waiver and assume responsibility for equipment damages.
             </span>
           </label>
 
-          {/* Form Container */}
-          <div className={`space-y-6 pb-24 transition-all duration-500 ${agreed ? 'opacity-100' : 'opacity-20 pointer-events-none grayscale'}`}>
+          {/* Card Inputs - White BG, No blocking pointer-events */}
+          <div className="space-y-6 pb-24">
               
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-gray-400 uppercase ml-1">Card Number</label>
-                <div id="cc-number" className="p-4 bg-gray-100 rounded-lg h-14 w-full text-black shadow-inner" />
+                <div id="cc-number" className="p-4 bg-white rounded-lg h-14 w-full shadow-inner" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-gray-400 uppercase ml-1">Expiration</label>
-                  <div id="cc-exp" className="p-4 bg-gray-100 rounded-lg h-14 w-full text-black shadow-inner" />
+                  <div id="cc-exp" className="p-4 bg-white rounded-lg h-14 w-full shadow-inner" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-gray-400 uppercase ml-1">CVV</label>
-                  <div id="cc-cvv" className="p-4 bg-gray-100 rounded-lg h-14 w-full text-black shadow-inner" />
+                  <div id="cc-cvv" className="p-4 bg-white rounded-lg h-14 w-full shadow-inner" />
                 </div>
               </div>
 
               {message && (
                 <div className={`text-center font-bold p-4 rounded-lg border ${
-                  message.includes('Confirmed') 
+                  message.includes('Success') || message.includes('Confirmed') 
                   ? 'bg-green-900/40 text-green-400 border-green-800' 
                   : 'bg-red-900/40 text-red-400 border-red-800'
                 }`}>
@@ -207,10 +226,10 @@ export default function CheckoutForm({
               <button 
                 type="button"
                 onClick={handleSubmit} 
-                disabled={loading || !isReady || !agreed}
-                className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 text-white py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-95"
+                disabled={loading || !agreed}
+                className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-95"
               >
-                {loading ? 'Processing...' : `Pay $${total.toFixed(2)} Now`}
+                {loading ? 'Processing...' : (agreed ? `Pay $${total.toFixed(2)} Now` : 'Accept Waiver to Pay')}
               </button>
           </div>
         </div>

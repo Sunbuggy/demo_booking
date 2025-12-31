@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-// import { createClient } from '@/utils/supabase/client'; // (Assuming you have this)
+// import { createClient } from '@/utils/supabase/client'; 
 import BookingProgress from './components/bookingProgress';
 import ReservationHolderForm from './components/reservationForm';
 import DateTimeSelector from './components/dateTimeSelector';
@@ -15,6 +15,8 @@ export default function PismoBookingPage() {
   const [endTime, setEndTime] = useState<string>('');
   const [durationHours, setDurationHours] = useState<number | null>(null);
   const [pricingCategories, setPricingCategories] = useState<any[]>([]);
+  
+  // Store selections. 
   const [selections, setSelections] = useState<Record<string, { qty: number; waiver: boolean }>>({});
   
   // === Upsell State ===
@@ -25,8 +27,26 @@ export default function PismoBookingPage() {
   // === UI & Auth State ===
   const [loading, setLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>('');
-  const [holderInfo, setHolderInfo] = useState({ firstName: '', lastName: '', email: '', phone: '' });
+  
+  const [holderInfo, setHolderInfo] = useState({ 
+    firstName: '', 
+    lastName: '', 
+    email: '', 
+    phone: '',
+    booked_by: 'Guest' 
+  });
+  
   const [isCheckoutExpanded, setIsCheckoutExpanded] = useState(false);
+
+  // === Handler for Form Updates ===
+  const handleHolderUpdate = (newInfo: any) => {
+     setHolderInfo(prev => ({
+        ...prev,
+        ...newInfo,
+        // Ensure booked_by is preserved if not explicitly passed
+        booked_by: newInfo.booked_by || prev.booked_by
+     }));
+  };
 
   // === Total Calculation ===
   useEffect(() => {
@@ -42,14 +62,31 @@ export default function PismoBookingPage() {
   }, [selections, goggles, bandannas, pricingCategories, durationHours]);
 
   // === The Payment Logic ===
-  const handlePayment = useCallback(async (token: string) => {
+  // Updated to accept 'billing' object from CheckoutForm
+  const handlePayment = useCallback(async (token: string, billing: any) => {
     if (!token) {
       setMessage('Invalid payment token.');
       return;
     }
     
     setLoading(true);
-    setMessage('Processing your payment...');
+    setMessage('Processing payment & saving reservation...');
+
+    // Prepare enriched vehicle data for the API (so it can snapshot names/prices)
+    const vehiclesPayload: Record<string, any> = {};
+    
+    pricingCategories.forEach(cat => {
+        const sel = selections[cat.id];
+        if (sel && sel.qty > 0) {
+            const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
+            vehiclesPayload[cat.id] = {
+                qty: sel.qty,
+                waiver: sel.waiver,
+                name: cat.vehicle_name, // Snapshot name
+                price: cat[priceKey] || 0 // Snapshot unit price
+            };
+        }
+    });
 
     try {
       const res = await fetch('/api/pismo/charge', {
@@ -57,14 +94,15 @@ export default function PismoBookingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           payment_token: token,
-          amount: Math.round(total * 100), // Send cents to API
+          amount: Math.round(total * 100), 
           holder: holderInfo,
+          billing: billing, // Pass billing info (address/zip) to API
           booking: { 
             date: selectedDate?.toISOString().split('T')[0], 
             startTime, 
             endTime, 
             duration: durationHours, 
-            vehicles: selections, 
+            vehicles: vehiclesPayload, 
             goggles, 
             bandannas 
           }
@@ -74,17 +112,19 @@ export default function PismoBookingPage() {
       const result = await res.json();
 
       if (result.success) {
-        setMessage(`Confirmed! Transaction ID: ${result.transaction_id}`);
+        setMessage(`Success! Confirmation #: ${result.booking_id || result.transaction_id}`);
+        // Optional: Redirect to confirmation page here
+        // window.location.href = `/confirmation/${result.booking_id}`;
       } else {
-        setMessage(`Payment Failed: ${result.error || 'Check card details.'}`);
+        setMessage(`Failed: ${result.error || 'Please check card details.'}`);
       }
     } catch (err) {
       console.error(err);
-      setMessage('Error connecting to payment server.');
+      setMessage('Error connecting to server.');
     } finally {
       setLoading(false);
     }
-  }, [total, holderInfo, selectedDate, startTime, endTime, durationHours, selections, goggles, bandannas]);
+  }, [total, holderInfo, selectedDate, startTime, endTime, durationHours, selections, pricingCategories, goggles, bandannas]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 pb-64 md:p-8">
@@ -97,7 +137,7 @@ export default function PismoBookingPage() {
             isStep3={isCheckoutExpanded} 
         />
 
-        <ReservationHolderForm onUpdate={setHolderInfo} />
+        <ReservationHolderForm onUpdate={handleHolderUpdate} />
 
         <DateTimeSelector 
           selectedDate={selectedDate} 
@@ -112,7 +152,7 @@ export default function PismoBookingPage() {
           setMessage={setMessage}
         />
 
-        {loading && !isCheckoutExpanded && <p className="text-center text-2xl text-orange-400 mb-12">Updating information...</p>}
+        {loading && !isCheckoutExpanded && <p className="text-center text-2xl text-orange-400 mb-12 animate-pulse">{message || "Updating information..."}</p>}
 
         {pricingCategories.length > 0 && (
           <VehicleGrid 
@@ -141,6 +181,7 @@ export default function PismoBookingPage() {
       <CheckoutForm 
         total={total}
         holderInfo={holderInfo}
+        // This is primarily for the UI list inside the checkout drawer
         selectedItems={pricingCategories.filter(cat => (selections[cat.id]?.qty || 0) > 0).map(cat => ({
             id: cat.id,
             name: cat.vehicle_name,
