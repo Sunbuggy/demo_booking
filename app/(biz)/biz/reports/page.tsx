@@ -1,8 +1,10 @@
 import { createClient } from '@/utils/supabase/server';
 import ReportsBoard from './components/ReportsBoard';
+// Import the new real-time stats component
+import LocationStat from './components/LocationStats';
 
 const ReportsPage = async () => {
-  const supabase = await await createClient();
+  const supabase = await createClient();
 
   // Fetch data from the necessary tables and sort by created_at in descending order
   const { data: tags } = await supabase
@@ -30,65 +32,44 @@ const ReportsPage = async () => {
     .from('vehicle_pretrip_truck')
     .select('*')
     .order('created_at', { ascending: false });
-    const { data: chargesPismo } = await supabase
+  const { data: chargesPismo } = await supabase
     .from('charges_pismo')
     .select('*')
     .order('created_at', { ascending: false });
-    const { data: vehicleLocations } = await supabase
+  const { data: vehicleLocations } = await supabase
     .from('vehicle_locations')
     .select('*')
     .order('created_at', { ascending: false });
 
-
-  const { data: timeEntries, error } = await supabase
+  const { data: timeEntries } = await supabase
     .from('time_entries')
-    .select(
-      `
+    .select(`
       *,
       users(full_name),
       clock_in(clock_in_time, lat, long),
       clock_out(clock_out_time, lat, long)
-    `
-    )
+    `)
     .order('created_at', { ascending: false });
 
-  // Fetch vehicles, users, and employee details data
   const { data: vehicles } = await supabase.from('vehicles').select('*');
   const { data: users } = await supabase.from('users').select('*');
-  const { data: employeeDetails } = await supabase
-    .from('employee_details')
-    .select('*');
+  const { data: employeeDetails } = await supabase.from('employee_details').select('*');
 
-  // Helper function to map vehicle_id, created_by, updated_by, and closed_by
+  // Mapping logic remains unchanged
   const mapData = (data: any[]) => {
     return data.map((item) => ({
       ...item,
-      vehicle_id:
-        vehicles?.find((v) => v.id === item.vehicle_id)?.name ||
-        item.vehicle_id,
-      created_by:
-        users?.find((u) => u.id === item.created_by)?.full_name ||
-        item.created_by,
-      updated_by:
-        users?.find((u) => u.id === item.updated_by)?.full_name ||
-        item.updated_by,
-      closed_by:
-        users?.find((u) => u.id === item.closed_by)?.full_name ||
-        item.closed_by,
-      created_by_id:
-        employeeDetails?.find((e) => e.user_id === item.created_by)?.emp_id ||
-        '',
-      updated_by_id:
-        employeeDetails?.find((e) => e.user_id === item.updated_by)?.emp_id ||
-        '',
-      closed_by_id:
-        employeeDetails?.find((e) => e.user_id === item.closed_by)?.emp_id || '',
-      // Format amount as currency if it exists
+      vehicle_id: vehicles?.find((v) => v.id === item.vehicle_id)?.name || item.vehicle_id,
+      created_by: users?.find((u) => u.id === item.created_by)?.full_name || item.created_by,
+      updated_by: users?.find((u) => u.id === item.updated_by)?.full_name || item.updated_by,
+      closed_by: users?.find((u) => u.id === item.closed_by)?.full_name || item.closed_by,
+      created_by_id: employeeDetails?.find((e) => e.user_id === item.created_by)?.emp_id || '',
+      updated_by_id: employeeDetails?.find((e) => e.user_id === item.updated_by)?.emp_id || '',
+      closed_by_id: employeeDetails?.find((e) => e.user_id === item.closed_by)?.emp_id || '',
       amount: item.amount ? `$${parseFloat(item.amount).toFixed(2)}` : '$0.00'
     }));
   };
 
-  // Map the data
   const mappedTags = mapData(tags || []);
   const mappedScans = mapData(scans || []);
   const mappedSsts = mapData(ssts || []);
@@ -99,18 +80,12 @@ const ReportsPage = async () => {
   const mappedChargesPismo = mapData(chargesPismo || []);
   const mappedVehicleLocations = mapData(vehicleLocations || []);
 
-
-  // Map time entries
   const mappedTimeEntries = (timeEntries || []).map((entry) => ({
     user: entry.users?.full_name || 'Unknown',
     clock_in_time: entry.clock_in?.clock_in_time || 'N/A',
-    clock_in_location: `(${entry.clock_in?.lat || 'N/A'}, ${
-      entry.clock_in?.long || 'N/A'
-    })`,
+    clock_in_location: `(${entry.clock_in?.lat || 'N/A'}, ${entry.clock_in?.long || 'N/A'})`,
     clock_out_time: entry.clock_out?.clock_out_time || 'N/A',
-    clock_out_location: `(${entry.clock_out?.lat || 'N/A'}, ${
-      entry.clock_out?.long || 'N/A'
-    })`,
+    clock_out_location: `(${entry.clock_out?.lat || 'N/A'}, ${entry.clock_out?.long || 'N/A'})`,
     duration: entry.duration || 0,
     date: entry.date || 'Unknown'
   }));
@@ -125,13 +100,38 @@ const ReportsPage = async () => {
     { name: 'Truck Pre-trips', data: mappedPretripTrucks },
     { name: 'Pismo Charges', data: mappedChargesPismo }, 
     { name: 'Vehicle Locations', data: mappedVehicleLocations }, 
-
     { name: 'Time Entries', data: mappedTimeEntries }
   ];
 
   return (
-    <div className="py-8">
-      <h1 className="text-3xl font-bold mb-8">Reports</h1>
+    <div className="py-8 px-4">
+      {/* Header section with Title and the new Real-time Button */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <h1 className="text-3xl font-bold">Reports</h1>
+        
+        {/* Placement: Right above the reports list/grid */}
+        <div className="py-8 px-6">
+  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+    <div>
+      <h1 className="text-4xl font-black italic uppercase text-white tracking-tighter">Reports</h1>
+      <p className="text-zinc-500 text-sm mt-1">Real-time NMI Gateway Monitoring</p>
+    </div>
+    
+    <div className="flex flex-wrap gap-4">
+      {/* These will load independently */}
+      <LocationStat location="vegas" label="Las Vegas" />
+      <LocationStat location="pismo" label="Pismo Beach" />
+    </div>
+  </div>
+
+  <hr className="border-zinc-800 mb-8" />
+  
+  <ReportsBoard tables={tables} />
+</div>
+      </div>
+
+      <hr className="border-zinc-800 mb-8" />
+      
       <ReportsBoard tables={tables} />
     </div>
   );
