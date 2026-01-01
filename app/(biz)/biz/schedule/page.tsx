@@ -345,21 +345,98 @@ export default function RosterPage() {
     setIsShiftModalOpen(true);
   };
 
+// ... inside RosterPage component
+
   const handleSaveShift = async () => {
     if (!isManager) return;
-    const startIso = moment(`${selectedDate} ${formStart}`).toISOString();
-    const endIso = moment(`${selectedDate} ${formEnd}`).toISOString();
-    const payload = { user_id: selectedEmpId, start_time: startIso, end_time: endIso, role: formRole, location: formLocation, task: formTask === 'NONE' ? null : formTask };
-    
-    if (selectedShiftId) {
-        await supabase.from('employee_schedules').update(payload).eq('id', selectedShiftId);
-        await logChange('Updated Shift', 'employee_schedules', selectedShiftId);
-    } else {
-        const { data } = await supabase.from('employee_schedules').insert([payload]).select().single();
-        if (data) await logChange('Created Shift', 'employee_schedules', data.id);
+    setLoading(true); // Add visual feedback during save
+
+    try {
+        // 1. Strict Date Parsing: Force moment to use the specific format to avoid browser ambiguity
+        // We use the selectedDate (YYYY-MM-DD) and the form inputs (HH:mm)
+        const startMoment = moment(`${selectedDate} ${formStart}`, 'YYYY-MM-DD HH:mm');
+        const endMoment = moment(`${selectedDate} ${formEnd}`, 'YYYY-MM-DD HH:mm');
+
+        // Handle overnight shifts (if end time is earlier than start time, assume next day)
+        if (endMoment.isBefore(startMoment)) {
+            endMoment.add(1, 'day');
+        }
+
+        const payload = {
+            user_id: selectedEmpId,
+            start_time: startMoment.toISOString(),
+            end_time: endMoment.toISOString(),
+            role: formRole,
+            location: formLocation,
+            task: formTask === 'NONE' ? null : formTask
+        };
+
+        let error = null;
+        let resultData = null;
+
+        if (selectedShiftId) {
+            // UPDATE EXISTING
+            const response = await supabase
+                .from('employee_schedules')
+                .update(payload)
+                .eq('id', selectedShiftId)
+                .select() // Important: Return the data to verify update
+                .single();
+            
+            error = response.error;
+            resultData = response.data;
+
+            if (!error && resultData) {
+                await logChange('Updated Shift', 'employee_schedules', selectedShiftId);
+            }
+        } else {
+            // INSERT NEW
+            const response = await supabase
+                .from('employee_schedules')
+                .insert([payload])
+                .select()
+                .single();
+            
+            error = response.error;
+            resultData = response.data;
+            
+            if (!error && resultData) {
+                await logChange('Created Shift', 'employee_schedules', resultData.id);
+            }
+        }
+
+        // 2. Error Trapping
+        if (error) {
+            console.error('Supabase Save Error:', error);
+            toast.error(`Save Failed: ${error.message}`);
+            setLoading(false);
+            return;
+        }
+
+        // 3. Update Local State Helper
+        setLastShiftParams(p => ({
+            ...p,
+            [selectedEmpId]: {
+                role: formRole,
+                task: formTask === 'NONE' ? undefined : formTask,
+                start: formStart,
+                end: formEnd,
+                location: formLocation
+            }
+        }));
+
+        toast.success("Shift Saved Successfully");
+        setIsShiftModalOpen(false);
+        
+        // 4. Refresh Data
+        await fetchData();
+
+    } catch (err) {
+        console.error("Unexpected error:", err);
+        toast.error("An unexpected error occurred.");
+    } finally {
+        setLoading(false);
     }
-    setLastShiftParams(p => ({ ...p, [selectedEmpId]: { role: formRole, task: formTask === 'NONE' ? undefined : formTask, start: formStart, end: formEnd, location: formLocation } }));
-    fetchData(); setIsShiftModalOpen(false); toast.success("Saved");
   };
 
   const handleDeleteShift = async () => {
@@ -369,13 +446,44 @@ export default function RosterPage() {
     fetchData(); setIsShiftModalOpen(false); toast.success("Deleted");
   };
 
-  const handleCopyWeek = async () => {
+ const handleCopyWeek = async () => {
       if (!isManager || shifts.length === 0) return;
       if (!confirm(`Copy current shifts to next week?`)) return;
+      
       setCopying(true);
-      const newShifts = shifts.map(s => ({ user_id: s.user_id, role: s.role, task: s.task, start_time: moment(s.start_time).add(7, 'days').toISOString(), end_time: moment(s.end_time).add(7, 'days').toISOString(), location: s.location || 'Las Vegas' }));
-      await supabase.from('employee_schedules').insert(newShifts);
-      setCopying(false); setCurrentDate(currentDate.clone().add(1, 'week')); fetchData(); toast.success("Week Copied");
+      
+      try {
+        // Clean the payload to ensure no ID or system fields are carried over
+        const newShifts = shifts.map(s => ({ 
+            user_id: s.user_id, 
+            role: s.role, 
+            task: s.task, 
+            // Strictly add 7 days to the exact ISO string to maintain timezone integrity
+            start_time: moment(s.start_time).add(7, 'days').toISOString(), 
+            end_time: moment(s.end_time).add(7, 'days').toISOString(), 
+            location: s.location || 'Las Vegas' 
+        }));
+
+        const { error } = await supabase.from('employee_schedules').insert(newShifts);
+
+        if (error) {
+            throw error;
+        }
+
+        toast.success("Week Copied Successfully");
+        
+        // Move view to next week
+        const nextWeek = currentDate.clone().add(1, 'week');
+        setCurrentDate(nextWeek);
+        
+        // fetchData will trigger automatically via the useEffect on [currentDate]
+        
+      } catch (e: any) {
+          console.error("Copy Error:", e);
+          toast.error(`Copy Failed: ${e.message}`);
+      } finally {
+          setCopying(false);
+      }
   };
 
   const handleSaveProfile = async () => {
