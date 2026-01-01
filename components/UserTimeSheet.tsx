@@ -116,7 +116,7 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
       setSubmitting(true);
       const correctTimeIso = moment(`${reqDate} ${reqTime}`).toISOString();
 
-      const { error } = await supabase.from('time_correction_requests').insert([{
+      const { error } = await supabase.from('time_sheet_requests').insert([{
           user_id: userId,
           entry_date: reqDate,
           request_type: reqType,
