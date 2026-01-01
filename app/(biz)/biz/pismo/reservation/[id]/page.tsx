@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { notFound } from 'next/navigation';
-import PismoReservationEditForm from './editFormPismo';
+import PismoReservationEditForm from '../editFormPismo';
 
 // --- Server Data Fetcher ---
 async function getReservation(reservationId: string) {

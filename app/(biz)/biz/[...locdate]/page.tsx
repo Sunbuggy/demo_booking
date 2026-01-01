@@ -1,4 +1,3 @@
-// app/(biz)/biz/[...locdate]/page.tsx
 import { notFound, redirect } from 'next/navigation';
 import dayjs from 'dayjs';
 import { Button } from '@/components/ui/button';
