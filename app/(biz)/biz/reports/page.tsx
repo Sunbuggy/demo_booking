@@ -113,8 +113,8 @@ const ReportsPage = async () => {
         <div className="py-8 px-6">
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
     <div>
-      <h1 className="text-4xl font-black italic uppercase text-white tracking-tighter">Reports</h1>
-      <p className="text-zinc-500 text-sm mt-1">Real-time NMI Gateway Monitoring</p>
+      <h1 className="text-4xl font-black italic uppercase text-white tracking-tighter">CURRENT CHARGES</h1>
+      <p className="text-zinc-500 text-sm mt-1">Click to Refresh</p>
     </div>
     
     <div className="flex flex-wrap gap-4">
@@ -129,10 +129,6 @@ const ReportsPage = async () => {
   <ReportsBoard tables={tables} />
 </div>
       </div>
-
-      <hr className="border-zinc-800 mb-8" />
-      
-      <ReportsBoard tables={tables} />
     </div>
   );
 };
