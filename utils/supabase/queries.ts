@@ -1687,3 +1687,23 @@ export const getEmployeeDetailsSafe = cache(
     return data;
   }
 );
+/**
+ * @description ADD THIS TO THE BOTTOM OF YOUR EXISTING QUERIES.TS
+ * Targeted fetch for the Torch Dashboard to find real Shuttles and their capacities.
+ */
+export const fetchShuttlesOnly = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select('*')
+    // Matches the 'shuttle' filter seen in your fleet management screenshot
+    .eq('type', 'shuttle') 
+    .order('fleet_id', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching shuttles for dashboard:', error);
+    return [];
+  }
+  
+  // We cast to VehicleType[] to maintain consistency with your existing vehicles admin page
+  return data as VehicleType[];
+});
