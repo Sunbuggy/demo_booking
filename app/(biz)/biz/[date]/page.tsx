@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import LoadingModal from '../vegas/components/loading-modal';
 import Landing from '../vegas/components/landing';
 import { createClient } from '@/utils/supabase/server';
-import { getUserDetails } from '@/utils/supabase/queries';
+import { 
+  getUserDetails, 
+  fetchShuttlesOnly // *** NEW: Import the shuttle fetcher ***
+} from '@/utils/supabase/queries';
 import { Reservation } from '../types';
 import { getTimeSortedData } from '@/utils/old_db/helpers';
 import { getDailyOperations } from '@/app/actions/shuttle-operations'; 
@@ -42,7 +45,8 @@ async function fetchReservationsForDate(date: string): Promise<Reservation[]> {
 function BizContent({
   date, dcos, role, full_name, reservations, yesterday, tomorrow,
   activeFleet, reservationStatusMap, hourlyUtilization, drivers,
-  todaysShifts
+  todaysShifts,
+  realFleet // *** NEW: Accept the real fleet data prop ***
 }: any) {
   const hasReservations = reservations.length > 0;
   let sortedData = hasReservations ? getTimeSortedData(reservations) : null;
@@ -110,6 +114,7 @@ function BizContent({
           hourlyUtilization={hourlyUtilization}
           drivers={drivers}
           todaysShifts={todaysShifts} 
+          realFleet={realFleet} // *** NEW: Pass realFleet down to Landing ***
         />
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-center px-6 mt-20">
@@ -183,10 +188,11 @@ export default async function BizPage({ params, searchParams }: any) {
     const reservations = await reservationsPromise;
 
     // Run remaining independent fetches in parallel
-    const [operationsData, drivers, shiftsResult] = await Promise.all([
+    const [operationsData, drivers, shiftsResult, shuttles] = await Promise.all([
       getDailyOperations(date, reservations),
       getVegasShuttleDrivers(),
-      shiftsQuery
+      shiftsQuery,
+      fetchShuttlesOnly(supabase) // *** NEW: Fetch real shuttles in parallel ***
     ]);
 
     const todaysShifts = shiftsResult.data || [];
@@ -206,7 +212,8 @@ export default async function BizPage({ params, searchParams }: any) {
           reservationStatusMap={operationsData.reservationStatusMap}
           hourlyUtilization={operationsData.hourlyUtilization}
           drivers={drivers}
-          todaysShifts={todaysShifts} 
+          todaysShifts={todaysShifts}
+          realFleet={shuttles} // *** NEW: Pass fetched data to the component ***
         />
       </Suspense>
     );
