@@ -1,5 +1,3 @@
-// app/(biz)/biz/[date]/page.tsx
-
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -20,19 +18,27 @@ import RealtimeGroupsListener from '../components/realtime-groups-listener';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Server Action: Fetch legacy reservations from MySQL.
+ * Wrapped in try/catch to ensure page doesn't crash if legacy DB is unreachable.
+ */
 async function fetchReservationsForDate(date: string): Promise<Reservation[]> {
   'use server';
-  const { fetch_from_old_db } = await import('@/utils/old_db/actions');
-  const query = `SELECT * FROM reservations_modified WHERE sch_date = '${date}'`;
   try {
+    const { fetch_from_old_db } = await import('@/utils/old_db/actions');
+    const query = `SELECT * FROM reservations_modified WHERE sch_date = '${date}'`;
     const data = (await fetch_from_old_db(query)) as Reservation[];
     return data || [];
   } catch (error) {
-    console.error('Error fetching reservations:', error);
-    return [];
+    console.error('CRITICAL: Error fetching legacy reservations:', error);
+    return []; // Return empty array to allow page to render partially
   }
 }
 
+/**
+ * Component: BizContent
+ * Handles the visual rendering of the dashboard.
+ */
 function BizContent({
   date, dcos, role, full_name, reservations, yesterday, tomorrow,
   activeFleet, reservationStatusMap, hourlyUtilization, drivers,
@@ -41,6 +47,7 @@ function BizContent({
   const hasReservations = reservations.length > 0;
   let sortedData = hasReservations ? getTimeSortedData(reservations) : null;
 
+  // Sort data by time if valid
   if (Array.isArray(sortedData)) {
     sortedData = sortedData.sort((a: any, b: any) => {
       const timeA = parseInt(a.time || a.key || a, 10); 
@@ -50,16 +57,16 @@ function BizContent({
   } 
 
   return (
-    <div className="min-h-screen w-full flex flex-col gap-5 relative">
+    <div className="min-h-screen w-full flex flex-col gap-5 relative bg-slate-50/50 dark:bg-slate-950">
       
       {/* --- GLOBAL REALTIME LISTENER --- */}
-      {/* This single component handles all group/timing updates to prevent network saturation */}
       <RealtimeGroupsListener />
 
-      {/* --- STICKY "FLOATING ISLAND" NAVIGATION --- */}
-      {role > 299 && (
+      {/* --- FLOATING DATE NAVIGATION --- */}
+      {/* Visible to all authorized staff (Level 300+) */}
+      {role >= 300 && (
         <div className="sticky top-2 z-50 mx-auto w-fit flex justify-center">
-          <div className="flex gap-4 items-center bg-slate-950/80 backdrop-blur-md border border-slate-700/50 rounded-xl px-4 py-1.5 shadow-2xl">
+          <div className="flex gap-4 items-center bg-slate-950/90 backdrop-blur-md border border-slate-700/50 rounded-xl px-4 py-1.5 shadow-2xl">
             {/* Prev Day */}
             <Link 
               href={`/biz/${yesterday}${dcos ? '?dcos=true' : ''}`}
@@ -68,7 +75,7 @@ function BizContent({
               <RiArrowLeftWideFill className="text-2xl" />
             </Link>
 
-            {/* Calendar Button */}
+            {/* Calendar Indicator */}
             <Link href="/biz/calendar">
               <Button 
                 variant="ghost" 
@@ -90,6 +97,7 @@ function BizContent({
         </div>
       )}
 
+      {/* --- MAIN CONTENT AREA --- */}
       {hasReservations && sortedData ? (
         <Landing
           data={sortedData}
@@ -104,66 +112,113 @@ function BizContent({
           todaysShifts={todaysShifts} 
         />
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 mt-10">
-          <h2 className="text-3xl font-semibold mb-4 text-slate-500">No reservations for {dayjs(date).format('MMMM D, YYYY')}</h2>
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-6 mt-20">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+            <h2 className="text-2xl font-semibold mb-2 text-slate-700 dark:text-slate-300">
+              No Reservations Found
+            </h2>
+            <p className="text-slate-500">
+              There are no bookings scheduled for {dayjs(date).format('MMMM D, YYYY')}.
+            </p>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
+/**
+ * Page: BizPage
+ * The main entry point for the NV Dashboard.
+ */
 export default async function BizPage({ params, searchParams }: any) {
+  // 1. Await Next.js 15 params (crucial to avoid build errors)
   const { date } = await params;
   const search = await searchParams;
   const dcos = search.dcos === 'true';
 
+  // 2. Validate Date Parameter
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) redirect('/biz/calendar');
 
+  // 3. Authenticate User
   const supabase = await createClient(); 
   const user = await getUserDetails(supabase);
+  
+  // Redirect to login if session is invalid
   if (!user || !user[0]) redirect('/signin');
 
-  const role = user[0].user_level;
-  if (role < 299) return <div>Unauthorized</div>;
+  // 4. Permission Check (The Fix)
+  // Ensure role is a number. Check strictly for < 300 to allow employees (300+).
+  const role = Number(user[0].user_level ?? 0);
+  
+  if (role < 300) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-200 gap-4">
+        <h1 className="text-3xl font-bold text-red-500">Access Denied</h1>
+        <p className="text-slate-400">You need Employee Access (Level 300+) to view the Dashboard.</p>
+        <Link href="/">
+          <Button variant="outline">Return Home</Button>
+        </Link>
+      </div>
+    );
+  }
 
+  // 5. Calculate Navigation Dates
   const yesterday = dayjs(date).subtract(1, 'day').format('YYYY-MM-DD');
   const tomorrow = dayjs(date).add(1, 'day').format('YYYY-MM-DD');
 
-  // 1. Fetch Legacy Reservations
-  const reservations = await fetchReservationsForDate(date);
-  
-  // 2. Prepare the Schedule Query
-  const shiftsQuery = supabase
-    .from('employee_schedules')
-    .select('user_id, role, location, task')
-    .gte('start_time', `${date}T00:00:00`)
-    .lte('start_time', `${date}T23:59:59`);
+  try {
+    // 6. Data Fetching
+    // Initiate Legacy DB fetch first
+    const reservationsPromise = fetchReservationsForDate(date);
+    
+    // Prepare Supabase Shifts Query
+    const shiftsQuery = supabase
+      .from('employee_schedules')
+      .select('user_id, role, location, task')
+      .gte('start_time', `${date}T00:00:00`)
+      .lte('start_time', `${date}T23:59:59`);
 
-  // 3. Run all fetches in parallel
-  const [operationsData, drivers, shiftsResult] = await Promise.all([
-    getDailyOperations(date, reservations),
-    getVegasShuttleDrivers(),
-    shiftsQuery
-  ]);
+    // Await legacy data (needed for operations calculation)
+    const reservations = await reservationsPromise;
 
-  const todaysShifts = shiftsResult.data || [];
+    // Run remaining independent fetches in parallel
+    const [operationsData, drivers, shiftsResult] = await Promise.all([
+      getDailyOperations(date, reservations),
+      getVegasShuttleDrivers(),
+      shiftsQuery
+    ]);
 
-  return (
-    <Suspense fallback={<LoadingModal />}>
-      <BizContent
-        date={date}
-        dcos={dcos}
-        role={role}
-        full_name={user[0].full_name}
-        reservations={reservations}
-        yesterday={yesterday}
-        tomorrow={tomorrow}
-        activeFleet={operationsData.activeFleet}
-        reservationStatusMap={operationsData.reservationStatusMap}
-        hourlyUtilization={operationsData.hourlyUtilization}
-        drivers={drivers}
-        todaysShifts={todaysShifts} 
-      />
-    </Suspense>
-  );
+    const todaysShifts = shiftsResult.data || [];
+
+    // 7. Render
+    return (
+      <Suspense fallback={<LoadingModal />}>
+        <BizContent
+          date={date}
+          dcos={dcos}
+          role={role}
+          full_name={user[0].full_name}
+          reservations={reservations}
+          yesterday={yesterday}
+          tomorrow={tomorrow}
+          activeFleet={operationsData.activeFleet}
+          reservationStatusMap={operationsData.reservationStatusMap}
+          hourlyUtilization={operationsData.hourlyUtilization}
+          drivers={drivers}
+          todaysShifts={todaysShifts} 
+        />
+      </Suspense>
+    );
+
+  } catch (error) {
+    console.error('Error loading BizPage data:', error);
+    // Fallback UI in case of data fetch failure (prevents white screen of death)
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <h2 className="text-xl font-bold text-red-600">System Error</h2>
+        <p>Could not load daily operations. Please try refreshing.</p>
+      </div>
+    );
+  }
 }
