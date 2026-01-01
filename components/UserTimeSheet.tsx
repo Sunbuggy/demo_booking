@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import moment from 'moment';
-// REMOVED: import Image from 'next/image'; -> Not using Next.js Image optimization to avoid config errors
 import { 
   Accordion, AccordionItem, AccordionTrigger, AccordionContent 
 } from "@/components/ui/accordion";
@@ -11,18 +10,14 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
 import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription 
 } from "@/components/ui/dialog";
-import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
-} from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Loader2, Calendar, Clock, AlertCircle, CheckCircle2, History, 
-  MapPin, Pencil, ImageIcon, X 
+  Loader2, AlertCircle, History, MapPin, Pencil 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -41,12 +36,13 @@ interface TimeEntry {
   clock_in_lon?: number;
 }
 
-interface CorrectionRequest {
+interface TimeSheetRequest {
   id: string;
-  request_type: string;
+  start_time: string;
+  end_time: string;
+  reason: string | null;
   status: string;
   created_at: string;
-  entry_date: string;
 }
 
 // --- HELPER: FORMAT DURATION ---
@@ -64,7 +60,7 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
-  const [requests, setRequests] = useState<CorrectionRequest[]>([]);
+  const [requests, setRequests] = useState<TimeSheetRequest[]>([]);
   
   // -- DIALOG STATES --
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
@@ -76,10 +72,11 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // -- CORRECTION FORM --
+  // We now capture the FULL shift range because the DB requires start_time AND end_time
   const [reqDate, setReqDate] = useState(moment().format('YYYY-MM-DD'));
-  const [reqType, setReqType] = useState('missed_in');
-  const [reqTime, setReqTime] = useState('09:00');
-  const [reqNotes, setReqNotes] = useState('');
+  const [reqStartTime, setReqStartTime] = useState('09:00');
+  const [reqEndTime, setReqEndTime] = useState('17:00');
+  const [reqReason, setReqReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // --- 1. FETCH DATA ---
@@ -95,7 +92,7 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
     
     if (timeData) setEntries(timeData);
 
-    // Fetch Requests
+    // Fetch Requests (UPDATED TABLE NAME)
     const { data: reqData } = await supabase
         .from('time_sheet_requests')
         .select('*')
@@ -114,23 +111,27 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
   // --- 2. SUBMIT CORRECTION ---
   const handleSubmitCorrection = async () => {
       setSubmitting(true);
-      const correctTimeIso = moment(`${reqDate} ${reqTime}`).toISOString();
+      
+      // Construct full ISO strings
+      const startIso = moment(`${reqDate} ${reqStartTime}`).toISOString();
+      const endIso = moment(`${reqDate} ${reqEndTime}`).toISOString();
 
+      // Insert into the CORRECT table
       const { error } = await supabase.from('time_sheet_requests').insert([{
           user_id: userId,
-          entry_date: reqDate,
-          request_type: reqType,
-          correct_time: correctTimeIso,
-          notes: reqNotes,
+          start_time: startIso,
+          end_time: endIso,
+          reason: reqReason,
           status: 'pending'
       }]);
 
       if (error) {
+          console.error(error);
           toast.error("Failed to submit request");
       } else {
           toast.success("Correction requested successfully");
           setIsCorrectionOpen(false);
-          setReqNotes('');
+          setReqReason('');
           fetchData(); 
       }
       setSubmitting(false);
@@ -139,20 +140,22 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
   // --- 3. OPEN CORRECTION DIALOG (PRE-FILL) ---
   const handleRequestCorrection = (entry?: TimeEntry) => {
       if (entry) {
+          // Pre-fill with the existing bad data so they can fix it
           setReqDate(moment(entry.start_time).format('YYYY-MM-DD'));
-          setReqTime(moment(entry.start_time).format('HH:mm'));
-          setReqType('wrong_time'); // Default logic
-          setReqNotes(`Correction for shift ID: ${entry.id}`);
+          setReqStartTime(moment(entry.start_time).format('HH:mm'));
+          setReqEndTime(entry.end_time ? moment(entry.end_time).format('HH:mm') : '17:00');
+          setReqReason(`Correction for existing entry`);
       } else {
+          // Default to today 9-5
           setReqDate(moment().format('YYYY-MM-DD'));
-          setReqTime('09:00');
-          setReqType('missed_in');
-          setReqNotes('');
+          setReqStartTime('09:00');
+          setReqEndTime('17:00');
+          setReqReason('');
       }
       setIsCorrectionOpen(true);
   };
 
-  // --- 4. GROUP BY WEEK & LOGIC ---
+  // --- 4. GROUP BY WEEK LOGIC ---
   const weeks = useMemo(() => {
       const grouped: Record<string, { 
           weekNum: number, 
@@ -232,7 +235,7 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
                 className="border-orange-200 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-900 dark:hover:bg-orange-900/20"
             >
                 <AlertCircle className="w-4 h-4 mr-2 text-orange-500" />
-                Request Correction
+                Correction Request
             </Button>
         </div>
 
@@ -280,7 +283,6 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
                                             </div>
                                         </TableCell>
                                         
-                                        {/* CLOCK IN */}
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 {entry.clock_in_photo_url && (
@@ -288,7 +290,6 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
                                                         className="w-8 h-8 rounded overflow-hidden border cursor-pointer hover:scale-110 transition-transform"
                                                         onClick={() => { setSelectedImage(entry.clock_in_photo_url!); setIsImageOpen(true); }}
                                                     >
-                                                        {/* CHANGED TO STANDARD IMG TAG */}
                                                         <img src={entry.clock_in_photo_url} alt="In" className="object-cover w-full h-full" />
                                                     </div>
                                                 )}
@@ -298,7 +299,6 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
                                             </div>
                                         </TableCell>
 
-                                        {/* CLOCK OUT */}
                                         <TableCell>
                                             {entry.end_time ? (
                                                 <div className="flex items-center gap-2">
@@ -307,7 +307,6 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
                                                             className="w-8 h-8 rounded overflow-hidden border cursor-pointer hover:scale-110 transition-transform"
                                                             onClick={() => { setSelectedImage(entry.clock_out_photo_url!); setIsImageOpen(true); }}
                                                         >
-                                                            {/* CHANGED TO STANDARD IMG TAG */}
                                                             <img src={entry.clock_out_photo_url} alt="Out" className="object-cover w-full h-full" />
                                                         </div>
                                                     )}
@@ -320,7 +319,6 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
                                             )}
                                         </TableCell>
 
-                                        {/* LOCATION */}
                                         <TableCell>
                                             <Button 
                                                 variant="ghost" 
@@ -338,19 +336,17 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
                                             </Button>
                                         </TableCell>
 
-                                        {/* DURATION */}
                                         <TableCell className="text-right font-mono font-bold text-xs">
                                             {formatDuration(entry.start_time, entry.end_time, entry.total_break_minutes)}
                                         </TableCell>
 
-                                        {/* ACTIONS */}
                                         <TableCell>
                                             {!data.isLocked && (
                                                 <Button 
                                                     variant="ghost" 
                                                     size="icon" 
                                                     className="h-6 w-6 text-muted-foreground hover:text-orange-500"
-                                                    title="Request Correction for this punch"
+                                                    title="Request Correction"
                                                     onClick={() => handleRequestCorrection(entry)}
                                                 >
                                                     <Pencil className="w-3 h-3" />
@@ -368,32 +364,49 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
 
         {/* --- DIALOGS --- */}
 
-        {/* 1. CORRECTION DIALOG */}
+        {/* 1. CORRECTION DIALOG (Updated fields) */}
         <Dialog open={isCorrectionOpen} onOpenChange={setIsCorrectionOpen}>
             <DialogContent>
-                <DialogHeader><DialogTitle>Request Time Correction</DialogTitle><DialogDescription>Corrections must be approved by a manager.</DialogDescription></DialogHeader>
+                <DialogHeader>
+                    <DialogTitle>Request Time Correction</DialogTitle>
+                    <DialogDescription>
+                        Please enter the <strong>Actual</strong> time this shift should have been.
+                    </DialogDescription>
+                </DialogHeader>
                 <div className="grid gap-4 py-2">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold">Date</label><Input type="date" value={reqDate} onChange={e => setReqDate(e.target.value)} /></div>
-                        <div><label className="text-xs font-bold">Correct Time</label><Input type="time" value={reqTime} onChange={e => setReqTime(e.target.value)} /></div>
-                    </div>
+                    {/* DATE INPUT */}
                     <div>
-                        <label className="text-xs font-bold">Issue Type</label>
-                        <Select value={reqType} onValueChange={setReqType}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="missed_in">Forgot to Clock In</SelectItem>
-                                <SelectItem value="missed_out">Forgot to Clock Out</SelectItem>
-                                <SelectItem value="wrong_time">Time was incorrect</SelectItem>
-                                <SelectItem value="break_error">Break Error</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <label className="text-xs font-bold">Shift Date</label>
+                        <Input type="date" value={reqDate} onChange={e => setReqDate(e.target.value)} />
                     </div>
-                    <div><label className="text-xs font-bold">Notes</label><Textarea placeholder="Explain what happened..." value={reqNotes} onChange={e => setReqNotes(e.target.value)} /></div>
+
+                    {/* START & END TIME INPUTS */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold">Actual Start Time</label>
+                            <Input type="time" value={reqStartTime} onChange={e => setReqStartTime(e.target.value)} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold">Actual End Time</label>
+                            <Input type="time" value={reqEndTime} onChange={e => setReqEndTime(e.target.value)} />
+                        </div>
+                    </div>
+                    
+                    {/* REASON INPUT */}
+                    <div>
+                        <label className="text-xs font-bold">Reason for Adjustment</label>
+                        <Textarea 
+                            placeholder="e.g. Forgot to clock in, System error, etc." 
+                            value={reqReason} 
+                            onChange={e => setReqReason(e.target.value)} 
+                        />
+                    </div>
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => setIsCorrectionOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSubmitCorrection} disabled={submitting}>{submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit Request"}</Button>
+                    <Button onClick={handleSubmitCorrection} disabled={submitting}>
+                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit Request"}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -413,18 +426,14 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
                         ></iframe>
                     )}
                 </div>
-                <div className="text-xs text-muted-foreground text-center">
-                    {selectedLocation?.lat ? `GPS: ${selectedLocation.lat}, ${selectedLocation.lon}` : "Location inferred from schedule"}
-                </div>
             </DialogContent>
         </Dialog>
 
-        {/* 3. IMAGE DIALOG (LIGHTBOX) */}
+        {/* 3. IMAGE DIALOG */}
         <Dialog open={isImageOpen} onOpenChange={setIsImageOpen}>
             <DialogContent className="sm:max-w-lg p-0 bg-black border-zinc-800">
                 <div className="relative aspect-[4/3] w-full flex items-center justify-center">
                     {selectedImage && (
-                        /* CHANGED TO STANDARD IMG TAG */
                         <img src={selectedImage} alt="Proof" className="w-full h-full object-contain" />
                     )}
                 </div>
