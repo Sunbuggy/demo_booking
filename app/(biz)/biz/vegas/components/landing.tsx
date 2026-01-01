@@ -7,19 +7,17 @@ import { countPeople, vehiclesList } from '@/utils/old_db/helpers';
 import FleetManagerDialog from '@/components/biz/fleet-manager-dialog'; 
 import { Button } from '@/components/ui/button';
 import { FaExclamationTriangle } from 'react-icons/fa';
-import { Plus } from 'lucide-react'; // New icon for the compact trigger
+import { Plus } from 'lucide-react'; 
 
 // Import the User Avatar Component
 import UserStatusAvatar from '@/components/UserStatusAvatar';
+// Import VehicleType for type safety
+import { VehicleType } from '@/app/(biz)/biz/vehicles/admin/page';
 
 /**
  * Landing Component
- * * This is the main dashboard view for the daily operations.
- * It displays high-level stats (Total Pax, Vehicles, Revenue) and a list of HourCards.
- * * UX UPDATES:
- * - Removed big "Morning Roll Call" button from top right.
- * - Added a compact "+" icon next to the "FLEET" label to trigger the Fleet Manager.
- * - Removed "Create Reservation" button (moved to HourCard).
+ * Displays high-level stats and list of HourCards.
+ * Now acts as a pass-through for realFleet data to the FleetManagerDialog.
  */
 const Landing = ({
   data,
@@ -31,7 +29,8 @@ const Landing = ({
   reservationStatusMap,
   hourlyUtilization,
   drivers,
-  todaysShifts 
+  todaysShifts,
+  realFleet // *** NEW: Destructure the new prop
 }: {
   data: Record<string, Record<string, Reservation[]>>;
   display_cost: boolean;
@@ -42,7 +41,8 @@ const Landing = ({
   reservationStatusMap: any;  
   hourlyUtilization: any;
   drivers: any[];
-  todaysShifts: any[]; 
+  todaysShifts: any[];
+  realFleet: VehicleType[]; // *** NEW: Define the type
 }): JSX.Element => {
   
   // 1. Fallback if no data is present
@@ -107,12 +107,13 @@ const Landing = ({
                 Fleet
              </div>
 
-             {/* ✅ BUTTON IS NOW UNLOCKED & PERSISTENT */}
+             {/* âœ… BUTTON IS NOW UNLOCKED & PERSISTENT */}
              <FleetManagerDialog 
                date={date} 
                drivers={drivers} 
                activeFleet={activeFleet}
                todaysShifts={todaysShifts}
+               realFleet={realFleet} // *** NEW: Pass the real fleet data here ***
                trigger={
                  <Button 
                    variant="ghost" 

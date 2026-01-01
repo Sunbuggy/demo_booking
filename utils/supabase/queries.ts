@@ -1688,22 +1688,63 @@ export const getEmployeeDetailsSafe = cache(
   }
 );
 /**
- * @description ADD THIS TO THE BOTTOM OF YOUR EXISTING QUERIES.TS
- * Targeted fetch for the Torch Dashboard to find real Shuttles and their capacities.
+ * @description Targeted fetch for the Torch Dashboard.
+ * 1. Filters by Type: 'shuttle'
+ * 2. Filters by Status: Excludes 'broken' AND 'former' (keeps 'maintenance' active)
+ * 3. Filters by Location: Uses a specific Lat/Long bounding box for Las Vegas.
+ * - Lat: 35.5 to 37.0 (Excludes Michigan & Phoenix)
+ * - Long: -116.0 to -114.05 (Excludes CA & AZ)
  */
 export const fetchShuttlesOnly = cache(async (supabase: SupabaseClient) => {
-  const { data, error } = await supabase
+  // A. Fetch candidate vehicles (Shuttles that are active)
+  const { data: vehicles, error } = await supabase
     .from('vehicles')
     .select('*')
-    // Matches the 'shuttle' filter seen in your fleet management screenshot
-    .eq('type', 'shuttle') 
-    .order('fleet_id', { ascending: true });
+    .eq('type', 'shuttle')
+    .neq('vehicle_status', 'broken') // Exclude broken
+    .neq('vehicle_status', 'former') // Exclude sold/retired vehicles
+    .order('name', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching shuttles for dashboard:', error);
+  if (error || !vehicles) {
+    console.error('Error fetching shuttles:', error);
     return [];
   }
+
+  // B. Get IDs to check location
+  const vehicleIds = vehicles.map((v) => v.id);
+  if (vehicleIds.length === 0) return [];
+
+  // C. Fetch latest location history
+  const { data: locations } = await supabase
+    .from('vehicle_locations')
+    .select('vehicle_id, latitude, longitude, created_at')
+    .in('vehicle_id', vehicleIds)
+    .order('created_at', { ascending: false });
+
+  // D. Map latest location per vehicle
+  const latestLocMap = new Map();
+  locations?.forEach((loc) => {
+    if (!latestLocMap.has(loc.vehicle_id)) {
+      latestLocMap.set(loc.vehicle_id, loc);
+    }
+  });
+
+  // E. Filter: Apply Las Vegas Bounding Box
+  const vegasVehicles = vehicles.filter((v) => {
+    const loc = latestLocMap.get(v.id);
+    
+    // If no location data exists, we assume it's valid to show (fallback)
+    if (!loc) return true;
+
+    const lat = loc.latitude;
+    const lng = loc.longitude;
+
+    // Check if inside Las Vegas Box
+    const inVegasLat = lat > 35.5 && lat < 37.0;
+    const inVegasLng = lng > -116.0 && lng < -114.05;
+
+    return inVegasLat && inVegasLng;
+  });
   
-  // We cast to VehicleType[] to maintain consistency with your existing vehicles admin page
-  return data as VehicleType[];
+  return vegasVehicles as VehicleType[];
 });

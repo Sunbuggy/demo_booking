@@ -7,27 +7,18 @@ import { createFleetPairing, removeFleetPairing } from '@/app/actions/shuttle-op
 import { toast } from 'sonner';
 import { FaBus, FaUserPlus, FaTrash } from 'react-icons/fa';
 import { Switch } from '@/components/ui/switch'; 
-
-// Matches IDs in your system
-const FLEET_VEHICLES = [
-  { id: 'sh005', name: 'sh005 - Ford Transit', capacity: 14 },
-  { id: 'sh015', name: 'sh015 - Sprinter', capacity: 12 },
-  { id: 'sh006', name: 'sh006 - Big Bus', capacity: 24 },
-  { id: 'sh016', name: 'sh016 - White Van', capacity: 10 },
-  { id: 'sh012', name: 'sh012 - Overflow SUV', capacity: 7 },
-  { id: 'sh001', name: 'sh001 - Blue Bus', capacity: 14 },
-  { id: 'sh020', name: 'sh020 - Pink Jeep', capacity: 6 },
-];
+import { VehicleType } from '@/app/(biz)/biz/vehicles/admin/page';
 
 interface Props { 
   date: string; 
   drivers: { id: string; full_name: string }[]; 
   activeFleet: any[]; 
-  todaysShifts: any[]; // List of scheduled shifts
-  trigger?: React.ReactNode; // Custom trigger element passed from Landing.tsx
+  todaysShifts: any[];
+  realFleet: VehicleType[]; 
+  trigger?: React.ReactNode; 
 }
 
-export default function FleetManagerDialog({ date, drivers, activeFleet, todaysShifts, trigger }: Props) {
+export default function FleetManagerDialog({ date, drivers, activeFleet, todaysShifts, realFleet, trigger }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState('');
@@ -36,13 +27,8 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
 
   // --- FILTER LOGIC ---
   const filteredDrivers = useMemo(() => {
-    // If "Show All" is checked, or if we have no shift data, show everyone
     if (showAllStaff || !todaysShifts) return drivers;
-    
-    // Otherwise, only show drivers whose ID exists in todaysShifts
-    return drivers.filter(d => 
-      todaysShifts.some(shift => shift.user_id === d.id)
-    );
+    return drivers.filter(d => todaysShifts.some(shift => shift.user_id === d.id));
   }, [drivers, todaysShifts, showAllStaff]);
 
   // --- HANDLER: ADD ---
@@ -53,15 +39,25 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
     }
     
     setIsSubmitting(true);
-    const vehicle = FLEET_VEHICLES.find(v => v.id === selectedVehicleId);
+
+    const vehicle = realFleet.find(v => v.id === selectedVehicleId);
     
+    // LOGIC UPDATE: Combine Name and Pet Name for the display
+    // Result: "sh013 - Dundee" or just "sh005" if no pet name
+    let vehicleDisplayName = vehicle?.name || 'Unknown';
+    if (vehicle?.pet_name) {
+      vehicleDisplayName += ` - ${vehicle.pet_name}`;
+    }
+
+    const vehicleSeats = vehicle?.seats || 14; 
+
     try {
       await createFleetPairing(
         date, 
         selectedDriverId, 
         selectedVehicleId, 
-        vehicle?.name || selectedVehicleId, 
-        vehicle?.capacity || 14
+        vehicleDisplayName, // <--- Saves "Name - Pet Name" to the schedule
+        vehicleSeats
       );
       
       toast.success('Driver added to schedule');
@@ -79,7 +75,6 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
   // --- HANDLER: REMOVE ---
   const handleRemove = async (manifestId: string, driverName: string) => {
     if(!confirm(`Remove ${driverName} from the schedule?`)) return;
-    
     setIsSubmitting(true);
     try {
       await removeFleetPairing(manifestId, date);
@@ -95,9 +90,6 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        {/* UPDATE: Wrapped in a div bridge to ensure DialogTrigger's 
-            click event propagates correctly to the custom trigger node. 
-        */}
         <div className="inline-block cursor-pointer">
           {trigger ? (
             trigger
@@ -140,10 +132,7 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
                <select
                  className="w-full h-10 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
                  value={selectedDriverId}
-                 onChange={(e) => { 
-                    setSelectedDriverId(e.target.value); 
-                    e.target.blur(); 
-                 }}
+                 onChange={(e) => { setSelectedDriverId(e.target.value); e.target.blur(); }}
                >
                  <option value="">
                    {filteredDrivers.length === 0 ? '-- No Scheduled Drivers Found --' : '-- Choose Driver --'}
@@ -153,16 +142,19 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
                  ))}
                </select>
 
+               {/* UPDATED VEHICLE SELECT */}
                <select
                  className="w-full h-10 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
                  value={selectedVehicleId}
-                 onChange={(e) => { 
-                    setSelectedVehicleId(e.target.value); 
-                    e.target.blur(); 
-                 }}
+                 onChange={(e) => { setSelectedVehicleId(e.target.value); e.target.blur(); }}
                >
                  <option value="">-- Choose Vehicle --</option>
-                 {FLEET_VEHICLES.map((v) => (<option key={v.id} value={v.id}>{v.name}</option>))}
+                 {realFleet.map((v) => (
+                   <option key={v.id} value={v.id}>
+                     {/* DISPLAY: Name - Pet Name (Seats) */}
+                     {v.name} {v.pet_name ? `- ${v.pet_name}` : ''} ({v.seats} Seats)
+                   </option>
+                 ))}
                </select>
 
                <Button 
@@ -186,13 +178,13 @@ export default function FleetManagerDialog({ date, drivers, activeFleet, todaysS
                   <div key={item.id} className="flex items-center justify-between p-2 rounded bg-slate-800 border border-slate-700">
                     <div>
                       <div className="text-sm font-bold text-slate-200">{item.driverName}</div>
+                      {/* Displays the vehicle name we saved earlier (e.g. sh013 - Dundee) */}
                       <div className="text-xs text-slate-500">{item.vehicleName}</div>
                     </div>
                     <button 
                       onClick={() => handleRemove(item.id, item.driverName)}
                       disabled={isSubmitting}
                       className="text-slate-500 hover:text-red-500 p-2 transition-colors"
-                      title="Remove from schedule"
                     >
                       <FaTrash />
                     </button>
