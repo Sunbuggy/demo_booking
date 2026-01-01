@@ -97,7 +97,7 @@ export default function UserTimeSheet({ userId }: { userId: string }) {
 
     // Fetch Requests
     const { data: reqData } = await supabase
-        .from('time_correction_requests')
+        .from('time_sheet_requests')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
