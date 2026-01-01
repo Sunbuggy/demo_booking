@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import { BookingEditPage } from '../components/server-booking';
 import { createReservation } from '@/utils/old_db/actions';
 import { redirect } from 'next/navigation';
-import { Reservation } from '../../types';
+import { Reservation } from '../../../types';
 import { fetchHotels, getUserDetails } from '@/utils/supabase/queries';
 
 export default async function NewReservationPage() {

@@ -1,7 +1,7 @@
 'use client';
 import { Button } from '@/components/ui/button';
 import React from 'react';
-import { GroupsType, GroupVehiclesType, Reservation } from '../../types';
+import { GroupsType, GroupVehiclesType, Reservation } from '../../../types';
 import { useToast } from '@/components/ui/use-toast';
 import { updateGroupVehicleQuantity } from '@/utils/old_db/actions';
 

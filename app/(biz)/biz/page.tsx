@@ -1,5 +1,5 @@
 import React from 'react';
-import LoadingModal from './components/loading-modal';
+import LoadingModal from './vegas/components/loading-modal';
 
 
 const Page = () => {

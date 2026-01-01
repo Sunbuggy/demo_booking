@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { GroupVehiclesType } from '../../types';
+import { GroupVehiclesType } from '../../../types';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import DeleteGroup from './delete-group';

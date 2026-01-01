@@ -13,7 +13,7 @@ import GroupSheet from '../groups/group-sheet';
 import CreateGroupWizard from '../groups/create-group-wizard';
 
 // Types
-import { Reservation } from '../../types';
+import { Reservation } from '../../../types';
 
 /**
  * HourCard Component

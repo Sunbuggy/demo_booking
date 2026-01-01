@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { BsArrowRight } from 'react-icons/bs';
-import { Reservation } from '../../types';
+import { Reservation } from '../../../types';
 import SplitShuttleAssigner from '@/components/biz/split-shuttle-assigner'; 
 import { cn } from '@/lib/utils';
 

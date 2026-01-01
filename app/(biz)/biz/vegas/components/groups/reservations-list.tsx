@@ -4,7 +4,7 @@ import { PopoverGroups } from './popover_group';
 import EditGroups from './update-groups';
 import AssignGroups from './assign-groups';
 import DeleteAssigned from './delete-assigned';
-import { GroupsType, GroupVehiclesType, Reservation } from '../../types';
+import { GroupsType, GroupVehiclesType, Reservation } from '../../../types';
 
 const ReservationsList = ({
   isHighlighted,

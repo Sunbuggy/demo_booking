@@ -6,7 +6,7 @@ import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { fetch_from_old_db } from '@/utils/old_db/actions';
 import { Reservation } from '../types';
-import LoadingModal from '../components/loading-modal';
+import LoadingModal from '../vegas/components/loading-modal';
 import DateCell from './date-cell';
 import { useTheme } from 'next-themes';
 import { SelectInfo } from 'antd/es/calendar/generateCalendar';

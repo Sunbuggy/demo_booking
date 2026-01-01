@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import React from 'react';
-import { Reservation } from '../../types';
+import { Reservation } from '../../../types';
 import BookingCard from './booking-card';
 import { vehiclesList } from '@/utils/old_db/helpers';
 

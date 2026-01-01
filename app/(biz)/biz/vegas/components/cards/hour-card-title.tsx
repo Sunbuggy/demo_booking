@@ -5,7 +5,7 @@ import {
   vehiclesList
 } from '@/utils/old_db/helpers';
 import React from 'react';
-import { Reservation } from '../../types';
+import { Reservation } from '../../../types';
 
 const HourCardTitle = ({
   hr,

@@ -1,7 +1,7 @@
 // app/(biz)/biz/components/landing.tsx
 
 import React from 'react';
-import { Reservation } from '../types';
+import { Reservation } from '../../types';
 import HourCard from './cards/hour-card';
 import { countPeople, vehiclesList } from '@/utils/old_db/helpers';
 import FleetManagerDialog from '@/components/biz/fleet-manager-dialog'; 
