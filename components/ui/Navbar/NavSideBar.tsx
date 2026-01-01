@@ -133,7 +133,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
         <div className="text-xl font-black text-white italic tracking-tighter">
           SUN<span className="text-orange-500">BUGGY</span>
         </div>
-        <div className="text-[10px] text-zinc-500 font-mono">FLOW_OS v2.4.12</div>
       </div>
 
       {renderLinkGroup(publicLinks, 'Adventure Guide', 0)}
