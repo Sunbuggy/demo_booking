@@ -1,5 +1,5 @@
 import React from 'react';
-import { GroupsType, GroupVehiclesType, Reservation } from '../../types';
+import { GroupsType, GroupVehiclesType, Reservation } from '../../../types';
 import { vehiclesList } from '@/utils/old_db/helpers';
 import { createClient } from '@/utils/supabase/server';
 import { fetchGroups, fetchGroupVehicles } from '@/utils/supabase/queries';

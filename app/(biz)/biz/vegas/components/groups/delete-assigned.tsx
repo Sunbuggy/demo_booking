@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { PopoverClose } from '@/components/ui/popover';
 import { deleteFromGroupVehicles } from '@/utils/old_db/actions';
 import React from 'react';
-import { GroupsType, GroupVehiclesType, Reservation } from '../../types';
+import { GroupsType, GroupVehiclesType, Reservation } from '../../../types';
 import { useToast } from '@/components/ui/use-toast';
 
 const DeleteAssigned = ({

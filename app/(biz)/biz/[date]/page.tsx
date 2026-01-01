@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation';
 import dayjs from 'dayjs';
 import { RiArrowLeftWideFill, RiArrowRightWideFill } from 'react-icons/ri';
 import { Button } from '@/components/ui/button';
-import LoadingModal from '../components/loading-modal';
-import Landing from '../components/landing';
+import LoadingModal from '../vegas/components/loading-modal';
+import Landing from '../vegas/components/landing';
 import { createClient } from '@/utils/supabase/server';
 import { getUserDetails } from '@/utils/supabase/queries';
 import { Reservation } from '../types';
@@ -14,7 +14,7 @@ import { getDailyOperations } from '@/app/actions/shuttle-operations';
 import { getVegasShuttleDrivers } from '@/app/actions/user-actions'; 
 
 // IMPORT THE NEW GLOBAL LISTENER
-import RealtimeGroupsListener from '../components/realtime-groups-listener';
+import RealtimeGroupsListener from '../vegas/components/realtime-groups-listener';
 
 export const dynamic = 'force-dynamic';
 

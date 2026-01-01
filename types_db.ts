@@ -35,6 +35,24 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       adventure: {
         Row: {
           created_at: string
@@ -452,6 +470,7 @@ export type Database = {
           created_at: string
           id: string
           image: string | null
+          image_url: string | null
           lat: number | null
           long: number | null
         }
@@ -460,6 +479,7 @@ export type Database = {
           created_at?: string
           id?: string
           image?: string | null
+          image_url?: string | null
           lat?: number | null
           long?: number | null
         }
@@ -468,6 +488,7 @@ export type Database = {
           created_at?: string
           id?: string
           image?: string | null
+          image_url?: string | null
           lat?: number | null
           long?: number | null
         }
@@ -479,6 +500,7 @@ export type Database = {
           created_at: string
           id: string
           image: string | null
+          image_url: string | null
           lat: number | null
           long: number | null
         }
@@ -487,6 +509,7 @@ export type Database = {
           created_at?: string
           id?: string
           image?: string | null
+          image_url?: string | null
           lat?: number | null
           long?: number | null
         }
@@ -495,6 +518,7 @@ export type Database = {
           created_at?: string
           id?: string
           image?: string | null
+          image_url?: string | null
           lat?: number | null
           long?: number | null
         }
@@ -521,6 +545,39 @@ export type Database = {
           id?: string
           name?: string | null
           phone?: string | null
+        }
+        Relationships: []
+      }
+      daily_shuttle_manifest: {
+        Row: {
+          capacity: number | null
+          created_at: string | null
+          created_by: string | null
+          date: string
+          driver_id: string
+          id: string
+          vehicle_id: string
+          vehicle_name: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          driver_id: string
+          id?: string
+          vehicle_id: string
+          vehicle_name?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          driver_id?: string
+          id?: string
+          vehicle_id?: string
+          vehicle_name?: string | null
         }
         Relationships: []
       }
@@ -565,40 +622,147 @@ export type Database = {
           },
         ]
       }
+      employee_availability_patterns: {
+        Row: {
+          created_at: string | null
+          day_of_week: number
+          end_time: string
+          id: string
+          preference_level: Database["public"]["Enums"]["availability_preference"]
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week: number
+          end_time: string
+          id?: string
+          preference_level?: Database["public"]["Enums"]["availability_preference"]
+          start_time: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          preference_level?: Database["public"]["Enums"]["availability_preference"]
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       employee_details: {
         Row: {
+          dialpad_id: string | null
+          dialpad_number: string | null
           emp_id: string | null
           id: string
           payroll_company: string | null
           primary_position: string | null
           primary_work_location: string | null
+          time_correction_count: number | null
           user_id: string | null
+          work_phone: string | null
         }
         Insert: {
+          dialpad_id?: string | null
+          dialpad_number?: string | null
           emp_id?: string | null
           id?: string
           payroll_company?: string | null
           primary_position?: string | null
           primary_work_location?: string | null
+          time_correction_count?: number | null
           user_id?: string | null
+          work_phone?: string | null
         }
         Update: {
+          dialpad_id?: string | null
+          dialpad_number?: string | null
           emp_id?: string | null
           id?: string
           payroll_company?: string | null
           primary_position?: string | null
           primary_work_location?: string | null
+          time_correction_count?: number | null
           user_id?: string | null
+          work_phone?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "employee_details_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_schedules: {
+        Row: {
+          created_at: string | null
+          end_time: string
+          id: string
+          location: string | null
+          location_id: string | null
+          role: string | null
+          start_time: string
+          task: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_time: string
+          id?: string
+          location?: string | null
+          location_id?: string | null
+          role?: string | null
+          start_time: string
+          task?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string
+          id?: string
+          location?: string | null
+          location_id?: string | null
+          role?: string | null
+          start_time?: string
+          task?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_employee_schedules_user"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
+      }
+      group_timings: {
+        Row: {
+          created_at: string | null
+          group_id: string
+          landed_at: string | null
+          launched_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          group_id: string
+          landed_at?: string | null
+          launched_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          group_id?: string
+          landed_at?: string | null
+          launched_at?: string | null
+        }
+        Relationships: []
       }
       group_vehicles: {
         Row: {
@@ -820,6 +984,252 @@ export type Database = {
         }
         Relationships: []
       }
+      pismo_booking_items: {
+        Row: {
+          has_waiver: boolean | null
+          id: string
+          pismo_booking_id: string | null
+          price_at_booking: number
+          pricing_category_id: string | null
+          quantity: number
+          vehicle_name_snapshot: string | null
+        }
+        Insert: {
+          has_waiver?: boolean | null
+          id?: string
+          pismo_booking_id?: string | null
+          price_at_booking: number
+          pricing_category_id?: string | null
+          quantity: number
+          vehicle_name_snapshot?: string | null
+        }
+        Update: {
+          has_waiver?: boolean | null
+          id?: string
+          pismo_booking_id?: string | null
+          price_at_booking?: number
+          pricing_category_id?: string | null
+          quantity?: number
+          vehicle_name_snapshot?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pismo_booking_items_pismo_booking_id_fkey"
+            columns: ["pismo_booking_id"]
+            isOneToOne: false
+            referencedRelation: "pismo_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pismo_booking_items_pricing_category_id_fkey"
+            columns: ["pricing_category_id"]
+            isOneToOne: false
+            referencedRelation: "pismo_pricing_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pismo_bookings: {
+        Row: {
+          bandannas_qty: number | null
+          booked_by: string | null
+          booking_date: string
+          created_at: string | null
+          duration_hours: number
+          email: string
+          end_time: string
+          first_name: string
+          goggles_qty: number | null
+          id: string
+          last_name: string
+          notes: string | null
+          phone: string
+          start_time: string
+          status: string | null
+          total_amount: number
+          transaction_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          bandannas_qty?: number | null
+          booked_by?: string | null
+          booking_date: string
+          created_at?: string | null
+          duration_hours: number
+          email: string
+          end_time: string
+          first_name: string
+          goggles_qty?: number | null
+          id?: string
+          last_name: string
+          notes?: string | null
+          phone: string
+          start_time: string
+          status?: string | null
+          total_amount: number
+          transaction_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          bandannas_qty?: number | null
+          booked_by?: string | null
+          booking_date?: string
+          created_at?: string | null
+          duration_hours?: number
+          email?: string
+          end_time?: string
+          first_name?: string
+          goggles_qty?: number | null
+          id?: string
+          last_name?: string
+          notes?: string | null
+          phone?: string
+          start_time?: string
+          status?: string | null
+          total_amount?: number
+          transaction_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      pismo_pricing_rules: {
+        Row: {
+          belt: number | null
+          created_at: string | null
+          created_by: string | null
+          created_by_name: string | null
+          damage_waiver: number | null
+          days_of_week: number[] | null
+          deposit: number | null
+          end_date: string | null
+          end_time: string | null
+          fleet_prefixes: string[] | null
+          id: string
+          name: string | null
+          online: boolean | null
+          phone: boolean | null
+          price_1_5hr: number | null
+          price_1hr: number | null
+          price_2_5hr: number | null
+          price_2hr: number | null
+          price_3_5hr: number | null
+          price_3hr: number | null
+          price_4hr: number | null
+          search_term: string | null
+          seats: number | null
+          sort_order: number | null
+          start_date: string
+          start_time: string | null
+          type_vehicle: string | null
+          updated_at: string | null
+          updated_by: string | null
+          updated_by_name: string | null
+          vehicle_id: string | null
+          vehicle_name: string
+        }
+        Insert: {
+          belt?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          created_by_name?: string | null
+          damage_waiver?: number | null
+          days_of_week?: number[] | null
+          deposit?: number | null
+          end_date?: string | null
+          end_time?: string | null
+          fleet_prefixes?: string[] | null
+          id?: string
+          name?: string | null
+          online?: boolean | null
+          phone?: boolean | null
+          price_1_5hr?: number | null
+          price_1hr?: number | null
+          price_2_5hr?: number | null
+          price_2hr?: number | null
+          price_3_5hr?: number | null
+          price_3hr?: number | null
+          price_4hr?: number | null
+          search_term?: string | null
+          seats?: number | null
+          sort_order?: number | null
+          start_date: string
+          start_time?: string | null
+          type_vehicle?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          updated_by_name?: string | null
+          vehicle_id?: string | null
+          vehicle_name: string
+        }
+        Update: {
+          belt?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          created_by_name?: string | null
+          damage_waiver?: number | null
+          days_of_week?: number[] | null
+          deposit?: number | null
+          end_date?: string | null
+          end_time?: string | null
+          fleet_prefixes?: string[] | null
+          id?: string
+          name?: string | null
+          online?: boolean | null
+          phone?: boolean | null
+          price_1_5hr?: number | null
+          price_1hr?: number | null
+          price_2_5hr?: number | null
+          price_2hr?: number | null
+          price_3_5hr?: number | null
+          price_3hr?: number | null
+          price_4hr?: number | null
+          search_term?: string | null
+          seats?: number | null
+          sort_order?: number | null
+          start_date?: string
+          start_time?: string | null
+          type_vehicle?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          updated_by_name?: string | null
+          vehicle_id?: string | null
+          vehicle_name?: string
+        }
+        Relationships: []
+      }
+      pismo_rental_rules: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          days_of_week: number[]
+          end_date: string
+          first_start_time: string | null
+          id: number
+          last_end_offset_minutes: number | null
+          start_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          days_of_week: number[]
+          end_date: string
+          first_start_time?: string | null
+          id?: number
+          last_end_offset_minutes?: number | null
+          start_date: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          days_of_week?: number[]
+          end_date?: string
+          first_start_time?: string | null
+          id?: number
+          last_end_offset_minutes?: number | null
+          start_date?: string
+        }
+        Relationships: []
+      }
       qr_history: {
         Row: {
           id: string
@@ -854,6 +1264,41 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservation_assignments: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          id: string
+          manifest_id: string
+          pax_count: number
+          reservation_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          manifest_id: string
+          pax_count: number
+          reservation_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          manifest_id?: string
+          pax_count?: number
+          reservation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_assignments_manifest_id_fkey"
+            columns: ["manifest_id"]
+            isOneToOne: false
+            referencedRelation: "daily_shuttle_manifest"
             referencedColumns: ["id"]
           },
         ]
@@ -1000,32 +1445,101 @@ export type Database = {
           },
         ]
       }
+      shuttle_audit_log: {
+        Row: {
+          action_type: string
+          actor_id: string | null
+          details: Json | null
+          id: string
+          timestamp: string | null
+        }
+        Insert: {
+          action_type: string
+          actor_id?: string | null
+          details?: Json | null
+          id?: string
+          timestamp?: string | null
+        }
+        Update: {
+          action_type?: string
+          actor_id?: string | null
+          details?: Json | null
+          id?: string
+          timestamp?: string | null
+        }
+        Relationships: []
+      }
       time_entries: {
         Row: {
+          break_start: string | null
           clock_in_id: string | null
+          clock_in_lat: number | null
+          clock_in_lon: number | null
+          clock_in_photo_url: string | null
           clock_out_id: string | null
+          clock_out_lat: number | null
+          clock_out_location: Json | null
+          clock_out_lon: number | null
+          clock_out_photo_url: string | null
           created_at: string | null
           date: string | null
           duration: number | null
+          end_time: string | null
           id: string
+          is_on_break: boolean | null
+          location: string | null
+          role: string | null
+          start_time: string | null
+          status: string | null
+          total_break_minutes: number | null
           user_id: string | null
         }
         Insert: {
+          break_start?: string | null
           clock_in_id?: string | null
+          clock_in_lat?: number | null
+          clock_in_lon?: number | null
+          clock_in_photo_url?: string | null
           clock_out_id?: string | null
+          clock_out_lat?: number | null
+          clock_out_location?: Json | null
+          clock_out_lon?: number | null
+          clock_out_photo_url?: string | null
           created_at?: string | null
           date?: string | null
           duration?: number | null
+          end_time?: string | null
           id?: string
+          is_on_break?: boolean | null
+          location?: string | null
+          role?: string | null
+          start_time?: string | null
+          status?: string | null
+          total_break_minutes?: number | null
           user_id?: string | null
         }
         Update: {
+          break_start?: string | null
           clock_in_id?: string | null
+          clock_in_lat?: number | null
+          clock_in_lon?: number | null
+          clock_in_photo_url?: string | null
           clock_out_id?: string | null
+          clock_out_lat?: number | null
+          clock_out_location?: Json | null
+          clock_out_lon?: number | null
+          clock_out_photo_url?: string | null
           created_at?: string | null
           date?: string | null
           duration?: number | null
+          end_time?: string | null
           id?: string
+          is_on_break?: boolean | null
+          location?: string | null
+          role?: string | null
+          start_time?: string | null
+          status?: string | null
+          total_break_minutes?: number | null
           user_id?: string | null
         }
         Relationships: [
@@ -1051,6 +1565,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      time_off_requests: {
+        Row: {
+          created_at: string | null
+          end_date: string
+          id: string
+          reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["request_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_date: string
+          id?: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: Database["public"]["Enums"]["request_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["request_status"]
+          user_id?: string
+        }
+        Relationships: []
       }
       time_sheet_requests: {
         Row: {
@@ -1133,15 +1683,25 @@ export type Database = {
           bg_position: string | null
           bg_repeat: string | null
           bg_size: string | null
+          department: string | null
           email: string | null
+          external_metadata: Json | null
+          first_name: string | null
           full_name: string | null
+          hire_date: string | null
           homepage: string | null
           id: string
+          job_title: string | null
+          last_name: string | null
+          location: string | null
           phone: string | null
+          stage_name: string | null
           time_entry_status:
             | Database["public"]["Enums"]["time_entry_status"]
             | null
+          timeclock_blocked: boolean | null
           user_level: number | null
+          user_type: Database["public"]["Enums"]["user_type"] | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1149,15 +1709,25 @@ export type Database = {
           bg_position?: string | null
           bg_repeat?: string | null
           bg_size?: string | null
+          department?: string | null
           email?: string | null
+          external_metadata?: Json | null
+          first_name?: string | null
           full_name?: string | null
+          hire_date?: string | null
           homepage?: string | null
           id: string
+          job_title?: string | null
+          last_name?: string | null
+          location?: string | null
           phone?: string | null
+          stage_name?: string | null
           time_entry_status?:
             | Database["public"]["Enums"]["time_entry_status"]
             | null
+          timeclock_blocked?: boolean | null
           user_level?: number | null
+          user_type?: Database["public"]["Enums"]["user_type"] | null
         }
         Update: {
           avatar_url?: string | null
@@ -1165,15 +1735,25 @@ export type Database = {
           bg_position?: string | null
           bg_repeat?: string | null
           bg_size?: string | null
+          department?: string | null
           email?: string | null
+          external_metadata?: Json | null
+          first_name?: string | null
           full_name?: string | null
+          hire_date?: string | null
           homepage?: string | null
           id?: string
+          job_title?: string | null
+          last_name?: string | null
+          location?: string | null
           phone?: string | null
+          stage_name?: string | null
           time_entry_status?:
             | Database["public"]["Enums"]["time_entry_status"]
             | null
+          timeclock_blocked?: boolean | null
           user_level?: number | null
+          user_type?: Database["public"]["Enums"]["user_type"] | null
         }
         Relationships: []
       }
@@ -2138,6 +2718,39 @@ export type Database = {
         }
         Relationships: []
       }
+      weather_cache: {
+        Row: {
+          date: string
+          id: string
+          location: string
+          max_temp_f: number | null
+          min_temp_f: number | null
+          precipitation_chance: number | null
+          updated_at: string | null
+          weather_code: number | null
+        }
+        Insert: {
+          date: string
+          id?: string
+          location: string
+          max_temp_f?: number | null
+          min_temp_f?: number | null
+          precipitation_chance?: number | null
+          updated_at?: string | null
+          weather_code?: number | null
+        }
+        Update: {
+          date?: string
+          id?: string
+          location?: string
+          max_temp_f?: number | null
+          min_temp_f?: number | null
+          precipitation_chance?: number | null
+          updated_at?: string | null
+          weather_code?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2149,11 +2762,17 @@ export type Database = {
       is_high_level_user: { Args: { uid: string }; Returns: boolean }
     }
     Enums: {
+      availability_preference:
+        | "unavailable"
+        | "available"
+        | "preferred"
+        | "preferred_off"
       dispatch_locations: "NV" | "CA" | "MI"
       dispatch_status: "claimed" | "open" | "closed"
       pricing_plan_interval: "day" | "week" | "month" | "year"
       pricing_type: "one_time" | "recurring"
       request_progress: "rejected" | "pending" | "accepted"
+      request_status: "pending" | "approved" | "denied"
       subscription_status:
         | "trialing"
         | "active"
@@ -2307,11 +2926,18 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      availability_preference: [
+        "unavailable",
+        "available",
+        "preferred",
+        "preferred_off",
+      ],
       dispatch_locations: ["NV", "CA", "MI"],
       dispatch_status: ["claimed", "open", "closed"],
       pricing_plan_interval: ["day", "week", "month", "year"],
       pricing_type: ["one_time", "recurring"],
       request_progress: ["rejected", "pending", "accepted"],
+      request_status: ["pending", "approved", "denied"],
       subscription_status: [
         "trialing",
         "active",
