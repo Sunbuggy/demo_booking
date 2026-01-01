@@ -28,17 +28,19 @@ async function fetchScheduledGuides(supabase: any, date: string) {
 
   return schedules
     .filter((s: any) => {
+        // SAFEGUARD 1: Check if 's.users' exists before asking for department
         const dept = s.users?.department?.toLowerCase() || '';
         const role = s.role?.toLowerCase() || '';
         return dept.includes('dunes') || role.includes('guide') || dept.includes('guides');
     })
     .map((s: any) => ({
       id: s.user_id,
-      full_name: s.users.full_name
+      // SAFEGUARD 2: The actual fix for your error.
+      // If s.users is null, use a placeholder name instead of crashing.
+      full_name: s.users?.full_name || 'Restricted User' 
     }))
     .filter((v: any, i: any, a: any) => a.findIndex((t: any) => (t.id === v.id)) === i);
 }
-
 // --- HELPER: Fetch Timings from New Table ---
 async function fetchGroupTimings(supabase: any, groupIds: string[]) {
   if (groupIds.length === 0) return [];
