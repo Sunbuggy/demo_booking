@@ -8,7 +8,7 @@ import {
   Popover, PopoverContent, PopoverTrigger 
 } from "@/components/ui/popover";
 import { 
-  Dialog, DialogContent 
+  Dialog, DialogContent, DialogTitle, DialogDescription // <--- ADDED IMPORTS
 } from "@/components/ui/dialog"; 
 import { Button } from '@/components/ui/button';
 import { 
@@ -50,7 +50,6 @@ export default function UserStatusAvatar({
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
   
-  // FIX: Store the key in state so it doesn't change on every render
   const [clockKey, setClockKey] = useState(0);
   
   const [isProcessing, setIsProcessing] = useState(false);
@@ -147,14 +146,12 @@ export default function UserStatusAvatar({
       router.push('/login');
   };
 
-  // Helper to open the modal with a fresh state
   const openTimeClockModal = () => {
       closePopover();
-      setClockKey(prev => prev + 1); // Increment key to force fresh mount ONLY when opening
+      setClockKey(prev => prev + 1); 
       setIsTimeClockOpen(true);
   };
 
-  // ACTION: Toggle Break (DIRECT - No Photo Needed)
   const handleBreakToggle = async (action: 'start' | 'end') => {
     if (!activeEntry) return;
     setIsProcessing(true);
@@ -172,7 +169,6 @@ export default function UserStatusAvatar({
 
         if (error) throw error;
         
-        // Optimistic Update
         setActiveEntry({ ...activeEntry, ...updateData });
         setStatus(action === 'start' ? 'break' : 'online');
         
@@ -226,16 +222,20 @@ export default function UserStatusAvatar({
     {isCurrentUser && (
         <Dialog open={isTimeClockOpen} onOpenChange={setIsTimeClockOpen}>
             <DialogContent className="max-w-md p-0 border-none bg-transparent shadow-none">
-                {/* FIX: Using 'clockKey' state instead of new Date().
-                   This ensures the component stays mounted/stable even if 
-                   the parent re-renders due to status updates (Optimistic or Realtime).
-                */}
+                
+                {/* --- ACCESSIBILITY FIX START --- */}
+                <DialogTitle className="sr-only">Time Clock</DialogTitle>
+                <DialogDescription className="sr-only">
+                    Interface for verifying time entry with camera.
+                </DialogDescription>
+                {/* --- ACCESSIBILITY FIX END --- */}
+
                 <SmartTimeClock 
                     key={clockKey} 
                     employeeId={user.id} 
                     onClose={() => {
                         setIsTimeClockOpen(false);
-                        fetchData(); // Refresh final state after modal closes
+                        fetchData(); 
                     }} 
                 />
             </DialogContent>

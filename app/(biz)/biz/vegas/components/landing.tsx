@@ -1,5 +1,3 @@
-// app/(biz)/biz/components/landing.tsx
-
 import React from 'react';
 import { Reservation } from '../../types';
 import HourCard from './cards/hour-card';
@@ -30,7 +28,7 @@ const Landing = ({
   hourlyUtilization,
   drivers,
   todaysShifts,
-  realFleet // *** NEW: Destructure the new prop
+  realFleet 
 }: {
   data: Record<string, Record<string, Reservation[]>>;
   display_cost: boolean;
@@ -42,8 +40,8 @@ const Landing = ({
   hourlyUtilization: any;
   drivers: any[];
   todaysShifts: any[];
-  realFleet: VehicleType[]; // *** NEW: Define the type
-}): JSX.Element => {
+  realFleet: VehicleType[]; 
+}) => { // <--- FIXED: Removed ": JSX.Element" to let React 19 infer the type
   
   // 1. Fallback if no data is present
   if (!data) return <div className="p-8 text-center text-gray-500">No data available</div>;
@@ -107,13 +105,13 @@ const Landing = ({
                 Fleet
              </div>
 
-             {/* âœ… BUTTON IS NOW UNLOCKED & PERSISTENT */}
+             {/* BUTTON IS NOW UNLOCKED & PERSISTENT */}
              <FleetManagerDialog 
                date={date} 
                drivers={drivers} 
                activeFleet={activeFleet}
                todaysShifts={todaysShifts}
-               realFleet={realFleet} // *** NEW: Pass the real fleet data here ***
+               realFleet={realFleet} 
                trigger={
                  <Button 
                    variant="ghost" 
@@ -162,7 +160,6 @@ const Landing = ({
       </div>
 
       {/* --- HOUR CARDS LIST --- */}
-      {/* Renders a card for each hour that has reservations */}
       {Object.keys(data).map((key, idx) => {
         return (
           <HourCard
