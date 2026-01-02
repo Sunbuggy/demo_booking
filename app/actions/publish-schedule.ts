@@ -113,7 +113,7 @@ export async function publishWeeklySchedule(
           </ul>
 
           <p style="margin-top: 25px;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://sunbuggy.com'}/biz/schedule" 
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://book.sunbuggy.com'}/biz/schedule" 
                style="background: #f97316; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
                View Live Roster
             </a>
