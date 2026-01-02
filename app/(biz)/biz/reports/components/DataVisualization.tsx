@@ -7,41 +7,18 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableFooter
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   DownloadIcon,
-  FilterIcon,
-  PlusCircle,
-  X,
   Settings,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DatePicker } from '@/components/ui/date-picker';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '@/components/ui/popover';
-import TableDescription from './TableDescription';
-import Pagination from './Pagination';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from '@/components/ui/accordion';
 import {
   Sheet,
   SheetContent,
@@ -50,20 +27,27 @@ import {
   SheetTitle,
   SheetTrigger
 } from '@/components/ui/sheet';
+import Pagination from './Pagination';
+import { isWithinInterval, parseISO, endOfDay, startOfDay } from 'date-fns';
 
+// --- CONFIGURATION ---
+const COLUMN_LABELS: Record<string, string> = {
+  amount: 'Total Charge ($)',
+  response_text: 'Status',
+  created_at: 'Timestamp',
+  customer_name: 'Customer',
+  auth_code: 'Auth Code',
+  transaction_id: 'Trans ID',
+  card_type: 'Card',
+  date_local: 'Date (Local)',
+  condition: 'Condition'
+};
+
+// --- TYPES ---
 interface DataVisualizationProps {
   data: any[];
   dateRange: { from: Date; to: Date };
   tableName: string;
-}
-
-type ColumnType = 'string' | 'number' | 'boolean' | 'date';
-
-interface ColumnFilter {
-  id: string;
-  column: string;
-  type: ColumnType;
-  value: string | number | boolean | Date | null;
 }
 
 const DataVisualization: React.FC<DataVisualizationProps> = ({
@@ -71,101 +55,95 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   dateRange,
   tableName
 }) => {
+  // --- STATE ---
   const [searchTerm, setSearchTerm] = useState('');
-  const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  // Extract column names from first row (exclude internal 'id' if present)
+  // --- HELPERS ---
+  // robust parser that handles numbers, strings "20.00", and currency "$20.00"
+  const parseAmount = (value: any): number => {
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+    const str = value.toString().replace(/[^0-9.-]+/g, '');
+    return parseFloat(str) || 0;
+  };
+
+  // --- LOGIC: Column Extraction ---
   const columns = useMemo(() => {
     if (data.length === 0) return [];
     return Object.keys(data[0]).filter((col) => col !== 'id');
   }, [data]);
 
-  // Show first 15 columns by default
+  // --- LOGIC: Default Visibility ---
   useMemo(() => {
-    setVisibleColumns(columns.slice(0, 15));
-  }, [columns]);
-
-  // Determine column types for filtering
-  const columnTypes: Record<string, ColumnType> = useMemo(() => {
-    if (data.length === 0) return {};
-    const types: Record<string, ColumnType> = {};
-    columns.forEach((col) => {
-      const value = data[0][col];
-      if (col === 'amount') {
-        types[col] = 'number';
-      } else if (col.includes('date') || col === 'date_local') {
-        types[col] = 'string'; // formatted string
-      } else if (typeof value === 'string') {
-        types[col] = 'string';
-      } else if (typeof value === 'number') {
-        types[col] = 'number';
-      } else if (typeof value === 'boolean') {
-        types[col] = 'boolean';
+    if (visibleColumns.length === 0 && columns.length > 0) {
+      const priorityCols = ['date_local', 'created_at', 'customer_name', 'amount', 'response_text', 'auth_code', 'card_type'];
+      const availablePriority = priorityCols.filter(c => columns.includes(c));
+      
+      if (availablePriority.length > 0) {
+        const others = columns.filter(c => !priorityCols.includes(c)).slice(0, 10 - availablePriority.length);
+        setVisibleColumns([...availablePriority, ...others]);
       } else {
-        types[col] = 'string';
+        setVisibleColumns(columns.slice(0, 10));
       }
-    });
-    return types;
-  }, [data, columns]);
+    }
+  }, [columns]); // Intentionally ran once on mount/column change
 
-  // Unique values per column for dropdown filters
-  const uniqueValues = useMemo(() => {
-    const values: Record<string, Set<any>> = {};
-    columns.forEach((col) => {
-      values[col] = new Set(data.map((item) => item[col]));
-    });
-    return values;
-  }, [data, columns]);
-
-  // Apply search, column filters, and sorting
+  // --- LOGIC: Filtering & Sorting ---
   const filteredData = useMemo(() => {
     let filtered = data.filter((item) => {
-      // Global search
+      // 1. DATE RANGE FILTER (The Fix)
+      // We look for common date fields: 'created_at' (DB) or 'date_local' (NMI)
+      if (dateRange) {
+        const dateVal = item.created_at || item.date_local;
+        if (dateVal) {
+          const itemDate = new Date(dateVal);
+          // Check if date is valid
+          if (!isNaN(itemDate.getTime())) {
+            // Compare intervals (inclusive of full start/end days)
+            if (
+              itemDate < startOfDay(dateRange.from) || 
+              itemDate > endOfDay(dateRange.to)
+            ) {
+              return false;
+            }
+          }
+        }
+      }
+
+      // 2. Global Search
       const matchesSearch = Object.values(item).some((value) =>
         value?.toString()?.toLowerCase().includes(searchTerm?.toLowerCase() ?? '')
       );
 
-      // Column filters
-      const matchesColumnFilters = columnFilters.every((filter) => {
-        const itemValue = item[filter.column];
-        switch (filter.type) {
-          case 'string':
-            return itemValue
-              ?.toString()
-              .toLowerCase()
-              .includes(filter.value?.toString()?.toLowerCase() ?? '');
-          case 'number':
-            return itemValue === Number(filter.value);
-          case 'boolean':
-            return itemValue === filter.value;
-          default:
-            return true;
-        }
-      });
-
-      return matchesSearch && matchesColumnFilters;
+      return matchesSearch;
     });
 
-    // Sorting
+    // 3. Sorting
     if (sortColumn) {
       filtered = filtered.sort((a, b) => {
         const aValue = a[sortColumn];
         const bValue = b[sortColumn];
 
-        // Special sorting for date_local (formatted string)
-        if (sortColumn === 'date_local') {
-          const aDate = new Date(aValue.replace(' PM', 'PM').replace(' AM', 'AM'));
-          const bDate = new Date(bValue.replace(' PM', 'PM').replace(' AM', 'AM'));
-          return sortOrder === 'asc'
-            ? aDate.getTime() - bDate.getTime()
-            : bDate.getTime() - aDate.getTime();
+        // Date sorting
+        if (sortColumn.includes('date') || sortColumn === 'created_at') {
+           const dateA = new Date(aValue).getTime();
+           const dateB = new Date(bValue).getTime();
+           return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
         }
 
+        // Numeric sorting (Amount)
+        if (sortColumn === 'amount') {
+           const numA = parseAmount(aValue);
+           const numB = parseAmount(bValue);
+           return sortOrder === 'asc' ? numA - numB : numB - numA;
+        }
+
+        // String sorting
         if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
         return 0;
@@ -173,8 +151,9 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
     }
 
     return filtered;
-  }, [data, searchTerm, columnFilters, sortColumn, sortOrder]);
+  }, [data, searchTerm, sortColumn, sortOrder, dateRange]);
 
+  // --- LOGIC: Pagination ---
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
     return filteredData.slice(startIndex, startIndex + pageSize);
@@ -182,98 +161,28 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
 
   const totalPages = Math.ceil(filteredData.length / pageSize);
 
-  // CSV/JSON download
-  const downloadData = (format: 'csv' | 'json') => {
-    let content: string;
-    let mimeType: string;
-    let fileExtension: string;
-
-    switch (format) {
-      case 'csv':
-        content = convertToCSV(filteredData);
-        mimeType = 'text/csv';
-        fileExtension = 'csv';
-        break;
-      case 'json':
-        content = JSON.stringify(filteredData, null, 2);
-        mimeType = 'application/json';
-        fileExtension = 'json';
-        break;
-    }
-
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${tableName.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().slice(0, 10)}.${fileExtension}`;
-    a.click();
-    URL.revokeObjectURL(url);
+  // --- LOGIC: Financial Calculation ---
+  const calculateNetTotal = (items: any[]) => {
+    return items.reduce((sum, row) => {
+      // Use the helper to strip '$' if present
+      const amount = parseAmount(row.amount);
+      
+      // If NMI data, check approval
+      if (row.hasOwnProperty('response_text')) {
+         if (row.response_text === 'Approved') {
+           // Handle refunds if designated
+           if (row.action_type === 'refund') return sum - amount;
+           return sum + amount;
+         }
+         return sum;
+      }
+      return sum + amount;
+    }, 0);
   };
 
-  const convertToCSV = (data: any[]) => {
-    const header = visibleColumns.join(',');
-    const rows = data.map((row) =>
-      visibleColumns.map((col) => JSON.stringify(row[col] ?? '')).join(',')
-    );
-    return [header, ...rows].join('\n');
-  };
+  const netTotal = calculateNetTotal(filteredData);
 
-  // Filter UI helpers
-  const renderFilterInput = (filter: ColumnFilter) => {
-    const uniqueColumnValues = Array.from(uniqueValues[filter.column]);
-
-    if (uniqueColumnValues.length < 20) {
-      return (
-        <Select
-          value={filter.value?.toString() ?? ''}
-          onValueChange={(value) => updateFilter(filter.id, value)}
-        >
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder={`Filter ${filter.column}...`} />
-          </SelectTrigger>
-          <SelectContent>
-            {uniqueColumnValues.map((value) => (
-              <SelectItem key={value?.toString()} value={value?.toString()}>
-                {value?.toString()}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
-    }
-
-    return (
-      <Input
-        type="text"
-        value={(filter.value as string) || ''}
-        onChange={(e) => updateFilter(filter.id, e.target.value)}
-        placeholder={`Filter ${filter.column}...`}
-      />
-    );
-  };
-
-  const addFilter = () => {
-    const newFilter: ColumnFilter = {
-      id: Date.now().toString(),
-      column: columns[0],
-      type: columnTypes[columns[0]],
-      value: null
-    };
-    setColumnFilters([...columnFilters, newFilter]);
-  };
-
-  const removeFilter = (id: string) => {
-    setColumnFilters(columnFilters.filter((f) => f.id !== id));
-  };
-
-  const updateFilter = (id: string, value: any) => {
-    setColumnFilters(
-      columnFilters.map((f) =>
-        f.id === id ? { ...f, value } : f
-      )
-    );
-  };
-
+  // --- RENDER HELPERS ---
   const toggleColumnVisibility = (column: string) => {
     setVisibleColumns((prev) =>
       prev.includes(column)
@@ -292,183 +201,141 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
   };
 
   return (
-    <div className="space-y-8 md:w-full max-w-7xl mx-auto">
-      <Accordion type="single" collapsible>
-        <AccordionItem value="item-1">
-          <AccordionTrigger>View Table Description</AccordionTrigger>
-          <AccordionContent>
-            <TableDescription data={data} columns={columns} />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
-      <div className="flex flex-col space-y-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <Input
+    <div className="space-y-6 w-full">
+      
+      {/* HEADER CONTROLS */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-zinc-900/50 p-4 rounded-lg border border-zinc-800">
+        <div className="flex items-center gap-2 w-full md:w-auto">
+           <Input
             type="text"
-            placeholder="Search..."
+            placeholder="Search visible data..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-64"
+            className="w-full md:w-80 bg-zinc-950 border-zinc-700"
           />
+        </div>
+
+        <div className="flex gap-2 w-full md:w-auto">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="flex-1 md:flex-none border-zinc-700 hover:bg-zinc-800">
                 <Settings className="mr-2 h-4 w-4" />
-                Column Settings
+                Columns
               </Button>
             </SheetTrigger>
-            <SheetContent>
+            <SheetContent className="bg-zinc-950 border-zinc-800 text-zinc-100">
               <SheetHeader>
-                <SheetTitle>Column Settings</SheetTitle>
-                <SheetDescription>Select visible columns</SheetDescription>
+                <SheetTitle className="text-zinc-100">Column Visibility</SheetTitle>
+                <SheetDescription>Check columns to display.</SheetDescription>
               </SheetHeader>
-              <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
+              <div className="mt-4 grid grid-cols-1 gap-2 max-h-[80vh] overflow-y-auto">
                 {columns.map((column) => (
-                  <div key={column} className="flex items-center space-x-2">
+                  <div key={column} className="flex items-center space-x-3 p-2 hover:bg-zinc-900 rounded">
                     <Checkbox
                       checked={visibleColumns.includes(column)}
                       onCheckedChange={() => toggleColumnVisibility(column)}
+                      id={`col-${column}`}
                     />
-                    <label>{column.replace(/_/g, ' ')}</label>
+                    <label htmlFor={`col-${column}`} className="text-sm cursor-pointer w-full">
+                      {COLUMN_LABELS[column] || column.replace(/_/g, ' ')}
+                    </label>
                   </div>
                 ))}
               </div>
             </SheetContent>
           </Sheet>
-        </div>
 
-        <div className="flex flex-wrap gap-4">
-          {columnFilters.map((filter) => (
-            <div key={filter.id} className="flex items-center space-x-2">
-              <Select
-                value={filter.column}
-                onValueChange={(value) =>
-                  setColumnFilters(
-                    columnFilters.map((f) =>
-                      f.id === filter.id
-                        ? { ...f, column: value, type: columnTypes[value], value: null }
-                        : f
-                    )
-                  )
-                }
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {columns.map((col) => (
-                    <SelectItem key={col} value={col}>
-                      {col.replace(/_/g, ' ')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {renderFilterInput(filter)}
-              <Button variant="ghost" size="icon" onClick={() => removeFilter(filter.id)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          <Button onClick={addFilter} variant="outline">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Filter
-          </Button>
-        </div>
-
-        <div className="flex gap-4">
-          <Button onClick={() => downloadData('csv')} variant="outline">
-            <DownloadIcon className="mr-2 h-4 w-4" /> CSV
-          </Button>
-          <Button onClick={() => downloadData('json')} variant="outline">
-            <DownloadIcon className="mr-2 h-4 w-4" /> JSON
+          <Button variant="outline" className="flex-1 md:flex-none border-zinc-700 hover:bg-zinc-800">
+            <DownloadIcon className="mr-2 h-4 w-4" /> Export
           </Button>
         </div>
       </div>
 
-      <div className="border rounded-md overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {visibleColumns.map((column) => (
-                <TableHead key={column}>
-                  <div className="flex items-center space-x-2">
-                    <span>{column.replace(/_/g, ' ')}</span>
-                    <Button variant="ghost" size="sm" onClick={() => handleSort(column)}>
+      {/* MAIN TABLE */}
+      {/* Mobile Fix: Constrain max width to viewport */}
+      <div className="border border-zinc-800 rounded-md bg-zinc-950 shadow-xl w-full max-w-[calc(100vw-3rem)] md:max-w-full mx-auto">
+        <div className="overflow-x-auto w-full">
+          <Table className="min-w-full">
+            <TableHeader className="bg-zinc-900">
+              <TableRow className="border-zinc-800 hover:bg-zinc-900">
+                {visibleColumns.map((column) => (
+                  <TableHead key={column} className="text-zinc-400 font-semibold whitespace-nowrap px-4">
+                    <button 
+                      onClick={() => handleSort(column)}
+                      className="flex items-center gap-2 hover:text-white transition-colors"
+                    >
+                      {COLUMN_LABELS[column] || column.replace(/_/g, ' ')}
                       {sortColumn === column ? (
-                        sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                        sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-indigo-400" /> : <ArrowDown className="h-3 w-3 text-indigo-400" />
                       ) : (
-                        <ArrowDown className="h-4 w-4 opacity-30" />
+                        <ArrowDown className="h-3 w-3 opacity-0 group-hover:opacity-30" />
                       )}
-                    </Button>
-                  </div>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedData.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={visibleColumns.length} className="text-center py-8 text-gray-500">
-                  No transactions found for the selected date range.
-                </TableCell>
+                    </button>
+                  </TableHead>
+                ))}
               </TableRow>
-            ) : (
-              paginatedData.map((row, i) => (
-                <TableRow key={i} className="hover:bg-gray-800/50">
-                  {visibleColumns.map((col) => (
-                    <TableCell key={col}>
-                      {col === 'amount' ? (
-                        <span className="font-bold text-green-400">
-                          ${parseFloat(row[col] || '0').toFixed(2)}
-                        </span>
-                      ) : col === 'condition' ? (
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            row[col] === 'complete'
-                              ? 'bg-green-900/50 text-green-300'
-                              : 'bg-red-900/50 text-red-300'
-                          }`}
-                        >
-                          {row[col] || 'unknown'}
-                        </span>
-                      ) : col === 'location' ? (
-                        <span className="px-3 py-1 bg-gray-700 rounded-full text-sm">
-                          {row[col] || '—'}
-                        </span>
-                      ) : col === 'customer_name' ? (
-                        row[col] || <span className="text-gray-500 italic">Not provided</span>
-                      ) : col === 'date_local' ? (
-                        row[col] || <span className="text-gray-500 italic">Not available</span>
-                      ) : (
-                        row[col] || '—'
-                      )}
-                    </TableCell>
-                  ))}
+            </TableHeader>
+            
+            <TableBody>
+              {paginatedData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={visibleColumns.length} className="text-center py-12 text-zinc-500">
+                    No records found for the selected date range.
+                  </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
+              ) : (
+                paginatedData.map((row, i) => {
+                  const isDeclined = row.response_text && row.response_text !== 'Approved';
+                  return (
+                    <TableRow 
+                      key={i} 
+                      className={`border-zinc-800 ${isDeclined ? 'bg-red-950/20' : 'hover:bg-zinc-900'}`}
+                    >
+                      {visibleColumns.map((col) => (
+                        <TableCell key={`${i}-${col}`} className="py-3 px-4 text-zinc-300 whitespace-nowrap">
+                          {col === 'amount' ? (
+                            <span className={`font-mono font-bold ${isDeclined ? 'text-zinc-600 line-through' : 'text-emerald-400'}`}>
+                              ${parseAmount(row[col]).toFixed(2)}
+                            </span>
+                          ) : col === 'response_text' ? (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${row[col] === 'Approved' ? 'bg-emerald-950/50 text-emerald-400 border-emerald-900' : 'bg-red-950/50 text-red-400 border-red-900'}`}>
+                              {row[col] || 'Unknown'}
+                            </span>
+                          ) : (
+                            <span className="block truncate max-w-[200px]" title={row[col]}>
+                               {row[col] ?? '-'}
+                            </span>
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
 
-          {/* Totals Row - Fixed nesting: placed inside TableBody as a TableRow */}
-          {filteredData.length > 0 && (
-            <tfoot>
-              <TableRow className="bg-gray-900 font-bold border-t-4 border-gray-700">
-                <TableCell
-                  colSpan={visibleColumns.length - 1}
-                  className="text-right text-gray-300 pr-8"
-                >
-                  Total ({filteredData.length} transactions):
-                </TableCell>
-                <TableCell className="text-green-400 text-right font-bold">
-                  ${filteredData
-                    .reduce((sum, row) => sum + (parseFloat(row.amount || '0') || 0), 0)
-                    .toFixed(2)}
-                </TableCell>
-              </TableRow>
-            </tfoot>
-          )}
-        </Table>
+            {/* FOOTER TOTALS */}
+            {filteredData.length > 0 && (
+              <TableFooter className="bg-zinc-900/80 border-t border-zinc-700">
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={Math.max(1, visibleColumns.length - 1)} className="text-right pr-4">
+                    <div className="flex flex-col items-end">
+                      <span className="text-zinc-400 text-xs uppercase tracking-wider font-semibold">Total</span>
+                      {filteredData[0].hasOwnProperty('response_text') && (
+                        <span className="text-zinc-500 text-[10px]">(Approved Only)</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-left pl-4 whitespace-nowrap">
+                     <span className="text-xl font-bold text-emerald-400 block">
+                        ${netTotal.toFixed(2)}
+                     </span>
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
+            )}
+          </Table>
+        </div>
       </div>
 
       <Pagination

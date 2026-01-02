@@ -1,76 +1,122 @@
-// app/biz/reports/components/LocationStat.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getLiveUnsettledByLocation } from '../actions';
-import { CheckCircle2, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { format } from 'date-fns';
+import { RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils'; // Assuming you have a utils file, otherwise remove cn
 
-interface Props {
+const NMI_ENDPOINT = 'https://bookings.sunbuggy.com/functions/v1/nmi-charges';
+
+interface LocationStatProps {
   location: 'vegas' | 'pismo';
   label: string;
 }
 
-export default function LocationStat({ location, label }: Props) {
-  const [data, setData] = useState<{ unsettled: number; holds: number } | null>(null);
+const LocationStat: React.FC<LocationStatProps> = ({ location, label }) => {
+  const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    const result = await getLiveUnsettledByLocation(location);
-    
-    if (result.success) {
-      setData({ unsettled: result.unsettledTotal, holds: result.holdsTotal });
-    } else {
-      setError(result.error || 'Failed to load');
-    }
-    setLoading(false);
+  // --- HELPER: Strict Total Calculation ---
+  // Identical logic to ReportsBoard to ensure numbers match exactly
+  const calculateSafeTotal = (transactions: any[]) => {
+    if (!Array.isArray(transactions)) return 0;
+
+    return transactions.reduce((acc, curr) => {
+      // 1. Must be Approved
+      if (curr.response_text !== 'Approved') return acc;
+
+      // 2. Handle Refunds (Subtract refund, Add sale)
+      const amount = parseFloat(curr.amount) || 0;
+      if (curr.action_type === 'refund') {
+        return acc - amount;
+      }
+
+      return acc + amount;
+    }, 0);
   };
 
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    // Default to "Today" for current live charges
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+    try {
+      // We must request the same data range to get the granular list
+      const url = `${NMI_ENDPOINT}?location=${location}&start_date=${todayStr}&end_date=${todayStr}`;
+      
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Gateway Error');
+      
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+
+      // --- CRITICAL FIX ---
+      // Do NOT use json.unsettledTotal (it includes failed txns).
+      // Calculate it manually from the list.
+      const safeTotal = calculateSafeTotal(json.unsettled || []);
+      
+      setTotal(safeTotal);
+    } catch (err: any) {
+      console.error(`Error fetching ${location} stats:`, err);
+      setError(err.message || 'Failed to load');
+      setTotal(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [location]);
+
+  // Initial Fetch
   useEffect(() => {
-    loadData();
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   return (
-    <div className="flex flex-col bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl min-w-[220px] shadow-xl">
-      <div className="flex justify-between items-center mb-3">
-        <p className="text-[10px] uppercase text-zinc-500 font-black tracking-widest">{label}</p>
-        <button onClick={loadData} disabled={loading} className="text-zinc-500 hover:text-yellow-500 transition-colors">
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+    <div className="relative group min-w-[200px] p-4 rounded-lg border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900 transition-all">
+      {/* Header: Label + Refresh Icon */}
+      <div className="flex justify-between items-start mb-2">
+        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+          {label}
+        </span>
+        <button 
+          onClick={fetchData} 
+          disabled={loading}
+          className="text-zinc-600 hover:text-white transition-colors disabled:animate-spin"
+        >
+          {loading ? <Loader2 className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
         </button>
       </div>
 
-      {loading ? (
-        <div className="flex items-center gap-2 py-2">
-          <Loader2 className="w-4 h-4 animate-spin text-yellow-500" />
-          <span className="text-xs text-zinc-500 font-medium">Syncing NMI...</span>
-        </div>
-      ) : error ? (
-        <div className="flex flex-col gap-1 py-1">
-          <div className="flex items-center gap-2 text-red-400">
-            <AlertCircle className="w-4 h-4" />
-            <span className="text-[10px] font-bold uppercase tracking-tight">Gateway Error</span>
-          </div>
-          <p className="text-[9px] text-zinc-600 italic">Verify {location} key</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className="flex justify-between items-baseline">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase">Unsettled</span>
-            <span className="text-xl font-mono font-bold text-yellow-500">
-              ${data?.unsettled.toFixed(2)}
+      {/* Content: Value or Error */}
+      <div className="flex items-baseline gap-2">
+        {error ? (
+          <div className="flex items-center gap-2 text-red-500">
+            <AlertCircle className="h-4 w-4" />
+            <span className="text-xs font-bold uppercase tracking-tight">
+              {error === 'Gateway Error' ? 'GATEWAY ERROR' : 'LOAD FAILED'}
             </span>
           </div>
-          {/* Status Confirmation: Shows when connected but total is $0 */}
-          {data?.unsettled === 0 && (
-            <div className="flex items-center gap-1.5 text-[9px] text-emerald-500/80 font-bold uppercase tracking-tighter border-t border-zinc-800/50 pt-2">
-              <CheckCircle2 className="w-3 h-3" />
-              Connected • No Charges Today
-            </div>
-          )}
-        </div>
+        ) : (
+          <div>
+            <span className="text-xs text-zinc-400 mr-2 font-medium">UNSETTLED</span>
+            <span className={`text-2xl font-mono font-bold tracking-tighter ${loading ? 'opacity-50' : 'text-yellow-400'}`}>
+              {total !== null 
+                ? `$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                : '$0.00'
+              }
+            </span>
+          </div>
+        )}
+      </div>
+      
+      {/* Background Glow Effect for Vegas (Optional polish) */}
+      {location === 'vegas' && !error && (
+        <div className="absolute inset-0 bg-yellow-500/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
       )}
     </div>
   );
-}
+};
+
+export default LocationStat;

@@ -1,136 +1,188 @@
 import { createClient } from '@/utils/supabase/server';
 import ReportsBoard from './components/ReportsBoard';
-// Import the new real-time stats component
 import LocationStat from './components/LocationStats';
 
-const ReportsPage = async () => {
+// ------------------------------------------------------------------
+// TYPE DEFINITIONS
+// ------------------------------------------------------------------
+// Defines the shape of a generic record from our database to ensure
+// TypeScript safety when mapping fields like 'vehicle_id' or 'amount'.
+interface BaseRecord {
+  id: string;
+  created_at: string;
+  vehicle_id?: string | null;
+  created_by?: string | null;
+  updated_by?: string | null;
+  closed_by?: string | null;
+  amount?: string | number | null;
+  [key: string]: any; // Allow for other dynamic columns
+}
+
+export default async function ReportsPage() {
+  // 1. Initialize the authenticated Supabase client
   const supabase = await createClient();
 
-  // Fetch data from the necessary tables and sort by created_at in descending order
-  const { data: tags } = await supabase
-    .from('vehicle_tag')
-    .select('*')
-    .order('created_at', { ascending: false });
-  const { data: scans } = await supabase
-    .from('vehicle_locations')
-    .select('*')
-    .order('created_at', { ascending: false });
-  const ssts = scans?.filter((scan) => scan.is_distress_signal === true);
-  const { data: atv_pretrips } = await supabase
-    .from('vehicle_pretrip_atv')
-    .select('*')
-    .order('created_at', { ascending: false });
-  const { data: buggy_pretrips } = await supabase
-    .from('vehicle_pretrip_buggy')
-    .select('*')
-    .order('created_at', { ascending: false });
-  const { data: pretrip_shuttles } = await supabase
-    .from('vehicle_pretrip_shuttle')
-    .select('*')
-    .order('created_at', { ascending: false });
-  const { data: pretrip_trucks } = await supabase
-    .from('vehicle_pretrip_truck')
-    .select('*')
-    .order('created_at', { ascending: false });
-  const { data: chargesPismo } = await supabase
-    .from('charges_pismo')
-    .select('*')
-    .order('created_at', { ascending: false });
-  const { data: vehicleLocations } = await supabase
-    .from('vehicle_locations')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  const { data: timeEntries } = await supabase
-    .from('time_entries')
-    .select(`
+  // ------------------------------------------------------------------
+  // DATA FETCHING STRATEGY: PARALLEL EXECUTION
+  // ------------------------------------------------------------------
+  // Instead of awaiting each call one by one (waterfall), we fire them 
+  // all at once using Promise.all. This drastically reduces server response time.
+  const [
+    tagsRes,
+    locationsRes, // Fetched ONCE, used for both 'Scans' and 'Vehicle Locations'
+    atvRes,
+    buggyRes,
+    shuttleRes,
+    truckRes,
+    pismoRes,
+    timeEntriesRes,
+    vehiclesRes,
+    usersRes,
+    employeeRes,
+  ] = await Promise.all([
+    supabase.from('vehicle_tag').select('*').order('created_at', { ascending: false }),
+    supabase.from('vehicle_locations').select('*').order('created_at', { ascending: false }),
+    supabase.from('vehicle_pretrip_atv').select('*').order('created_at', { ascending: false }),
+    supabase.from('vehicle_pretrip_buggy').select('*').order('created_at', { ascending: false }),
+    supabase.from('vehicle_pretrip_shuttle').select('*').order('created_at', { ascending: false }),
+    supabase.from('vehicle_pretrip_truck').select('*').order('created_at', { ascending: false }),
+    supabase.from('charges_pismo').select('*').order('created_at', { ascending: false }),
+    // Complex join for Time Entries
+    supabase.from('time_entries').select(`
       *,
       users(full_name),
       clock_in(clock_in_time, lat, long),
       clock_out(clock_out_time, lat, long)
-    `)
-    .order('created_at', { ascending: false });
+    `).order('created_at', { ascending: false }),
+    // Lookup tables (for mapping IDs to Names)
+    supabase.from('vehicles').select('id, name'),
+    supabase.from('users').select('id, full_name'),
+    supabase.from('employee_details').select('user_id, emp_id'),
+  ]);
 
-  const { data: vehicles } = await supabase.from('vehicles').select('*');
-  const { data: users } = await supabase.from('users').select('*');
-  const { data: employeeDetails } = await supabase.from('employee_details').select('*');
+  // ------------------------------------------------------------------
+  // DATA PREPARATION
+  // ------------------------------------------------------------------
+  // Extract data arrays, defaulting to empty arrays [] if null to prevent crashes.
+  const tags = tagsRes.data || [];
+  const allLocations = locationsRes.data || [];
+  const atvPretrips = atvRes.data || [];
+  const buggyPretrips = buggyRes.data || [];
+  const shuttlePretrips = shuttleRes.data || [];
+  const truckPretrips = truckRes.data || [];
+  const chargesPismo = pismoRes.data || [];
+  const timeEntries = timeEntriesRes.data || [];
+  
+  // Reference Data
+  const vehicles = vehiclesRes.data || [];
+  const users = usersRes.data || [];
+  const employees = employeeRes.data || [];
 
-  // Mapping logic remains unchanged
-  const mapData = (data: any[]) => {
-    return data.map((item) => ({
-      ...item,
-      vehicle_id: vehicles?.find((v) => v.id === item.vehicle_id)?.name || item.vehicle_id,
-      created_by: users?.find((u) => u.id === item.created_by)?.full_name || item.created_by,
-      updated_by: users?.find((u) => u.id === item.updated_by)?.full_name || item.updated_by,
-      closed_by: users?.find((u) => u.id === item.closed_by)?.full_name || item.closed_by,
-      created_by_id: employeeDetails?.find((e) => e.user_id === item.created_by)?.emp_id || '',
-      updated_by_id: employeeDetails?.find((e) => e.user_id === item.updated_by)?.emp_id || '',
-      closed_by_id: employeeDetails?.find((e) => e.user_id === item.closed_by)?.emp_id || '',
-      amount: item.amount ? `$${parseFloat(item.amount).toFixed(2)}` : '$0.00'
-    }));
+  // ------------------------------------------------------------------
+  // BUSINESS LOGIC: DERIVED DATA sets
+  // ------------------------------------------------------------------
+  // We filter the Distress Signals (SSTs) directly from the full location list
+  // rather than querying the database a second time.
+  const ssts = allLocations.filter((scan) => scan.is_distress_signal === true);
+
+  // ------------------------------------------------------------------
+  // MAPPING LOGIC
+  // ------------------------------------------------------------------
+  // 1. Currency Formatter: Native API is faster and lighter than libraries.
+  const currencyFormatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  });
+
+  // 2. Main Mapping Function: Transforms IDs -> Names and Numbers -> Currency strings
+  const mapData = (data: BaseRecord[]) => {
+    return data.map((item) => {
+      // Helper: Find Employee ID by User ID
+      const getEmpId = (userId: string | null | undefined) => 
+        userId ? employees.find((e) => e.user_id === userId)?.emp_id || '' : '';
+
+      // Helper: Find Full Name by User ID
+      const getUserName = (userId: string | null | undefined) =>
+        userId ? users.find((u) => u.id === userId)?.full_name || userId : '';
+
+      return {
+        ...item,
+        // Replace Vehicle ID with Name
+        vehicle_id: vehicles.find((v) => v.id === item.vehicle_id)?.name || item.vehicle_id,
+        // Replace User IDs with Names
+        created_by: getUserName(item.created_by),
+        updated_by: getUserName(item.updated_by),
+        closed_by: getUserName(item.closed_by),
+        // Add Employee IDs
+        created_by_id: getEmpId(item.created_by),
+        updated_by_id: getEmpId(item.updated_by),
+        closed_by_id: getEmpId(item.closed_by),
+        // Format Money
+        amount: item.amount ? currencyFormatter.format(Number(item.amount)) : '$0.00',
+      };
+    });
   };
 
-  const mappedTags = mapData(tags || []);
-  const mappedScans = mapData(scans || []);
-  const mappedSsts = mapData(ssts || []);
-  const mappedAtvPretrips = mapData(atv_pretrips || []);
-  const mappedBuggyPretrips = mapData(buggy_pretrips || []);
-  const mappedPretripShuttles = mapData(pretrip_shuttles || []);
-  const mappedPretripTrucks = mapData(pretrip_trucks || []);
-  const mappedChargesPismo = mapData(chargesPismo || []);
-  const mappedVehicleLocations = mapData(vehicleLocations || []);
-
-  const mappedTimeEntries = (timeEntries || []).map((entry) => ({
+  // 3. Time Entry Specific Mapping
+  const mappedTimeEntries = timeEntries.map((entry: any) => ({
     user: entry.users?.full_name || 'Unknown',
     clock_in_time: entry.clock_in?.clock_in_time || 'N/A',
     clock_in_location: `(${entry.clock_in?.lat || 'N/A'}, ${entry.clock_in?.long || 'N/A'})`,
     clock_out_time: entry.clock_out?.clock_out_time || 'N/A',
     clock_out_location: `(${entry.clock_out?.lat || 'N/A'}, ${entry.clock_out?.long || 'N/A'})`,
     duration: entry.duration || 0,
-    date: entry.date || 'Unknown'
+    date: entry.date || 'Unknown',
   }));
 
+  // ------------------------------------------------------------------
+  // TABLE CONFIGURATION
+  // ------------------------------------------------------------------
   const tables = [
-    { name: 'Tags', data: mappedTags },
-    { name: 'Scans', data: mappedScans },
-    { name: 'SSTs', data: mappedSsts },
-    { name: 'ATV Pre-trips', data: mappedAtvPretrips },
-    { name: 'Buggy Pre-trips', data: mappedBuggyPretrips },
-    { name: 'Shuttle Pre-trips', data: mappedPretripShuttles },
-    { name: 'Truck Pre-trips', data: mappedPretripTrucks },
-    { name: 'Pismo Charges', data: mappedChargesPismo }, 
-    { name: 'Vehicle Locations', data: mappedVehicleLocations }, 
-    { name: 'Time Entries', data: mappedTimeEntries }
+    { name: 'Tags', data: mapData(tags) },
+    { name: 'Scans', data: mapData(allLocations) },
+    { name: 'SSTs', data: mapData(ssts) },
+    { name: 'ATV Pre-trips', data: mapData(atvPretrips) },
+    { name: 'Buggy Pre-trips', data: mapData(buggyPretrips) },
+    { name: 'Shuttle Pre-trips', data: mapData(shuttlePretrips) },
+    { name: 'Truck Pre-trips', data: mapData(truckPretrips) },
+    { name: 'Pismo Charges', data: mapData(chargesPismo) },
+    { name: 'Vehicle Locations', data: mapData(allLocations) }, 
+    { name: 'Time Entries', data: mappedTimeEntries },
   ];
 
   return (
-    <div className="py-8 px-4">
-      {/* Header section with Title and the new Real-time Button */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <h1 className="text-3xl font-bold">Reports</h1>
+    // LAYOUT FIX: 'overflow-x-hidden' prevents the page from blowing out horizontally on mobile
+    <div className="py-8 px-4 md:px-6 min-h-screen bg-zinc-950 text-zinc-100 overflow-x-hidden w-full">
+      
+      {/* HEADER SECTION */}
+      {/* Flex container handles stacking on mobile vs row on desktop */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 border-b border-zinc-800 pb-8">
         
-        {/* Placement: Right above the reports list/grid */}
-        <div className="py-8 px-6">
-  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-    <div>
-      <h1 className="text-4xl font-black italic uppercase text-white tracking-tighter">CURRENT CHARGES</h1>
-      <p className="text-zinc-500 text-sm mt-1">Click to Refresh</p>
-    </div>
-    
-    <div className="flex flex-wrap gap-4">
-      {/* These will load independently */}
-      <LocationStat location="vegas" label="Las Vegas" />
-      <LocationStat location="pismo" label="Pismo Beach" />
-    </div>
-  </div>
+        {/* Left Side: Title */}
+        <div>
+          <h1 className="text-3xl md:text-4xl font-black italic uppercase text-white tracking-tighter">
+            Current Charges
+          </h1>
+          <p className="text-zinc-500 text-sm mt-1">
+            Real-time Fleet & POS Data
+          </p>
+        </div>
 
-  <hr className="border-zinc-800 mb-8" />
-  
-  <ReportsBoard tables={tables} />
-</div>
+        {/* Right Side: Real-time Location Stats */}
+        {/* 'w-full md:w-auto' ensures it takes full width on mobile for better grid layout */}
+        <div className="flex flex-wrap gap-4 w-full md:w-auto">
+          {/* Grid layout creates a clean 2-column look on mobile */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full md:w-auto">
+             <LocationStat location="vegas" label="Las Vegas" />
+             <LocationStat location="pismo" label="Pismo Beach" />
+          </div>
+        </div>
       </div>
+
+      {/* MAIN CONTENT AREA */}
+      <section className="w-full">
+        <ReportsBoard tables={tables} />
+      </section>
     </div>
   );
-};
-
-export default ReportsPage;
+}

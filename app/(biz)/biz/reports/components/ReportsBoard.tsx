@@ -31,14 +31,39 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
   const [nmiSettled, setNmiSettled] = useState<any[]>([]);
   const [nmiUnsettled, setNmiUnsettled] = useState<any[]>([]);
   const [nmiHolds, setNmiHolds] = useState<any[]>([]);
+  
+  // Totals State
   const [nmiSettledTotal, setNmiSettledTotal] = useState(0);
   const [nmiUnsettledTotal, setNmiUnsettledTotal] = useState(0);
   const [nmiHoldsTotal, setNmiHoldsTotal] = useState(0);
+  
   const [nmiLoading, setNmiLoading] = useState(false);
   const [nmiError, setNmiError] = useState<string | null>(null);
 
   // Active tab within NMI reports
   const [activeNmiTab, setActiveNmiTab] = useState<'settled' | 'unsettled' | 'holds'>('settled');
+
+  // --- HELPER: Strict Total Calculation ---
+  // This ensures the header matches the footer by filtering out failed transactions
+  const calculateSafeTotal = (transactions: any[]) => {
+    if (!Array.isArray(transactions)) return 0;
+    
+    return transactions.reduce((acc, curr) => {
+      // 1. Must be Approved
+      if (curr.response_text !== 'Approved') return acc;
+      
+      // 2. Handle Refunds (Subtract if it's a refund, Add if it's a sale)
+      const amount = parseFloat(curr.amount) || 0;
+      
+      // If the API returns positive numbers for refunds, we might need to subtract.
+      // Assuming 'sale' adds to revenue and 'refund' subtracts:
+      if (curr.action_type === 'refund') {
+        return acc - amount;
+      }
+      
+      return acc + amount;
+    }, 0);
+  };
 
   const handleTableSelect = (table: Table) => {
     setSelectedTable(table);
@@ -82,19 +107,35 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
 
         if (json.error) throw new Error(json.error);
 
-        setNmiSettled(json.settled || []);
-        setNmiUnsettled(json.unsettled || []);
-        setNmiHolds(json.holds || []);
-        setNmiSettledTotal(json.settledTotal || 0);
-        setNmiUnsettledTotal(json.unsettledTotal || 0);
-        setNmiHoldsTotal(json.holdsTotal || 0);
+        const settledData = json.settled || [];
+        const unsettledData = json.unsettled || [];
+        const holdsData = json.holds || [];
 
-        setActiveNmiTab('settled'); // default to settled tab
+        setNmiSettled(settledData);
+        setNmiUnsettled(unsettledData);
+        setNmiHolds(holdsData);
+
+        // --- FIX: Calculate Totals Client-Side ---
+        // We ignore json.settledTotal to avoid including failed transactions
+        setNmiSettledTotal(calculateSafeTotal(settledData));
+        setNmiUnsettledTotal(calculateSafeTotal(unsettledData));
+        setNmiHoldsTotal(calculateSafeTotal(holdsData));
+
+        // Auto-switch to Unsettled tab if Settled is empty but Unsettled has data
+        if (settledData.length === 0 && unsettledData.length > 0) {
+            setActiveNmiTab('unsettled');
+        } else {
+            setActiveNmiTab('settled');
+        }
+
       } catch (err: any) {
         setNmiError(err.message || 'Failed to load NMI transactions');
         setNmiSettled([]);
         setNmiUnsettled([]);
         setNmiHolds([]);
+        setNmiSettledTotal(0);
+        setNmiUnsettledTotal(0);
+        setNmiHoldsTotal(0);
       } finally {
         setNmiLoading(false);
         setShowVisualization(true);
@@ -129,94 +170,92 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
     <div className="space-y-8">
       {/* Database Reports Section */}
       <div>
-        <h2 className="text-2xl font-bold mb-4 text-yellow-400">Database Reports</h2>
+        <h2 className="text-2xl font-bold mb-4 text-zinc-100">Database Reports</h2>
         <TableSelector tables={tables} onSelect={handleTableSelect} />
       </div>
 
       {/* NMI Live Card Reports Section */}
       <div>
-        <h2 className="text-2xl font-bold mb-4 text-yellow-400">Card</h2>
+        <h2 className="text-2xl font-bold mb-4 text-zinc-100">Card Transactions</h2>
         <div className="flex flex-wrap gap-4 mb-6">
           <Button
             onClick={() => handleNmiReportSelect('pismo')}
             variant={selectedNmiReport === 'pismo' ? 'default' : 'outline'}
-            className={selectedNmiReport === 'pismo' ? 'bg-indigo-600' : ''}
+            className={selectedNmiReport === 'pismo' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'border-zinc-700 hover:bg-zinc-800'}
           >
-            Pismo Charges (NMI)
+            Pismo Beach (NMI)
           </Button>
           <Button
             onClick={() => handleNmiReportSelect('vegas')}
             variant={selectedNmiReport === 'vegas' ? 'default' : 'outline'}
-            className={selectedNmiReport === 'vegas' ? 'bg-indigo-600' : ''}
+            className={selectedNmiReport === 'vegas' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'border-zinc-700 hover:bg-zinc-800'}
           >
-            Vegas Charges (NMI)
+            Las Vegas (NMI)
           </Button>
           <Button
             onClick={() => handleNmiReportSelect('all')}
             variant={selectedNmiReport === 'all' ? 'default' : 'outline'}
-            className={selectedNmiReport === 'all' ? 'bg-indigo-600' : ''}
+            className={selectedNmiReport === 'all' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'border-zinc-700 hover:bg-zinc-800'}
           >
-            All Charges (NMI)
+            All Locations (NMI)
           </Button>
         </div>
       </div>
 
       {/* Date Range Picker and Generate Button */}
       {(selectedTable || selectedNmiReport) && (
-        <>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-zinc-900/50 p-6 rounded-lg border border-zinc-800">
           <DateRangePicker onSelect={handleDateRangeSelect} />
           <Button 
             onClick={handleGenerateReport} 
             disabled={!dateRange || nmiLoading}
+            className="w-full sm:w-auto"
           >
             {nmiLoading ? 'Loading Transactions...' : 'Generate Report'}
           </Button>
-        </>
+        </div>
       )}
 
       {/* NMI Error Display */}
       {nmiError && (
-        <div className="bg-red-900 border border-red-700 text-red-100 px-6 py-4 rounded mb-6">
-          <strong>NMI Error:</strong> {nmiError}
-          <p className="text-sm mt-2 opacity-80">
-            Check browser console for details.
-          </p>
+        <div className="bg-red-950/30 border border-red-900 text-red-200 px-6 py-4 rounded mb-6">
+          <strong className="text-red-100">Error:</strong> {nmiError}
         </div>
       )}
 
       {/* NMI Tabs with Totals */}
       {selectedNmiReport && showVisualization && !nmiLoading && (
         <div className="space-y-4">
-          <div className="flex gap-4 border-b border-gray-700">
+          <div className="flex gap-6 border-b border-zinc-700">
             <button
               onClick={() => setActiveNmiTab('settled')}
-              className={`pb-2 px-4 font-medium transition ${
+              className={`pb-4 px-2 font-medium transition text-lg ${
                 activeNmiTab === 'settled'
                   ? 'border-b-2 border-indigo-500 text-indigo-400'
-                  : 'text-gray-400 hover:text-white'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Settled (${nmiSettledTotal.toFixed(2)})
+              Settled <span className="ml-2 text-sm bg-zinc-800 px-2 py-0.5 rounded text-zinc-300">${nmiSettledTotal.toFixed(2)}</span>
             </button>
             <button
               onClick={() => setActiveNmiTab('unsettled')}
-              className={`pb-2 px-4 font-medium transition ${
+              className={`pb-4 px-2 font-medium transition text-lg ${
                 activeNmiTab === 'unsettled'
                   ? 'border-b-2 border-indigo-500 text-indigo-400'
-                  : 'text-gray-400 hover:text-white'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Unsettled (${nmiUnsettledTotal.toFixed(2)})
+              Unsettled <span className="ml-2 text-sm bg-zinc-800 px-2 py-0.5 rounded text-zinc-300">${nmiUnsettledTotal.toFixed(2)}</span>
             </button>
             <button
               onClick={() => setActiveNmiTab('holds')}
-              className={`pb-2 px-4 font-medium transition ${
+              className={`pb-4 px-2 font-medium transition text-lg ${
                 activeNmiTab === 'holds'
                   ? 'border-b-2 border-indigo-500 text-indigo-400'
-                  : 'text-gray-400 hover:text-white'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Holds (${nmiHoldsTotal.toFixed(2)})
+              Holds <span className="ml-2 text-sm bg-zinc-800 px-2 py-0.5 rounded text-zinc-300">${nmiHoldsTotal.toFixed(2)}</span>
             </button>
           </div>
         </div>
@@ -232,9 +271,9 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
       )}
 
       {showVisualization && visualizationData.length === 0 && !nmiError && (
-        <p className="text-gray-400 text-lg text-center py-12">
-          No transactions found for the selected date range and category.
-        </p>
+        <div className="text-zinc-500 text-center py-16 bg-zinc-900/20 rounded-lg border border-zinc-800 border-dashed">
+          <p className="text-lg">No transactions found for this period.</p>
+        </div>
       )}
     </div>
   );
