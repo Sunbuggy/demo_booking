@@ -55,7 +55,7 @@ export const columns: ColumnDef<UserType, any>[] = [
             Customers (Blue) and Staff (Orange) both get links now.
           */}
           <Link 
-            href={`/biz/users/${user.id}`} 
+            href={`/account`} 
             className={`font-bold hover:underline transition-colors ${
               isStaff ? 'text-orange-500 hover:text-orange-400' : 'text-blue-500 hover:text-blue-400'
             }`}

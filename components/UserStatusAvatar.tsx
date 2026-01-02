@@ -1,6 +1,6 @@
-'use client';
+'use client'; 
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -11,16 +11,16 @@ import {
   Dialog, DialogContent 
 } from "@/components/ui/dialog"; 
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { 
   Phone, Mail, MessageSquare, Pencil, 
-  Clock, Coffee, Timer, AlertCircle, Smartphone,
-  LogOut, Sun, Moon, User as UserIcon
-} from 'lucide-react'; // Added UserIcon import
+  Clock, Coffee, Timer, AlertCircle, 
+  LogOut, Sun, Moon, User, Play, Square 
+} from 'lucide-react';
 import moment from 'moment';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/use-toast';
 
 import SmartTimeClock from '@/app/(biz)/biz/users/admin/tables/employee/time-clock/clock-in';
 
@@ -40,6 +40,7 @@ export default function UserStatusAvatar({
   const supabase = createClient();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
   
   const [status, setStatus] = useState<Status>('offline');
   const [activeEntry, setActiveEntry] = useState<any>(null);
@@ -48,57 +49,67 @@ export default function UserStatusAvatar({
   
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
+  
+  // FIX: Store the key in state so it doesn't change on every render
+  const [clockKey, setClockKey] = useState(0);
+  
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const isAdmin = currentUserLevel >= 900;
 
-  useEffect(() => {
+  // --- 1. DATA FETCHING ---
+  const fetchData = useCallback(async () => {
     if (!user?.id) return;
 
-    const fetchData = async () => {
-      // 1. Get Active Time Entry
-      const { data: timeData } = await supabase
-        .from('time_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .is('end_time', null)
-        .maybeSingle();
+    // A. Get Active Time Entry
+    const { data: timeData } = await supabase
+      .from('time_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .is('end_time', null)
+      .maybeSingle();
 
-      // 2. Get Today's Schedule
-      const startOfDay = moment().startOf('day').toISOString();
-      const endOfDay = moment().endOf('day').toISOString();
-      
-      const { data: shiftData } = await supabase
-        .from('employee_schedules')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('start_time', startOfDay)
-        .lte('start_time', endOfDay)
-        .maybeSingle();
-      
-      setTodayShift(shiftData);
-      setActiveEntry(timeData);
+    // B. Get Today's Schedule
+    const startOfDay = moment().startOf('day').toISOString();
+    const endOfDay = moment().endOf('day').toISOString();
+    
+    const { data: shiftData } = await supabase
+      .from('employee_schedules')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('start_time', startOfDay)
+      .lte('start_time', endOfDay)
+      .maybeSingle();
+    
+    setTodayShift(shiftData);
+    setActiveEntry(timeData);
 
-      // 3. Determine Status
-      if (timeData) {
-        setStatus(timeData.is_on_break === true ? 'break' : 'online');
-      } else if (shiftData) {
-        const currentTime = moment();
-        const shiftStart = moment(shiftData.start_time);
-        const shiftEnd = moment(shiftData.end_time);
-
-        if (currentTime.isBetween(shiftStart, shiftEnd)) {
-            setStatus('late'); 
-        } else {
-            setStatus('offline');
-        }
+    // C. Determine Status
+    if (timeData) {
+      if (timeData.is_on_break) {
+         setStatus('break');
       } else {
-        setStatus('offline');
+         setStatus('online');
       }
-    };
+    } else if (shiftData) {
+      const currentTime = moment();
+      const shiftStart = moment(shiftData.start_time);
+      const shiftEnd = moment(shiftData.end_time);
 
+      if (currentTime.isBetween(shiftStart, shiftEnd)) {
+          setStatus('late'); 
+      } else {
+          setStatus('offline');
+      }
+    } else {
+      setStatus('offline');
+    }
+  }, [user?.id, supabase]);
+
+  // --- 2. REALTIME SUBSCRIPTION ---
+  useEffect(() => {
     fetchData();
 
-    // 4. Real-Time Subscription
     const channel = supabase
       .channel(`live-status-${user.id}`)
       .on('postgres_changes', { 
@@ -110,46 +121,93 @@ export default function UserStatusAvatar({
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user?.id, supabase]);
+  }, [user?.id, supabase, fetchData]);
 
-  // Timer Tick
+  // --- 3. TIMERS ---
   useEffect(() => {
     const timer = setInterval(() => {
         setNow(moment());
-        if ((status === 'offline' || status === 'late') && todayShift) {
+        if ((status === 'offline' || status === 'late') && todayShift && !activeEntry) {
             const currentTime = moment();
             const shiftStart = moment(todayShift.start_time);
             const shiftEnd = moment(todayShift.end_time);
-            if (currentTime.isBetween(shiftStart, shiftEnd) && !activeEntry) {
-                setStatus('late');
-            } else if (status === 'late' && !currentTime.isBetween(shiftStart, shiftEnd)) {
-                setStatus('offline');
-            }
+            if (currentTime.isBetween(shiftStart, shiftEnd)) setStatus('late');
         }
-    }, 60000);
+    }, 60000); 
     return () => clearInterval(timer);
   }, [status, todayShift, activeEntry]);
 
-  // Duration String
-  const durationStr = useMemo(() => {
-    let startTime = null;
-    if (status === 'break' && activeEntry?.break_start) startTime = moment(activeEntry.break_start);
-    else if (status === 'online' && activeEntry?.start_time) startTime = moment(activeEntry.start_time);
-    else if (status === 'late' && todayShift?.start_time) startTime = moment(todayShift.start_time);
+  // --- 4. ACTIONS ---
 
-    if (!startTime) return null;
-    const diff = moment.duration(now.diff(startTime));
-    const hours = Math.floor(diff.asHours());
-    const minutes = diff.minutes();
-    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-  }, [activeEntry, status, todayShift, now]);
+  const closePopover = () => setIsPopoverOpen(false);
 
   const handleSignOut = async () => {
+      closePopover();
       await supabase.auth.signOut();
       router.push('/login');
   };
 
-  // Visuals
+  // Helper to open the modal with a fresh state
+  const openTimeClockModal = () => {
+      closePopover();
+      setClockKey(prev => prev + 1); // Increment key to force fresh mount ONLY when opening
+      setIsTimeClockOpen(true);
+  };
+
+  // ACTION: Toggle Break (DIRECT - No Photo Needed)
+  const handleBreakToggle = async (action: 'start' | 'end') => {
+    if (!activeEntry) return;
+    setIsProcessing(true);
+
+    try {
+        const timestamp = moment().toISOString();
+        const updateData = action === 'start' 
+            ? { is_on_break: true, break_start: timestamp }
+            : { is_on_break: false, break_start: null };
+
+        const { error } = await supabase
+            .from('time_entries')
+            .update(updateData)
+            .eq('id', activeEntry.id);
+
+        if (error) throw error;
+        
+        // Optimistic Update
+        setActiveEntry({ ...activeEntry, ...updateData });
+        setStatus(action === 'start' ? 'break' : 'online');
+        
+        toast({ 
+          title: action === 'start' ? "Break Started" : "Welcome Back", 
+          description: action === 'start' ? "Relax & Recharge!" : "You are back on the clock." 
+        });
+        
+        closePopover();
+    } catch (err) {
+        console.error("Break Update Error:", err);
+        toast({ title: "Error", description: "Failed to update break status", variant: "destructive" });
+    } finally {
+        setIsProcessing(false);
+    }
+  };
+
+  // --- 5. COMPUTED ---
+  const durationStr = useMemo(() => {
+    let startTime = null;
+    if (status === 'break' && activeEntry?.break_start) {
+        startTime = moment(activeEntry.break_start);
+    } else if (status === 'online' && activeEntry?.start_time) {
+        startTime = moment(activeEntry.start_time);
+    }
+    
+    if (!startTime) return null;
+    
+    const diff = moment.duration(now.diff(startTime));
+    const hours = Math.floor(diff.asHours());
+    const minutes = diff.minutes();
+    
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+  }, [activeEntry, status, now]);
+
   const dims = size === 'sm' ? 'w-8 h-8' : size === 'lg' ? 'w-16 h-16' : 'w-10 h-10';
   const dotSize = size === 'sm' ? 'h-2.5 w-2.5' : 'h-3.5 w-3.5';
   
@@ -160,13 +218,6 @@ export default function UserStatusAvatar({
       offline: 'bg-slate-300'
   };
 
-  const statusIcons = {
-      online: <Clock className="w-4 h-4 text-green-600" />,
-      break: <Coffee className="w-4 h-4 text-orange-600" />,
-      late: <AlertCircle className="w-4 h-4 text-red-600" />,
-      offline: <Clock className="w-4 h-4 text-slate-400" />
-  };
-
   if (!user) return null;
 
   return (
@@ -175,7 +226,18 @@ export default function UserStatusAvatar({
     {isCurrentUser && (
         <Dialog open={isTimeClockOpen} onOpenChange={setIsTimeClockOpen}>
             <DialogContent className="max-w-md p-0 border-none bg-transparent shadow-none">
-                <SmartTimeClock employeeId={user.id} onClose={() => setIsTimeClockOpen(false)} />
+                {/* FIX: Using 'clockKey' state instead of new Date().
+                   This ensures the component stays mounted/stable even if 
+                   the parent re-renders due to status updates (Optimistic or Realtime).
+                */}
+                <SmartTimeClock 
+                    key={clockKey} 
+                    employeeId={user.id} 
+                    onClose={() => {
+                        setIsTimeClockOpen(false);
+                        fetchData(); // Refresh final state after modal closes
+                    }} 
+                />
             </DialogContent>
         </Dialog>
     )}
@@ -198,12 +260,11 @@ export default function UserStatusAvatar({
                 dotSize,
                 statusColors[status]
             )} 
-            title={status.toUpperCase()}
           />
         </div>
       </PopoverTrigger>
 
-      <PopoverContent className="w-80 p-0 shadow-xl border-slate-200 dark:border-slate-800" align="start">
+      <PopoverContent className="w-80 p-0 shadow-xl border-slate-200 dark:border-slate-800" align="end" sideOffset={5}>
         
         {/* HEADER */}
         <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800 flex justify-between items-start">
@@ -222,10 +283,9 @@ export default function UserStatusAvatar({
                 <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider font-semibold">{user.job_title}</p>
              </div>
           </div>
-          {/* Admin Edit Shortcut (Only if not self) */}
           {(isAdmin && !isCurrentUser) && (
-            <Link href={`/biz/users/${user.id}`}>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30" title="Edit Profile">
+            <Link href={`/biz/users/${user.id}`} onClick={closePopover}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30">
                 <Pencil className="w-4 h-4" />
               </Button>
             </Link>
@@ -234,69 +294,106 @@ export default function UserStatusAvatar({
 
         <div className="p-4 space-y-4">
           
-          {/* LIVE STATUS INDICATOR */}
-          <div className={cn("flex items-center justify-between p-3 rounded-lg border shadow-sm select-none", 
-              status === 'late' ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-900" : "bg-white dark:bg-slate-950 dark:border-slate-800"
+          {/* STATUS BAR */}
+          <div className={cn("flex items-center justify-between p-3 rounded-lg border shadow-sm select-none transition-colors", 
+              status === 'late' ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-900" : 
+              status === 'break' ? "bg-orange-50 border-orange-200 dark:bg-orange-900/20" :
+              status === 'online' ? "bg-green-50 border-green-200 dark:bg-green-900/20" :
+              "bg-white dark:bg-slate-950 dark:border-slate-800"
           )}>
             <div className="flex items-center gap-2">
-              {statusIcons[status]}
+              {status === 'online' && <Clock className="w-4 h-4 text-green-600" />}
+              {status === 'break' && <Coffee className="w-4 h-4 text-orange-600 animate-pulse" />}
+              {status === 'late' && <AlertCircle className="w-4 h-4 text-red-600" />}
+              {status === 'offline' && <Moon className="w-4 h-4 text-slate-400" />}
+              
               <div className="flex flex-col">
                   <span className="text-sm font-bold capitalize leading-none text-slate-900 dark:text-slate-100">
                       {status === 'late' ? 'Absent / Late' : status === 'online' ? 'Clocked In' : status}
                   </span>
-                  {status === 'late' && <span className="text-[10px] text-red-600 dark:text-red-400 font-medium">Should be working</span>}
+                  {status === 'break' && <span className="text-[10px] text-orange-600 font-medium">Relax & Recharge</span>}
               </div>
             </div>
             {durationStr && status !== 'offline' && (
-              <div className={cn("flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded border",
-                  status === 'late' ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-200" : 
-                  status === 'break' ? "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-200" : 
-                  "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-200"
-              )}>
+              <div className="flex items-center gap-1 text-[11px] font-mono font-bold bg-white/50 px-2 py-0.5 rounded border border-black/5">
                 <Timer className="w-3 h-3" /> {durationStr}
               </div>
             )}
           </div>
 
-          {/* === MODE A: SELF VIEW (Controls) === */}
+          {/* === CONTROLS === */}
           {isCurrentUser ? (
-            <div className="space-y-2 pt-2">
-                {/* 1. Timeclock - Primary Action */}
-                <Button 
-                    variant="outline" 
-                    className="w-full h-16 flex flex-row items-center justify-center gap-2 border-blue-200 bg-blue-50/50 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/20" 
-                    onClick={() => { setIsPopoverOpen(false); setIsTimeClockOpen(true); }}
-                >
-                    <Clock className="w-5 h-5 text-blue-600" />
-                    <span className="text-sm font-bold text-blue-700 dark:text-blue-300">Timeclock</span>
-                </Button>
+            <div className="space-y-3 pt-1">
+                
+                <div className="grid grid-cols-1 gap-2">
+                    {/* SCENARIO 1: CLOCKED OUT -> Modal (Photo Needed) */}
+                    {(status === 'offline' || status === 'late') && (
+                        <Button 
+                            className="w-full h-12 gap-2 bg-green-600 hover:bg-green-700 text-white font-bold shadow-sm"
+                            onClick={openTimeClockModal}
+                        >
+                            <Play className="w-4 h-4 fill-current" /> CLOCK IN
+                        </Button>
+                    )}
 
-                {/* 2. My Profile & Theme */}
-                <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" className="flex justify-center gap-2 text-xs" asChild>
-                        <Link href={`/biz/users/${user.id}`}>
-                            <UserIcon className="w-4 h-4" /> My Profile
+                    {/* SCENARIO 2: CLOCKED IN -> Breaks (Direct) OR Clock Out (Modal) */}
+                    {status === 'online' && (
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button 
+                                variant="outline"
+                                className="h-12 gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800"
+                                onClick={() => handleBreakToggle('start')}
+                                disabled={isProcessing}
+                            >
+                                <Coffee className="w-4 h-4" /> Start Break
+                            </Button>
+                            
+                            <Button 
+                                variant="outline"
+                                className="h-12 gap-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+                                onClick={openTimeClockModal} // Open Modal for Photo/GPS
+                            >
+                                <Square className="w-4 h-4 fill-current" /> Clock Out
+                            </Button>
+                        </div>
+                    )}
+
+                    {/* SCENARIO 3: ON BREAK -> End Break (Direct) */}
+                    {status === 'break' && (
+                        <Button 
+                            className="w-full h-12 gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-sm"
+                            onClick={() => handleBreakToggle('end')}
+                            disabled={isProcessing}
+                        >
+                            <Play className="w-4 h-4 fill-current" /> END BREAK
+                        </Button>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t dark:border-slate-800">
+                    <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9" asChild onClick={closePopover}>
+                        <Link href={`/account`}>
+                            <User className="w-4 h-4 text-slate-500" /> ACCOUNT
                         </Link>
                     </Button>
+                    
                     <Button 
-                        variant="outline" 
-                        className="flex justify-center gap-2 text-xs" 
-                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                        variant="ghost" 
+                        className="justify-start px-2 gap-2 text-xs h-9" 
+                        onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); closePopover(); }}
                     >
-                        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                        {theme === 'dark' ? <Sun className="w-4 h-4 text-slate-500" /> : <Moon className="w-4 h-4 text-slate-500" />}
                         Theme
                     </Button>
                 </div>
 
-                {/* 3. Sign Out */}
-                <Button variant="destructive" className="w-full gap-2 text-xs mt-1" onClick={handleSignOut}>
+                <Button variant="ghost" className="w-full justify-start px-2 gap-2 text-xs h-9 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleSignOut}>
                     <LogOut className="w-4 h-4" /> Sign Out
                 </Button>
             </div>
           ) : (
-            /* === MODE B: OTHER VIEW (Contact) === */
             <>
-              {/* Today's Schedule */}
+              {/* Other User View (Contact Info) */}
               <div className="space-y-1.5 select-none">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1"><Clock className="w-3 h-3"/> Today's Schedule</p>
                 {todayShift ? (
@@ -304,7 +401,6 @@ export default function UserStatusAvatar({
                     <span className="font-bold font-mono">
                         {moment(todayShift.start_time).format('h:mm A')} - {moment(todayShift.end_time).format('h:mm A')}
                     </span>
-                    <Badge variant="outline" className="text-[10px] h-5 bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">{todayShift.role}</Badge>
                   </div>
                 ) : (
                   <div className="text-sm text-slate-400 italic bg-slate-50 dark:bg-slate-900 p-2 rounded border border-dashed border-slate-200 dark:border-slate-800">
@@ -312,44 +408,10 @@ export default function UserStatusAvatar({
                   </div>
                 )}
               </div>
-
-              {/* Read-Only Contact Info */}
-              <div className="space-y-2 pt-2 border-t dark:border-slate-800">
-                <div className="grid grid-cols-1 gap-2">
-                    <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 p-2 rounded border dark:border-slate-800">
-                        <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="font-mono select-all">{user.phone || 'No Phone'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 p-2 rounded border dark:border-slate-800">
-                        <Mail className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="truncate select-all">{user.email || 'No Email'}</span>
-                    </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 dark:hover:bg-blue-900/20" asChild>
-                  <a href={`tel:${user.phone}`}>
-                    <Phone className="w-4 h-4" />
-                    <span className="text-[10px] font-medium">Call</span>
-                  </a>
-                </Button>
-                
-                <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5 hover:bg-green-50 hover:text-green-600 hover:border-green-200 dark:hover:bg-green-900/20" asChild>
-                    <a href={`sms:${user.phone}`}>
-                        <MessageSquare className="w-4 h-4" />
-                        <span className="text-[10px] font-medium">Text</span>
-                    </a>
-                </Button>
-
-                {/* Email now opens in new tab */}
-                <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 dark:hover:bg-purple-900/20" asChild>
-                  <a href={`mailto:${user.email}`} target="_blank" rel="noopener noreferrer">
-                    <Mail className="w-4 h-4" />
-                    <span className="text-[10px] font-medium">Email</span>
-                  </a>
-                </Button>
+              <div className="grid grid-cols-3 gap-2 pt-4 border-t dark:border-slate-800">
+                 <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5" onClick={closePopover} asChild><a href={`tel:${user.phone}`}><Phone className="w-4 h-4"/><span className="text-[10px]">Call</span></a></Button>
+                 <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5" onClick={closePopover} asChild><a href={`sms:${user.phone}`}><MessageSquare className="w-4 h-4"/><span className="text-[10px]">Text</span></a></Button>
+                 <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5" onClick={closePopover} asChild><a href={`mailto:${user.email}`} target="_blank"><Mail className="w-4 h-4"/><span className="text-[10px]">Email</span></a></Button>
               </div>
             </>
           )}

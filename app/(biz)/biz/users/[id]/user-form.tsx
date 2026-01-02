@@ -62,6 +62,8 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
 
       {/* 2. CORE IDENTITY SECTION (Everyone) */}
       <div className="space-y-4">
+        
+        {/* Names */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="text-xs font-bold uppercase text-zinc-500">First Name</Label>
@@ -73,6 +75,19 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
           </div>
         </div>
 
+        {/* Stage Name / Alias (ADDED) */}
+        <div className="space-y-2">
+          <Label className="text-xs font-bold uppercase text-zinc-500">Stage Name / Alias</Label>
+          <Input 
+            name="stage_name" 
+            defaultValue={user?.stage_name || ''} 
+            placeholder="e.g. Maverick"
+            className="bg-zinc-900 border-zinc-800 text-orange-500 font-medium" 
+          />
+          <p className="text-[10px] text-zinc-500">This name will be displayed on public schedules and dashboards.</p>
+        </div>
+
+        {/* Contact Info */}
         <div className="space-y-2">
           <Label className="text-xs font-bold uppercase text-zinc-500">Email Address</Label>
           <Input name="email" type="email" defaultValue={user?.email} className="bg-zinc-900 border-zinc-800" />

@@ -1,108 +1,77 @@
+/**
+ * @file /app/account/page.tsx
+ * @description THE UNIVERSAL USER HUB.
+ */
+
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import Link from 'next/link';
+import moment from 'moment';
 
-// --- DATA ACCESS ---
+// --- DATA & QUERIES ---
 import {
-  fetchEmployeeTimeClockEntryData,
-  fetchTimeEntryByUserId,
+  getUserById,
   getEmployeeDetails,
-  getUserById
+  fetchEmployeeTimeClockEntryData 
 } from '@/utils/supabase/queries';
 
-// --- COMPONENTS ---
-import BackgroundPickerButton from './components/background-picker-button';
+// --- FEATURE COMPONENTS ---
+import UserTimeSheet from '@/components/UserTimeSheet'; 
+import AdminAvailability from '@/app/(biz)/biz/users/[id]/components/admin-availability'; 
+import AdminTimeOff from '@/app/(biz)/biz/users/[id]/components/admin-time-off'; 
 import ScanHistory from '@/app/(biz)/biz/users/[id]/components/scan-history';
+
+// --- UI COMPONENTS ---
+import BackgroundPicker from './components/background-picker';
 import UserImage from '@/app/(biz)/biz/users/[id]/components/user-image';
 import UserForm from '@/app/(biz)/biz/users/[id]/user-form';
-import AvailabilityManager, { AvailabilityRule } from './components/availability-manager';
-import TimeOffManager, { TimeOffRequest } from './components/time-off-manager';
-
-// --- TIME CLOCK COMPONENTS (Imported from Admin folder) ---
-import AdjustTime from '@/app/(biz)/biz/users/admin/tables/employee/time-clock/adjust-time';
-import HistoryTimeClockEvents from '@/app/(biz)/biz/users/admin/tables/employee/time-clock/time-history';
-
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, MapPin, Trophy, User as UserIcon, CalendarDays, CalendarOff, History } from 'lucide-react';
-import moment from 'moment';
+import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger 
+} from '@/components/ui/dialog';
+import { 
+  MapPin, UserCog, History, Trophy, 
+  CalendarOff, CalendarDays, Mail, Activity
+} from 'lucide-react';
 
 // --- TYPES ---
 import { UserType } from '@/app/(biz)/biz/users/types';
-import { VehicleType } from '@/app/(biz)/biz/vehicles/admin/page';
 
-export interface TimeEntry {
-  id: string;
-  user_id: string;
-  clock_in?: { clock_in_time: string }[] | { clock_in_time: string } | null; // Handle both array/object shapes
-  clock_out?: { clock_out_time: string }[] | { clock_out_time: string } | null;
-  status?: string;
-  created_at?: string;
-}
-/**
- * Helper to calculate total hours from time entries
- */
-/**
- * Helper to calculate total hours from time entries
- * UPDATED: Handles cases where clock_in/clock_out are arrays (Supabase joins) or objects.
- */
+// --- HELPER: Calculate Hours ---
 const calculateWeeklyHours = (entries: any[]) => {
   if (!entries || entries.length === 0) return "0.00";
-  
   let totalMinutes = 0;
   entries.forEach((entry) => {
-    // Safety check: Helper to extract time string whether it's an object or an array
-    const getStartTime = (obj: any) => Array.isArray(obj) ? obj[0]?.clock_in_time : obj?.clock_in_time;
-    const getEndTime = (obj: any) => Array.isArray(obj) ? obj[0]?.clock_out_time : obj?.clock_out_time;
+    const inTime = Array.isArray(entry.clock_in) ? entry.clock_in[0]?.clock_in_time : entry.clock_in?.clock_in_time;
+    const outTime = Array.isArray(entry.clock_out) ? entry.clock_out[0]?.clock_out_time : entry.clock_out?.clock_out_time;
 
-    const startStr = getStartTime(entry.clock_in);
-    const endStr = getEndTime(entry.clock_out);
-
-    if (startStr && endStr) {
-      const start = moment(startStr);
-      const end = moment(endStr);
-      totalMinutes += end.diff(start, 'minutes');
+    if (inTime && outTime) {
+      totalMinutes += moment(outTime).diff(moment(inTime), 'minutes');
     }
   });
   return (totalMinutes / 60).toFixed(2);
 };
 
 export default async function AccountPage() {
-  // 1. Initialize Supabase
   const supabase = await createClient();
 
-  // 2. Auth Check
+  // 1. Auth Check
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return redirect('/signin');
-
   const userId = user.id;
 
-  // 3. Define Time Window
+  // 2. Data Fetching
   const startOfWeek = moment().startOf('isoWeek').format('YYYY-MM-DD');
   const endOfWeek = moment().endOf('isoWeek').format('YYYY-MM-DD');
 
-  // 4. Fetch Data
   const [
     userProfileRes,
     employeeDetailsRes,
     weeklyTimeEntries,
-    activeTimeEntry,
     qrDataRes,
     availabilityRes,
     timeOffRes
@@ -110,247 +79,201 @@ export default async function AccountPage() {
     getUserById(supabase, userId),
     getEmployeeDetails(supabase, userId),
     fetchEmployeeTimeClockEntryData(supabase, userId, startOfWeek, endOfWeek),
-    fetchTimeEntryByUserId(supabase, userId),
-    supabase
-      .from('qr_history')
-      .select(`*, vehicle:vehicles (*)`)
-      .eq('user', userId)
-      .order('scanned_at', { ascending: false }),
-    supabase
-      .from('employee_availability_patterns')
-      .select('*')
-      .eq('user_id', userId),
-    supabase
-      .from('time_off_requests')
-      .select('*')
-      .eq('user_id', userId)
-      .order('start_date', { ascending: false })
+    supabase.from('qr_history').select(`*, vehicle:vehicles (*)`).eq('user', userId).order('scanned_at', { ascending: false }),
+    supabase.from('employee_availability_patterns').select('*').eq('user_id', userId),
+    supabase.from('time_off_requests').select('*').eq('user_id', userId).order('start_date', { ascending: false })
   ]);
 
-  // 5. Data Normalization
+  // 3. Normalize Data
   const userProfile = userProfileRes?.[0] as UserType | undefined;
   if (!userProfile) return redirect('/signin');
 
   const employeeDetails = employeeDetailsRes || [];
   const weeklyHours = calculateWeeklyHours(weeklyTimeEntries || []);
-  
-  const availabilityRules = (availabilityRes.data || []) as unknown as AvailabilityRule[];
-  const timeOffRequests = (timeOffRes.data || []) as unknown as TimeOffRequest[];
+  const availabilityRules = availabilityRes.data || [];
+  const timeOffRequests = timeOffRes.data || [];
 
-  const scans: VehicleType[] = (qrDataRes.data || [])
+  const scans = (qrDataRes.data || [])
     .map((item: any) => item.vehicle)
-    .filter((v: any) => v !== null)
-    .map((v: any) => ({
-      ...v,
-      id: v.id,
-      name: v.name || 'Unknown',
-      type: v.type || 'unknown',
-      vehicle_status: v.vehicle_status || 'unknown'
-    }));
+    .filter((v: any) => v !== null);
 
-const isClockedIn = activeTimeEntry && activeTimeEntry.length > 0;
-
-// FIX: 'clock_in' is returned as an array from the DB join.
-// We must access the first element [0] of that array.
-// The syntax 'activeTimeEntry[0].clock_in?.[0]?.clock_in_time' ensures:
-// 1. clock_in exists
-// 2. We grab the first item at index 0
-// 3. We grab the property clock_in_time
-const clockInTime = isClockedIn 
-  // We use optional chaining (?.) with the array index [0]
-// This fixes the "Property does not exist on array" error AND the "never" error.
-  ? activeTimeEntry[0].clock_in?.[0]?.clock_in_time 
-  : null;
-
-const userLevel = userProfile.user_level ?? 0;
+  const userLevel = userProfile.user_level ?? 0;
   const isStaff = userLevel > 284;
 
   return (
-    <section className="min-h-screen w-full pb-32 bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    // FIX: Added 'w-full max-w-[100vw] overflow-hidden' to the root container 
+    // to strictly prevent any child from blowing out the width.
+    <div className="max-w-7xl mx-auto p-2 sm:p-8 space-y-8 pb-32 w-full overflow-hidden">
+      
+      {/* --- HERO HEADER --- */}
+      <div className={`relative overflow-hidden rounded-3xl border shadow-sm transition-all ${isStaff ? 'bg-card border-zinc-800' : 'bg-zinc-950 border-blue-500/20'}`}>
+        <div className={`absolute inset-0 pointer-events-none opacity-20 ${
+          isStaff ? 'bg-gradient-to-br from-orange-500 via-transparent to-red-600' : 'bg-gradient-to-br from-blue-600 via-transparent to-indigo-600'
+        }`} />
         
-        {/* --- HEADER --- */}
-        <div className="relative overflow-hidden rounded-3xl border bg-card text-card-foreground shadow-sm">
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-yellow-500/10 pointer-events-none" />
-          <div className="relative p-8 flex flex-col md:flex-row items-center md:items-start gap-8">
-            <div className="flex-shrink-0">
-               <UserImage profilePic={userProfile.avatar_url || ''} user_id={userId} />
-            </div>
-            <div className="flex-grow text-center md:text-left space-y-3">
-              <div className="space-y-1">
-                <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{userProfile.full_name || 'SunBuggy Adventurer'}</h1>
-                <p className="text-muted-foreground font-mono">{userProfile.email}</p>
-              </div>
-              <div className="flex flex-wrap justify-center md:justify-start gap-3 items-center">
-                <Badge variant="outline" className="text-sm px-3 py-1">Level {userLevel}</Badge>
-                {employeeDetails[0]?.primary_position && (
-                  <Badge variant="secondary" className="text-sm px-3 py-1">{employeeDetails[0].primary_position}</Badge>
-                )}
-              </div>
-              <div className="pt-2 flex flex-wrap justify-center md:justify-start gap-3">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2"><UserIcon className="w-4 h-4" /> Edit Profile</Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader><DialogTitle>Edit Profile Details</DialogTitle></DialogHeader>
-                    <div className="py-4">
-                      <UserForm user={userProfile as any} empDetails={employeeDetails}  />
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
-          </div>
+        {/* FIX: Reduced padding from p-8 to p-4 on mobile to give content more room */}
+        <div className="relative p-4 md:p-8 flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8">
+           {/* FIX: Constrained image width on mobile */}
+           <div className="flex-shrink-0 max-w-[150px] md:max-w-none">
+             <UserImage profilePic={userProfile.avatar_url || ''} user_id={userId} />
+           </div>
+           
+           {/* FIX: Added 'min-w-0' to text container to force wrapping */}
+           <div className="flex-grow text-center md:text-left space-y-2 min-w-0 w-full">
+             <div className="flex flex-col md:flex-row md:items-end gap-2 justify-center md:justify-start flex-wrap">
+               {/* FIX: Added break-words to handle very long names */}
+               <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter uppercase break-words">
+                 {userProfile.stage_name || userProfile.full_name}
+               </h1>
+               <div className="flex gap-2 justify-center">
+                {!isStaff && <Badge className="bg-blue-600 mb-1">CUSTOMER</Badge>}
+                {isStaff && <Badge className="bg-orange-600 mb-1">STAFF_ACCESS</Badge>}
+                <Badge variant="outline" className="font-mono">LVL_{userLevel}</Badge>
+               </div>
+             </div>
+             
+             <div className="flex flex-wrap justify-center md:justify-start gap-3 items-center text-sm text-zinc-400 font-bold italic uppercase">
+                <MapPin className={`w-4 h-4 ${isStaff ? 'text-orange-500' : 'text-blue-500'}`} /> 
+                {employeeDetails[0]?.primary_work_location || 'REMOTE / GENERAL'}
+             </div>
+
+             <div className="pt-4 flex flex-wrap gap-2 justify-center md:justify-start items-center">
+               <Dialog>
+                 <DialogTrigger asChild>
+                   <Button variant="outline" size="sm" className="gap-2 border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800 hover:text-orange-500">
+                     <UserCog className="w-4 h-4" /> Edit Profile
+                   </Button>
+                 </DialogTrigger>
+                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-zinc-950 border-zinc-800">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-bold italic uppercase tracking-tighter">Edit Profile: <span className="text-orange-500">{userProfile.full_name}</span></DialogTitle>
+                    </DialogHeader>
+                    <UserForm user={userProfile as any} empDetails={employeeDetails} />
+                 </DialogContent>
+               </Dialog>
+               
+               {isStaff && (
+                 <Button variant="secondary" size="sm" asChild className="font-bold">
+                   <Link href="/biz/schedule">ROSTER</Link>
+                 </Button>
+               )}
+               <BackgroundPicker user={userProfile} />
+             </div>
+           </div>
         </div>
-
-        {/* --- MAIN DASHBOARD --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* LEFT COLUMN: Stats */}
-          <div className="space-y-6 lg:col-span-1">
-            {isStaff && (
-              <Card className={`border-l-4 ${isClockedIn ? 'border-l-green-500' : 'border-l-slate-300'} shadow-md`}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center justify-between text-lg">
-                    <span>Time Status</span>
-                    {isClockedIn ? <Badge className="bg-green-500 hover:bg-green-600">Clocked In</Badge> : <Badge variant="secondary">Clocked Out</Badge>}
-                  </CardTitle>
-                  <CardDescription>Current Week Activity</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isClockedIn && clockInTime && (
-                    <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-100 dark:border-green-900/50">
-                      <div className="text-xs text-green-700 dark:text-green-400 font-semibold mb-1">CURRENT SESSION</div>
-                      <div className="text-2xl font-mono font-bold text-green-800 dark:text-green-300">{moment(clockInTime).format('h:mm A')}</div>
-                      <div className="text-xs text-muted-foreground">Started today</div>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-end border-t pt-4">
-                    <div>
-                      <div className="text-sm text-muted-foreground">Weekly Hours</div>
-                      <div className="text-3xl font-bold">{weeklyHours}</div>
-                    </div>
-                    <Clock className="w-8 h-8 text-muted-foreground/20" />
-                  </div>
-                  <Button className="w-full mt-2" variant="default" asChild>
-                    <Link href="/biz/schedule">Open Roster & Schedule</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-            {isStaff && employeeDetails.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3"><CardTitle className="text-base">Employment Details</CardTitle></CardHeader>
-                <CardContent className="text-sm space-y-3">
-                  <div className="flex justify-between border-b pb-2"><span className="text-muted-foreground">Location</span><span className="font-medium flex items-center gap-1"><MapPin className="w-3 h-3" /> {employeeDetails[0].primary_work_location || 'N/A'}</span></div>
-                  <div className="flex justify-between border-b pb-2"><span className="text-muted-foreground">Payroll ID</span><span className="font-mono">{employeeDetails[0].emp_id || 'N/A'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Company</span><span>{employeeDetails[0].payroll_company || 'N/A'}</span></div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* RIGHT COLUMN: Tabs */}
-          <div className="lg:col-span-2 space-y-6">
-            <Tabs defaultValue="timesheet" className="w-full">
-              <div className="flex items-center justify-between mb-4 overflow-x-auto">
-                <TabsList>
-                  {/* NEW TAB: Time Sheet & Corrections */}
-                  <TabsTrigger value="timesheet" className="flex gap-2">
-                    <History className="w-4 h-4" /> Time Sheet
-                  </TabsTrigger>
-
-                  <TabsTrigger value="availability" className="flex gap-2">
-                    <CalendarDays className="w-4 h-4" /> Availability
-                  </TabsTrigger>
-                  
-                  <TabsTrigger value="timeoff" className="flex gap-2">
-                    <CalendarOff className="w-4 h-4" /> Time Off
-                  </TabsTrigger>
-                  
-                  <TabsTrigger value="achievements" className="flex gap-2">
-                    <Trophy className="w-4 h-4" /> Achievements
-                  </TabsTrigger>
-                  
-                  <TabsTrigger value="scans">Scan History</TabsTrigger>
-                </TabsList>
-              </div>
-
-              {/* TAB CONTENT: Time Sheet (Phase 3) */}
-              <TabsContent value="timesheet" className="mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>My Time Sheet</CardTitle>
-                    <CardDescription>View your punch history or request a correction for a missed punch.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border">
-                      <div className="space-y-1">
-                        <h4 className="font-medium">Missed a Punch?</h4>
-                        <p className="text-xs text-muted-foreground">Submit a correction request for manager approval.</p>
-                      </div>
-                      {/* The AdjustTime Component (Request Form) */}
-                      <AdjustTime />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-sm">Punch History & Status</h4>
-                      {/* The History Component (View Punches & Requests) */}
-                      <div className="flex gap-2">
-                         <HistoryTimeClockEvents user={userProfile} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="availability" className="mt-0">
-                <AvailabilityManager existingRules={availabilityRules} />
-              </TabsContent>
-
-              <TabsContent value="timeoff" className="mt-0">
-                 <TimeOffManager requests={timeOffRequests} />
-              </TabsContent>
-
-              <TabsContent value="achievements" className="mt-0">
-                <Card>
-                  <CardHeader><CardTitle>Trophies & Badges</CardTitle><CardDescription>Track your fleet scans and earn badges.</CardDescription></CardHeader>
-                  <CardContent>
-                    {scans && scans.length > 0 ? (
-                      <ScanHistory scans={scans} />
-                    ) : (
-                      <div className="text-center py-12 text-muted-foreground"><Trophy className="w-12 h-12 mx-auto mb-3 opacity-20" /><p>No scans found yet.</p></div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="scans" className="mt-0">
-                <Card>
-                  <CardHeader><CardTitle>Recent Scans</CardTitle></CardHeader>
-                  <CardContent>
-                    <div className="space-y-1">
-                      {(scans || []).slice(0, 10).map((scan, idx) => (
-                        <div key={idx} className="flex justify-between items-center p-3 hover:bg-muted/50 rounded-lg transition-colors border-b last:border-0">
-                          <div className="flex flex-col">
-                            <span className="font-medium">{scan.name || 'Unknown Vehicle'}</span>
-                            <span className="text-xs text-muted-foreground capitalize">{scan.type} • {scan.vehicle_status}</span>
-                          </div>
-                          <Badge variant="outline">{scan.id}</Badge>
-                        </div>
-                      ))}
-                      {(!scans || scans.length === 0) && <p className="text-sm text-muted-foreground text-center py-4">No recent history.</p>}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-
-        <BackgroundPickerButton user={userProfile} />
       </div>
-    </section>
+
+      {/* --- MAIN GRID --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* LEFT COLUMN: Sidebar Info */}
+        {/* FIX: Added 'min-w-0' to prevent grid blowout */}
+        <div className="space-y-6 min-w-0">
+           <Card className="bg-zinc-950 border-zinc-800">
+             <CardHeader className="pb-2 border-b border-zinc-900 mb-4">
+               <CardTitle className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                 <Mail size={12}/> Identity Contact
+               </CardTitle>
+             </CardHeader>
+             <CardContent className="space-y-4 text-sm">
+                {/* FIX: Constrained Email Container Width */}
+                <div className="flex justify-between items-center gap-4">
+                    <span className="text-zinc-500 shrink-0">Email</span> 
+                    {/* FIX: 'truncate' works, but only if parent has width limits. 'min-w-0' helps here. */}
+                    <span className="font-mono text-white truncate text-right min-w-0 block flex-1">
+                        {userProfile.email}
+                    </span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="text-zinc-500">Mobile</span> 
+                    <span className="text-white text-right">{userProfile.phone || 'NOT_SET'}</span>
+                </div>
+             </CardContent>
+           </Card>
+
+           {isStaff && (
+             <Card className="bg-zinc-900/30 border-orange-500/20">
+               <CardHeader className="pb-2">
+                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-orange-500">Fleet Operations</CardTitle>
+               </CardHeader>
+               <CardContent className="space-y-3 text-sm">
+                  <div className="flex justify-between"><span>Weekly Hours</span> <span className="font-bold text-lg text-white">{weeklyHours}h</span></div>
+                  <div className="flex justify-between"><span className="text-zinc-500">Position</span> <span className="text-white">{employeeDetails[0]?.primary_position || 'UNASSIGNED'}</span></div>
+               </CardContent>
+             </Card>
+           )}
+        </div>
+
+        {/* RIGHT COLUMN: Interactive Tabs */}
+        {/* FIX: Added 'min-w-0' here too */}
+        <div className="lg:col-span-2 min-w-0">
+           <Tabs defaultValue={isStaff ? "timesheet" : "scans"} className="w-full">
+              {/* FIX: Added 'flex-wrap' to TabsList */}
+              <TabsList className="mb-4 bg-zinc-950 border border-zinc-800 p-1 flex h-auto flex-wrap">
+                 {isStaff && (
+                    <>
+                        <TabsTrigger value="timesheet" className="gap-2"><History size={14}/> Time Sheet</TabsTrigger>
+                        <TabsTrigger value="availability" className="gap-2"><CalendarDays size={14}/> Availability</TabsTrigger>
+                        <TabsTrigger value="timeoff" className="gap-2"><CalendarOff size={14}/> Time Off</TabsTrigger>
+                    </>
+                 )}
+                 <TabsTrigger value="scans" className="gap-2">
+                   <Activity size={14} /> Activity Log
+                 </TabsTrigger>
+                 <TabsTrigger value="achievements" className="gap-2">
+                   <Trophy size={14} /> Achievements
+                 </TabsTrigger>
+              </TabsList>
+
+              {isStaff && (
+                <TabsContent value="timesheet">
+                    <div className="w-full min-w-0">
+                      <UserTimeSheet userId={userId} />
+                    </div>
+                </TabsContent>
+              )}
+
+              {isStaff && (
+                <TabsContent value="availability">
+                   <div className="w-full min-w-0">
+                     <AdminAvailability userId={userId} existingPattern={availabilityRules} />
+                   </div>
+                </TabsContent>
+              )}
+
+              {isStaff && (
+                <TabsContent value="timeoff">
+                   <div className="w-full min-w-0">
+                     <AdminTimeOff userId={userId} requests={timeOffRequests} />
+                   </div>
+                </TabsContent>
+              )}
+
+              <TabsContent value="scans">
+                 <Card className="bg-zinc-950 border-zinc-800">
+                    <CardHeader>
+                      <CardTitle className="italic uppercase tracking-tighter">System Interaction</CardTitle>
+                      <CardDescription>QR scans and vehicle engagement history.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       <ScanHistory scans={scans} />
+                    </CardContent>
+                 </Card>
+              </TabsContent>
+
+              <TabsContent value="achievements">
+                 <Card className="bg-zinc-950 border-zinc-800">
+                    <CardHeader><CardTitle className="italic uppercase tracking-tighter">Badges & Recognition</CardTitle></CardHeader>
+                    <CardContent className="text-center py-12">
+                       <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20 text-zinc-500" />
+                       <p className="text-zinc-500 italic">Adventure badges coming soon.</p>
+                    </CardContent>
+                 </Card>
+              </TabsContent>
+
+           </Tabs>
+        </div>
+      </div>
+    </div>
   );
 }
