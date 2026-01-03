@@ -1,12 +1,12 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (Print Master v8 - Interactive Portal)
+// SUNBUGGY ROSTER PAGE (Print Master v8.1 - Reactive Deletion Fix)
 // ============================================================================
 
 import { useState, useEffect, Fragment, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { getStaffRoster } from '@/utils/supabase/queries'; // NEW IMPORT
+import { getStaffRoster } from '@/utils/supabase/queries'; 
 import { getLocationWeather, DailyWeather } from '@/app/actions/weather'; 
 
 import UserStatusAvatar from '@/components/UserStatusAvatar';
@@ -193,9 +193,9 @@ const WeatherCell = ({ data }: { data: DailyWeather | undefined }) => {
     else if (data.code >= 71 && data.code <= 77) { Icon = Snowflake; color = "text-cyan-400"; }
     else if (data.code >= 95) { Icon = CloudLightning; color = "text-purple-500"; }
     return (
-        <div className="flex flex-row items-center justify-center h-full w-full gap-1" title={`${data.min_temp}° - ${data.max_temp}°`}>
+        <div className="flex flex-row items-center justify-center h-full w-full gap-1" title={`${data.min_temp}Â° - ${data.max_temp}Â°`}>
             <Icon className={`w-3.5 h-3.5 ${color} print:text-black`} />
-            <span className={`text-[11px] font-bold ${data.max_temp >= 105 ? 'text-red-600' : data.max_temp <= 40 ? 'text-blue-600' : 'text-slate-700 dark:text-slate-300'} print:text-black print:text-[9px]`}>{data.max_temp}°</span>
+            <span className={`text-[11px] font-bold ${data.max_temp >= 105 ? 'text-red-600' : data.max_temp <= 40 ? 'text-blue-600' : 'text-slate-700 dark:text-slate-300'} print:text-black print:text-[9px]`}>{data.max_temp}Â°</span>
         </div>
     );
 };
@@ -274,29 +274,18 @@ export default function RosterPage() {
     }
 
     // 2. Fetch Staff Roster
-    // We fetch data for all locations to ensure we catch everyone
     const locationsToFetch = Object.keys(LOCATIONS);
     let aggregatedStaff: Employee[] = [];
 
     await Promise.all(locationsToFetch.map(async (loc) => {
-        // This function now returns data joined with employee_details
         const roster = await getStaffRoster(supabase, loc);
         
         const mapped = roster.map((u: any) => ({
             id: u.id,
             full_name: u.full_name,
-            
-            // LOCATION: Comes from employee_details.primary_work_location
             location: u.primary_work_location || loc,
-            
-            // DEPARTMENT: Comes from employee_details.department (e.g., "SHOP")
-            // If empty, falls back to 'General' to prevent crashes
             department: u.department || 'General',
-            
-            // JOB TITLE: Comes from employee_details.primary_position (e.g., "ATV TECH")
-            // We map this to 'job_title' because the frontend logic expects that property name
             job_title: u.job_title || 'STAFF',
-            
             hire_date: u.hire_date || null,
             user_level: u.user_level,
             timeclock_blocked: !!u.timeclock_blocked,
@@ -308,28 +297,25 @@ export default function RosterPage() {
         aggregatedStaff = [...aggregatedStaff, ...mapped];
     }));
 
-    // Remove duplicates (handling potential edge cases in the join)
     const uniqueStaff = Array.from(new Map(aggregatedStaff.map(item => [item.id, item])).values());
     
     // 3. Sort the Roster
     const sortedEmps = uniqueStaff.sort((a, b) => {
-         // Primary: User Level Descending (Managers first)
          if (b.user_level !== a.user_level) return b.user_level - a.user_level;
-         // Secondary: Seniority (Hire Date Ascending)
          if (!a.hire_date) return 1; if (!b.hire_date) return -1;
          return new Date(a.hire_date).getTime() - new Date(b.hire_date).getTime();
     });
 
     setEmployees(sortedEmps);
     
-    // 4. Fetch Shifts (Existing logic)
+    // 4. Fetch Shifts
     const { data: shiftData } = await supabase.from('employee_schedules')
       .select('*')
       .gte('start_time', startOfWeek.toISOString())
       .lte('start_time', startOfWeek.clone().endOf('isoWeek').toISOString());
     if (shiftData) setShifts(shiftData);
 
-    // 5. Fetch Weather & Reservations (Existing logic)
+    // 5. Fetch Weather & Reservations
     if (visibleLocs['Las Vegas']) {
         const start = viewMode === 'week' ? startOfWeek.format('YYYY-MM-DD') : currentDate.format('YYYY-MM-DD');
         const end = startOfWeek.clone().add(6, 'days').format('YYYY-MM-DD');
@@ -468,11 +454,41 @@ export default function RosterPage() {
     }
   };
 
+  /**
+   * DELETE FUNCTION FIX
+   * Explicitly updates the local shifts state to remove the deleted shift
+   * before re-fetching data. This prevents the "ghost shift" issue where 
+   * the UI doesn't reflect the database deletion immediately.
+   */
   const handleDeleteShift = async () => {
     if (!isManager || !selectedShiftId) return;
+
+    // 1. Log the audit event for accountability
     await logChange(`Deleted shift`, 'employee_schedules', selectedShiftId);
-    await supabase.from('employee_schedules').delete().eq('id', selectedShiftId);
-    fetchData(); setIsShiftModalOpen(false); toast.success("Deleted");
+    
+    // 2. Perform the actual deletion in the database
+    const { error } = await supabase
+        .from('employee_schedules')
+        .delete()
+        .eq('id', selectedShiftId);
+
+    if (error) {
+        console.error("Deletion error:", error);
+        toast.error("Deletion Failed");
+        return;
+    }
+
+    // 3. REACTIVE UI FIX: 
+    // Filter out the deleted shift from the current state array.
+    // This ensures the cell turns "empty" immediately on the screen.
+    setShifts((prevShifts) => prevShifts.filter(s => s.id !== selectedShiftId));
+
+    // 4. Close modal and clean up
+    setIsShiftModalOpen(false); 
+    toast.success("Shift Deleted");
+    
+    // Optional: Full re-fetch to ensure all totals (hours/stats) are recalculated
+    fetchData(); 
   };
 
  const handleCopyWeek = async () => {
@@ -507,11 +523,9 @@ export default function RosterPage() {
 const handleSaveProfile = async () => {
       if (!isManager || !profileEmp) return;
 
-      // 1. Update User Identity (Phone, Avatar)
       const { error: userError } = await supabase.from('users').update({ 
           phone: profileEmp.phone, 
           avatar_url: profileEmp.avatar_url,
-          // We no longer write job_title/department to 'users' table
       }).eq('id', profileEmp.id);
       
       if (userError) {
@@ -519,14 +533,11 @@ const handleSaveProfile = async () => {
           return;
       }
 
-      // 2. Update Employee Operations (The Split)
       const { error: empError } = await supabase.from('employee_details').upsert({
           user_id: profileEmp.id,
           hire_date: profileEmp.hire_date || null,
-          
-          department: profileEmp.department,         // e.g. "SHOP"
-          primary_position: profileEmp.job_title,    // e.g. "ATV TECH"
-          
+          department: profileEmp.department,         
+          primary_position: profileEmp.job_title,    
           primary_work_location: profileEmp.location,
           timeclock_blocked: profileEmp.timeclock_blocked
       }, { onConflict: 'user_id' });
@@ -592,6 +603,7 @@ const handleSaveProfile = async () => {
         }
       `}</style>
 
+      {/* HEADER CONTROLS */}
       <div className="flex flex-col gap-4 mb-4 print-hide">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
@@ -637,6 +649,7 @@ const handleSaveProfile = async () => {
         ))}
       </div>
 
+      {/* TABLE GRID */}
       <div className="flex-1 overflow-auto border rounded-lg shadow-sm bg-card print:overflow-visible print:h-auto print:border-none print:shadow-none print:bg-white">
         {viewMode === 'week' && (
         <table className="w-full border-collapse min-w-[1000px] text-sm print:w-full print:min-w-0 print:text-[10px]">
@@ -725,7 +738,7 @@ const handleSaveProfile = async () => {
                                             <Fragment key={roleName}>
                                                 {roleName !== 'General' && (
                                                     <tr className="bg-slate-50/50 dark:bg-slate-900/20 print:bg-white">
-                                                        <td colSpan={8} className="px-4 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider print:text-black print:pl-2">↳ {roleName}</td>
+                                                        <td colSpan={8} className="px-4 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider print:text-black print:pl-2">â†³ {roleName}</td>
                                                     </tr>
                                                 )}
                                                 {emps.map((emp: Employee) => {
@@ -826,7 +839,7 @@ const handleSaveProfile = async () => {
                                     <div className="flex items-center"><MapPin className="w-4 h-4 inline mr-2" /> {locName}</div>
                                     {locName === 'Las Vegas' && dailyStats[currentDate.format('YYYY-MM-DD')] && (
                                         <div className="text-xs font-normal text-orange-300 normal-case mt-1 font-mono">
-                                            People: {dailyStats[currentDate.format('YYYY-MM-DD')].people} — {dailyStats[currentDate.format('YYYY-MM-DD')].fullString}
+                                            People: {dailyStats[currentDate.format('YYYY-MM-DD')].people} â€” {dailyStats[currentDate.format('YYYY-MM-DD')].fullString}
                                         </div>
                                     )}
                                 </div>
@@ -880,7 +893,9 @@ const handleSaveProfile = async () => {
         )}
       </div>
 
+      {/* MODALS */}
       <div className="print-hide">
+          {/* SHIFT EDITOR MODAL */}
           <Dialog open={isShiftModalOpen} onOpenChange={setIsShiftModalOpen}>
             <DialogContent className="max-w-sm">
                 <DialogHeader>
@@ -904,10 +919,20 @@ const handleSaveProfile = async () => {
                             <SelectContent><SelectItem value="NONE">None</SelectItem>{Object.entries(TASKS).map(([key, task]) => (<SelectItem key={key} value={key}><div className="flex items-center gap-2"><div className={`w-3 h-3 ${task.color} rounded-sm`}></div>{task.label}</div></SelectItem>))}</SelectContent></Select></div>
                     <div><label className="text-xs">Location</label><Select value={formLocation} onValueChange={setFormLocation} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.keys(LOCATIONS).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent></Select></div>
                 </div>
-                <DialogFooter className="flex justify-between w-full">{selectedShiftId && isManager ? <Button variant="destructive" size="sm" onClick={handleDeleteShift}><Trash2 className="w-4 h-4 mr-2" /> Delete</Button> : <div/>}{isManager && <Button size="sm" onClick={handleSaveShift}>Save</Button>}</DialogFooter>
+                <DialogFooter className="flex justify-between w-full">
+                    {/* DELETE BUTTON: Optimized with reactive state cleanup */}
+                    {selectedShiftId && isManager ? (
+                        <Button variant="destructive" size="sm" onClick={handleDeleteShift}>
+                            <Trash2 className="w-4 h-4 mr-2" /> Delete
+                        </Button>
+                    ) : <div/>}
+                    
+                    {isManager && <Button size="sm" onClick={handleSaveShift}>Save</Button>}
+                </DialogFooter>
             </DialogContent>
           </Dialog>
           
+          {/* PROFILE EDITOR MODAL */}
           <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
             <DialogContent className="max-w-md">
                 <DialogHeader>
