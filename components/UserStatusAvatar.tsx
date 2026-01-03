@@ -8,7 +8,7 @@ import {
   Popover, PopoverContent, PopoverTrigger 
 } from "@/components/ui/popover";
 import { 
-  Dialog, DialogContent, DialogTitle, DialogDescription // <--- ADDED IMPORTS
+  Dialog, DialogContent, DialogTitle, DialogDescription 
 } from "@/components/ui/dialog"; 
 import { Button } from '@/components/ui/button';
 import { 
@@ -54,7 +54,9 @@ export default function UserStatusAvatar({
   
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Permission Checks
   const isAdmin = currentUserLevel >= 900;
+  const canEdit = currentUserLevel >= 650; // Managers (650) and up can edit users
 
   // --- 1. DATA FETCHING ---
   const fetchData = useCallback(async () => {
@@ -223,12 +225,10 @@ export default function UserStatusAvatar({
         <Dialog open={isTimeClockOpen} onOpenChange={setIsTimeClockOpen}>
             <DialogContent className="max-w-md p-0 border-none bg-transparent shadow-none">
                 
-                {/* --- ACCESSIBILITY FIX START --- */}
                 <DialogTitle className="sr-only">Time Clock</DialogTitle>
                 <DialogDescription className="sr-only">
                     Interface for verifying time entry with camera.
                 </DialogDescription>
-                {/* --- ACCESSIBILITY FIX END --- */}
 
                 <SmartTimeClock 
                     key={clockKey} 
@@ -283,8 +283,10 @@ export default function UserStatusAvatar({
                 <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider font-semibold">{user.job_title}</p>
              </div>
           </div>
-          {(isAdmin && !isCurrentUser) && (
-            <Link href={`/biz/users/${user.id}`} onClick={closePopover}>
+          
+          {/* EDIT BUTTON (Consolidated to /account) */}
+          {(canEdit && !isCurrentUser) && (
+            <Link href={`/account?userId=${user.id}`} onClick={closePopover}>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30">
                 <Pencil className="w-4 h-4" />
               </Button>

@@ -6,6 +6,7 @@
 
 import { useState, useEffect, Fragment, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { getStaffRoster } from '@/utils/supabase/queries'; // NEW IMPORT
 import { getLocationWeather, DailyWeather } from '@/app/actions/weather'; 
 
 import UserStatusAvatar from '@/components/UserStatusAvatar';
@@ -263,6 +264,8 @@ export default function RosterPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    
+    // 1. Get Current User Level (for permissions)
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
         setCurrentUserId(user.id);
@@ -270,18 +273,63 @@ export default function RosterPage() {
         if (userData) setCurrentUserLevel(userData.user_level || 0);
     }
 
-    const { data: empData } = await supabase.from('users').select('id, full_name, location, department, job_title, hire_date, user_level, timeclock_blocked, email, phone, avatar_url').gte('user_level', 300).order('full_name');
-    if (empData) {
-        const sortedEmps = [...empData].sort((a, b) => {
-            if (!a.hire_date) return 1; if (!b.hire_date) return -1;
-            return new Date(a.hire_date).getTime() - new Date(b.hire_date).getTime();
-        });
-        setEmployees(sortedEmps.map(e => ({ ...e, location: e.location || 'Las Vegas', department: e.department || 'General', job_title: e.job_title || 'STAFF', timeclock_blocked: !!e.timeclock_blocked })));
-    }
+    // 2. Fetch Staff Roster
+    // We fetch data for all locations to ensure we catch everyone
+    const locationsToFetch = Object.keys(LOCATIONS);
+    let aggregatedStaff: Employee[] = [];
+
+    await Promise.all(locationsToFetch.map(async (loc) => {
+        // This function now returns data joined with employee_details
+        const roster = await getStaffRoster(supabase, loc);
+        
+        const mapped = roster.map((u: any) => ({
+            id: u.id,
+            full_name: u.full_name,
+            
+            // LOCATION: Comes from employee_details.primary_work_location
+            location: u.primary_work_location || loc,
+            
+            // DEPARTMENT: Comes from employee_details.department (e.g., "SHOP")
+            // If empty, falls back to 'General' to prevent crashes
+            department: u.department || 'General',
+            
+            // JOB TITLE: Comes from employee_details.primary_position (e.g., "ATV TECH")
+            // We map this to 'job_title' because the frontend logic expects that property name
+            job_title: u.job_title || 'STAFF',
+            
+            hire_date: u.hire_date || null,
+            user_level: u.user_level,
+            timeclock_blocked: !!u.timeclock_blocked,
+            email: u.email,
+            phone: u.phone,
+            avatar_url: u.avatar_url
+        }));
+        
+        aggregatedStaff = [...aggregatedStaff, ...mapped];
+    }));
+
+    // Remove duplicates (handling potential edge cases in the join)
+    const uniqueStaff = Array.from(new Map(aggregatedStaff.map(item => [item.id, item])).values());
     
-    const { data: shiftData } = await supabase.from('employee_schedules').select('*').gte('start_time', startOfWeek.toISOString()).lte('start_time', startOfWeek.clone().endOf('isoWeek').toISOString());
+    // 3. Sort the Roster
+    const sortedEmps = uniqueStaff.sort((a, b) => {
+         // Primary: User Level Descending (Managers first)
+         if (b.user_level !== a.user_level) return b.user_level - a.user_level;
+         // Secondary: Seniority (Hire Date Ascending)
+         if (!a.hire_date) return 1; if (!b.hire_date) return -1;
+         return new Date(a.hire_date).getTime() - new Date(b.hire_date).getTime();
+    });
+
+    setEmployees(sortedEmps);
+    
+    // 4. Fetch Shifts (Existing logic)
+    const { data: shiftData } = await supabase.from('employee_schedules')
+      .select('*')
+      .gte('start_time', startOfWeek.toISOString())
+      .lte('start_time', startOfWeek.clone().endOf('isoWeek').toISOString());
     if (shiftData) setShifts(shiftData);
 
+    // 5. Fetch Weather & Reservations (Existing logic)
     if (visibleLocs['Las Vegas']) {
         const start = viewMode === 'week' ? startOfWeek.format('YYYY-MM-DD') : currentDate.format('YYYY-MM-DD');
         const end = startOfWeek.clone().add(6, 'days').format('YYYY-MM-DD');
@@ -345,19 +393,14 @@ export default function RosterPage() {
     setIsShiftModalOpen(true);
   };
 
-// ... inside RosterPage component
-
   const handleSaveShift = async () => {
     if (!isManager) return;
-    setLoading(true); // Add visual feedback during save
+    setLoading(true);
 
     try {
-        // 1. Strict Date Parsing: Force moment to use the specific format to avoid browser ambiguity
-        // We use the selectedDate (YYYY-MM-DD) and the form inputs (HH:mm)
         const startMoment = moment(`${selectedDate} ${formStart}`, 'YYYY-MM-DD HH:mm');
         const endMoment = moment(`${selectedDate} ${formEnd}`, 'YYYY-MM-DD HH:mm');
 
-        // Handle overnight shifts (if end time is earlier than start time, assume next day)
         if (endMoment.isBefore(startMoment)) {
             endMoment.add(1, 'day');
         }
@@ -375,37 +418,26 @@ export default function RosterPage() {
         let resultData = null;
 
         if (selectedShiftId) {
-            // UPDATE EXISTING
             const response = await supabase
                 .from('employee_schedules')
                 .update(payload)
                 .eq('id', selectedShiftId)
-                .select() // Important: Return the data to verify update
+                .select()
                 .single();
-            
             error = response.error;
             resultData = response.data;
-
-            if (!error && resultData) {
-                await logChange('Updated Shift', 'employee_schedules', selectedShiftId);
-            }
+            if (!error && resultData) await logChange('Updated Shift', 'employee_schedules', selectedShiftId);
         } else {
-            // INSERT NEW
             const response = await supabase
                 .from('employee_schedules')
                 .insert([payload])
                 .select()
                 .single();
-            
             error = response.error;
             resultData = response.data;
-            
-            if (!error && resultData) {
-                await logChange('Created Shift', 'employee_schedules', resultData.id);
-            }
+            if (!error && resultData) await logChange('Created Shift', 'employee_schedules', resultData.id);
         }
 
-        // 2. Error Trapping
         if (error) {
             console.error('Supabase Save Error:', error);
             toast.error(`Save Failed: ${error.message}`);
@@ -413,7 +445,6 @@ export default function RosterPage() {
             return;
         }
 
-        // 3. Update Local State Helper
         setLastShiftParams(p => ({
             ...p,
             [selectedEmpId]: {
@@ -427,8 +458,6 @@ export default function RosterPage() {
 
         toast.success("Shift Saved Successfully");
         setIsShiftModalOpen(false);
-        
-        // 4. Refresh Data
         await fetchData();
 
     } catch (err) {
@@ -453,31 +482,20 @@ export default function RosterPage() {
       setCopying(true);
       
       try {
-        // Clean the payload to ensure no ID or system fields are carried over
         const newShifts = shifts.map(s => ({ 
             user_id: s.user_id, 
             role: s.role, 
             task: s.task, 
-            // Strictly add 7 days to the exact ISO string to maintain timezone integrity
             start_time: moment(s.start_time).add(7, 'days').toISOString(), 
             end_time: moment(s.end_time).add(7, 'days').toISOString(), 
             location: s.location || 'Las Vegas' 
         }));
 
         const { error } = await supabase.from('employee_schedules').insert(newShifts);
-
-        if (error) {
-            throw error;
-        }
-
+        if (error) throw error;
         toast.success("Week Copied Successfully");
-        
-        // Move view to next week
         const nextWeek = currentDate.clone().add(1, 'week');
         setCurrentDate(nextWeek);
-        
-        // fetchData will trigger automatically via the useEffect on [currentDate]
-        
       } catch (e: any) {
           console.error("Copy Error:", e);
           toast.error(`Copy Failed: ${e.message}`);
@@ -486,10 +504,42 @@ export default function RosterPage() {
       }
   };
 
-  const handleSaveProfile = async () => {
+const handleSaveProfile = async () => {
       if (!isManager || !profileEmp) return;
-      await supabase.from('users').update({ hire_date: profileEmp.hire_date, location: profileEmp.location, department: profileEmp.department, job_title: profileEmp.job_title, timeclock_blocked: profileEmp.timeclock_blocked, phone: profileEmp.phone, avatar_url: profileEmp.avatar_url }).eq('id', profileEmp.id);
-      fetchData(); setIsProfileModalOpen(false); toast.success("Saved");
+
+      // 1. Update User Identity (Phone, Avatar)
+      const { error: userError } = await supabase.from('users').update({ 
+          phone: profileEmp.phone, 
+          avatar_url: profileEmp.avatar_url,
+          // We no longer write job_title/department to 'users' table
+      }).eq('id', profileEmp.id);
+      
+      if (userError) {
+          toast.error("Error updating user profile");
+          return;
+      }
+
+      // 2. Update Employee Operations (The Split)
+      const { error: empError } = await supabase.from('employee_details').upsert({
+          user_id: profileEmp.id,
+          hire_date: profileEmp.hire_date || null,
+          
+          department: profileEmp.department,         // e.g. "SHOP"
+          primary_position: profileEmp.job_title,    // e.g. "ATV TECH"
+          
+          primary_work_location: profileEmp.location,
+          timeclock_blocked: profileEmp.timeclock_blocked
+      }, { onConflict: 'user_id' });
+
+      if (empError) {
+          console.error(empError);
+          toast.error("Error updating employment details");
+          return;
+      }
+
+      fetchData(); 
+      setIsProfileModalOpen(false); 
+      toast.success("Saved");
   };
 
   const handleArchiveEmployee = async () => {
@@ -683,7 +733,6 @@ export default function RosterPage() {
                                                     return (
                                                     <tr key={`${locName}-${emp.id}`} className="hover:bg-muted/20 transition-colors border-b print:border-gray-400 print:h-auto">
                                                         <td className="p-0 border-r border-r-slate-100 dark:border-r-slate-800 sticky left-0 z-10 bg-card print:static print:border-r print:border-black print:p-0">
-                                                            {/* REMOVED onClick here to fix "clickable name" issue. Interaction is now solely via UserStatusAvatar */}
                                                             <div className="p-2 w-64 flex flex-col min-w-0 flex-1 h-full gap-1 print:p-1 print:w-auto">
                                                                 <div className="flex flex-row items-center gap-3 print:hidden">
                                                                     <div className="flex-shrink-0">

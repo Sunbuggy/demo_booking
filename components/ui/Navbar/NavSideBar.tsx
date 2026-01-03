@@ -1,21 +1,17 @@
 /**
  * @file /components/NavSideBar.tsx
  * @description Digitized navigation for SunBuggy. 
- * Implements strict role-based access control (RBAC) and modern Next.js 16 patterns.
+ * Updated: Added HR Audit under Infrastructure Control (Admin).
  */
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, ShieldCheck, Truck, Users, Calendar, ClipboardList } from 'lucide-react';
+import { Activity, ShieldCheck, Users, HeartPulse } from 'lucide-react'; // Added HeartPulse for HR Audit
 import { SheetClose } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils'; // Utility for merging Tailwind classes safely
+import { cn } from '@/lib/utils';
 
-/**
- * Technical Standard: User type with integer-based level.
- * 300: Internal Staff | 600: Manager | 900: Admin/Dev
- */
 interface UserType {
   user_level: number;
 }
@@ -35,7 +31,6 @@ interface NavSideBarProps {
 export default function NavSideBar({ user }: NavSideBarProps) {
   const pathname = usePathname();
 
-  // Primary Navigation Definitions
   const navLinks: NavLink[] = [
     { href: '/', label: 'Welcome', minLevel: 0 },
     { href: '/lasvegas', label: 'Las Vegas', minLevel: 0 },
@@ -46,13 +41,12 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     { href: 'https://www.sunbuggy.biz/', label: 'Old Biz Portal', minLevel: 300, external: true },
     { href: '/daily-pics', label: 'Daily Pics', minLevel: 300 },
     // Core Admin Links
-    { href: '/biz/users/admin', label: 'User Admin', minLevel: 900 },
+    { href: '/biz/users/admin', label: 'User Admin', minLevel: 900, icon: <Users size={16} /> },
     { href: '/biz/payroll', label: 'Payroll', minLevel: 900 },
     { href: '/biz/reports', label: 'Reports', minLevel: 900 },
     { href: 'tel:+17752060022', label: 'Cyber Support', minLevel: 300 }
   ];
 
-  // Fleet and Operations Specific Links
   const dashboardLinks: NavLink[] = [
     { href: `/biz/vegas`, label: 'NV DASH', minLevel: 300 },
     { href: `/biz/pismo`, label: 'CA DASH', minLevel: 300 },
@@ -65,10 +59,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     { href: '/biz/admin/charge_pismo', label: 'Pismo Billing', minLevel: 300 },
   ];
 
-  /**
-   * Refactor: Centralized rendering logic for nav buttons.
-   * Handles active state tracking using Next.js usePathname.
-   */
   const renderNavLink = (link: NavLink) => {
     const isActive = pathname === link.href;
 
@@ -91,9 +81,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     );
   };
 
-  /**
-   * Impact Analysis: Filters links by user level to ensure security and UI clarity.
-   */
   const renderLinkGroup = (links: NavLink[], title: string, minLevelRequired: number) => {
     if (minLevelRequired > 0 && (!user || user.user_level < minLevelRequired)) return null;
 
@@ -110,12 +97,11 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     );
   };
 
-  // Organizational Groups
   const publicLinks = navLinks.filter(l => l.minLevel === 0);
   const internalLinks = [...dashboardLinks, ...navLinks.filter(l => l.minLevel === 300)];
   const managerLinks = navLinks.filter(l => l.minLevel === 600);
   
-  // Admin Group: Now including System Health
+  // Admin Group: Includes System Health and new HR Audit
   const adminLinksWithHealth: NavLink[] = [
     { 
       href: '/biz/admin/health', 
@@ -123,12 +109,17 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       minLevel: 900, 
       icon: <Activity size={16} /> 
     },
+    { 
+        href: '/biz/admin/hr/audit', // NEW: Link to our Audit Page
+        label: 'HR / Staff Audit', 
+        minLevel: 900, 
+        icon: <HeartPulse size={16} className="text-red-500" /> 
+    },
     ...navLinks.filter(l => l.minLevel === 900)
   ];
 
   return (
     <nav className="flex flex-col p-4 bg-zinc-950 h-full overflow-y-auto custom-scrollbar">
-      {/* Visual Identity */}
       <div className="mb-10 px-2">
         <div className="text-xl font-black text-white italic tracking-tighter">
           SUN<span className="text-orange-500">BUGGY</span>
@@ -140,7 +131,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       {renderLinkGroup(managerLinks, 'Operations Management', 600)}
       {renderLinkGroup(adminLinksWithHealth, 'Infrastructure Control', 900)}
 
-      {/* Footer Info */}
       <div className="mt-auto pt-6 border-t border-zinc-800/50 px-2">
         <div className="flex items-center gap-2 text-zinc-600 text-[10px]">
           <ShieldCheck size={12} />

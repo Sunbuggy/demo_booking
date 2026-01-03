@@ -1,88 +1,98 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Database } from '@/types_db';
+import React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
+
+// UI Components
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+
+// Custom Components
 import { DataTableColumnHeader } from '../components/column-header';
-import { DataTableRowActions } from '../components/row-actions';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { UserType } from '../../../types';
-import Link from 'next/link'; //
+import UserStatusAvatar from '@/components/UserStatusAvatar'; // NEW IMPORT
 
-export const columns: ColumnDef<UserType, any>[] = [
-  {
-    accessorKey: 'avatar_url',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="" />,
-    cell: ({ row }) => {
-      const name = row.getValue('full_name') as string | null;
-      const email = row.original.email;
-      const avatarUrl = row.getValue('avatar_url') as string | null;
-      const altText = name || email || 'User Avatar';
-      
-      let initials = '?';
-      if (name && name.trim()) {
-        initials = name.trim().split(/\s+/).filter(w => w.length > 0).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-      } else if (email) {
-        const emailPrefix = email.split('@')[0] || '';
-        const validChars = emailPrefix.match(/[a-zA-Z0-9]/g) || [];
-        initials = validChars.slice(0, 2).join('').toUpperCase();
-      }
+// ---------------------------------------------------------
+// Column Definitions
+// ---------------------------------------------------------
 
-      return (
-        <div className="w-[50px]">
-          <Avatar className="h-9 w-9 border border-zinc-800">
-            <AvatarImage src={avatarUrl || undefined} alt={altText} className="object-cover" />
-            <AvatarFallback className="bg-muted/50">{initials || '?'}</AvatarFallback>
-          </Avatar>
-        </div>
-      );
-    },
-    enableSorting: false
-  },
+export const columns: ColumnDef<any, any>[] = [
+  // 1. CONSOLIDATED USER COLUMN (Avatar + Name)
   {
     accessorKey: 'full_name',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Name" />
+      <DataTableColumnHeader column={column} title="Customer" />
     ),
     cell: ({ row }) => {
       const user = row.original;
-      const isStaff = (user.user_level || 0) >= 300; //
-
+      
       return (
-        <div className="min-w-[120px] max-w-[180px] truncate">
-          {/* FIX: Wrapping in Link. 
-            Customers (Blue) and Staff (Orange) both get links now.
+        <div className="flex items-center gap-3 py-1">
+          {/* REPLACEMENT: Standardized UserStatusAvatar sits on the left.
+             The 'pencil' icon inside it redirects to /account?userId=...
           */}
-          <Link 
-            href={`/account`} 
-            className={`font-bold hover:underline transition-colors ${
-              isStaff ? 'text-orange-500 hover:text-orange-400' : 'text-blue-500 hover:text-blue-400'
-            }`}
-          >
-            {user.full_name || 'No Name'}
-          </Link>
-          <div className="text-[10px] text-zinc-500 font-mono uppercase">
-             Level: {user.user_level}
+          <UserStatusAvatar 
+            user={user} 
+            currentUserLevel={900} // Admin view context
+            size="sm" 
+          />
+          
+          <div className="flex flex-col min-w-0">
+            {/* Displaying name as a bold label; navigation is handled by the Avatar hub */}
+            <span className="font-bold text-white truncate">
+              {user.full_name}
+            </span>
+            <span className="text-[10px] text-blue-500 uppercase font-black tracking-widest">
+              Verified Customer
+            </span>
           </div>
         </div>
       );
     },
+    enableSorting: true,
     enableHiding: false
   },
+
+  // 2. ROLE COLUMN (Simplified for Customers)
+  {
+    accessorKey: 'user_level',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Level" />
+    ),
+    cell: ({ row }) => {
+      const userLevel = Number(row.getValue('user_level'));
+      return (
+        <div className="w-[40px]">
+          <Badge variant="outline" className="font-mono bg-zinc-900 border-zinc-800">
+            {userLevel}
+          </Badge>
+        </div>
+      );
+    }
+  },
+
+  // 3. EMAIL COLUMN
   {
     accessorKey: 'email',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Email" />
     ),
     cell: ({ row }) => (
-      <div className="min-w-[150px] max-w-[180px] truncate text-zinc-400">
-        {row.getValue('email') || '-'}
+      <div className="w-[200px] truncate font-mono text-xs text-zinc-400" title={row.getValue('email')}>
+        {row.getValue('email')}
       </div>
     )
   },
+
+  // 4. PHONE COLUMN
   {
-    id: 'actions',
-    cell: ({ row }) => <DataTableRowActions row={row} />
+    accessorKey: 'phone',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Phone" />
+    ),
+    cell: ({ row }) => (
+      <div className="w-[120px] font-mono text-xs text-zinc-400">
+        {row.getValue('phone') || 'NO_PHONE'}
+      </div>
+    )
   }
 ];
