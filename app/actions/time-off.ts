@@ -1,9 +1,12 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js'; // For Admin Writes
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Admin Client: Bypasses RLS for manager-level overrides.
+ */
 function getAdminClient() {
   return createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,20 +15,21 @@ function getAdminClient() {
   );
 }
 
+/**
+ * SUBMIT: Handles time off requests with a strict string-based date fix.
+ */
 export async function submitTimeOffRequest(prevState: any, formData: FormData) {
-  const supabase = await createClient(); // Standard Client
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return { message: 'Unauthorized', success: false };
 
-  // 1. Check for Admin Override
   const targetUserId = formData.get('targetUserId') as string;
   let effectiveUserId = user.id;
   let status = 'pending';
   let useAdminClient = false;
 
   if (targetUserId && targetUserId !== user.id) {
-    // Verify Admin Status
     const { data: actor } = await supabase
       .from('users')
       .select('user_level')
@@ -36,25 +40,32 @@ export async function submitTimeOffRequest(prevState: any, formData: FormData) {
       return { message: 'Unauthorized to manage others', success: false };
     }
 
-    // Permission Granted
     effectiveUserId = targetUserId;
-    status = 'approved'; // Admins auto-approve their own inputs
+    status = 'approved'; 
     useAdminClient = true;
   }
 
-  // 2. Select DB Connection
   const db = useAdminClient ? getAdminClient() : supabase;
-
-  // 3. Extract Data
-  const startDate = formData.get('startDate') as string;
-  const endDate = formData.get('endDate') as string;
+  
+  // 1. RAW STRING EXTRACTION
+  const rawStart = formData.get('startDate') as string;
+  const rawEnd = formData.get('endDate') as string;
   const reason = formData.get('reason') as string;
 
-  if (!startDate || !endDate) {
+  if (!rawStart || !rawEnd) {
     return { message: 'Dates are required', success: false };
   }
 
-  // 4. Insert
+  /**
+   * 2. THE ABSOLUTE DATE FIX:
+   * We skip 'new Date()' entirely. 
+   * If the input is '2026-01-09', we send exactly '2026-01-09'.
+   * This prevents any UTC/Local conversion 'jumps' to the 8th.
+   */
+  const startDate = rawStart.split('T')[0];
+  const endDate = rawEnd.split('T')[0];
+
+  // 3. DATABASE INSERTION
   const { error } = await db
     .from('time_off_requests')
     .insert({
@@ -65,11 +76,13 @@ export async function submitTimeOffRequest(prevState: any, formData: FormData) {
       status: status
     });
 
-  if (error) {
-    return { message: error.message, success: false };
-  }
+  if (error) return { message: error.message, success: false };
 
+  // 4. CACHE REVALIDATION
   revalidatePath('/account');
+  revalidatePath(`/account?userId=${effectiveUserId}`); 
+  revalidatePath('/biz/payroll'); 
+  revalidatePath('/biz/schedule'); 
   revalidatePath(`/biz/users/${effectiveUserId}`);
   
   return { 
@@ -78,22 +91,61 @@ export async function submitTimeOffRequest(prevState: any, formData: FormData) {
   };
 }
 
+/**
+ * UPDATE STATUS: For the Payroll Review hub to approve/deny.
+ */
+export async function updateTimeOffStatus(requestId: string, targetUserId: string, newStatus: 'approved' | 'denied' | 'pending') {
+  const supabase = await createClient();
+  const { data: { user: actor } } = await supabase.auth.getUser();
+
+  if (!actor) return { success: false, message: 'Not authenticated' };
+
+  const { data: actorProfile } = await supabase
+    .from('users')
+    .select('user_level')
+    .eq('id', actor.id)
+    .single();
+
+  if (!actorProfile || actorProfile.user_level < 500) {
+    return { success: false, message: 'Insufficient permissions' };
+  }
+
+  const adminDb = getAdminClient();
+  const { error } = await adminDb
+    .from('time_off_requests')
+    .update({ status: newStatus })
+    .eq('id', requestId);
+
+  if (error) return { success: false, message: error.message };
+
+  revalidatePath('/account');
+  revalidatePath('/biz/payroll');
+  revalidatePath('/biz/schedule'); 
+  revalidatePath(`/account?userId=${targetUserId}`); 
+  revalidatePath(`/biz/users/${targetUserId}`);
+
+  return { success: true };
+}
+
+/**
+ * CANCEL: Handles request deletion.
+ */
 export async function cancelTimeOffRequest(requestId: string, targetUserId?: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
   let useAdminClient = false;
+  let effectiveUserId = user.id;
 
   if (targetUserId && targetUserId !== user.id) {
      const { data: actor } = await supabase.from('users').select('user_level').eq('id', user.id).single();
      if (!actor || actor.user_level < 500) return;
      useAdminClient = true;
+     effectiveUserId = targetUserId;
   }
 
   const db = useAdminClient ? getAdminClient() : supabase;
-
-  // If user, can only delete own pending requests. If admin, can delete any.
   let query = db.from('time_off_requests').delete().eq('id', requestId);
   
   if (!useAdminClient) {
@@ -103,5 +155,7 @@ export async function cancelTimeOffRequest(requestId: string, targetUserId?: str
   await query;
 
   revalidatePath('/account');
-  if (targetUserId) revalidatePath(`/biz/users/${targetUserId}`);
+  revalidatePath(`/account?userId=${effectiveUserId}`);
+  revalidatePath('/biz/schedule');
+  revalidatePath(`/biz/users/${effectiveUserId}`);
 }

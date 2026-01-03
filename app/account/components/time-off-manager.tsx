@@ -12,7 +12,6 @@ import { Trash2, Loader2, Plane, CalendarClock, ShieldCheck } from 'lucide-react
 import { useToast } from '@/components/ui/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 
-// Define Type matching DB
 export type TimeOffRequest = {
   id: string;
   start_date: string;
@@ -20,6 +19,17 @@ export type TimeOffRequest = {
   reason: string | null;
   status: 'pending' | 'approved' | 'denied';
 };
+
+/**
+ * THE FIX: Timezone-Safe Date Formatter
+ * Prevents the "Day Before" bug by splitting the string 
+ * and manually reassembling it without Date object conversion.
+ */
+function formatLocalDate(dateStr: string) {
+  if (!dateStr) return "";
+  const [year, month, day] = dateStr.split('-');
+  return `${parseInt(month)}/${parseInt(day)}/${year}`;
+}
 
 function SubmitButton({ isAdmin }: { isAdmin: boolean }) {
   const { pending } = useFormStatus();
@@ -31,7 +41,6 @@ function SubmitButton({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
-// UPDATED: Accept userId prop
 export default function TimeOffManager({ 
   requests, 
   userId 
@@ -54,7 +63,7 @@ export default function TimeOffManager({
 
   const handleCancel = async (id: string) => {
     if(!confirm("Cancel this request?")) return;
-    await cancelTimeOffRequest(id, userId); // Pass userId so admins can cancel others' requests
+    await cancelTimeOffRequest(id, userId);
     toast({ title: "Request cancelled" });
   };
 
@@ -73,14 +82,9 @@ export default function TimeOffManager({
       </CardHeader>
       <CardContent className="space-y-8">
         
-        {/* --- REQUEST FORM --- */}
         <form action={formAction} className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-900/40">
-          
-          {/* HIDDEN: Pass Target User ID if we are an Admin */}
           {userId && <input type="hidden" name="targetUserId" value={userId} />}
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
             <div className="space-y-4">
                <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-2">
@@ -92,43 +96,28 @@ export default function TimeOffManager({
                    <Input type="date" name="endDate" required className="bg-white dark:bg-slate-950" />
                  </div>
                </div>
-               
                <div className="space-y-2">
                  <Label>Reason / Note</Label>
-                 <Textarea 
-                    name="reason" 
-                    placeholder="e.g. Doctor's appointment, Family vacation..." 
-                    className="resize-none bg-white dark:bg-slate-950" 
-                    rows={2}
-                    required
-                 />
+                 <Textarea name="reason" placeholder="e.g. Doctor's appointment..." className="resize-none bg-white dark:bg-slate-950" rows={2} required />
                </div>
             </div>
-
             <div className="flex items-end justify-end">
                <SubmitButton isAdmin={!!userId} />
             </div>
           </div>
         </form>
 
-        {/* --- REQUESTS LIST --- */}
         <div className="space-y-3">
           <h3 className="font-semibold text-sm">Request History</h3>
-          {requests.length === 0 && (
-            <div className="text-center p-4 text-sm text-muted-foreground italic">
-                No time off requests found.
-            </div>
-          )}
-          
           <div className="grid gap-2">
-            {requests.sort((a,b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()).map((req) => (
+            {requests.map((req) => (
               <div key={req.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 border rounded-md bg-white dark:bg-slate-950 shadow-sm gap-3">
-                
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">
-                      {new Date(req.start_date).toLocaleDateString()} 
-                      {req.start_date !== req.end_date && ` - ${new Date(req.end_date).toLocaleDateString()}`}
+                      {/* FIXED: Uses local string formatting to avoid UTC jump */}
+                      {formatLocalDate(req.start_date)} 
+                      {req.start_date !== req.end_date && ` - ${formatLocalDate(req.end_date)}`}
                     </span>
                     <Badge className={`${
                       req.status === 'approved' ? 'bg-green-600' : 
@@ -139,15 +128,8 @@ export default function TimeOffManager({
                   </div>
                   <span className="text-sm text-muted-foreground">{req.reason}</span>
                 </div>
-
-                {/* Allow Cancel if Pending OR if User is an Admin (userId is present) */}
                 {(req.status === 'pending' || userId) && (
-                  <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleCancel(req.id)} 
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 self-end md:self-center"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => handleCancel(req.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50 self-end md:self-center">
                     <Trash2 className="h-4 w-4 mr-1" /> Cancel
                   </Button>
                 )}
@@ -155,7 +137,6 @@ export default function TimeOffManager({
             ))}
           </div>
         </div>
-
       </CardContent>
     </Card>
   );
