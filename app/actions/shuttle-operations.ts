@@ -1,9 +1,9 @@
 // app/actions/shuttle-operations.ts
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/utils/supabase/server'; // Standard Client (Cookies)
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'; // Admin Client (Key)
 import { revalidatePath } from 'next/cache';
-// We explicitly point to where the types actually live
 import { Reservation } from '@/app/(biz)/biz/types';
 
 // --- TYPES ---
@@ -16,6 +16,15 @@ export interface ManifestItem {
 }
 
 export type HourlyUtilization = Record<string, Record<string, number>>;
+
+// --- HELPER: Admin Client (Bypasses RLS) ---
+// We use this strictly for looking up public names of drivers
+function getAdminClient() {
+  return createSupabaseAdmin(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 // --- AUTHORIZATION HELPER (Level 300+) ---
 async function requireStaff() {
@@ -40,7 +49,7 @@ async function requireStaff() {
 // 1. GET DATA (READ ENGINE)
 // ============================================================================
 export async function getDailyOperations(date: string, legacyReservations: Reservation[]) {
-  const supabase = await createClient();
+  const supabase = await createClient(); // Standard client for Manifest (Safe)
 
   // A. Fetch Manifest
   const { data: manifest, error: manifestError } = await supabase
@@ -57,22 +66,27 @@ export async function getDailyOperations(date: string, legacyReservations: Reser
     return { activeFleet: [], reservationStatusMap: {}, hourlyUtilization: {} };
   }
 
-  // B. Manual Join for Driver Names
+  // B. Manual Join for Driver Names (FIXED)
   const driverIds = manifest.map(m => m.driver_id).filter(Boolean);
   
   let drivers: any[] = [];
   if (driverIds.length > 0) {
-    const { data } = await supabase
+    // SECURITY FIX: Use Admin Client to bypass RLS for Name Lookup
+    // Regular staff RLS often blocks seeing other users in the 'users' table.
+    const adminClient = getAdminClient();
+    
+    const { data } = await adminClient
       .from('users') 
-      .select('id, full_name, stage_name') 
+      .select('id, full_name, stage_name') // Only fetch safe, public fields
       .in('id', driverIds);
+      
     drivers = data || [];
   }
 
   // C. Build Active Fleet
   const activeFleet: ManifestItem[] = manifest.map(m => {
     const driverUser = drivers?.find(d => d.id === m.driver_id);
-    // Prefer stage_name
+    // Prefer stage_name (Alias), fall back to Full Name
     const displayName = driverUser?.stage_name || driverUser?.full_name || 'Unknown Driver';
 
     return {
