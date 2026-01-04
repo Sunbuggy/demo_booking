@@ -9,14 +9,12 @@ import Landing from '../vegas/components/landing';
 import { createClient } from '@/utils/supabase/server';
 import { 
   getUserDetails, 
-  fetchShuttlesOnly // *** NEW: Import the shuttle fetcher ***
+  fetchShuttlesOnly 
 } from '@/utils/supabase/queries';
 import { Reservation } from '../types';
 import { getTimeSortedData } from '@/utils/old_db/helpers';
 import { getDailyOperations } from '@/app/actions/shuttle-operations'; 
 import { getVegasShuttleDrivers } from '@/app/actions/user-actions'; 
-
-// IMPORT THE NEW GLOBAL LISTENER
 import RealtimeGroupsListener from '../vegas/components/realtime-groups-listener';
 
 export const dynamic = 'force-dynamic';
@@ -45,8 +43,7 @@ async function fetchReservationsForDate(date: string): Promise<Reservation[]> {
 function BizContent({
   date, dcos, role, full_name, reservations, yesterday, tomorrow,
   activeFleet, reservationStatusMap, hourlyUtilization, drivers,
-  todaysShifts,
-  realFleet // *** NEW: Accept the real fleet data prop ***
+  todaysShifts, realFleet 
 }: any) {
   const hasReservations = reservations.length > 0;
   let sortedData = hasReservations ? getTimeSortedData(reservations) : null;
@@ -69,7 +66,7 @@ function BizContent({
       {/* --- FLOATING DATE NAVIGATION --- */}
       {/* Visible to all authorized staff (Level 300+) */}
       {role >= 300 && (
-        <div className="sticky top-2 z-50 mx-auto w-fit flex justify-center">
+        <div className="sticky top-20 z-50 mx-auto w-fit flex justify-center">
           <div className="flex gap-4 items-center bg-slate-950/90 backdrop-blur-md border border-slate-700/50 rounded-xl px-4 py-1.5 shadow-2xl">
             {/* Prev Day */}
             <Link 
@@ -106,7 +103,7 @@ function BizContent({
         <Landing
           data={sortedData}
           display_cost={dcos}
-          role={role}
+          role={role} // Passes role down. Ensure Landing passes this to FleetManagerDialog!
           date={date}
           full_name={full_name}
           activeFleet={activeFleet}
@@ -114,7 +111,7 @@ function BizContent({
           hourlyUtilization={hourlyUtilization}
           drivers={drivers}
           todaysShifts={todaysShifts} 
-          realFleet={realFleet} // *** NEW: Pass realFleet down to Landing ***
+          realFleet={realFleet}
         />
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-center px-6 mt-20">
@@ -137,7 +134,7 @@ function BizContent({
  * The main entry point for the NV Dashboard.
  */
 export default async function BizPage({ params, searchParams }: any) {
-  // 1. Await Next.js 15 params (crucial to avoid build errors)
+  // 1. Await Next.js 15 params
   const { date } = await params;
   const search = await searchParams;
   const dcos = search.dcos === 'true';
@@ -149,11 +146,10 @@ export default async function BizPage({ params, searchParams }: any) {
   const supabase = await createClient(); 
   const user = await getUserDetails(supabase);
   
-  // Redirect to login if session is invalid
   if (!user || !user[0]) redirect('/signin');
 
-  // 4. Permission Check (The Fix)
-  // Ensure role is a number. Check strictly for < 300 to allow employees (300+).
+  // 4. Permission Check
+  // Ensures only Staff (300+) can view this page.
   const role = Number(user[0].user_level ?? 0);
   
   if (role < 300) {
@@ -174,25 +170,22 @@ export default async function BizPage({ params, searchParams }: any) {
 
   try {
     // 6. Data Fetching
-    // Initiate Legacy DB fetch first
     const reservationsPromise = fetchReservationsForDate(date);
     
-    // Prepare Supabase Shifts Query
+    // Query for schedules (Shifts)
     const shiftsQuery = supabase
       .from('employee_schedules')
       .select('user_id, role, location, task')
       .gte('start_time', `${date}T00:00:00`)
       .lte('start_time', `${date}T23:59:59`);
 
-    // Await legacy data (needed for operations calculation)
     const reservations = await reservationsPromise;
 
-    // Run remaining independent fetches in parallel
     const [operationsData, drivers, shiftsResult, shuttles] = await Promise.all([
       getDailyOperations(date, reservations),
       getVegasShuttleDrivers(),
       shiftsQuery,
-      fetchShuttlesOnly(supabase) // *** NEW: Fetch real shuttles in parallel ***
+      fetchShuttlesOnly(supabase) 
     ]);
 
     const todaysShifts = shiftsResult.data || [];
@@ -213,14 +206,13 @@ export default async function BizPage({ params, searchParams }: any) {
           hourlyUtilization={operationsData.hourlyUtilization}
           drivers={drivers}
           todaysShifts={todaysShifts}
-          realFleet={shuttles} // *** NEW: Pass fetched data to the component ***
+          realFleet={shuttles}
         />
       </Suspense>
     );
 
   } catch (error) {
     console.error('Error loading BizPage data:', error);
-    // Fallback UI in case of data fetch failure (prevents white screen of death)
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <h2 className="text-xl font-bold text-red-600">System Error</h2>
