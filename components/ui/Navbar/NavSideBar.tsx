@@ -1,7 +1,7 @@
 /**
  * @file /components/UI/Navbar/NavSideBar.tsx
  * @description Main Sidebar Navigation.
- * Updated: NOW USES CENTRALIZED USER_LEVELS CONSTANTS.
+ * Updated: Added link to System Architecture Docs.
  */
 'use client';
 
@@ -15,12 +15,13 @@ import {
   HeartPulse, 
   FileText, 
   Trash2,
-  Car
+  Car,
+  BookOpen // <-- New Import for Docs Icon
 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
-// --- NEW IMPORT: Single Source of Truth ---
+// --- Single Source of Truth ---
 import { USER_LEVELS } from '@/lib/constants/user-levels';
 
 interface UserType {
@@ -71,7 +72,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   ];
 
   // --- 4. OPERATIONS MANAGEMENT (Managers 500+) ---
-  // Updated from old logic (was 600) to new USER_LEVELS.MANAGER (500)
   const operationsLinks: NavLink[] = [
     { href: '/biz/reports', label: 'Reports', minLevel: USER_LEVELS.MANAGER, icon: <FileText size={16} /> },
     { href: '/biz/pismo-times', label: 'Pismo Times', minLevel: USER_LEVELS.MANAGER },
@@ -80,7 +80,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   ];
 
   // --- 5. HR (Specific Role - Level 925+) ---
-  // Strictly for HR/Owners, distinct from standard SysAdmin
   const hrLinks: NavLink[] = [
      { href: '/biz/admin/hr/audit', label: 'Staff Audit', minLevel: USER_LEVELS.HR, icon: <HeartPulse size={16} className="text-red-600 dark:text-red-400" /> },
      { href: '/biz/admin/hr/user-cleanup', label: 'User Merge', minLevel: USER_LEVELS.HR, icon: <Trash2 size={16} className="text-red-600 dark:text-red-400" /> },
@@ -91,6 +90,8 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   // --- 6. DEVELOPER (Level 950+) ---
   const devLinks: NavLink[] = [
     { href: '/biz/admin/health', label: 'System Health', minLevel: USER_LEVELS.DEV, icon: <Activity size={16} className="text-green-600 dark:text-green-400" /> },
+    // NEW LINK: System Architecture & Living Docs
+    { href: '/biz/admin/developer/docs', label: 'System Architecture', minLevel: USER_LEVELS.DEV, icon: <BookOpen size={16} className="text-blue-500 dark:text-blue-400" /> },
   ];
 
   /**
@@ -100,7 +101,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     const isActive = pathname === link.href;
 
     // --- STYLING LOGIC ---
-    
     // 1. PUBLIC LINKS (Primary Blue)
     const publicActive = 
       'bg-blue-100 text-blue-900 border-blue-500 shadow-sm font-bold ' + 
