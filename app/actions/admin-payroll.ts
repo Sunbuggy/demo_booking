@@ -1,3 +1,10 @@
+/**
+ * ADMIN PAYROLL ACTIONS
+ * Path: app/actions/admin-payroll.ts
+ * Description: Server actions for Managers/Admins to audit time cards, 
+ * approve correction requests, and manually edit punches with full accountability.
+ */
+
 'use server';
 
 import { createClient } from '@supabase/supabase-js'; 
@@ -6,6 +13,11 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import moment from 'moment';
 
+/**
+ * Helper: Create a Supabase Admin Client
+ * This client bypasses Row Level Security (RLS) to allow Managers to 
+ * edit other users' data (which they normally can't do with their own token).
+ */
 function getAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,7 +26,13 @@ function getAdminClient() {
   );
 }
 
-// --- APPROVE REQUEST ---
+// ------------------------------------------------------------------
+// 1. APPROVE CORRECTION REQUEST
+// ------------------------------------------------------------------
+/**
+ * Takes a pending request from an employee (e.g., "I forgot to clock out")
+ * and converts it into a real 'time_entry' record.
+ */
 export async function approveCorrectionRequest(requestId: string) {
   const userClient = await createUserClient();
   const { data: { user } } = await userClient.auth.getUser();
@@ -22,7 +40,7 @@ export async function approveCorrectionRequest(requestId: string) {
   
   const supabaseAdmin = getAdminClient();
 
-  // 1. Fetch Request
+  // A. Fetch the Request Data
   const { data: request, error: reqError } = await supabaseAdmin
     .from('time_sheet_requests')
     .select('*')
@@ -31,24 +49,24 @@ export async function approveCorrectionRequest(requestId: string) {
 
   if (reqError || !request) return { message: 'Request not found', success: false };
 
-  // 2. Create Time Entry (MATCHING YOUR SCHEMA)
-  // We calculate the duration manually just in case
+  // B. Calculate Duration for the new entry
   const start = moment(request.start_time);
   const end = moment(request.end_time);
   const durationMinutes = end.diff(start, 'minutes');
   const durationHours = parseFloat((durationMinutes / 60).toFixed(2));
 
+  // C. Insert the "Real" Time Entry
   const { data: newEntry, error: entryError } = await supabaseAdmin
     .from('time_entries') 
     .insert({
       user_id: request.user_id,
-      start_time: request.start_time,  // Matches your DB schema
-      end_time: request.end_time,      // Matches your DB schema
+      start_time: request.start_time,
+      end_time: request.end_time,
       date: request.start_time.split('T')[0], // Extract YYYY-MM-DD
-      status: 'completed',             // Since it has an end time
-      duration: durationHours,         // Optional: Populate the duration column
-      location: 'Admin Correction',    // Metadata context
-      role: 'employee'                 // Default role if required
+      status: 'completed',             
+      duration: durationHours,
+      location: 'Admin Correction',    // Mark source as admin fix
+      role: 'employee'                 
     })
     .select()
     .single();
@@ -58,13 +76,13 @@ export async function approveCorrectionRequest(requestId: string) {
     return { message: `DB Error: ${entryError.message}`, success: false };
   }
 
-  // 3. Update Request Status
+  // D. Mark Request as Accepted
   await supabaseAdmin
     .from('time_sheet_requests')
     .update({ status: 'accepted' })
     .eq('id', requestId);
 
-  // 4. Increment Correction Count
+  // E. Increment the "Correction Count" on the employee's profile (for tracking reliability)
   const { data: empDetails } = await supabaseAdmin
     .from('employee_details')
     .select('time_correction_count')
@@ -78,7 +96,7 @@ export async function approveCorrectionRequest(requestId: string) {
     .update({ time_correction_count: newCount })
     .eq('user_id', request.user_id);
 
-  // 5. Audit Log
+  // F. System Audit Log (Security Log)
   await supabaseAdmin.from('audit_logs').insert({
     user_id: user.id, 
     action: 'APPROVE_TIME_REQUEST',
@@ -95,18 +113,23 @@ export async function approveCorrectionRequest(requestId: string) {
   return { message: 'Request approved.', success: true };
 }
 
-// --- DENY REQUEST ---
+
+// ------------------------------------------------------------------
+// 2. DENY CORRECTION REQUEST
+// ------------------------------------------------------------------
+/**
+ * Simply marks the request as rejected. Does not create a time entry.
+ */
 export async function denyCorrectionRequest(requestId: string) {
   const supabaseAdmin = getAdminClient();
   
-  // CHANGED: 'denied' -> 'rejected' (Standard Enum Value)
   const { error } = await supabaseAdmin
     .from('time_sheet_requests')
     .update({ status: 'rejected' }) 
     .eq('id', requestId);
 
   if (error) {
-    console.error('Deny Request Failed:', error); // This will show the real error in your terminal
+    console.error('Deny Request Failed:', error);
     return { message: `Error: ${error.message}`, success: false };
   }
   
@@ -114,21 +137,39 @@ export async function denyCorrectionRequest(requestId: string) {
   return { message: 'Request denied.', success: true };
 }
 
-// --- MANUAL DIRECT EDIT ---
+
+// ------------------------------------------------------------------
+// 3. MANUAL DIRECT EDIT (WITH AUDIT TRAIL)
+// ------------------------------------------------------------------
+/**
+ * Allows a Manager to directly change start/end times on an existing entry.
+ * CRITICAL: This updates the 'audit_trail' JSON column on the row to leave a history.
+ */
 const EditSchema = z.object({
   entryId: z.string(),
   newStart: z.string(),
-  newEnd: z.string().nullable(),
-  reason: z.string().min(3)
+  newEnd: z.string().nullable(), // Nullable because a shift might still be active
+  reason: z.string().min(3, "Reason is required")
 });
 
 export async function manualEditTimeEntry(prevState: any, formData: FormData) {
+  // A. Auth Check
   const userClient = await createUserClient();
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return { message: 'Unauthorized', success: false };
 
   const supabaseAdmin = getAdminClient();
 
+  // B. Get the Editor's Name (To show "Edited by Scott" in the UI)
+  const { data: editor } = await supabaseAdmin
+    .from('users')
+    .select('full_name')
+    .eq('id', user.id)
+    .single();
+
+  const editorName = editor?.full_name || 'Manager';
+
+  // C. Validate Input Data
   const validated = EditSchema.safeParse({
     entryId: formData.get('entryId'),
     newStart: formData.get('newStart'),
@@ -139,7 +180,17 @@ export async function manualEditTimeEntry(prevState: any, formData: FormData) {
   if (!validated.success) return { message: 'Invalid Data', success: false };
   const { entryId, newStart, newEnd, reason } = validated.data;
 
-  // Recalculate duration if end time exists
+  // D. Fetch OLD entry 
+  // We need this to (1) Preserve existing history and (2) Compare old vs new times
+  const { data: oldEntry } = await supabaseAdmin
+    .from('time_entries')
+    .select('audit_trail, start_time, end_time')
+    .eq('id', entryId)
+    .single();
+
+  if (!oldEntry) return { message: 'Entry not found', success: false };
+
+  // E. Recalculate Duration (if end time is present)
   let durationVal = null;
   if (newEnd) {
      const s = moment(newStart);
@@ -147,14 +198,30 @@ export async function manualEditTimeEntry(prevState: any, formData: FormData) {
      durationVal = parseFloat((e.diff(s, 'minutes') / 60).toFixed(2));
   }
 
-  // 1. Update the Entry (Using start_time / end_time)
+  // F. Create the Audit Log Item
+  // Helper to make times readable (e.g. "8:00 AM")
+  const format = (t: string | null) => t ? moment(t).format('h:mm A') : 'Active';
+  
+  const newLogItem = {
+    edited_by: editorName,
+    edited_at: new Date().toISOString(),
+    note: reason,
+    // This string summary is what shows up in the UI tooltip
+    changes: `${format(oldEntry.start_time)} - ${format(oldEntry.end_time)} → ${format(newStart)} - ${format(newEnd)}`
+  };
+
+  // Append new item to the existing array (or start a new one)
+  const updatedTrail = [...(oldEntry.audit_trail || []), newLogItem];
+
+  // G. Update the Record
   const { error: updateError } = await supabaseAdmin
     .from('time_entries')
     .update({
       start_time: newStart, 
       end_time: newEnd,
       duration: durationVal,
-      status: newEnd ? 'completed' : 'active'
+      status: newEnd ? 'completed' : 'active', // If we removed end_time, set back to active
+      audit_trail: updatedTrail // <--- SAVES THE HISTORY ON THE ROW
     })
     .eq('id', entryId);
 
@@ -163,7 +230,8 @@ export async function manualEditTimeEntry(prevState: any, formData: FormData) {
     return { message: 'Update failed', success: false };
   }
 
-  // 2. Audit Log
+  // H. System Audit Log (Optional Backup)
+  // This writes to a separate table for security auditing if the row itself is deleted later
   await supabaseAdmin.from('audit_logs').insert({
     user_id: user.id,
     action: 'MANUAL_TIME_EDIT',
@@ -175,7 +243,15 @@ export async function manualEditTimeEntry(prevState: any, formData: FormData) {
   revalidatePath('/biz/payroll');
   return { message: 'Time entry updated successfully.', success: true };
 }
-// --- DELETE ENTRY ---
+
+
+// ------------------------------------------------------------------
+// 4. DELETE ENTRY
+// ------------------------------------------------------------------
+/**
+ * Permanently removes a time entry. Should be used sparingly.
+ * Logs the action to 'audit_logs' with a backup of the data.
+ */
 const DeleteSchema = z.object({
   entryId: z.string(),
   reason: z.string().min(3, "Reason is required for deletion"),
@@ -199,7 +275,7 @@ export async function deleteTimeEntry(prevState: any, formData: FormData) {
   
   const { entryId, reason } = validated.data;
 
-  // 1. Fetch the entry first (so we can log what was deleted)
+  // A. Fetch the entry first (so we can log what was deleted)
   const { data: entryToDelete } = await supabaseAdmin
     .from('time_entries')
     .select('*')
@@ -208,7 +284,7 @@ export async function deleteTimeEntry(prevState: any, formData: FormData) {
 
   if (!entryToDelete) return { message: 'Entry not found', success: false };
 
-  // 2. Delete the Entry
+  // B. Delete the Entry
   const { error: deleteError } = await supabaseAdmin
     .from('time_entries')
     .delete()
@@ -219,14 +295,14 @@ export async function deleteTimeEntry(prevState: any, formData: FormData) {
     return { message: 'Delete failed', success: false };
   }
 
-  // 3. Audit Log
+  // C. Audit Log (Preserves the deleted data in the 'new_data' JSON column)
   await supabaseAdmin.from('audit_logs').insert({
     user_id: user.id,
     action: 'DELETE_TIME_ENTRY',
     table_name: 'time_entries',
     record_id: entryId,
     new_data: { 
-      deleted_entry_backup: entryToDelete, // Save the data in case we need to restore it
+      deleted_entry_backup: entryToDelete, 
       reason: reason 
     }
   });

@@ -1,19 +1,33 @@
+/**
+ * PAYROLL MANAGER COMPONENT
+ * Path: app/(biz)/biz/payroll/components/payroll-manager.tsx
+ * Description: The interactive hub for approving requests and auditing time entries.
+ * Updates: Added 'Audit Trail' tooltip to show edit history.
+ */
+
 'use client';
 
 import React from 'react';
 import { approveCorrectionRequest, denyCorrectionRequest } from '@/app/actions/admin-payroll';
-import { updateTimeOffStatus } from '@/app/actions/time-off'; // NEW: For Time Off approvals
+import { updateTimeOffStatus } from '@/app/actions/time-off'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, X, AlertCircle, CalendarCheck, ArrowRight, PlaneTakeoff } from 'lucide-react';
+import { Check, X, AlertCircle, CalendarCheck, ArrowRight, PlaneTakeoff, Info } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import moment from 'moment';
 import EditEntryDialog from './edit-entry-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // --- TYPES ---
 
+// 1. Correction Request (Punch Edits)
 type Request = {
   id: string;
   user_id: string;
@@ -25,7 +39,7 @@ type Request = {
   user: { full_name: string; avatar_url: string };
 };
 
-// NEW: Time Off Request Type
+// 2. Time Off Request (Vacation)
 type TimeOffRequest = {
   id: string;
   user_id: string;
@@ -36,17 +50,25 @@ type TimeOffRequest = {
   user: { full_name: string; avatar_url: string };
 };
 
+// 3. Time Entry (The actual record)
+// Updated to include the new 'audit_trail' JSON column
 type Entry = {
   id: string;
   user_id: string;
   start_time: string;
   end_time: string | null;
   user: { full_name: string; avatar_url: string };
+  audit_trail?: {
+    edited_by: string;
+    edited_at: string;
+    note: string;
+    changes: string;
+  }[];
 };
 
 interface PayrollManagerProps {
-  requests: Request[]; // Punch corrections
-  timeOffRequests: TimeOffRequest[]; // Vacation/Appointments
+  requests: Request[]; 
+  timeOffRequests: TimeOffRequest[]; 
   entries: Entry[];
 }
 
@@ -70,10 +92,6 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
     toast({ title: res.message });
   };
 
-  /**
-   * NEW: Handle Time Off Approvals
-   * This calls the server action that bypasses RLS using the Admin client.
-   */
   const handleTimeOffStatus = async (id: string, userId: string, status: 'approved' | 'denied') => {
     const res = await updateTimeOffStatus(id, userId, status);
     if (res.success) {
@@ -129,7 +147,7 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
           </CardContent>
         </Card>
 
-        {/* 2. NEW: TIME OFF QUEUE (SHANA FIX) */}
+        {/* 2. TIME OFF QUEUE */}
         <Card className="border-l-4 border-l-blue-500 bg-blue-50/20">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -176,7 +194,7 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
            <CardTitle className="flex items-center gap-2">
              <CalendarCheck className="w-5 h-5" /> Recent Time Entries
            </CardTitle>
-           <CardDescription>View and manually edit punches.</CardDescription>
+           <CardDescription>View and manually edit punches. Edits are audited.</CardDescription>
         </CardHeader>
         <CardContent>
            <div className="rounded-md border">
@@ -188,24 +206,66 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
               </div>
               <div className="divide-y">
                  {entries.map((entry) => (
-                    <div key={entry.id} className="grid grid-cols-4 p-3 items-center text-sm hover:bg-slate-50 transition-colors">
-                       <div className="font-medium truncate">{entry.user?.full_name}</div>
-                       <div className="text-muted-foreground">
-                          {/* FIXED: Robust date formatting for Scott's active punches */}
-                          {entry.start_time ? moment(entry.start_time).format('MMM D, YYYY') : '---'}
+                    <div key={entry.id} className="grid grid-cols-4 p-3 items-center text-sm hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                       
+                       {/* Column 1: Employee Name */}
+                       <div className="col-span-1 font-medium truncate flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={entry.user?.avatar_url} />
+                            <AvatarFallback>{entry.user?.full_name?.[0]}</AvatarFallback>
+                          </Avatar>
+                          {entry.user?.full_name}
                        </div>
-                       <div>
+                       
+                       {/* Column 2: Date & Audit Indicator */}
+                       <div className="col-span-1 text-muted-foreground flex items-center gap-2">
+                          {moment(entry.start_time).format('MMM D, YYYY')}
+                          
+                          {/* AUDIT TOOLTIP: Only shows if 'audit_trail' has data */}
+                          {entry.audit_trail && entry.audit_trail.length > 0 && (
+                            <TooltipProvider>
+                              <Tooltip delayDuration={0}>
+                                <TooltipTrigger asChild>
+                                  <Info className="w-4 h-4 text-orange-500 cursor-help opacity-80 hover:opacity-100" />
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-slate-950 border-slate-800 text-slate-300 p-0 overflow-hidden shadow-xl max-w-xs z-50">
+                                  <div className="bg-orange-500/10 p-2 border-b border-orange-500/20">
+                                     <p className="font-bold text-[10px] uppercase tracking-wider text-orange-500">Edit History</p>
+                                  </div>
+                                  <div className="max-h-[200px] overflow-y-auto p-2 space-y-3">
+                                    {entry.audit_trail.slice().reverse().map((log, idx) => (
+                                      <div key={idx} className="text-xs space-y-1 border-b border-slate-800 pb-2 last:border-0 last:pb-0">
+                                        <div className="flex justify-between items-center">
+                                           <span className="font-bold text-white">{log.edited_by}</span>
+                                           <span className="text-[10px] text-slate-500">{moment(log.edited_at).format('MMM D h:mm A')}</span>
+                                        </div>
+                                        <div className="text-[10px] font-mono bg-slate-900 p-1 rounded text-slate-400 truncate">
+                                           {log.changes}
+                                        </div>
+                                        {log.note && <p className="italic text-slate-500">"{log.note}"</p>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                       </div>
+                       
+                       {/* Column 3: Shift Times */}
+                       <div className="col-span-1">
                           <span className="block">{entry.start_time ? moment(entry.start_time).format('h:mm A') : '---'}</span>
                           <span className="block text-muted-foreground text-xs">
-                             {/* THE "SCOTT BRADFORD" FIX: Check for null end_time */}
                              {entry.end_time ? (
                                 moment(entry.end_time).format('h:mm A')
                              ) : (
-                                <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 animate-pulse">LIVE</Badge>
+                                <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 animate-pulse border-none">LIVE</Badge>
                              )}
                           </span>
                        </div>
-                       <div className="flex justify-end">
+                       
+                       {/* Column 4: Edit Action */}
+                       <div className="col-span-1 flex justify-end">
                           <EditEntryDialog entry={entry} />
                        </div>
                     </div>
