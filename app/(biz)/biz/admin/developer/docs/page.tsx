@@ -11,7 +11,10 @@ import {
   Server, 
   FileCode,
   AlertTriangle,
-  BookOpen
+  BookOpen,
+  CheckCircle2, // Added
+  CircleDashed, // Added
+  ArrowRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -229,21 +232,43 @@ export default function DeveloperDocsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <ul className="space-y-3">
-                <li className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                  <AlertTriangle className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                
+                {/* DONE ITEM */}
+                <li className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50/50 dark:bg-green-950/20 p-2 rounded-lg">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span className="line-through opacity-80">
+                    <strong>Mobile Roster UI:</strong> The Roster page needs polish for mobile users (drag-and-drop or simplified card view).
+                  </span>
+                  <Badge className="ml-auto bg-green-600 text-[10px] h-5">DONE (v9.7)</Badge>
+                </li>
+
+                {/* PENDING: DASHBOARD URL */}
+                <li className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 p-2 border border-orange-200 dark:border-orange-900 bg-orange-50/50 dark:bg-orange-950/20 rounded-lg">
+                  <CircleDashed className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-1">
+                    <span className="font-bold text-orange-700 dark:text-orange-400">Dashboard URL Standardization</span>
+                    <span className="text-xs">
+                      Move Legacy Las Vegas Dashboard from root <code>/biz/[date]</code> to explicit <code>/biz/vegas/[date]</code>.
+                    </span>
+                    <div className="text-[10px] mt-1 text-zinc-500 flex flex-col gap-0.5">
+                      <span>1. Create <code>app/(biz)/biz/vegas/[date]/</code></span>
+                      <span>2. Replace root page with Redirect</span>
+                      <span>3. Update Roster Routing Logic</span>
+                    </div>
+                  </div>
+                </li>
+
+                {/* PENDING: MOMENT.JS */}
+                <li className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 p-2">
+                  <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
                   <span>
                     <strong>Moment.js Refactor:</strong> Currently using legacy <code>moment</code>. 
                     Plan to migrate to <code>date-fns</code> or native <code>Intl</code> to reduce bundle size.
                   </span>
                 </li>
-                <li className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                  <BookOpen className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Mobile Roster UI:</strong> The Roster page needs polish for mobile users (drag-and-drop or simplified card view).
-                  </span>
-                </li>
-                <li className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                  <Server className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+
+                <li className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 p-2">
+                  <Server className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                   <span>
                     <strong>RLS Cleanup:</strong> Continue moving explicit role checks from UI logic to Database Policies where possible.
                   </span>

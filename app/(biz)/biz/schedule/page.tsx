@@ -1,10 +1,17 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (Print Master v8.1 - Reactive Deletion Fix)
+// SUNBUGGY ROSTER PAGE (v9.7 - Smart Dashboard Routing)
 // ============================================================================
+// CHANGELOG v9.7:
+// 1. ROUTING FIX: Added `getDashboardLink` helper.
+//    - IF Location is 'Las Vegas' -> Links to legacy `/biz/YYYY-MM-DD`
+//    - IF Location is 'Pismo'/'Michigan' -> Links to standard `/biz/[loc]/YYYY-MM-DD`
+//    This allows us to support the current legacy setup while preparing for future consistency.
+// 2. Retained all v9.6 features (Sticky Headers, Compact Columns, Z-Index fix).
 
 import { useState, useEffect, Fragment, useMemo } from 'react';
+import Link from 'next/link'; 
 import { createClient } from '@/utils/supabase/client';
 import { getStaffRoster } from '@/utils/supabase/queries'; 
 import { getLocationWeather, DailyWeather } from '@/app/actions/weather'; 
@@ -26,10 +33,11 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { 
     ChevronLeft, ChevronRight, Plus, Trash2, MapPin, 
-    Ban, Copy, Loader2, Plane, Filter, LayoutList, 
-    Table as TableIcon, History, MailCheck,
+    Ban, Copy, Loader2, Plane, Filter, 
+    History, Users, 
     Sun, Cloud, CloudRain, Snowflake, CloudLightning, Wind, Printer,
-    Flame, Wrench, Shield, CheckSquare, Mountain, LucideIcon
+    Flame, Wrench, Shield, CheckSquare, Mountain, LucideIcon,
+    Settings, Info, BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import moment from 'moment';
@@ -41,6 +49,7 @@ import {
 } from "@/components/ui/popover";
 import PublishButton from './components/publish-button';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 // --- CONSTANTS ---
 const LOCATIONS: Record<string, string[]> = {
@@ -79,6 +88,7 @@ const TASKS: Record<string, { label: string, color: string, code: string, icon: 
 interface Employee {
   id: string;
   full_name: string;
+  stage_name: string;
   location: string;
   department: string;
   job_title: string;
@@ -124,6 +134,24 @@ interface ReservationStat {
   ppl_count: string | number;
   [key: string]: string | number | boolean | null | undefined; 
 }
+
+// --- HELPER FUNCTIONS ---
+
+/**
+ * Smart Routing Helper (v9.7 Fix)
+ * Handles the inconsistency between the Legacy Las Vegas route and future routes.
+ */
+const getDashboardLink = (locationName: string, dateStr: string) => {
+    // 1. LEGACY EXCEPTION: Las Vegas currently lives at the root /biz/[date]
+    if (locationName === 'Las Vegas') {
+        return `/biz/${dateStr}`;
+    }
+    
+    // 2. STANDARD PATTERN: All other locations use /biz/[slug]/[date]
+    // e.g. "Pismo" -> "pismo", "Silver Lake" -> "silver-lake"
+    const slug = locationName.toLowerCase().replace(/\s+/g, '-');
+    return `/biz/${slug}/${dateStr}`;
+};
 
 // --- HELPER COMPONENTS ---
 
@@ -172,18 +200,6 @@ const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: strin
     );
 };
 
-const LastNotifiedBadge = ({ lastNotified }: { lastNotified: string | null }) => {
-  if (!lastNotified) return (
-    <span className="text-[9px] text-zinc-500 italic ml-1 opacity-50 print:hidden">(Unsent)</span>
-  );
-  const isRecent = moment().diff(moment(lastNotified), 'hours') < 24;
-  return (
-    <span title={`Emailed on ${moment(lastNotified).format('MMM D, h:mm A')}`} className={cn("inline-flex items-center gap-0.5 px-1 py-0.25 rounded text-[8px] font-bold ml-1 border print:hidden", isRecent ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-zinc-800 text-zinc-400 border-zinc-700")}>
-      <MailCheck size={8} /> {moment(lastNotified).fromNow()}
-    </span>
-  );
-};
-
 const WeatherCell = ({ data }: { data: DailyWeather | undefined }) => {
     if (!data) return <div className="text-[10px] text-muted-foreground h-full flex items-center justify-center">-</div>;
     let Icon = Sun; let color = "text-yellow-500";
@@ -193,9 +209,9 @@ const WeatherCell = ({ data }: { data: DailyWeather | undefined }) => {
     else if (data.code >= 71 && data.code <= 77) { Icon = Snowflake; color = "text-cyan-400"; }
     else if (data.code >= 95) { Icon = CloudLightning; color = "text-purple-500"; }
     return (
-        <div className="flex flex-row items-center justify-center h-full w-full gap-1" title={`${data.min_temp}Â° - ${data.max_temp}Â°`}>
+        <div className="flex flex-row items-center justify-center h-full w-full gap-1" title={`${data.min_temp}° - ${data.max_temp}°`}>
             <Icon className={`w-3.5 h-3.5 ${color} print:text-black`} />
-            <span className={`text-[11px] font-bold ${data.max_temp >= 105 ? 'text-red-600' : data.max_temp <= 40 ? 'text-blue-600' : 'text-slate-700 dark:text-slate-300'} print:text-black print:text-[9px]`}>{data.max_temp}Â°</span>
+            <span className={`text-[11px] font-bold ${data.max_temp >= 105 ? 'text-red-600' : data.max_temp <= 40 ? 'text-blue-600' : 'text-slate-700 dark:text-slate-300'} print:text-black print:text-[9px]`}>{data.max_temp}°</span>
         </div>
     );
 };
@@ -283,6 +299,7 @@ export default function RosterPage() {
         const mapped = roster.map((u: any) => ({
             id: u.id,
             full_name: u.full_name,
+            stage_name: u.stage_name || u.full_name.split(' ')[0], 
             location: u.primary_work_location || loc,
             department: u.department || 'General',
             job_title: u.job_title || 'STAFF',
@@ -454,19 +471,11 @@ export default function RosterPage() {
     }
   };
 
-  /**
-   * DELETE FUNCTION FIX
-   * Explicitly updates the local shifts state to remove the deleted shift
-   * before re-fetching data. This prevents the "ghost shift" issue where 
-   * the UI doesn't reflect the database deletion immediately.
-   */
   const handleDeleteShift = async () => {
     if (!isManager || !selectedShiftId) return;
 
-    // 1. Log the audit event for accountability
     await logChange(`Deleted shift`, 'employee_schedules', selectedShiftId);
     
-    // 2. Perform the actual deletion in the database
     const { error } = await supabase
         .from('employee_schedules')
         .delete()
@@ -478,16 +487,9 @@ export default function RosterPage() {
         return;
     }
 
-    // 3. REACTIVE UI FIX: 
-    // Filter out the deleted shift from the current state array.
-    // This ensures the cell turns "empty" immediately on the screen.
     setShifts((prevShifts) => prevShifts.filter(s => s.id !== selectedShiftId));
-
-    // 4. Close modal and clean up
     setIsShiftModalOpen(false); 
     toast.success("Shift Deleted");
-    
-    // Optional: Full re-fetch to ensure all totals (hours/stats) are recalculated
     fetchData(); 
   };
 
@@ -603,65 +605,124 @@ const handleSaveProfile = async () => {
         }
       `}</style>
 
-      {/* HEADER CONTROLS */}
-      <div className="flex flex-col gap-4 mb-4 print-hide">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-bold">Schedule & Roster</h1>
-              <div className="text-muted-foreground text-sm flex items-center gap-2">
-                {viewMode === 'week' ? `${startOfWeek.format('MMM D')} - ${startOfWeek.clone().add(6, 'days').format('MMM D, YYYY')}` : currentDate.format('dddd, MMMM Do YYYY')}
-              </div>
-            </div>
+      {/* COMPACT HEADER V9.1 (Mobile Responsive) */}
+      <div className="flex flex-col gap-2 mb-2 print-hide">
+          <div className="min-h-[3.5rem] h-auto flex flex-col md:flex-row items-center justify-between gap-y-3 p-2 border rounded-lg bg-card shadow-sm relative">
             
-            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-              <div className="flex items-center bg-muted p-1 rounded-lg border">
-                  <Button variant={viewMode === 'day' ? 'secondary' : 'ghost'} size="sm" className="h-7 px-3 text-xs" onClick={() => setViewMode('day')}><LayoutList className="w-3 h-3 mr-1" /> Day</Button>
-                  <Button variant={viewMode === 'week' ? 'secondary' : 'ghost'} size="sm" className="h-7 px-3 text-xs" onClick={() => setViewMode('week')}><TableIcon className="w-3 h-3 mr-1" /> Week</Button>
-              </div>
-              <div className="flex items-center gap-2">
-                   <Button variant="outline" size="sm" onClick={handlePrint} className="hidden md:flex"><Printer className="w-4 h-4 mr-2" /> Print</Button>
-                  {viewMode === 'week' && isManager && (
-                    <><Button variant="secondary" size="sm" onClick={handleCopyWeek} disabled={copying || shifts.length === 0} className="hidden md:flex">{copying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3 mr-2" />} Copy Week</Button><PublishButton weekStart={startOfWeek.format('YYYY-MM-DD')} /></>
-                  )}
-                  <div className="flex items-center border rounded-md bg-card shadow-sm">
-                    <Button variant="ghost" size="icon" onClick={() => setCurrentDate(currentDate.clone().subtract(1, viewMode === 'week' ? 'week' : 'day'))}><ChevronLeft className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => setCurrentDate(moment())}>Today</Button>
-                    <Button variant="ghost" size="icon" onClick={() => setCurrentDate(currentDate.clone().add(1, viewMode === 'week' ? 'week' : 'day'))}><ChevronRight className="w-4 h-4" /></Button>
-                  </div>
-              </div>
+            {/* LEFT SECTION: Title & Filters (Order 2 on Mobile, Order 1 on Desktop) */}
+            <div className="w-full md:w-auto order-2 md:order-1 flex items-center gap-3">
+               <h1 className="text-lg font-bold hidden lg:block">Roster</h1>
+               <Separator orientation="vertical" className="h-6 hidden lg:block" />
+               
+               {/* Location Filters: Horizontal Scroll on Mobile */}
+               <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full md:w-auto">
+                <Filter className="w-3.5 h-3.5 text-muted-foreground mr-1 flex-shrink-0" />
+                {Object.keys(LOCATIONS).map(loc => (
+                    <Badge 
+                        key={loc} 
+                        variant={visibleLocs[loc] ? 'default' : 'outline'} 
+                        className={`cursor-pointer select-none px-2 py-0.5 text-[10px] whitespace-nowrap ${visibleLocs[loc] ? 'bg-primary hover:bg-primary/90' : 'bg-transparent text-muted-foreground hover:bg-accent'}`} 
+                        onClick={() => { const newState = { ...visibleLocs, [loc]: !visibleLocs[loc] }; setVisibleLocs(newState); localStorage.setItem('roster_filters', JSON.stringify(newState)); }}
+                    >
+                        {loc}
+                    </Badge>
+                ))}
+               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 pb-2 overflow-x-auto">
-             <Filter className="w-4 h-4 text-muted-foreground mr-1" />
-             {Object.keys(LOCATIONS).map(loc => (
-                 <Badge key={loc} variant={visibleLocs[loc] ? 'default' : 'outline'} className={`cursor-pointer select-none px-3 py-1 ${visibleLocs[loc] ? 'bg-primary hover:bg-primary/90' : 'bg-transparent text-muted-foreground hover:bg-accent'}`} onClick={() => { const newState = { ...visibleLocs, [loc]: !visibleLocs[loc] }; setVisibleLocs(newState); localStorage.setItem('roster_filters', JSON.stringify(newState)); }}>{loc}</Badge>
-             ))}
-          </div>
-      </div>
 
-      <div className="mb-4 flex flex-wrap gap-2 text-xs border p-2 rounded bg-white print:border-black print:mb-2 print:border-b-2">
-        <span className="font-bold mr-2 self-center">Task Legend:</span>
-        {Object.values(TASKS).map(task => (
-            <div key={task.code} className="flex items-center gap-1 border px-2 py-1 rounded print:border-black">
-                <div className={`w-3 h-3 ${task.color} rounded-sm flex items-center justify-center text-[8px] text-white font-bold print-color-exact`}>{task.code}</div>
-                <span className="text-muted-foreground print:text-black">{task.label}</span>
+            {/* CENTER SECTION: Date Navigation (Order 1 on Mobile, Absolute Center on Desktop) */}
+            <div className="w-full md:w-auto order-1 md:order-2 flex justify-center md:absolute md:left-1/2 md:-translate-x-1/2 z-10">
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center bg-muted/50 rounded-md border p-0.5">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentDate(currentDate.clone().subtract(1, viewMode === 'week' ? 'week' : 'day'))}><ChevronLeft className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-semibold" onClick={() => setCurrentDate(moment())}>Today</Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentDate(currentDate.clone().add(1, viewMode === 'week' ? 'week' : 'day'))}><ChevronRight className="w-4 h-4" /></Button>
+                    </div>
+                    <div className="flex flex-col items-center leading-none min-w-[80px]">
+                        <span className="text-xs font-bold whitespace-nowrap">{viewMode === 'week' ? `${startOfWeek.format('MMM D')} - ${startOfWeek.clone().add(6, 'days').format('D')}` : currentDate.format('MMM Do')}</span>
+                        <span className="text-[10px] text-muted-foreground">Week {startOfWeek.isoWeek()}</span>
+                    </div>
+                </div>
             </div>
-        ))}
+
+            {/* RIGHT SECTION: Tools (Order 3) */}
+            <div className="w-full md:w-auto order-3 md:order-3 flex items-center justify-between md:justify-end gap-2">
+                
+                {/* View Toggle */}
+                <div className="flex items-center bg-muted p-0.5 rounded-lg border">
+                  <Button variant={viewMode === 'day' ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2 text-[10px]" onClick={() => setViewMode('day')}>Day</Button>
+                  <Button variant={viewMode === 'week' ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2 text-[10px]" onClick={() => setViewMode('week')}>Week</Button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {/* KEY Popover */}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs">
+                            <Info className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Key</span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-3" align="end">
+                            <h4 className="font-bold text-xs mb-2 text-muted-foreground">Task Legend</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                                {Object.values(TASKS).map(task => (
+                                    <div key={task.code} className="flex items-center gap-2">
+                                        <div className={`w-4 h-4 ${task.color} rounded flex items-center justify-center text-[9px] text-white font-bold`}>{task.code}</div>
+                                        <span className="text-xs">{task.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+
+                    {/* ACTIONS Popover */}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs">
+                                <Settings className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Manage</span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-48 p-2" align="end">
+                            <div className="flex flex-col gap-1">
+                                <Button variant="ghost" size="sm" onClick={handlePrint} className="justify-start h-8 text-xs w-full"><Printer className="w-3.5 h-3.5 mr-2" /> Print Schedule</Button>
+                                {isManager && (
+                                    <>
+                                        <Button variant="ghost" size="sm" onClick={handleCopyWeek} disabled={copying || shifts.length === 0} className="justify-start h-8 text-xs w-full">
+                                            {copying ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <Copy className="w-3.5 h-3.5 mr-2" />} Copy Previous Week
+                                        </Button>
+                                        <div className="pt-1 mt-1 border-t">
+                                            <PublishButton weekStart={startOfWeek.format('YYYY-MM-DD')} />
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                </div>
+
+            </div>
+          </div>
       </div>
 
       {/* TABLE GRID */}
-      <div className="flex-1 overflow-auto border rounded-lg shadow-sm bg-card print:overflow-visible print:h-auto print:border-none print:shadow-none print:bg-white">
+      <div className="flex-1 overflow-auto border rounded-lg shadow-sm bg-card print:overflow-visible print:h-auto print:border-none print:shadow-none print:bg-white relative">
         {viewMode === 'week' && (
         <table className="w-full border-collapse min-w-[1000px] text-sm print:w-full print:min-w-0 print:text-[10px]">
-          <thead className="sticky top-0 bg-muted z-20 shadow-sm print:static print:bg-white print:border-b-2 print:border-black">
+          {/* MAIN HEADER: Sticky Top-0, Z-50 (Highest) */}
+          <thead className="sticky top-0 bg-muted z-50 shadow-sm print:static print:bg-white print:border-b-2 print:border-black h-8">
             <tr>
-                <th className="p-2 text-left w-64 border-b font-bold text-muted-foreground bg-muted pl-4 print:pl-1 print:bg-white print:text-black">
-                    {startOfWeek.format('YYYY')} Week {startOfWeek.isoWeek()} Staff
+                {/* UPDATED HEADER CELL (v9.5): Fixed Width: w-32 (128px) */}
+                <th className="p-1 h-8 text-center w-32 border-b font-bold text-muted-foreground bg-muted print:pl-1 print:bg-white print:text-black z-50">
+                    <div className="flex flex-row items-center justify-center gap-1">
+                         <Users className="w-4 h-4" />
+                         <span className="text-[10px] uppercase">Staff</span>
+                    </div>
                 </th>
                 {weekDays.map(day => (
-                    <th key={day.toString()} className="p-2 text-center border-b min-w-[100px] border-l bg-muted print:bg-white print:text-black print:w-[12%]">
-                        <div className="font-semibold">{day.format('ddd')}</div>
-                        <div className="text-[10px] text-muted-foreground print:text-black">{day.format('MMM D')}</div>
+                    // UPDATED DATE CELL (v9.5): Single line "Mon 5", h-8
+                    <th key={day.toString()} className="p-1 h-8 text-center border-b min-w-[100px] border-l bg-muted print:bg-white print:text-black print:w-[12%]">
+                        <span className="text-xs font-bold text-foreground">{day.format('ddd')}</span>
+                        <span className="text-xs ml-1 text-muted-foreground">{day.format('D')}</span>
                     </th>
                 ))}
             </tr>
@@ -674,12 +735,16 @@ const handleSaveProfile = async () => {
 
                 return (
                     <Fragment key={locName}>
-                        <tbody className="print:break-after-avoid">
-                            <tr className={`bg-yellow-400 text-black print-yellow border-b-2 border-black ${locIndex > 0 ? 'print-break-before-page' : ''}`}>
-                                <td className="p-2 font-bold uppercase tracking-wider text-xs border-b border-black sticky left-0 z-10 bg-yellow-400 print-yellow print:static print:text-black print:text-sm">
-                                    <div className="flex justify-between items-center">
-                                        <span><MapPin className="w-3 h-3 inline mr-2 print:hidden" /> {locName}</span>
-                                        <span className="bg-white/50 text-[10px] px-1.5 py-0.5 rounded text-black font-mono border border-black/20">{sumWeeklyHours(locShifts).toFixed(1)}h</span>
+                        <tbody className="print:break-after-avoid relative">
+                            {/* LOCATION HEADER: Sticky Top-8 (Just under Main Header), Z-40 */}
+                            <tr className={`bg-yellow-400 text-black print-yellow border-b-2 border-black sticky top-8 z-40 ${locIndex > 0 ? 'print-break-before-page' : ''}`}>
+                                <td className="p-2 font-bold uppercase tracking-wider text-xs border-b border-black sticky left-0 z-40 bg-yellow-400 print-yellow print:static print:text-black print:text-sm">
+                                    <div className="flex flex-col justify-center items-center text-center">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <MapPin className="w-3 h-3 print:hidden" /> 
+                                            <span className="text-[10px]">{locName}</span>
+                                        </div>
+                                        <span className="bg-white/50 text-[10px] px-1.5 py-0.5 rounded text-black font-mono border border-black/20 mt-1">{sumWeeklyHours(locShifts).toFixed(1)}h</span>
                                     </div>
                                 </td>
                                 {weekDays.map(day => {
@@ -687,24 +752,34 @@ const handleSaveProfile = async () => {
                                     const dailyTotal = sumDailyHours(locShifts, dateStr);
                                     const stats = locName === 'Las Vegas' ? dailyStats[dateStr] : null;
                                     return (
-                                        <td key={day.toString()} className="border-l border-black bg-yellow-400 print-yellow text-center text-[10px] font-mono text-black align-top p-1">
+                                        <td key={day.toString()} className="border-l border-black bg-yellow-400 print-yellow text-center text-[10px] font-mono text-black align-top p-1 sticky top-8 z-30">
                                             <div className="font-bold">{dailyTotal > 0 ? `${dailyTotal.toFixed(1)}h` : '-'}</div>
                                             {stats && stats.people > 0 && (
-                                                <div className="mt-1 pt-1 border-t border-black/20 flex flex-col items-center" title={stats.fullString}>
-                                                     <div className="font-bold text-orange-900 flex items-center gap-0.5">
-                                                        {stats.people} <span className="text-[8px] uppercase opacity-70">ppl</span>
-                                                     </div>
-                                                     <div className="text-[9px] leading-none opacity-80 whitespace-nowrap overflow-hidden text-ellipsis w-full max-w-[60px]">
-                                                        {stats.fullString}
-                                                     </div>
-                                                </div>
+                                                /* UPDATED DASHBOARD LINK (v9.7) - Uses getDashboardLink helper */
+                                                <Button 
+                                                    asChild 
+                                                    variant="ghost" 
+                                                    className="mt-1 h-auto py-1 px-1.5 border border-black/10 hover:bg-black/10 text-orange-900 rounded-sm w-full flex flex-col items-center gap-0.5"
+                                                    title={stats.fullString}
+                                                >
+                                                    <Link href={getDashboardLink(locName, dateStr)}>
+                                                        <div className="font-bold flex items-center gap-1 text-xs">
+                                                            <BarChart3 className="w-3 h-3 opacity-50" />
+                                                            {stats.people} <span className="text-[8px] uppercase opacity-70">ppl</span>
+                                                        </div>
+                                                        <div className="text-[8px] leading-none opacity-80 whitespace-nowrap overflow-hidden text-ellipsis w-full max-w-[60px] text-center">
+                                                            {stats.fullString}
+                                                        </div>
+                                                    </Link>
+                                                </Button>
                                             )}
                                         </td>
                                     );
                                 })}
                             </tr>
-                            <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 h-12 print:h-auto print:border-black print:break-after-avoid">
-                                <td className="p-2 text-[10px] font-semibold text-muted-foreground uppercase border-r sticky left-0 z-10 bg-slate-50 dark:bg-slate-900 print:bg-white print:static print:text-black">Forecast</td>
+                            {/* FORECAST ROW: Scrolls under the sticky headers */}
+                            <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 h-8 print:h-auto print:border-black print:break-after-avoid">
+                                <td className="p-1 text-[10px] font-semibold text-muted-foreground uppercase border-r sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 print:bg-white print:static print:text-black text-center">Forecast</td>
                                 {weekDays.map(day => (<td key={day.toString()} className="border-l p-0 text-center print:border-gray-300"><WeatherCell data={locWeather.find(w => w.date === day.format('YYYY-MM-DD'))} /></td>))}
                             </tr>
                         </tbody>
@@ -719,10 +794,10 @@ const handleSaveProfile = async () => {
                             return (
                                 <tbody key={`${locName}-${deptName}`} className="dept-block">
                                     <tr className={`${isVisiting ? 'bg-amber-50 dark:bg-amber-950/30' : deptColorClass} print-color-exact border-t-2 border-slate-200 print:border-black`}>
-                                        <td className={`p-1 pl-4 font-bold text-xs uppercase border-b sticky left-0 z-10 ${isVisiting ? 'text-amber-600' : ''} print:static print:text-black print:border-black print:pl-1`}>
-                                            <div className="flex justify-between items-center pr-2">
+                                        <td className={`p-1 font-bold text-xs uppercase border-b sticky left-0 z-30 w-32 ${isVisiting ? 'text-amber-600' : ''} print:static print:text-black print:border-black`}>
+                                            <div className="flex flex-col justify-center items-center text-center w-full whitespace-normal leading-tight">
                                                 <span>{isVisiting && <Plane className="w-3 h-3 inline mr-1 mb-0.5" />} {deptName}</span>
-                                                <span className="text-[10px] opacity-70 bg-black/5 dark:bg-white/10 px-1 rounded print:bg-white print:text-black print:border print:border-black">{sumWeeklyHours(deptShifts).toFixed(1)}h</span>
+                                                <span className="text-[10px] opacity-70 bg-black/5 dark:bg-white/10 px-1 rounded print:bg-white print:text-black print:border print:border-black mt-0.5">{sumWeeklyHours(deptShifts).toFixed(1)}h</span>
                                             </div>
                                         </td>
                                         {weekDays.map(day => (
@@ -738,50 +813,42 @@ const handleSaveProfile = async () => {
                                             <Fragment key={roleName}>
                                                 {roleName !== 'General' && (
                                                     <tr className="bg-slate-50/50 dark:bg-slate-900/20 print:bg-white">
-                                                        <td colSpan={8} className="px-4 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider print:text-black print:pl-2">â†³ {roleName}</td>
+                                                        <td colSpan={8} className="px-4 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider print:text-black print:pl-2">↳ {roleName}</td>
                                                     </tr>
                                                 )}
                                                 {emps.map((emp: Employee) => {
                                                     const empShifts = shifts.filter(s => s.user_id === emp.id);
                                                     return (
                                                     <tr key={`${locName}-${emp.id}`} className="hover:bg-muted/20 transition-colors border-b print:border-gray-400 print:h-auto">
-                                                        <td className="p-0 border-r border-r-slate-100 dark:border-r-slate-800 sticky left-0 z-10 bg-card print:static print:border-r print:border-black print:p-0">
-                                                            <div className="p-2 w-64 flex flex-col min-w-0 flex-1 h-full gap-1 print:p-1 print:w-auto">
-                                                                <div className="flex flex-row items-center gap-3 print:hidden">
-                                                                    <div className="flex-shrink-0">
-                                                                        <UserStatusAvatar 
-                                                                            user={emp} 
-                                                                            currentUserLevel={currentUserLevel} 
-                                                                            isCurrentUser={currentUserId === emp.id}
-                                                                            size="md" 
-                                                                        />
+                                                        {/* EMPLOYEE CELL (v9.4 layout preserved): w-32, Side-by-Side */}
+                                                        <td className="p-0 border-r border-r-slate-100 dark:border-r-slate-800 sticky left-0 z-30 bg-card print:static print:border-r print:border-black print:p-0">
+                                                            <div className="p-1 w-32 flex flex-row items-center justify-start h-full gap-2 print:w-auto">
+                                                                <div className="flex-shrink-0 print:hidden ml-1">
+                                                                    <UserStatusAvatar 
+                                                                        user={emp} 
+                                                                        currentUserLevel={currentUserLevel} 
+                                                                        isCurrentUser={currentUserId === emp.id}
+                                                                        size="md" 
+                                                                    />
+                                                                </div>
+                                                                <div className="flex flex-col items-start justify-center min-w-0 overflow-hidden">
+                                                                    <div className="font-bold text-xs truncate w-full text-left" title={emp.full_name}>
+                                                                        {emp.stage_name}
+                                                                        {emp.timeclock_blocked && <Ban className="w-3 h-3 text-red-500 inline ml-1" />}
                                                                     </div>
-                                                                    <div className="flex flex-col min-w-0 flex-1">
-                                                                        <div className="font-medium flex items-center gap-1">
-                                                                          <span className={`truncate ${isVisiting ? "italic text-amber-700" : ""}`}>{emp.full_name}</span>
-                                                                          {(() => {
-                                                                              const latest = empShifts.reduce((max: string | null, s: any) => !s.last_notified ? max : !max ? s.last_notified : moment(s.last_notified).isAfter(max) ? s.last_notified : max, null);
-                                                                              return <LastNotifiedBadge lastNotified={latest} />;
-                                                                          })()}
-                                                                          {emp.timeclock_blocked && <Ban className="w-3 h-3 text-red-500 flex-shrink-0" />}
-                                                                        </div>
-                                                                        <div className="flex items-center justify-between mt-0.5">
-                                                                            <span className="text-[10px] opacity-60"></span>
-                                                                            {sumWeeklyHours(empShifts) > 0 && <span className="text-[10px] bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-200 px-1.5 rounded-sm font-mono">{sumWeeklyHours(empShifts).toFixed(1)}h</span>}
-                                                                        </div>
+                                                                    <div className="mt-0.5">
+                                                                        {sumWeeklyHours(empShifts) > 0 && (
+                                                                            <span className="text-[10px] bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-200 px-1.5 py-0.5 rounded-sm font-mono inline-block">
+                                                                                {sumWeeklyHours(empShifts).toFixed(1)}h
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                                 
                                                                 {/* PRINT VIEW */}
                                                                 <div className="hidden print:flex flex-row items-center justify-between w-full">
                                                                     <div className="flex items-center gap-1.5 overflow-hidden">
-                                                                        <div className="w-5 h-5 rounded-full overflow-hidden bg-slate-200 border border-slate-300 flex items-center justify-center">
-                                                                            <span className="font-bold text-slate-500 text-[8px]">{emp.full_name.substring(0, 2)}</span>
-                                                                        </div>
-                                                                        <div className="flex flex-col leading-none">
-                                                                            <span className="font-bold text-[10px] truncate">{emp.full_name}</span>
-                                                                            <span className="text-[9px] font-mono text-gray-800 truncate">{emp.phone}</span>
-                                                                        </div>
+                                                                        <span className="font-bold text-[10px] truncate">{emp.stage_name}</span>
                                                                     </div>
                                                                     {sumWeeklyHours(empShifts) > 0 && <span className="text-[10px] font-mono font-bold border border-black px-1 ml-1 whitespace-nowrap">{sumWeeklyHours(empShifts).toFixed(1)}h</span>}
                                                                 </div>
@@ -839,7 +906,7 @@ const handleSaveProfile = async () => {
                                     <div className="flex items-center"><MapPin className="w-4 h-4 inline mr-2" /> {locName}</div>
                                     {locName === 'Las Vegas' && dailyStats[currentDate.format('YYYY-MM-DD')] && (
                                         <div className="text-xs font-normal text-orange-300 normal-case mt-1 font-mono">
-                                            People: {dailyStats[currentDate.format('YYYY-MM-DD')].people} â€” {dailyStats[currentDate.format('YYYY-MM-DD')].fullString}
+                                            People: {dailyStats[currentDate.format('YYYY-MM-DD')].people} — {dailyStats[currentDate.format('YYYY-MM-DD')].fullString}
                                         </div>
                                     )}
                                 </div>
@@ -868,7 +935,7 @@ const handleSaveProfile = async () => {
                                                                 size="md" 
                                                             />
                                                             <div>
-                                                                <div className="font-semibold text-sm flex items-center gap-2"><span className="">{emp.full_name}</span></div>
+                                                                <div className="font-semibold text-sm flex items-center gap-2"><span className="">{emp.stage_name}</span></div>
                                                                 <div className="hidden print:block text-[9px] font-mono leading-tight">{emp.phone}</div>
                                                                 <div className="text-xs text-muted-foreground flex items-center gap-1 print:text-black">
                                                                     <Badge variant="outline" className="text-[10px] h-5 px-1 print:border-black">{shift.role}</Badge>
