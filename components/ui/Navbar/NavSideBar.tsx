@@ -2,7 +2,7 @@
  * @file /components/UI/Navbar/NavSideBar.tsx
  * @description Main Sidebar Navigation.
  * Updated: 
- * - Branding Stroke: Reduced from 1.5px to 0.5px for a thinner, cleaner outline in Light Mode.
+ * - FIXED: System Health link pointed to correct path '/biz/admin/health'.
  */
 'use client';
 
@@ -78,14 +78,15 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   // --- 5. HR (Admin Only - Level 900+) ---
   const hrLinks: NavLink[] = [
      { href: '/biz/admin/hr/audit', label: 'Staff Audit', minLevel: 900, icon: <HeartPulse size={16} className="text-red-600 dark:text-red-400" /> },
+     { href: '/biz/admin/hr/user-cleanup', label: 'User Merge', minLevel: 900, icon: <Trash2 size={16} className="text-red-600 dark:text-red-400" /> },
      { href: '/biz/payroll', label: 'Payroll', minLevel: 900 },
      { href: '/biz/users/admin', label: 'User Admin', minLevel: 900, icon: <Users size={16} /> },
   ];
 
-  // --- 6. DEVELOPER (Super Admin - Level 950+) ---
+  // --- 6. DEVELOPER (Now Level 900+) ---
   const devLinks: NavLink[] = [
-    { href: '/biz/admin/system/health', label: 'System Health', minLevel: 950, icon: <Activity size={16} className="text-green-600 dark:text-green-400" /> },
-    { href: '/biz/admin/hr/user-cleanup', label: 'Data Cleanup', minLevel: 950, icon: <Trash2 size={16} className="text-green-600 dark:text-green-400" /> },
+    // FIXED: Path changed from '/biz/admin/system/health' to '/biz/admin/health'
+    { href: '/biz/admin/health', label: 'System Health', minLevel: 900, icon: <Activity size={16} className="text-green-600 dark:text-green-400" /> },
   ];
 
   /**
@@ -141,10 +142,19 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     const filtered = links.filter(l => l.minLevel <= userLevel);
     if (filtered.length === 0) return null;
 
+    // Header Color Logic
     let headerClass = "text-orange-600 dark:text-orange-500/80";
-    if (isPublicGroup) headerClass = "text-blue-700 dark:text-blue-400 hover:text-blue-500 transition-colors cursor-pointer";
-    else if (minLevelRequired >= 950) headerClass = "text-green-700 dark:text-green-500/80";
-    else if (minLevelRequired >= 900) headerClass = "text-red-700 dark:text-red-500/80";
+    
+    if (isPublicGroup) {
+      headerClass = "text-blue-700 dark:text-blue-400 hover:text-blue-500 transition-colors cursor-pointer";
+    }
+    // Explicit check for "Developer Tools" title to ensure it gets Green color
+    else if (title === 'Developer Tools') {
+      headerClass = "text-green-700 dark:text-green-500/80";
+    }
+    else if (minLevelRequired >= 900) {
+      headerClass = "text-red-700 dark:text-red-500/80";
+    }
 
     return (
       <div className="mb-6">
@@ -183,14 +193,13 @@ export default function NavSideBar({ user }: NavSideBarProps) {
           <span className="light-mode-stroke">SUNBUGGY</span>
         </div>
         
-        {/* UPDATED: Thinner stroke for light mode */}
         <style jsx>{`
           .light-mode-stroke {
              color: #FACC15; 
           }
           :global(.light) .light-mode-stroke, 
           :global(html:not(.dark)) .light-mode-stroke {
-             -webkit-text-stroke: 0.5px black; /* Changed from 1.5px to 0.5px */
+             -webkit-text-stroke: 0.5px black;
              color: #FACC15;
           }
         `}</style>
@@ -216,7 +225,7 @@ export default function NavSideBar({ user }: NavSideBarProps) {
 
       {/* 6. DEV */}
       <div className="mt-auto">
-        {renderLinkGroup(devLinks, 'Developer Tools', 950)}
+        {renderLinkGroup(devLinks, 'Developer Tools', 900)}
       </div>
 
       {/* FOOTER */}
