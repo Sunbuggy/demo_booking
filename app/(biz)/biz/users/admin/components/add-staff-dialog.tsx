@@ -1,6 +1,6 @@
 /**
  * @file /app/(biz)/biz/users/admin/components/add-staff-dialog.tsx
- * @description Refactored to include Department logic and fix data persistence issues.
+ * @description Refactored to include Department logic and use Centralized User Levels.
  */
 'use client';
 
@@ -26,8 +26,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from "@/components/ui/switch";
-import { UserPlus, Loader2, Mail, UserCheck, MapPin, Briefcase } from 'lucide-react';
+import { UserPlus, Loader2, Mail, UserCheck } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+
+// --- NEW IMPORT: Single Source of Truth ---
+import { USER_LEVELS, ROLE_LABELS } from '@/lib/constants/user-levels';
 
 // --- CONFIGURATION (Synced with Roster Page for consistency) ---
 const LOCATIONS_CONFIG: Record<string, string[]> = {
@@ -65,6 +68,11 @@ export default function AddStaffDialog() {
 
   // Derived departments based on chosen location
   const availableDepartments = LOCATIONS_CONFIG[selectedLoc] || [];
+
+  // Filter Roles: Only show Staff (300) and above for onboarding
+  const onboardingRoles = Object.entries(ROLE_LABELS).filter(
+    ([level]) => Number(level) >= USER_LEVELS.STAFF
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -152,14 +160,17 @@ export default function AddStaffDialog() {
 
           <div className="space-y-2">
              <Label className="text-xs text-zinc-500 font-bold uppercase">Access Level</Label>
-             <Select name="userLevel" defaultValue="300">
+             <Select name="userLevel" defaultValue={USER_LEVELS.STAFF.toString()}>
               <SelectTrigger className="bg-zinc-900 border-zinc-800">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                <SelectItem value="300">Employee (300)</SelectItem>
-                <SelectItem value="500">Manager (500)</SelectItem>
-                <SelectItem value="900">Admin (900)</SelectItem>
+                {/* Dynamically render only STAFF and higher */}
+                {onboardingRoles.map(([level, label]) => (
+                  <SelectItem key={level} value={level}>
+                    {label} ({level})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

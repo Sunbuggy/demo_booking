@@ -20,7 +20,7 @@ import {
 
 // Custom Components
 import { DataTableColumnHeader } from '../components/column-header';
-import UserStatusAvatar from '@/components/UserStatusAvatar'; // NEW IMPORT
+import UserStatusAvatar from '@/components/UserStatusAvatar';
 import ClockIn from './time-clock/clock-in';
 import AdjustTime from './time-clock/adjust-time';
 import HistoryTimeClockEvents from './time-clock/time-history';
@@ -32,6 +32,9 @@ import {
   changeUserRole,
 } from '@/utils/supabase/queries';
 import { UserType } from '../../../types';
+
+// --- NEW IMPORT: Single Source of Truth ---
+import { USER_LEVELS, ROLE_LABELS } from '@/lib/constants/user-levels';
 
 // ---------------------------------------------------------
 // Types
@@ -62,7 +65,7 @@ export const columns: ColumnDef<UserType, any>[] = [
           */}
           <UserStatusAvatar 
             user={user} 
-            currentUserLevel={900} // Context for admin management
+            currentUserLevel={USER_LEVELS.ADMIN} // Updated: Uses Constant
             size="sm" 
           />
           
@@ -89,13 +92,14 @@ export const columns: ColumnDef<UserType, any>[] = [
     enableHiding: false
   },
 
-  // 2. ROLE COLUMN
+  // 2. ROLE COLUMN (The Heavy Refactor)
   {
     accessorKey: 'user_level',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Role" />
     ),
     cell: ({ row }) => {
+      // Local state triggers for the useEffect below
       const [makeEmployee, setMakeEmployee] = useState(false);
       const [makeDriver, setMakeDriver] = useState(false);
       const [makeManager, setMakeManager] = useState(false);
@@ -111,26 +115,33 @@ export const columns: ColumnDef<UserType, any>[] = [
                 await changeUserRole(supabase, row.original.id, roleLevel);
                 toast({
                     title: 'Success',
-                    description: `User has been made a ${roleName}`,
+                    description: `User updated to ${roleName} (Level ${roleLevel})`,
                     duration: 2000,
-                    variant: 'success'
+                    variant: 'default' // 'success' isn't standard in all Shadcn versions, using default
                 });
             } catch (err) {
                 console.error(err);
                 toast({
                     title: 'Error',
-                    description: `Error making user a ${roleName}`,
+                    description: `Error updating role to ${roleName}`,
                     variant: 'destructive'
                 });
             }
         };
 
-        if (makeCustomer) handleRoleChange(100, 'customer');
-        if (makeEmployee) handleRoleChange(300, 'employee');
-        if (makeDriver) handleRoleChange(350, 'driver');
-        if (makeManager) handleRoleChange(651, 'manager');
-        if (makeAdmin) handleRoleChange(900, 'admin');
+        // --- UPDATED LOGIC: Using Constants instead of Magic Numbers ---
+        
+        if (makeCustomer) handleRoleChange(USER_LEVELS.CUSTOMER, 'Customer');
+        if (makeEmployee) handleRoleChange(USER_LEVELS.STAFF, 'Staff');
+        
+        // Note: Drivers are now functionally "Staff" (300), but we keep the specific button for UI preference.
+        // This ensures they get the correct permissions without needing a unique '350' level.
+        if (makeDriver) handleRoleChange(USER_LEVELS.STAFF, 'Driver');
+        
+        if (makeManager) handleRoleChange(USER_LEVELS.MANAGER, 'Manager');
+        if (makeAdmin) handleRoleChange(USER_LEVELS.ADMIN, 'Admin');
 
+        // Reset triggers
         setMakeEmployee(false);
         setMakeDriver(false);
         setMakeManager(false);
@@ -147,9 +158,9 @@ export const columns: ColumnDef<UserType, any>[] = [
             <DialogTrigger asChild>
               <Button
                 variant={
-                  userLevel === 900
+                  userLevel >= USER_LEVELS.ADMIN
                     ? 'positive'
-                    : userLevel > 650
+                    : userLevel >= USER_LEVELS.MANAGER
                       ? 'secondary'
                       : 'default'
                 }
@@ -165,23 +176,24 @@ export const columns: ColumnDef<UserType, any>[] = [
                   <span className="text-3xl font-extrabold text-foreground block my-2">
                     Current Level: {row.original.user_level}
                   </span>
-                  <div className="text-sm space-y-1">
-                    <p>Customers &gt; 100</p>
-                    <p>Employees &gt; 299</p>
-                    <p>Drivers = 350</p>
-                    <p>Managers &gt; 650</p>
-                    <p>Admins = 900</p>
+                  {/* Dynamic Legend from Constants - Never gets out of sync */}
+                  <div className="text-sm space-y-1 text-muted-foreground">
+                    <p>Customer = {USER_LEVELS.CUSTOMER}</p>
+                    <p>Staff / Driver = {USER_LEVELS.STAFF}</p>
+                    <p>Manager = {USER_LEVELS.MANAGER}</p>
+                    <p>Admin = {USER_LEVELS.ADMIN}</p>
                   </div>
                 </DialogDescription>
               </DialogHeader>
               <div className="flex flex-wrap gap-2 items-center justify-center pt-4">
                 <DialogClose asChild>
-                  <Button onClick={() => setMakeCustomer(true)}>Customer</Button>
+                  <Button variant="outline" onClick={() => setMakeCustomer(true)}>Customer</Button>
                 </DialogClose>
                 <DialogClose asChild>
-                  <Button onClick={() => setMakeEmployee(true)}>Employee</Button>
+                  <Button onClick={() => setMakeEmployee(true)}>Staff</Button>
                 </DialogClose>
                  <DialogClose asChild>
+                  {/* Keeps the specific 'Driver' button for ease of use, but applies Level 300 */}
                   <Button onClick={() => setMakeDriver(true)}>Driver</Button>
                 </DialogClose>
                 <DialogClose asChild>

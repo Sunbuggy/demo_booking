@@ -1,8 +1,7 @@
 /**
  * @file /components/UI/Navbar/NavSideBar.tsx
  * @description Main Sidebar Navigation.
- * Updated: 
- * - FIXED: System Health link pointed to correct path '/biz/admin/health'.
+ * Updated: NOW USES CENTRALIZED USER_LEVELS CONSTANTS.
  */
 'use client';
 
@@ -20,6 +19,9 @@ import {
 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+
+// --- NEW IMPORT: Single Source of Truth ---
+import { USER_LEVELS } from '@/lib/constants/user-levels';
 
 interface UserType {
   user_level: number;
@@ -39,54 +41,56 @@ interface NavSideBarProps {
 
 export default function NavSideBar({ user }: NavSideBarProps) {
   const pathname = usePathname();
-  const userLevel = user?.user_level ?? 0;
+  // Default to GUEST (0) if user is null
+  const userLevel = user?.user_level ?? USER_LEVELS.GUEST;
 
   // --- 1. PUBLIC LINKS (Customer Facing) ---
   const publicLinks: NavLink[] = [
-    { href: '/lasvegas', label: 'Las Vegas', minLevel: 0 },
-    { href: '/pismo', label: 'Pismo Beach', minLevel: 0 },
-    { href: '/silverlake', label: 'Silver Lake', minLevel: 0 },
-    { href: '/pismo/book', label: 'Pismo Booking', minLevel: 0 },
+    { href: '/lasvegas', label: 'Las Vegas', minLevel: USER_LEVELS.GUEST },
+    { href: '/pismo', label: 'Pismo Beach', minLevel: USER_LEVELS.GUEST },
+    { href: '/silverlake', label: 'Silver Lake', minLevel: USER_LEVELS.GUEST },
+    { href: '/pismo/book', label: 'Pismo Booking', minLevel: USER_LEVELS.GUEST },
   ];
 
   // --- 2. DASHBOARDS (Staff 300+) ---
   const dashboardLinks: NavLink[] = [
-    { href: `/biz/vegas`, label: 'Las Vegas', minLevel: 300 },
-    { href: `/biz/pismo`, label: 'Pismo Beach', minLevel: 300 },
-    { href: `/biz/michigan`, label: 'Silver Lake', minLevel: 300, external: true },
+    { href: `/biz/vegas`, label: 'Las Vegas', minLevel: USER_LEVELS.STAFF },
+    { href: `/biz/pismo`, label: 'Pismo Beach', minLevel: USER_LEVELS.STAFF },
+    { href: `/biz/michigan`, label: 'Silver Lake', minLevel: USER_LEVELS.STAFF, external: true },
   ];
 
   // --- 3. STAFF HUB (General Tools 300+) ---
   const staffLinks: NavLink[] = [
-    { href: '/biz/schedule', label: 'ROSTER', minLevel: 300 }, 
-    { href: '/biz/vehicles/admin', label: 'Fleet Management', minLevel: 300, icon: <Car size={16} /> },
-    { href: '/daily-pics', label: 'Daily Pics', minLevel: 300 },
-    { href: '/biz/sst', label: 'SST', minLevel: 300 },
-    { href: '/biz/qr', label: 'QR Generator', minLevel: 300 },
-    { href: 'https://www.sunbuggy.biz/', label: 'Old Biz Portal', minLevel: 300, external: true },
-    { href: 'tel:+17752060022', label: 'Cyber Support', minLevel: 300 },
+    { href: '/biz/schedule', label: 'ROSTER', minLevel: USER_LEVELS.STAFF }, 
+    { href: '/biz/vehicles/admin', label: 'Fleet Management', minLevel: USER_LEVELS.STAFF, icon: <Car size={16} /> },
+    { href: '/daily-pics', label: 'Daily Pics', minLevel: USER_LEVELS.STAFF },
+    { href: '/biz/sst', label: 'SST', minLevel: USER_LEVELS.STAFF },
+    { href: '/biz/qr', label: 'QR Generator', minLevel: USER_LEVELS.STAFF },
+    { href: 'https://www.sunbuggy.biz/', label: 'Old Biz Portal', minLevel: USER_LEVELS.STAFF, external: true },
+    { href: 'tel:+17752060022', label: 'Cyber Support', minLevel: USER_LEVELS.STAFF },
   ];
 
-  // --- 4. OPERATIONS MANAGEMENT (Managers 600+) ---
+  // --- 4. OPERATIONS MANAGEMENT (Managers 500+) ---
+  // Updated from old logic (was 600) to new USER_LEVELS.MANAGER (500)
   const operationsLinks: NavLink[] = [
-    { href: '/biz/reports', label: 'Reports', minLevel: 600, icon: <FileText size={16} /> },
-    { href: '/biz/pismo-times', label: 'Pismo Times', minLevel: 600 },
-    { href: '/biz/pismo-pricing', label: 'Pismo Pricing', minLevel: 600 },
-    { href: '/biz/admin/charge_pismo', label: 'Pismo Billing', minLevel: 600 },
+    { href: '/biz/reports', label: 'Reports', minLevel: USER_LEVELS.MANAGER, icon: <FileText size={16} /> },
+    { href: '/biz/pismo-times', label: 'Pismo Times', minLevel: USER_LEVELS.MANAGER },
+    { href: '/biz/pismo-pricing', label: 'Pismo Pricing', minLevel: USER_LEVELS.MANAGER },
+    { href: '/biz/admin/charge_pismo', label: 'Pismo Billing', minLevel: USER_LEVELS.MANAGER },
   ];
 
-  // --- 5. HR (Admin Only - Level 900+) ---
+  // --- 5. HR (Specific Role - Level 925+) ---
+  // Strictly for HR/Owners, distinct from standard SysAdmin
   const hrLinks: NavLink[] = [
-     { href: '/biz/admin/hr/audit', label: 'Staff Audit', minLevel: 900, icon: <HeartPulse size={16} className="text-red-600 dark:text-red-400" /> },
-     { href: '/biz/admin/hr/user-cleanup', label: 'User Merge', minLevel: 900, icon: <Trash2 size={16} className="text-red-600 dark:text-red-400" /> },
-     { href: '/biz/payroll', label: 'Payroll', minLevel: 900 },
-     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900, icon: <Users size={16} /> },
+     { href: '/biz/admin/hr/audit', label: 'Staff Audit', minLevel: USER_LEVELS.HR, icon: <HeartPulse size={16} className="text-red-600 dark:text-red-400" /> },
+     { href: '/biz/admin/hr/user-cleanup', label: 'User Merge', minLevel: USER_LEVELS.HR, icon: <Trash2 size={16} className="text-red-600 dark:text-red-400" /> },
+     { href: '/biz/payroll', label: 'Payroll', minLevel: USER_LEVELS.HR },
+     { href: '/biz/users/admin', label: 'User Admin', minLevel: USER_LEVELS.HR, icon: <Users size={16} /> },
   ];
 
-  // --- 6. DEVELOPER (Now Level 900+) ---
+  // --- 6. DEVELOPER (Level 950+) ---
   const devLinks: NavLink[] = [
-    // FIXED: Path changed from '/biz/admin/system/health' to '/biz/admin/health'
-    { href: '/biz/admin/health', label: 'System Health', minLevel: 900, icon: <Activity size={16} className="text-green-600 dark:text-green-400" /> },
+    { href: '/biz/admin/health', label: 'System Health', minLevel: USER_LEVELS.DEV, icon: <Activity size={16} className="text-green-600 dark:text-green-400" /> },
   ];
 
   /**
@@ -137,8 +141,10 @@ export default function NavSideBar({ user }: NavSideBarProps) {
    * Renders a group of links with a section header.
    */
   const renderLinkGroup = (links: NavLink[], title: string, minLevelRequired: number, isPublicGroup = false) => {
-    if (minLevelRequired > 0 && userLevel < minLevelRequired) return null;
+    // Basic Access Check
+    if (minLevelRequired > USER_LEVELS.GUEST && userLevel < minLevelRequired) return null;
     
+    // Detailed Filter (e.g. if a specific link inside a group requires higher access)
     const filtered = links.filter(l => l.minLevel <= userLevel);
     if (filtered.length === 0) return null;
 
@@ -148,11 +154,10 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     if (isPublicGroup) {
       headerClass = "text-blue-700 dark:text-blue-400 hover:text-blue-500 transition-colors cursor-pointer";
     }
-    // Explicit check for "Developer Tools" title to ensure it gets Green color
-    else if (title === 'Developer Tools') {
+    else if (minLevelRequired >= USER_LEVELS.DEV) {
       headerClass = "text-green-700 dark:text-green-500/80";
     }
-    else if (minLevelRequired >= 900) {
+    else if (minLevelRequired >= USER_LEVELS.ADMIN) {
       headerClass = "text-red-700 dark:text-red-500/80";
     }
 
@@ -206,26 +211,26 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       </div>
 
       {/* 1. WELCOME (Public Group) */}
-      {renderLinkGroup(publicLinks, 'WELCOME', 0, true)}
+      {renderLinkGroup(publicLinks, 'WELCOME', USER_LEVELS.GUEST, true)}
 
       {/* SEPARATOR */}
       <div className="my-2 border-t border-zinc-200 dark:border-zinc-800/50" />
 
       {/* 2. STAFF DASHBOARDS */}
-      {renderLinkGroup(dashboardLinks, 'Dashboards', 300)}
+      {renderLinkGroup(dashboardLinks, 'Dashboards', USER_LEVELS.STAFF)}
 
       {/* 3. STAFF HUB */}
-      {renderLinkGroup(staffLinks, 'Staff Hub', 300)}
+      {renderLinkGroup(staffLinks, 'Staff Hub', USER_LEVELS.STAFF)}
 
       {/* 4. OPERATIONS */}
-      {renderLinkGroup(operationsLinks, 'Operations', 600)}
+      {renderLinkGroup(operationsLinks, 'Operations', USER_LEVELS.MANAGER)}
 
       {/* 5. HR */}
-      {renderLinkGroup(hrLinks, 'Human Resources', 900)}
+      {renderLinkGroup(hrLinks, 'Human Resources', USER_LEVELS.HR)}
 
       {/* 6. DEV */}
       <div className="mt-auto">
-        {renderLinkGroup(devLinks, 'Developer Tools', 900)}
+        {renderLinkGroup(devLinks, 'Developer Tools', USER_LEVELS.DEV)}
       </div>
 
       {/* FOOTER */}

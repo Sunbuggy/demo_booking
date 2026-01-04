@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import { createClient as createUserClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+// Import our Single Source of Truth to avoid magic numbers
+import { USER_LEVELS } from '@/lib/constants/user-levels';
 
 /**
  * IMPACT ANALYSIS: Hierarchical Sync
@@ -39,20 +41,21 @@ function getAdminClient() {
 }
 
 export async function updateEmployeeProfile(prevState: any, formData: FormData) {
-  // 1. Verify Authorization
+  // 1. Verify Authorization (Auth Layer)
   const userClient = await createUserClient();
   const { data: { user: actor } } = await userClient.auth.getUser();
-  if (!actor) return { message: 'Unauthorized', success: false };
+  
+  if (!actor) return { message: 'Unauthorized: Please log in.', success: false };
 
   const supabaseAdmin = getAdminClient();
 
-  // 2. Validate & Map FormData (Matches UserForm 'name' attributes)
+  // 2. Validate & Map FormData
   const validated = ProfileSchema.safeParse({
     userId: formData.get('userId'),
     firstName: formData.get('first_name'),
     lastName: formData.get('last_name'),
     stageName: formData.get('stage_name'),
-    email: formData.get('email'), // This will no longer be null
+    email: formData.get('email'),
     userLevel: formData.get('user_level'),
     location: formData.get('location'),
     department: formData.get('department'),
@@ -72,6 +75,52 @@ export async function updateEmployeeProfile(prevState: any, formData: FormData) 
   const fullName = `${data.firstName} ${data.lastName}`.trim();
 
   try {
+    // --- SECURITY CHECKPOINT START ------------------------------------------
+    
+    // A. Get the Actor's real level (The person clicking the button)
+    const { data: actorProfile } = await supabaseAdmin
+        .from('users')
+        .select('user_level')
+        .eq('id', actor.id)
+        .single();
+    
+    const actorLevel = actorProfile?.user_level || 0;
+
+    // B. Get the Target's current state (The person being updated)
+    const { data: targetCurrent } = await supabaseAdmin
+        .from('users')
+        .select('user_level')
+        .eq('id', data.userId)
+        .single();
+
+    if (!targetCurrent) throw new Error("Target user not found.");
+
+    let finalUserLevel = data.userLevel;
+
+    // C. Enforce Privilege Rules
+    const isSelfUpdate = actor.id === data.userId;
+    const isSuperAdmin = actorLevel >= USER_LEVELS.ADMIN; // 900+
+
+    // Rule 1: Self-Promotion Protection
+    // If updating yourself, you cannot change your level via this form.
+    // It must stay whatever it currently is in the DB.
+    if (isSelfUpdate) {
+        if (finalUserLevel !== targetCurrent.user_level) {
+            console.warn(`SECURITY: User ${actor.id} attempted self-promotion. Reverting level.`);
+            finalUserLevel = targetCurrent.user_level;
+        }
+    }
+
+    // Rule 2: Hierarchy Protection (For updating others)
+    // You cannot promote someone to a level higher than yourself.
+    if (!isSelfUpdate && !isSuperAdmin) {
+        if (finalUserLevel > actorLevel) {
+             return { message: 'Security: You cannot promote a user above your own rank.', success: false };
+        }
+    }
+
+    // --- SECURITY CHECKPOINT END --------------------------------------------
+
     // 3. Update IDENTITY (public.users)
     const { error: userError } = await supabaseAdmin
       .from('users')
@@ -80,7 +129,7 @@ export async function updateEmployeeProfile(prevState: any, formData: FormData) 
         last_name: data.lastName,
         stage_name: data.stageName || data.firstName,
         full_name: fullName,
-        user_level: data.userLevel,
+        user_level: finalUserLevel, // Use the sanitized level
         phone: data.workPhone,
         email: data.email
       })
@@ -89,15 +138,14 @@ export async function updateEmployeeProfile(prevState: any, formData: FormData) 
     if (userError) throw new Error(`Users table error: ${userError.message}`);
 
     // 4. Update OPERATIONS (public.employee_details)
-    // Critical: Upsert even if level < 300 to clean up stale records if needed,
-    // or keep your original logic of level >= 300 only.
-    if (data.userLevel >= 300) {
+    // Only apply operational details if the resulting user is Staff level or higher
+    if (finalUserLevel >= USER_LEVELS.STAFF) {
       const { error: empError } = await supabaseAdmin
         .from('employee_details')
         .upsert({
           user_id: data.userId,
-          department: data.department,       // Resolves Jed sorting issue
-          primary_position: data.position,   // e.g. BUGGY-TECH
+          department: data.department,
+          primary_position: data.position,
           primary_work_location: data.location,
           hire_date: data.hireDate || null,
           emp_id: data.payrollId,

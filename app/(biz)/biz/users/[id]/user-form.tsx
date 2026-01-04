@@ -1,7 +1,10 @@
 /**
  * @file user-form.tsx
  * @description Hierarchical form for Location > Department > Position.
- * Ensures all fields, including Email, are passed to the server action to prevent validation errors.
+ *
+ * UPDATED: Uses centralized USER_LEVELS for permission logic.
+ * SECURITY NOTE: This form includes a "User Level" selector. 
+ * The Server Action must validate that a user cannot escalate their own privileges.
  */
 'use client';
 
@@ -19,6 +22,10 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Save, Info, Briefcase, MapPin, Layout, Mail } from 'lucide-react';
+
+// --- IMPORT: Single Source of Truth for Roles ---
+// Ensures this form stays in sync with database policies and admin tables
+import { USER_LEVELS, ROLE_LABELS } from '@/lib/constants/user-levels';
 
 // Configuration for Departments available at each Location
 const LOCATIONS_CONFIG: Record<string, string[]> = {
@@ -54,7 +61,9 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
   const details = Array.isArray(empDetails) ? empDetails[0] : empDetails;
 
   // --- LOCAL STATE FOR UI BRANCHING ---
-  const [userLevel, setUserLevel] = useState<number>(user?.user_level || 100);
+  // Default to CUSTOMER level if undefined, utilizing the constant
+  const [userLevel, setUserLevel] = useState<number>(user?.user_level || USER_LEVELS.CUSTOMER);
+  
   const [selectedLoc, setSelectedLoc] = useState<string>(details?.primary_work_location || 'Las Vegas');
   const [selectedDept, setSelectedDept] = useState<string>(details?.department || 'ADMIN');
 
@@ -70,6 +79,10 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
   // Derived lists based on selection
   const availableDepartments = useMemo(() => LOCATIONS_CONFIG[selectedLoc] || [], [selectedLoc]);
   const availablePositions = useMemo(() => POSITIONS_CONFIG[selectedDept] || ['STAFF'], [selectedDept]);
+
+  // Helper boolean to determine if the Operational Section should be shown
+  // Users must be at least STAFF (300) level to have fleet metadata
+  const hasStaffPrivileges = userLevel >= USER_LEVELS.STAFF;
 
   return (
     <form action={formAction} className="space-y-6">
@@ -125,6 +138,13 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
             <Label className="text-xs font-bold uppercase text-zinc-500">Primary Phone</Label>
             <Input name="phone" defaultValue={user?.phone} className="bg-zinc-900 border-zinc-800" />
           </div>
+
+          {/* --- ACCESS LEVEL SELECTOR ---
+            SECURITY WARNING: 
+            This input allows changing the user's privilege level. 
+            The Server Action MUST verify that the requestor has permission to grant this level.
+            A user should NEVER be allowed to escalate their own level via this form.
+          */}
           <div className="space-y-2">
             <Label className="text-xs font-bold uppercase text-zinc-500">Access Level</Label>
             <Select 
@@ -136,10 +156,12 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                <SelectItem value="100">Customer (Archived)</SelectItem>
-                <SelectItem value="300">Staff (Standard)</SelectItem>
-                <SelectItem value="500">Manager (Ops)</SelectItem>
-                <SelectItem value="900">Admin (System)</SelectItem>
+                {/* Dynamically render options from the Single Source of Truth */}
+                {Object.entries(ROLE_LABELS).map(([level, label]) => (
+                   <SelectItem key={level} value={level}>
+                      {label}
+                   </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -147,7 +169,7 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
       </div>
 
       {/* 3. OPERATIONAL SECTION (Only visible for active staff 300+) */}
-      {userLevel >= 300 ? (
+      {hasStaffPrivileges ? (
         <div className="p-4 rounded-xl border border-orange-500/20 bg-orange-500/5 space-y-4 animate-in fade-in slide-in-from-top-4">
           <h3 className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] flex items-center gap-2">
             <Info size={14} /> Fleet Operational Metadata
@@ -247,7 +269,7 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
         type="submit" 
         disabled={isPending}
         className={`w-full font-black italic uppercase tracking-widest transition-all ${
-          userLevel >= 300 ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'
+          hasStaffPrivileges ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'
         }`}
       >
         {isPending ? (
