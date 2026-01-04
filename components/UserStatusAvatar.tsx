@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { 
   Phone, Mail, MessageSquare, Pencil, 
   Clock, Coffee, Timer, AlertCircle, 
-  LogOut, Sun, Moon, User, Play, Square 
+  LogOut, Sun, Moon, User, Play, Square, Calendar 
 } from 'lucide-react';
 import moment from 'moment';
 import Link from 'next/link';
@@ -55,12 +55,13 @@ export default function UserStatusAvatar({
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Permission Checks
-  const isAdmin = currentUserLevel >= 900;
+  // Employees are Level 300+. Customers are typically 0 or 100.
+  const isEmployee = (user?.user_level || 0) >= 300;
   const canEdit = currentUserLevel >= 650; // Managers (650) and up can edit users
 
-  // --- 1. DATA FETCHING ---
+  // --- 1. DATA FETCHING (Employees Only) ---
   const fetchData = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || !isEmployee) return;
 
     // A. Get Active Time Entry
     const { data: timeData } = await supabase
@@ -105,10 +106,11 @@ export default function UserStatusAvatar({
     } else {
       setStatus('offline');
     }
-  }, [user?.id, supabase]);
+  }, [user?.id, supabase, isEmployee]);
 
-  // --- 2. REALTIME SUBSCRIPTION ---
+  // --- 2. REALTIME SUBSCRIPTION (Employees Only) ---
   useEffect(() => {
+    if (!isEmployee) return;
     fetchData();
 
     const channel = supabase
@@ -122,10 +124,11 @@ export default function UserStatusAvatar({
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user?.id, supabase, fetchData]);
+  }, [user?.id, supabase, fetchData, isEmployee]);
 
   // --- 3. TIMERS ---
   useEffect(() => {
+    if (!isEmployee) return;
     const timer = setInterval(() => {
         setNow(moment());
         if ((status === 'offline' || status === 'late') && todayShift && !activeEntry) {
@@ -136,7 +139,7 @@ export default function UserStatusAvatar({
         }
     }, 60000); 
     return () => clearInterval(timer);
-  }, [status, todayShift, activeEntry]);
+  }, [status, todayShift, activeEntry, isEmployee]);
 
   // --- 4. ACTIONS ---
 
@@ -220,8 +223,8 @@ export default function UserStatusAvatar({
 
   return (
     <>
-    {/* TIMECLOCK MODAL */}
-    {isCurrentUser && (
+    {/* TIMECLOCK MODAL (Employees Only) */}
+    {isCurrentUser && isEmployee && (
         <Dialog open={isTimeClockOpen} onOpenChange={setIsTimeClockOpen}>
             <DialogContent className="max-w-md p-0 border-none bg-transparent shadow-none">
                 
@@ -254,13 +257,16 @@ export default function UserStatusAvatar({
               </span>
             )}
           </div>
-          <span 
-            className={cn(
-                "absolute bottom-0 right-0 block rounded-full ring-2 ring-white transition-colors duration-300",
-                dotSize,
-                statusColors[status]
-            )} 
-          />
+          {/* Status Dot: Only show for Employees */}
+          {isEmployee && (
+            <span 
+              className={cn(
+                  "absolute bottom-0 right-0 block rounded-full ring-2 ring-white transition-colors duration-300",
+                  dotSize,
+                  statusColors[status]
+              )} 
+            />
+          )}
         </div>
       </PopoverTrigger>
 
@@ -280,11 +286,13 @@ export default function UserStatusAvatar({
              </div>
              <div>
                 <h4 className="font-bold text-lg leading-none text-slate-900 dark:text-slate-100">{user.full_name}</h4>
-                <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider font-semibold">{user.job_title}</p>
+                <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider font-semibold">
+                  {user.job_title || (isEmployee ? 'Staff' : 'Customer')}
+                </p>
              </div>
           </div>
           
-          {/* EDIT BUTTON (Consolidated to /account) */}
+          {/* EDIT BUTTON (Managers) */}
           {(canEdit && !isCurrentUser) && (
             <Link href={`/account?userId=${user.id}`} onClick={closePopover}>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30">
@@ -296,82 +304,88 @@ export default function UserStatusAvatar({
 
         <div className="p-4 space-y-4">
           
-          {/* STATUS BAR */}
-          <div className={cn("flex items-center justify-between p-3 rounded-lg border shadow-sm select-none transition-colors", 
-              status === 'late' ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-900" : 
-              status === 'break' ? "bg-orange-50 border-orange-200 dark:bg-orange-900/20" :
-              status === 'online' ? "bg-green-50 border-green-200 dark:bg-green-900/20" :
-              "bg-white dark:bg-slate-950 dark:border-slate-800"
-          )}>
-            <div className="flex items-center gap-2">
-              {status === 'online' && <Clock className="w-4 h-4 text-green-600" />}
-              {status === 'break' && <Coffee className="w-4 h-4 text-orange-600 animate-pulse" />}
-              {status === 'late' && <AlertCircle className="w-4 h-4 text-red-600" />}
-              {status === 'offline' && <Moon className="w-4 h-4 text-slate-400" />}
-              
-              <div className="flex flex-col">
-                  <span className="text-sm font-bold capitalize leading-none text-slate-900 dark:text-slate-100">
-                      {status === 'late' ? 'Absent / Late' : status === 'online' ? 'Clocked In' : status}
-                  </span>
-                  {status === 'break' && <span className="text-[10px] text-orange-600 font-medium">Relax & Recharge</span>}
+          {/* STATUS BAR (Employees Only) */}
+          {isEmployee && (
+            <div className={cn("flex items-center justify-between p-3 rounded-lg border shadow-sm select-none transition-colors", 
+                status === 'late' ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-900" : 
+                status === 'break' ? "bg-orange-50 border-orange-200 dark:bg-orange-900/20" :
+                status === 'online' ? "bg-green-50 border-green-200 dark:bg-green-900/20" :
+                "bg-white dark:bg-slate-950 dark:border-slate-800"
+            )}>
+              <div className="flex items-center gap-2">
+                {status === 'online' && <Clock className="w-4 h-4 text-green-600" />}
+                {status === 'break' && <Coffee className="w-4 h-4 text-orange-600 animate-pulse" />}
+                {status === 'late' && <AlertCircle className="w-4 h-4 text-red-600" />}
+                {status === 'offline' && <Moon className="w-4 h-4 text-slate-400" />}
+                
+                <div className="flex flex-col">
+                    <span className="text-sm font-bold capitalize leading-none text-slate-900 dark:text-slate-100">
+                        {status === 'late' ? 'Absent / Late' : status === 'online' ? 'Clocked In' : status}
+                    </span>
+                    {status === 'break' && <span className="text-[10px] text-orange-600 font-medium">Relax & Recharge</span>}
+                </div>
               </div>
+              {durationStr && status !== 'offline' && (
+                <div className="flex items-center gap-1 text-[11px] font-mono font-bold bg-white/50 px-2 py-0.5 rounded border border-black/5">
+                  <Timer className="w-3 h-3" /> {durationStr}
+                </div>
+              )}
             </div>
-            {durationStr && status !== 'offline' && (
-              <div className="flex items-center gap-1 text-[11px] font-mono font-bold bg-white/50 px-2 py-0.5 rounded border border-black/5">
-                <Timer className="w-3 h-3" /> {durationStr}
-              </div>
-            )}
-          </div>
+          )}
 
           {/* === CONTROLS === */}
           {isCurrentUser ? (
             <div className="space-y-3 pt-1">
                 
-                <div className="grid grid-cols-1 gap-2">
-                    {/* SCENARIO 1: CLOCKED OUT -> Modal (Photo Needed) */}
-                    {(status === 'offline' || status === 'late') && (
-                        <Button 
-                            className="w-full h-12 gap-2 bg-green-600 hover:bg-green-700 text-white font-bold shadow-sm"
-                            onClick={openTimeClockModal}
-                        >
-                            <Play className="w-4 h-4 fill-current" /> CLOCK IN
-                        </Button>
-                    )}
+                {/* TIME CLOCK (Employees Only) */}
+                {isEmployee && (
+                  <div className="grid grid-cols-1 gap-2">
+                      {/* SCENARIO 1: CLOCKED OUT */}
+                      {(status === 'offline' || status === 'late') && (
+                          <Button 
+                              className="w-full h-12 gap-2 bg-green-600 hover:bg-green-700 text-white font-bold shadow-sm"
+                              onClick={openTimeClockModal}
+                          >
+                              <Play className="w-4 h-4 fill-current" /> CLOCK IN
+                          </Button>
+                      )}
 
-                    {/* SCENARIO 2: CLOCKED IN -> Breaks (Direct) OR Clock Out (Modal) */}
-                    {status === 'online' && (
-                        <div className="grid grid-cols-2 gap-2">
-                            <Button 
-                                variant="outline"
-                                className="h-12 gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800"
-                                onClick={() => handleBreakToggle('start')}
-                                disabled={isProcessing}
-                            >
-                                <Coffee className="w-4 h-4" /> Start Break
-                            </Button>
-                            
-                            <Button 
-                                variant="outline"
-                                className="h-12 gap-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
-                                onClick={openTimeClockModal} // Open Modal for Photo/GPS
-                            >
-                                <Square className="w-4 h-4 fill-current" /> Clock Out
-                            </Button>
-                        </div>
-                    )}
+                      {/* SCENARIO 2: CLOCKED IN */}
+                      {status === 'online' && (
+                          <div className="grid grid-cols-2 gap-2">
+                              <Button 
+                                  variant="outline"
+                                  className="h-12 gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800"
+                                  onClick={() => handleBreakToggle('start')}
+                                  disabled={isProcessing}
+                              >
+                                  <Coffee className="w-4 h-4" /> Start Break
+                              </Button>
+                              
+                              <Button 
+                                  variant="outline"
+                                  className="h-12 gap-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+                                  onClick={openTimeClockModal} 
+                              >
+                                  <Square className="w-4 h-4 fill-current" /> Clock Out
+                              </Button>
+                          </div>
+                      )}
 
-                    {/* SCENARIO 3: ON BREAK -> End Break (Direct) */}
-                    {status === 'break' && (
-                        <Button 
-                            className="w-full h-12 gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-sm"
-                            onClick={() => handleBreakToggle('end')}
-                            disabled={isProcessing}
-                        >
-                            <Play className="w-4 h-4 fill-current" /> END BREAK
-                        </Button>
-                    )}
-                </div>
+                      {/* SCENARIO 3: ON BREAK */}
+                      {status === 'break' && (
+                          <Button 
+                              className="w-full h-12 gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-sm"
+                              onClick={() => handleBreakToggle('end')}
+                              disabled={isProcessing}
+                          >
+                              <Play className="w-4 h-4 fill-current" /> END BREAK
+                          </Button>
+                      )}
+                  </div>
+                )}
 
+                {/* MENU LINKS */}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t dark:border-slate-800">
                     <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9" asChild onClick={closePopover}>
                         <Link href={`/account`}>
@@ -389,27 +403,39 @@ export default function UserStatusAvatar({
                     </Button>
                 </div>
 
+                {/* NEW: MY SCHEDULE LINK (Employees Only) */}
+                {isEmployee && (
+                  <Button variant="ghost" className="w-full justify-start px-2 gap-2 text-xs h-9 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20" asChild onClick={closePopover}>
+                      <Link href="/biz/my-schedule">
+                          <Calendar className="w-4 h-4" /> My Schedule
+                      </Link>
+                  </Button>
+                )}
+
                 <Button variant="ghost" className="w-full justify-start px-2 gap-2 text-xs h-9 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleSignOut}>
                     <LogOut className="w-4 h-4" /> Sign Out
                 </Button>
             </div>
           ) : (
             <>
-              {/* Other User View (Contact Info) */}
-              <div className="space-y-1.5 select-none">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1"><Clock className="w-3 h-3"/> Today's Schedule</p>
-                {todayShift ? (
-                  <div className="text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-2 rounded border border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                    <span className="font-bold font-mono">
-                        {moment(todayShift.start_time).format('h:mm A')} - {moment(todayShift.end_time).format('h:mm A')}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="text-sm text-slate-400 italic bg-slate-50 dark:bg-slate-900 p-2 rounded border border-dashed border-slate-200 dark:border-slate-800">
-                      Not scheduled today
-                  </div>
-                )}
-              </div>
+              {/* Other User View (Employees looking at Employees) */}
+              {isEmployee && (
+                <div className="space-y-1.5 select-none">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1"><Clock className="w-3 h-3"/> Today's Schedule</p>
+                  {todayShift ? (
+                    <div className="text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-2 rounded border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                      <span className="font-bold font-mono">
+                          {moment(todayShift.start_time).format('h:mm A')} - {moment(todayShift.end_time).format('h:mm A')}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-slate-400 italic bg-slate-50 dark:bg-slate-900 p-2 rounded border border-dashed border-slate-200 dark:border-slate-800">
+                        Not scheduled today
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-3 gap-2 pt-4 border-t dark:border-slate-800">
                  <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5" onClick={closePopover} asChild><a href={`tel:${user.phone}`}><Phone className="w-4 h-4"/><span className="text-[10px]">Call</span></a></Button>
                  <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5" onClick={closePopover} asChild><a href={`sms:${user.phone}`}><MessageSquare className="w-4 h-4"/><span className="text-[10px]">Text</span></a></Button>

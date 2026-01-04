@@ -1,14 +1,23 @@
 /**
- * @file /components/NavSideBar.tsx
- * @description Digitized navigation for SunBuggy. 
- * Updated: Added HR Audit under Infrastructure Control (Admin).
+ * @file /components/UI/Navbar/NavSideBar.tsx
+ * @description Main Sidebar Navigation.
+ * Updated: 
+ * - Branding Stroke: Reduced from 1.5px to 0.5px for a thinner, cleaner outline in Light Mode.
  */
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, ShieldCheck, Users, HeartPulse } from 'lucide-react'; // Added HeartPulse for HR Audit
+import { 
+  Activity, 
+  ShieldCheck, 
+  Users, 
+  HeartPulse, 
+  FileText, 
+  Trash2,
+  Car
+} from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
@@ -30,109 +39,189 @@ interface NavSideBarProps {
 
 export default function NavSideBar({ user }: NavSideBarProps) {
   const pathname = usePathname();
+  const userLevel = user?.user_level ?? 0;
 
-  const navLinks: NavLink[] = [
-    { href: '/', label: 'Welcome', minLevel: 0 },
+  // --- 1. PUBLIC LINKS (Customer Facing) ---
+  const publicLinks: NavLink[] = [
     { href: '/lasvegas', label: 'Las Vegas', minLevel: 0 },
     { href: '/pismo', label: 'Pismo Beach', minLevel: 0 },
+    { href: '/silverlake', label: 'Silver Lake', minLevel: 0 },
     { href: '/pismo/book', label: 'Pismo Booking', minLevel: 0 },
-    { href: '/biz/pismo-times', label: 'Pismo Times', minLevel: 600 },
-    { href: '/biz/pismo-pricing', label: 'Pismo Pricing', minLevel: 600 },
-    { href: 'https://www.sunbuggy.biz/', label: 'Old Biz Portal', minLevel: 300, external: true },
-    { href: '/daily-pics', label: 'Daily Pics', minLevel: 300 },
-    // Core Admin Links
-    { href: '/biz/users/admin', label: 'User Admin', minLevel: 900, icon: <Users size={16} /> },
-    { href: '/biz/payroll', label: 'Payroll', minLevel: 900 },
-    { href: '/biz/reports', label: 'Reports', minLevel: 900 },
-    { href: 'tel:+17752060022', label: 'Cyber Support', minLevel: 300 }
   ];
 
+  // --- 2. DASHBOARDS (Staff 300+) ---
   const dashboardLinks: NavLink[] = [
-    { href: `/biz/vegas`, label: 'NV DASH', minLevel: 300 },
-    { href: `/biz/pismo`, label: 'CA DASH', minLevel: 300 },
-    { href: `/biz/michigan`, label: 'MI DASH', minLevel: 300, external: true },
-    { href: '/biz/my-schedule', label: 'My Schedule', minLevel: 300 },
-    { href: '/biz/schedule', label: 'ROSTER', minLevel: 300 },
-    { href: '/biz/vehicles/admin', label: 'Fleet Management', minLevel: 300 },
+    { href: `/biz/vegas`, label: 'Las Vegas', minLevel: 300 },
+    { href: `/biz/pismo`, label: 'Pismo Beach', minLevel: 300 },
+    { href: `/biz/michigan`, label: 'Silver Lake', minLevel: 300, external: true },
+  ];
+
+  // --- 3. STAFF HUB (General Tools 300+) ---
+  const staffLinks: NavLink[] = [
+    { href: '/biz/schedule', label: 'ROSTER', minLevel: 300 }, 
+    { href: '/biz/vehicles/admin', label: 'Fleet Management', minLevel: 300, icon: <Car size={16} /> },
+    { href: '/daily-pics', label: 'Daily Pics', minLevel: 300 },
     { href: '/biz/sst', label: 'SST', minLevel: 300 },
     { href: '/biz/qr', label: 'QR Generator', minLevel: 300 },
-    { href: '/biz/admin/charge_pismo', label: 'Pismo Billing', minLevel: 300 },
+    { href: 'https://www.sunbuggy.biz/', label: 'Old Biz Portal', minLevel: 300, external: true },
+    { href: 'tel:+17752060022', label: 'Cyber Support', minLevel: 300 },
   ];
 
-  const renderNavLink = (link: NavLink) => {
+  // --- 4. OPERATIONS MANAGEMENT (Managers 600+) ---
+  const operationsLinks: NavLink[] = [
+    { href: '/biz/reports', label: 'Reports', minLevel: 600, icon: <FileText size={16} /> },
+    { href: '/biz/pismo-times', label: 'Pismo Times', minLevel: 600 },
+    { href: '/biz/pismo-pricing', label: 'Pismo Pricing', minLevel: 600 },
+    { href: '/biz/admin/charge_pismo', label: 'Pismo Billing', minLevel: 600 },
+  ];
+
+  // --- 5. HR (Admin Only - Level 900+) ---
+  const hrLinks: NavLink[] = [
+     { href: '/biz/admin/hr/audit', label: 'Staff Audit', minLevel: 900, icon: <HeartPulse size={16} className="text-red-600 dark:text-red-400" /> },
+     { href: '/biz/payroll', label: 'Payroll', minLevel: 900 },
+     { href: '/biz/users/admin', label: 'User Admin', minLevel: 900, icon: <Users size={16} /> },
+  ];
+
+  // --- 6. DEVELOPER (Super Admin - Level 950+) ---
+  const devLinks: NavLink[] = [
+    { href: '/biz/admin/system/health', label: 'System Health', minLevel: 950, icon: <Activity size={16} className="text-green-600 dark:text-green-400" /> },
+    { href: '/biz/admin/hr/user-cleanup', label: 'Data Cleanup', minLevel: 950, icon: <Trash2 size={16} className="text-green-600 dark:text-green-400" /> },
+  ];
+
+  /**
+   * Renders a single navigation link.
+   */
+  const renderNavLink = (link: NavLink, isPublicGroup: boolean) => {
     const isActive = pathname === link.href;
+
+    // --- STYLING LOGIC ---
+    
+    // 1. PUBLIC LINKS (Primary Blue)
+    const publicActive = 
+      'bg-blue-100 text-blue-900 border-blue-500 shadow-sm font-bold ' + 
+      'dark:bg-blue-600 dark:text-white dark:border-blue-400 dark:shadow-md'; 
+
+    const publicInactive = 
+      'text-blue-700 border-transparent hover:bg-blue-50 hover:text-blue-900 ' + 
+      'dark:text-blue-400 dark:hover:bg-blue-900/40 dark:hover:text-blue-200'; 
+
+    // 2. STAFF LINKS (Orange/Zinc)
+    const staffActive = 
+      'bg-orange-600 text-white border-orange-500 shadow-md translate-x-1 font-bold'; 
+
+    const staffInactive = 
+      'text-zinc-700 border-transparent hover:bg-zinc-100 hover:text-zinc-900 ' + 
+      'dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white'; 
 
     return (
       <SheetClose key={link.href} asChild>
         <Link
           href={link.href}
           className={cn(
-            'flex items-center gap-3 border-2 rounded-md transition-all p-3 text-sm font-medium',
-            isActive
-              ? 'bg-orange-600 text-white border-orange-400 shadow-lg translate-x-1'
-              : 'text-zinc-300 border-transparent hover:bg-zinc-800 hover:text-white',
+            'flex items-center gap-3 border rounded-md transition-all duration-200 p-2.5 text-sm font-semibold',
+            isPublicGroup 
+              ? (isActive ? publicActive : publicInactive)
+              : (isActive ? staffActive : staffInactive)
           )}
           {...(link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
         >
-          {link.icon && <span className="text-current">{link.icon}</span>}
+          {link.icon && <span className="opacity-80">{link.icon}</span>}
           {link.label}
         </Link>
       </SheetClose>
     );
   };
 
-  const renderLinkGroup = (links: NavLink[], title: string, minLevelRequired: number) => {
-    if (minLevelRequired > 0 && (!user || user.user_level < minLevelRequired)) return null;
-
-    const filtered = links.filter(l => l.minLevel <= (user?.user_level ?? 0));
+  /**
+   * Renders a group of links with a section header.
+   */
+  const renderLinkGroup = (links: NavLink[], title: string, minLevelRequired: number, isPublicGroup = false) => {
+    if (minLevelRequired > 0 && userLevel < minLevelRequired) return null;
+    
+    const filtered = links.filter(l => l.minLevel <= userLevel);
     if (filtered.length === 0) return null;
 
+    let headerClass = "text-orange-600 dark:text-orange-500/80";
+    if (isPublicGroup) headerClass = "text-blue-700 dark:text-blue-400 hover:text-blue-500 transition-colors cursor-pointer";
+    else if (minLevelRequired >= 950) headerClass = "text-green-700 dark:text-green-500/80";
+    else if (minLevelRequired >= 900) headerClass = "text-red-700 dark:text-red-500/80";
+
     return (
-      <div className="mb-8">
-        <h3 className="text-[10px] font-bold text-orange-500/80 uppercase tracking-[0.2em] mb-3 px-1">
-          {title}
-        </h3>
-        <div className="flex flex-col gap-1.5">{filtered.map(renderNavLink)}</div>
+      <div className="mb-6">
+        {isPublicGroup ? (
+           <SheetClose asChild>
+             <Link href="/">
+               <h3 className={cn("text-[13px] font-black uppercase tracking-[0.1em] mb-2 px-1 flex items-center gap-2", headerClass)}>
+                 {title} 
+               </h3>
+             </Link>
+           </SheetClose>
+        ) : (
+           <h3 className={cn("text-[11px] font-black uppercase tracking-[0.2em] mb-2 px-1", headerClass)}>
+             {title}
+           </h3>
+        )}
+        <div className="flex flex-col gap-1">{filtered.map(l => renderNavLink(l, isPublicGroup))}</div>
       </div>
     );
   };
 
-  const publicLinks = navLinks.filter(l => l.minLevel === 0);
-  const internalLinks = [...dashboardLinks, ...navLinks.filter(l => l.minLevel === 300)];
-  const managerLinks = navLinks.filter(l => l.minLevel === 600);
-  
-  // Admin Group: Includes System Health and new HR Audit
-  const adminLinksWithHealth: NavLink[] = [
-    { 
-      href: '/biz/admin/health', 
-      label: 'System Health', 
-      minLevel: 900, 
-      icon: <Activity size={16} /> 
-    },
-    { 
-        href: '/biz/admin/hr/audit', // NEW: Link to our Audit Page
-        label: 'HR / Staff Audit', 
-        minLevel: 900, 
-        icon: <HeartPulse size={16} className="text-red-500" /> 
-    },
-    ...navLinks.filter(l => l.minLevel === 900)
-  ];
-
   return (
-    <nav className="flex flex-col p-4 bg-zinc-950 h-full overflow-y-auto custom-scrollbar">
-      <div className="mb-10 px-2">
-        <div className="text-xl font-black text-white italic tracking-tighter">
-          SUN<span className="text-orange-500">BUGGY</span>
+    <nav className="flex flex-col p-4 h-full overflow-y-auto custom-scrollbar border-r 
+      bg-white border-zinc-200 
+      dark:bg-zinc-950 dark:border-zinc-900">
+      
+      {/* BRANDING */}
+      <div className="mb-8 px-2">
+        <div 
+          className="text-3xl tracking-wider select-none text-yellow-500"
+          style={{ 
+            fontFamily: "'Banco', 'Arial Black', sans-serif",
+            fontWeight: 'bold',
+          }}
+        >
+          <span className="light-mode-stroke">SUNBUGGY</span>
         </div>
+        
+        {/* UPDATED: Thinner stroke for light mode */}
+        <style jsx>{`
+          .light-mode-stroke {
+             color: #FACC15; 
+          }
+          :global(.light) .light-mode-stroke, 
+          :global(html:not(.dark)) .light-mode-stroke {
+             -webkit-text-stroke: 0.5px black; /* Changed from 1.5px to 0.5px */
+             color: #FACC15;
+          }
+        `}</style>
       </div>
 
-      {renderLinkGroup(publicLinks, 'Adventure Guide', 0)}
-      {renderLinkGroup(internalLinks, 'Staff Hub', 300)}
-      {renderLinkGroup(managerLinks, 'Operations Management', 600)}
-      {renderLinkGroup(adminLinksWithHealth, 'Infrastructure Control', 900)}
+      {/* 1. WELCOME (Public Group) */}
+      {renderLinkGroup(publicLinks, 'WELCOME', 0, true)}
 
-      <div className="mt-auto pt-6 border-t border-zinc-800/50 px-2">
-        <div className="flex items-center gap-2 text-zinc-600 text-[10px]">
+      {/* SEPARATOR */}
+      <div className="my-2 border-t border-zinc-200 dark:border-zinc-800/50" />
+
+      {/* 2. STAFF DASHBOARDS */}
+      {renderLinkGroup(dashboardLinks, 'Dashboards', 300)}
+
+      {/* 3. STAFF HUB */}
+      {renderLinkGroup(staffLinks, 'Staff Hub', 300)}
+
+      {/* 4. OPERATIONS */}
+      {renderLinkGroup(operationsLinks, 'Operations', 600)}
+
+      {/* 5. HR */}
+      {renderLinkGroup(hrLinks, 'Human Resources', 900)}
+
+      {/* 6. DEV */}
+      <div className="mt-auto">
+        {renderLinkGroup(devLinks, 'Developer Tools', 950)}
+      </div>
+
+      {/* FOOTER */}
+      <div className="pt-4 border-t mt-4 px-2 border-zinc-200 dark:border-zinc-900">
+        <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-600">
           <ShieldCheck size={12} />
           <span>Encrypted Session</span>
         </div>
