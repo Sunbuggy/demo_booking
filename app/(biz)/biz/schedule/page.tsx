@@ -1,20 +1,44 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (v9.7 - Smart Dashboard Routing)
+// SUNBUGGY ROSTER PAGE (v10.8 - Locked Viewport & Tight Layout)
 // ============================================================================
-// CHANGELOG v9.7:
-// 1. ROUTING FIX: Added `getDashboardLink` helper.
-//    - IF Location is 'Las Vegas' -> Links to legacy `/biz/YYYY-MM-DD`
-//    - IF Location is 'Pismo'/'Michigan' -> Links to standard `/biz/[loc]/YYYY-MM-DD`
-//    This allows us to support the current legacy setup while preparing for future consistency.
-// 2. Retained all v9.6 features (Sticky Headers, Compact Columns, Z-Index fix).
+// CHANGELOG v10.8:
+// 1. LAYOUT ARCHITECTURE: Changed main container to `h-[calc(100vh-65px)]`.
+//    - This forces the scrollbar onto the TABLE ONLY, not the window.
+//    - Result: The "Control Bar" is physically unable to scroll away.
+// 2. SPACING: Reduced global padding (p-4 -> p-2) and removed margins.
+//    - The controls now sit tight against the top nav.
+// 3. LAYER MANAGEMENT: Enforced opaque backgrounds on headers to prevent 
+//    "visual bleed" when elements slide under one another.
 
 import { useState, useEffect, Fragment, useMemo } from 'react';
 import Link from 'next/link'; 
 import { createClient } from '@/utils/supabase/client';
 import { getStaffRoster } from '@/utils/supabase/queries'; 
 import { getLocationWeather, DailyWeather } from '@/app/actions/weather'; 
+
+// --- DATE-FNS IMPORTS ---
+import { 
+  format, 
+  addDays, 
+  subDays, 
+  addWeeks, 
+  subWeeks, 
+  addMonths,
+  subMonths,
+  startOfISOWeek, 
+  differenceInMinutes, 
+  parseISO, 
+  startOfMonth,
+  endOfMonth,
+  startOfWeek as startOfLocalWeek,
+  endOfWeek as endOfLocalWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  isToday
+} from 'date-fns';
 
 import UserStatusAvatar from '@/components/UserStatusAvatar';
 import { fetch_from_old_db } from '@/utils/old_db/actions';
@@ -37,10 +61,9 @@ import {
     History, Users, 
     Sun, Cloud, CloudRain, Snowflake, CloudLightning, Wind, Printer,
     Flame, Wrench, Shield, CheckSquare, Mountain, LucideIcon,
-    Settings, Info, BarChart3
+    Settings, Info, BarChart3, Calendar as CalendarIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
-import moment from 'moment';
 import { Badge } from '@/components/ui/badge';
 import {
   Popover,
@@ -130,30 +153,74 @@ interface ShiftDefaults {
 }
 
 interface ReservationStat {
-  sch_date: string;
+  sch_date: string | Date; 
   ppl_count: string | number;
-  [key: string]: string | number | boolean | null | undefined; 
+  [key: string]: string | number | boolean | Date | null | undefined; 
 }
 
 // --- HELPER FUNCTIONS ---
 
-/**
- * Smart Routing Helper (v9.7 Fix)
- * Handles the inconsistency between the Legacy Las Vegas route and future routes.
- */
 const getDashboardLink = (locationName: string, dateStr: string) => {
-    // 1. LEGACY EXCEPTION: Las Vegas currently lives at the root /biz/[date]
     if (locationName === 'Las Vegas') {
         return `/biz/${dateStr}`;
     }
-    
-    // 2. STANDARD PATTERN: All other locations use /biz/[slug]/[date]
-    // e.g. "Pismo" -> "pismo", "Silver Lake" -> "silver-lake"
     const slug = locationName.toLowerCase().replace(/\s+/g, '-');
     return `/biz/${slug}/${dateStr}`;
 };
 
+const getDurationHours = (start: string, end: string): number => {
+    const diffMinutes = differenceInMinutes(parseISO(end), parseISO(start));
+    return diffMinutes / 60;
+};
+
 // --- HELPER COMPONENTS ---
+
+// Custom Mini Calendar Component
+const MiniCalendar = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect: (d: Date) => void }) => {
+    const [viewDate, setViewDate] = useState(startOfMonth(selectedDate));
+
+    const days = useMemo(() => {
+        const start = startOfLocalWeek(startOfMonth(viewDate));
+        const end = endOfLocalWeek(endOfMonth(viewDate));
+        return eachDayOfInterval({ start, end });
+    }, [viewDate]);
+
+    return (
+        <div className="p-3 w-64">
+            <div className="flex items-center justify-between mb-4">
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setViewDate(subMonths(viewDate, 1))}>
+                    <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="font-bold text-sm">{format(viewDate, 'MMMM yyyy')}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setViewDate(addMonths(viewDate, 1))}>
+                    <ChevronRight className="w-4 h-4" />
+                </Button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center text-[10px]">
+                {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => <div key={d} className="text-muted-foreground font-bold pb-1">{d}</div>)}
+                {days.map(day => {
+                    const isSelected = isSameDay(day, selectedDate);
+                    const isCurrentMonth = isSameMonth(day, viewDate);
+                    const isTodayDate = isToday(day);
+                    return (
+                        <button
+                            key={day.toISOString()}
+                            onClick={() => onSelect(day)}
+                            className={cn(
+                                "h-8 w-8 rounded-md flex items-center justify-center transition-colors hover:bg-muted",
+                                !isCurrentMonth && "text-muted-foreground/30",
+                                isSelected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold",
+                                isTodayDate && !isSelected && "border border-primary text-primary font-bold"
+                            )}
+                        >
+                            {format(day, 'd')}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
 
 const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: string }) => {
     const [open, setOpen] = useState(false);
@@ -163,7 +230,7 @@ const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: strin
 
     const loadLogs = async () => {
         setLoading(true);
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('audit_logs')
             .select('id, created_at, action, user_id, table_name, row')
             .eq('table_name', tableName)
@@ -188,7 +255,7 @@ const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: strin
                                 logs.map(log => (
                                     <div key={log.id} className="border-b pb-1 last:border-0">
                                         <div className="font-bold text-foreground">{log.action}</div>
-                                        <div className="text-[10px] text-muted-foreground">{moment(log.created_at).format('MMM D, h:mm A')}</div>
+                                        <div className="text-[10px] text-muted-foreground">{format(parseISO(log.created_at), 'MMM d, h:mm a')}</div>
                                     </div>
                                 ))
                             }
@@ -228,7 +295,9 @@ export default function RosterPage() {
   const [isMounted, setIsMounted] = useState(false);
 
   // -- STATE --
-  const [currentDate, setCurrentDate] = useState(moment());
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -255,8 +324,12 @@ export default function RosterPage() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [profileEmp, setProfileEmp] = useState<Employee | null>(null);
 
-  const startOfWeek = currentDate.clone().startOf('isoWeek');
-  const weekDays = Array.from({ length: 7 }, (_, i) => startOfWeek.clone().add(i, 'days'));
+  // DATE-FNS Helpers
+  const startOfWeek = startOfISOWeek(currentDate);
+  const endOfWeek = addDays(startOfWeek, 6);
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek, i));
+  const weekNumber = parseInt(format(startOfWeek, 'I')); 
+  
   const isManager = currentUserLevel >= 500;
   const isAdmin = currentUserLevel >= 900;
 
@@ -280,8 +353,6 @@ export default function RosterPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    
-    // 1. Get Current User Level (for permissions)
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
         setCurrentUserId(user.id);
@@ -289,13 +360,11 @@ export default function RosterPage() {
         if (userData) setCurrentUserLevel(userData.user_level || 0);
     }
 
-    // 2. Fetch Staff Roster
     const locationsToFetch = Object.keys(LOCATIONS);
     let aggregatedStaff: Employee[] = [];
 
     await Promise.all(locationsToFetch.map(async (loc) => {
         const roster = await getStaffRoster(supabase, loc);
-        
         const mapped = roster.map((u: any) => ({
             id: u.id,
             full_name: u.full_name,
@@ -310,40 +379,38 @@ export default function RosterPage() {
             phone: u.phone,
             avatar_url: u.avatar_url
         }));
-        
         aggregatedStaff = [...aggregatedStaff, ...mapped];
     }));
 
     const uniqueStaff = Array.from(new Map(aggregatedStaff.map(item => [item.id, item])).values());
-    
-    // 3. Sort the Roster
     const sortedEmps = uniqueStaff.sort((a, b) => {
          if (b.user_level !== a.user_level) return b.user_level - a.user_level;
          if (!a.hire_date) return 1; if (!b.hire_date) return -1;
          return new Date(a.hire_date).getTime() - new Date(b.hire_date).getTime();
     });
-
     setEmployees(sortedEmps);
     
-    // 4. Fetch Shifts
     const { data: shiftData } = await supabase.from('employee_schedules')
       .select('*')
       .gte('start_time', startOfWeek.toISOString())
-      .lte('start_time', startOfWeek.clone().endOf('isoWeek').toISOString());
+      .lte('start_time', addDays(startOfWeek, 7).toISOString());
     if (shiftData) setShifts(shiftData);
 
-    // 5. Fetch Weather & Reservations
     if (visibleLocs['Las Vegas']) {
-        const start = viewMode === 'week' ? startOfWeek.format('YYYY-MM-DD') : currentDate.format('YYYY-MM-DD');
-        const end = startOfWeek.clone().add(6, 'days').format('YYYY-MM-DD');
+        const start = viewMode === 'week' ? format(startOfWeek, 'yyyy-MM-dd') : format(currentDate, 'yyyy-MM-dd');
+        const end = format(addDays(startOfWeek, 6), 'yyyy-MM-dd');
         const query = `SELECT * FROM reservations_modified WHERE sch_date >= '${start}' AND sch_date <= '${end}'`;
         try {
             const resData = (await fetch_from_old_db(query)) as ReservationStat[];
             if (Array.isArray(resData)) {
                 const newStats: Record<string, any> = {};
                 weekDays.forEach(day => {
-                    const dateKey = day.format('YYYY-MM-DD');
-                    const daysRes = resData.filter(r => moment(r.sch_date).format('YYYY-MM-DD') === dateKey);
+                    const dateKey = format(day, 'yyyy-MM-dd');
+                    const daysRes = resData.filter(r => {
+                        if (!r.sch_date) return false;
+                        const rawDate = typeof r.sch_date === 'string' ? r.sch_date : (r.sch_date as Date).toISOString();
+                        return rawDate.substring(0, 10) === dateKey;
+                    });
                     newStats[dateKey] = calculateDailyStats(daysRes);
                 });
                 setDailyStats(newStats);
@@ -354,20 +421,22 @@ export default function RosterPage() {
     const weatherUpdates: Record<string, DailyWeather[]> = {};
     await Promise.all(Object.keys(LOCATIONS).map(async (loc) => {
         if (!visibleLocs[loc]) return;
-        const data = await getLocationWeather(loc, startOfWeek.format('YYYY-MM-DD'), 7);
+        const data = await getLocationWeather(loc, format(startOfWeek, 'yyyy-MM-dd'), 7);
         if (data) weatherUpdates[loc] = data;
     }));
     setWeatherData(weatherUpdates);
     setLoading(false);
   };
 
-  const getHours = (start: string, end: string): number => moment.duration(moment(end).diff(moment(start))).asHours();
   const sumDailyHours = (shiftList: Shift[], dateStr: string): number => {
-      const dailyShifts = shiftList.filter(s => moment(s.start_time).format('YYYY-MM-DD') === dateStr);
-      return dailyShifts.reduce((acc, s) => acc + getHours(s.start_time, s.end_time), 0);
+      const dailyShifts = shiftList.filter(s => {
+          return format(parseISO(s.start_time), 'yyyy-MM-dd') === dateStr;
+      });
+      return dailyShifts.reduce((acc, s) => acc + getDurationHours(s.start_time, s.end_time), 0);
   };
+  
   const sumWeeklyHours = (shiftList: Shift[]): number => {
-      return shiftList.reduce((acc, s) => acc + getHours(s.start_time, s.end_time), 0);
+      return shiftList.reduce((acc, s) => acc + getDurationHours(s.start_time, s.end_time), 0);
   };
 
   const logChange = async (action: string, table: string, rowId: string) => {
@@ -377,7 +446,7 @@ export default function RosterPage() {
 
   const handlePrint = () => {
     const originalTitle = document.title;
-    document.title = `SunBuggy Schedule - Week ${startOfWeek.isoWeek()}`;
+    document.title = `SunBuggy Schedule - Week ${weekNumber}`;
     window.print();
     document.title = originalTitle;
   };
@@ -386,8 +455,12 @@ export default function RosterPage() {
     if (!isManager) return;
     setSelectedEmpId(emp.id); setSelectedEmpName(emp.full_name); setSelectedDate(dateStr);
     if (existingShift) {
-      setSelectedShiftId(existingShift.id); setFormRole(existingShift.role); setFormTask(existingShift.task || 'NONE'); 
-      setFormLocation(existingShift.location || emp.location); setFormStart(moment(existingShift.start_time).format('HH:mm')); setFormEnd(moment(existingShift.end_time).format('HH:mm'));
+      setSelectedShiftId(existingShift.id); 
+      setFormRole(existingShift.role); 
+      setFormTask(existingShift.task || 'NONE'); 
+      setFormLocation(existingShift.location || emp.location); 
+      setFormStart(format(parseISO(existingShift.start_time), 'HH:mm')); 
+      setFormEnd(format(parseISO(existingShift.end_time), 'HH:mm'));
     } else {
       setSelectedShiftId(null); const defaults = lastShiftParams[emp.id];
       if (defaults) { setFormRole(defaults.role); setFormTask(defaults.task || 'NONE'); setFormStart(defaults.start); setFormEnd(defaults.end); setFormLocation(defaults.location); }
@@ -401,17 +474,18 @@ export default function RosterPage() {
     setLoading(true);
 
     try {
-        const startMoment = moment(`${selectedDate} ${formStart}`, 'YYYY-MM-DD HH:mm');
-        const endMoment = moment(`${selectedDate} ${formEnd}`, 'YYYY-MM-DD HH:mm');
+        const startISO = `${selectedDate}T${formStart}:00`;
+        let endISO = `${selectedDate}T${formEnd}:00`;
 
-        if (endMoment.isBefore(startMoment)) {
-            endMoment.add(1, 'day');
+        if (formEnd < formStart) {
+            const nextDay = addDays(parseISO(selectedDate), 1);
+            endISO = `${format(nextDay, 'yyyy-MM-dd')}T${formEnd}:00`;
         }
 
         const payload = {
             user_id: selectedEmpId,
-            start_time: startMoment.toISOString(),
-            end_time: endMoment.toISOString(),
+            start_time: new Date(startISO).toISOString(),
+            end_time: new Date(endISO).toISOString(),
             role: formRole,
             location: formLocation,
             task: formTask === 'NONE' ? null : formTask
@@ -504,15 +578,15 @@ export default function RosterPage() {
             user_id: s.user_id, 
             role: s.role, 
             task: s.task, 
-            start_time: moment(s.start_time).add(7, 'days').toISOString(), 
-            end_time: moment(s.end_time).add(7, 'days').toISOString(), 
+            start_time: addWeeks(parseISO(s.start_time), 1).toISOString(), 
+            end_time: addWeeks(parseISO(s.end_time), 1).toISOString(), 
             location: s.location || 'Las Vegas' 
         }));
 
         const { error } = await supabase.from('employee_schedules').insert(newShifts);
         if (error) throw error;
         toast.success("Week Copied Successfully");
-        const nextWeek = currentDate.clone().add(1, 'week');
+        const nextWeek = addWeeks(currentDate, 1);
         setCurrentDate(nextWeek);
       } catch (e: any) {
           console.error("Copy Error:", e);
@@ -585,7 +659,7 @@ const handleSaveProfile = async () => {
   if (!isMounted) return null;
 
   return (
-    <div id="roster-container" className="p-4 h-screen flex flex-col bg-background text-foreground print:p-0 print:bg-white print:h-auto print:block print:w-full">
+    <div id="roster-container" className="p-2 h-[calc(100vh-65px)] flex flex-col bg-background text-foreground print:p-0 print:bg-white print:h-auto print:block print:w-full">
       <style jsx global>{`
         @media print {
             @page { size: landscape; margin: 0.25cm; }
@@ -606,15 +680,13 @@ const handleSaveProfile = async () => {
       `}</style>
 
       {/* COMPACT HEADER V9.1 (Mobile Responsive) */}
-      <div className="flex flex-col gap-2 mb-2 print-hide">
+      <div className="flex flex-col gap-2 print-hide z-[60] sticky top-0 bg-background/95 backdrop-blur pb-2 pt-1">
           <div className="min-h-[3.5rem] h-auto flex flex-col md:flex-row items-center justify-between gap-y-3 p-2 border rounded-lg bg-card shadow-sm relative">
             
-            {/* LEFT SECTION: Title & Filters (Order 2 on Mobile, Order 1 on Desktop) */}
+            {/* LEFT SECTION: Title & Filters */}
             <div className="w-full md:w-auto order-2 md:order-1 flex items-center gap-3">
                <h1 className="text-lg font-bold hidden lg:block">Roster</h1>
                <Separator orientation="vertical" className="h-6 hidden lg:block" />
-               
-               {/* Location Filters: Horizontal Scroll on Mobile */}
                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full md:w-auto">
                 <Filter className="w-3.5 h-3.5 text-muted-foreground mr-1 flex-shrink-0" />
                 {Object.keys(LOCATIONS).map(loc => (
@@ -630,32 +702,85 @@ const handleSaveProfile = async () => {
                </div>
             </div>
 
-            {/* CENTER SECTION: Date Navigation (Order 1 on Mobile, Absolute Center on Desktop) */}
+            {/* CENTER SECTION: UNIFIED DATE COMMAND CENTER (v10.6 Fix) */}
             <div className="w-full md:w-auto order-1 md:order-2 flex justify-center md:absolute md:left-1/2 md:-translate-x-1/2 z-10">
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center bg-muted/50 rounded-md border p-0.5">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentDate(currentDate.clone().subtract(1, viewMode === 'week' ? 'week' : 'day'))}><ChevronLeft className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-semibold" onClick={() => setCurrentDate(moment())}>Today</Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentDate(currentDate.clone().add(1, viewMode === 'week' ? 'week' : 'day'))}><ChevronRight className="w-4 h-4" /></Button>
+                <div className="flex flex-col items-center gap-1">
+                    
+                    {/* TOP: Date Display (Text) */}
+                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                        <PopoverTrigger asChild>
+                            <div className="text-xs font-bold text-foreground leading-none cursor-pointer hover:underline text-center">
+                                {viewMode === 'week' 
+                                    ? `${format(startOfWeek, 'yyyy')} Week ${weekNumber} ${format(startOfWeek, 'MMM d')} - ${format(endOfWeek, 'd')}` 
+                                    : format(currentDate, 'yyyy MMM do')
+                                }
+                            </div>
+                        </PopoverTrigger>
+                        
+                        {/* CUSTOM MINI CALENDAR CONTENT */}
+                        <PopoverContent className="w-auto p-0" align="center">
+                            <MiniCalendar 
+                                selectedDate={currentDate} 
+                                onSelect={(d) => {
+                                    setCurrentDate(d);
+                                    setIsCalendarOpen(false);
+                                }} 
+                            />
+                        </PopoverContent>
+                    </Popover>
+
+                    {/* BOTTOM: Nav Controls */}
+                    <div className="flex items-center gap-1">
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => setCurrentDate(viewMode === 'week' ? subWeeks(currentDate, 1) : subDays(currentDate, 1))}
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </Button>
+
+                        {/* Calendar Icon Button (Triggers Popover) */}
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => setIsCalendarOpen(true)}
+                        >
+                            <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6" 
+                            onClick={() => setCurrentDate(viewMode === 'week' ? addWeeks(currentDate, 1) : addDays(currentDate, 1))}
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </Button>
+
+                        {/* NOW Button */}
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-6 px-2 text-[10px] uppercase font-bold text-muted-foreground ml-1"
+                            onClick={() => setCurrentDate(new Date())}
+                            title="Jump to Today"
+                        >
+                            Now
+                        </Button>
                     </div>
-                    <div className="flex flex-col items-center leading-none min-w-[80px]">
-                        <span className="text-xs font-bold whitespace-nowrap">{viewMode === 'week' ? `${startOfWeek.format('MMM D')} - ${startOfWeek.clone().add(6, 'days').format('D')}` : currentDate.format('MMM Do')}</span>
-                        <span className="text-[10px] text-muted-foreground">Week {startOfWeek.isoWeek()}</span>
-                    </div>
+
                 </div>
             </div>
 
-            {/* RIGHT SECTION: Tools (Order 3) */}
+            {/* RIGHT SECTION: Tools */}
             <div className="w-full md:w-auto order-3 md:order-3 flex items-center justify-between md:justify-end gap-2">
-                
-                {/* View Toggle */}
                 <div className="flex items-center bg-muted p-0.5 rounded-lg border">
                   <Button variant={viewMode === 'day' ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2 text-[10px]" onClick={() => setViewMode('day')}>Day</Button>
                   <Button variant={viewMode === 'week' ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2 text-[10px]" onClick={() => setViewMode('week')}>Week</Button>
                 </div>
-
                 <div className="flex items-center gap-2">
-                    {/* KEY Popover */}
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs">
@@ -674,8 +799,6 @@ const handleSaveProfile = async () => {
                             </div>
                         </PopoverContent>
                     </Popover>
-
-                    {/* ACTIONS Popover */}
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs">
@@ -691,7 +814,7 @@ const handleSaveProfile = async () => {
                                             {copying ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <Copy className="w-3.5 h-3.5 mr-2" />} Copy Previous Week
                                         </Button>
                                         <div className="pt-1 mt-1 border-t">
-                                            <PublishButton weekStart={startOfWeek.format('YYYY-MM-DD')} />
+                                            <PublishButton weekStart={format(startOfWeek, 'yyyy-MM-dd')} />
                                         </div>
                                     </>
                                 )}
@@ -699,7 +822,6 @@ const handleSaveProfile = async () => {
                         </PopoverContent>
                     </Popover>
                 </div>
-
             </div>
           </div>
       </div>
@@ -719,10 +841,10 @@ const handleSaveProfile = async () => {
                     </div>
                 </th>
                 {weekDays.map(day => (
-                    // UPDATED DATE CELL (v9.5): Single line "Mon 5", h-8
-                    <th key={day.toString()} className="p-1 h-8 text-center border-b min-w-[100px] border-l bg-muted print:bg-white print:text-black print:w-[12%]">
-                        <span className="text-xs font-bold text-foreground">{day.format('ddd')}</span>
-                        <span className="text-xs ml-1 text-muted-foreground">{day.format('D')}</span>
+                    // UPDATED DATE CELL (v10.7)
+                    <th key={day.toISOString()} className="p-1 h-8 text-center border-b min-w-[100px] border-l bg-muted print:bg-white print:text-black print:w-[12%]">
+                        <span className="text-xs font-bold text-foreground">{format(day, 'EEE')}</span>
+                        <span className="text-xs ml-1 text-muted-foreground">{format(day, 'd')}</span>
                     </th>
                 ))}
             </tr>
@@ -748,11 +870,11 @@ const handleSaveProfile = async () => {
                                     </div>
                                 </td>
                                 {weekDays.map(day => {
-                                    const dateStr = day.format('YYYY-MM-DD');
+                                    const dateStr = format(day, 'yyyy-MM-dd');
                                     const dailyTotal = sumDailyHours(locShifts, dateStr);
                                     const stats = locName === 'Las Vegas' ? dailyStats[dateStr] : null;
                                     return (
-                                        <td key={day.toString()} className="border-l border-black bg-yellow-400 print-yellow text-center text-[10px] font-mono text-black align-top p-1 sticky top-8 z-30">
+                                        <td key={dateStr} className="border-l border-black bg-yellow-400 print-yellow text-center text-[10px] font-mono text-black align-top p-1 sticky top-8 z-30">
                                             <div className="font-bold">{dailyTotal > 0 ? `${dailyTotal.toFixed(1)}h` : '-'}</div>
                                             {stats && stats.people > 0 && (
                                                 /* UPDATED DASHBOARD LINK (v9.7) - Uses getDashboardLink helper */
@@ -780,7 +902,7 @@ const handleSaveProfile = async () => {
                             {/* FORECAST ROW: Scrolls under the sticky headers */}
                             <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 h-8 print:h-auto print:border-black print:break-after-avoid">
                                 <td className="p-1 text-[10px] font-semibold text-muted-foreground uppercase border-r sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 print:bg-white print:static print:text-black text-center">Forecast</td>
-                                {weekDays.map(day => (<td key={day.toString()} className="border-l p-0 text-center print:border-gray-300"><WeatherCell data={locWeather.find(w => w.date === day.format('YYYY-MM-DD'))} /></td>))}
+                                {weekDays.map(day => (<td key={day.toISOString()} className="border-l p-0 text-center print:border-gray-300"><WeatherCell data={locWeather.find(w => w.date === format(day, 'yyyy-MM-dd'))} /></td>))}
                             </tr>
                         </tbody>
 
@@ -801,8 +923,8 @@ const handleSaveProfile = async () => {
                                             </div>
                                         </td>
                                         {weekDays.map(day => (
-                                            <td key={day.toString()} className="border-l border-b bg-inherit text-center text-[10px] font-mono opacity-70 print:text-black print:border-black">
-                                                {sumDailyHours(deptShifts, day.format('YYYY-MM-DD')) > 0 && <span>{sumDailyHours(deptShifts, day.format('YYYY-MM-DD')).toFixed(1)}h</span>}
+                                            <td key={day.toISOString()} className="border-l border-b bg-inherit text-center text-[10px] font-mono opacity-70 print:text-black print:border-black">
+                                                {sumDailyHours(deptShifts, format(day, 'yyyy-MM-dd')) > 0 && <span>{sumDailyHours(deptShifts, format(day, 'yyyy-MM-dd')).toFixed(1)}h</span>}
                                             </td>
                                         ))}
                                     </tr>
@@ -845,7 +967,6 @@ const handleSaveProfile = async () => {
                                                                     </div>
                                                                 </div>
                                                                 
-                                                                {/* PRINT VIEW */}
                                                                 <div className="hidden print:flex flex-row items-center justify-between w-full">
                                                                     <div className="flex items-center gap-1.5 overflow-hidden">
                                                                         <span className="font-bold text-[10px] truncate">{emp.stage_name}</span>
@@ -855,8 +976,8 @@ const handleSaveProfile = async () => {
                                                             </div>
                                                         </td>
                                                         {weekDays.map(day => {
-                                                            const dateStr = day.format('YYYY-MM-DD');
-                                                            const shift = shifts.find(s => s.user_id === emp.id && moment(s.start_time).format('YYYY-MM-DD') === dateStr);
+                                                            const dateStr = format(day, 'yyyy-MM-dd');
+                                                            const shift = shifts.find(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateStr);
                                                             const shouldRender = shift && (!isVisiting || shift.location === locName);
                                                             const isAway = shift && shift.location !== emp.location && !isVisiting;
                                                             return (
@@ -864,8 +985,8 @@ const handleSaveProfile = async () => {
                                                                     {shouldRender ? (
                                                                         <div className={`h-full w-full border-l-2 rounded-r p-1 flex flex-col justify-center print:bg-white print:border print:border-black print:p-0.5 print:rounded-none ${isAway ? 'bg-amber-50 border-l-amber-500' : 'bg-blue-100 border-l-blue-500 dark:bg-blue-900'}`}>
                                                                             {shift.task && <div className="absolute top-0 right-0 p-0.5"><TaskBadge taskKey={shift.task} /></div>}
-                                                                            <span className="font-bold text-foreground text-xs leading-none mb-0.5 print:text-black">{moment(shift.start_time).format('h:mmA')}</span>
-                                                                            <span className="text-[10px] text-muted-foreground leading-none print:text-black">- {moment(shift.end_time).format('h:mmA')}</span>
+                                                                            <span className="font-bold text-foreground text-xs leading-none mb-0.5 print:text-black">{format(parseISO(shift.start_time), 'h:mma')}</span>
+                                                                            <span className="text-[10px] text-muted-foreground leading-none print:text-black">- {format(parseISO(shift.end_time), 'h:mma')}</span>
                                                                             {isAway && <div className="text-[9px] font-bold text-amber-700 mt-1 uppercase print:text-black"><Plane className="w-2 h-2 inline" /> {shift.location}</div>}
                                                                         </div>
                                                                     ) : (!isVisiting && isManager && <div className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-100 print:hidden"><Plus className="w-4 h-4 text-muted-foreground/30" /></div>)}
@@ -887,26 +1008,27 @@ const handleSaveProfile = async () => {
         </table>
         )}
 
-        {/* --- DAY VIEW --- */}
+        {/* --- DAY VIEW (Refactored to date-fns) --- */}
         {viewMode === 'day' && (
             <div className="p-4 space-y-6 print:space-y-4">
                 {Object.entries(groupedEmployees).map(([locName, departments]) => {
                     if (!visibleLocs[locName]) return null;
+                    const dateKey = format(currentDate, 'yyyy-MM-dd');
                     const activeDepts = Object.entries(departments).filter(([deptName, roleGroups]) => 
-                         Object.values(roleGroups as Record<string, Employee[]>).some((group: any) => group.some((emp: any) => shifts.some(s => s.user_id === emp.id && moment(s.start_time).format('YYYY-MM-DD') === currentDate.format('YYYY-MM-DD'))))
+                         Object.values(roleGroups as Record<string, Employee[]>).some((group: any) => group.some((emp: any) => shifts.some(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateKey)))
                     );
 
                     if (activeDepts.length === 0) return null;
-                    const todayWeather = weatherData[locName]?.find(w => w.date === currentDate.format('YYYY-MM-DD'));
+                    const todayWeather = weatherData[locName]?.find(w => w.date === dateKey);
 
                     return (
                         <div key={locName} className="border rounded-lg overflow-hidden bg-card shadow-sm print:border-black print:shadow-none">
                             <div className="bg-slate-900 text-white p-3 font-bold uppercase flex justify-between items-center print:bg-white print:text-black print:border-b print:border-black">
                                 <div className="flex flex-col">
                                     <div className="flex items-center"><MapPin className="w-4 h-4 inline mr-2" /> {locName}</div>
-                                    {locName === 'Las Vegas' && dailyStats[currentDate.format('YYYY-MM-DD')] && (
+                                    {locName === 'Las Vegas' && dailyStats[dateKey] && (
                                         <div className="text-xs font-normal text-orange-300 normal-case mt-1 font-mono">
-                                            People: {dailyStats[currentDate.format('YYYY-MM-DD')].people} — {dailyStats[currentDate.format('YYYY-MM-DD')].fullString}
+                                            People: {dailyStats[dateKey].people} — {dailyStats[dateKey].fullString}
                                         </div>
                                     )}
                                 </div>
@@ -922,8 +1044,7 @@ const handleSaveProfile = async () => {
                                         </div>
                                         <div className="divide-y divide-slate-100 dark:divide-slate-800 print:divide-black">
                                             {allDeptEmps.map((emp: any) => {
-                                                const dateStr = currentDate.format('YYYY-MM-DD');
-                                                const shift = shifts.find(s => s.user_id === emp.id && moment(s.start_time).format('YYYY-MM-DD') === dateStr);
+                                                const shift = shifts.find(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateKey);
                                                 if (!shift) return null;
                                                 return (
                                                     <div key={emp.id} className="flex items-center justify-between p-3 hover:bg-muted/10 print:p-2 print:border-b print:border-gray-200">
@@ -944,7 +1065,9 @@ const handleSaveProfile = async () => {
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <div className="font-mono font-bold text-sm bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-100 px-2 py-1 rounded border border-blue-100 dark:border-blue-900 print:bg-white print:text-black print:border-black">{moment(shift.start_time).format('h:mm A')} - {moment(shift.end_time).format('h:mm A')}</div>
+                                                            <div className="font-mono font-bold text-sm bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-100 px-2 py-1 rounded border border-blue-100 dark:border-blue-900 print:bg-white print:text-black print:border-black">
+                                                                {format(parseISO(shift.start_time), 'h:mm a')} - {format(parseISO(shift.end_time), 'h:mm a')}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 );
@@ -972,9 +1095,9 @@ const handleSaveProfile = async () => {
                     </DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-2">
-                    <div className="text-sm font-semibold">{selectedEmpName} <span className="font-normal text-muted-foreground">- {moment(selectedDate).format('MMM Do')}</span></div>
+                    <div className="text-sm font-semibold">{selectedEmpName} <span className="font-normal text-muted-foreground">- {selectedDate ? format(parseISO(selectedDate), 'MMM do') : ''}</span></div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs">Start</label><Input type="time" disabled={!isManager} value={formStart} onChange={(e) => {setFormStart(e.target.value); if(e.target.value) setFormEnd(moment(e.target.value, 'HH:mm').add(8, 'hours').format('HH:mm'));}} /></div>
+                        <div><label className="text-xs">Start</label><Input type="time" disabled={!isManager} value={formStart} onChange={(e) => {setFormStart(e.target.value); if(e.target.value) setFormEnd(format(addDays(parseISO(`${selectedDate}T${e.target.value}`), 0), 'HH:mm'));}} /></div>
                         <div><label className="text-xs">End</label><Input type="time" disabled={!isManager} value={formEnd} onChange={e => setFormEnd(e.target.value)} /></div>
                     </div>
                     <div><label className="text-xs">Role</label><Select value={formRole} onValueChange={setFormRole} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['Guide','Desk','Driver','Mechanic','Manager'].map(r=><SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div>
@@ -987,7 +1110,6 @@ const handleSaveProfile = async () => {
                     <div><label className="text-xs">Location</label><Select value={formLocation} onValueChange={setFormLocation} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.keys(LOCATIONS).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent></Select></div>
                 </div>
                 <DialogFooter className="flex justify-between w-full">
-                    {/* DELETE BUTTON: Optimized with reactive state cleanup */}
                     {selectedShiftId && isManager ? (
                         <Button variant="destructive" size="sm" onClick={handleDeleteShift}>
                             <Trash2 className="w-4 h-4 mr-2" /> Delete
