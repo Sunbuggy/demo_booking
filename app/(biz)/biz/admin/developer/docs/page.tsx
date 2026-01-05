@@ -1,8 +1,8 @@
 /**
  * @file app/(biz)/biz/admin/developer/docs/page.tsx
  * @description LIVING DOCUMENTATION.
- * Updated: "Frosted Glass" UI for Light Mode polish.
- * * ACCESS: Level 950+ (Developers) Only.
+ * Updated: Added Schedule Logic Hierarchy & Status of Date-FNS Migration.
+ * ACCESS: Level 950+ (Developers) Only.
  */
 import React from 'react';
 import { 
@@ -11,10 +11,9 @@ import {
   Server, 
   FileCode,
   AlertTriangle,
-  BookOpen,
-  CheckCircle2, // Added
-  CircleDashed, // Added
-  ArrowRight
+  CheckCircle2, 
+  CircleDashed,
+  CalendarClock // Added for Schedule Logic Section
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +22,7 @@ import { Separator } from '@/components/ui/separator';
 export default function DeveloperDocsPage() {
   
   // SHARED STYLES
-  // The "Glass" Effect: Semi-transparent white + Blur for Light Mode.
+  // The "Frosted Glass" Effect: Semi-transparent white + Blur for Light Mode.
   // Dark Mode stays deep zinc but with a slight transparency for consistency.
   const glassCardStyles = "bg-white/60 dark:bg-zinc-950/80 backdrop-blur-md border-white/40 dark:border-zinc-800 shadow-xl transition-all hover:shadow-2xl hover:bg-white/70 dark:hover:bg-zinc-950/90";
   const glassHeaderStyles = "text-zinc-800 dark:text-zinc-100";
@@ -117,9 +116,8 @@ export default function DeveloperDocsPage() {
                 <p className="text-xs text-zinc-700 dark:text-zinc-400 leading-relaxed">
                   <strong>RLS (Row Level Security)</strong> is enabled on all tables. 
                   Regular <code>supabaseClient</code> queries will respect these rules. 
-                  However, specific server actions (like <code>shuttle-operations.ts</code>) use a 
-                  <strong> Service Role (Admin) Client</strong> to perform necessary lookups (e.g., fetching driver names) 
-                  that regular users are technically blocked from seeing directly.
+                  However, specific server actions use a <strong>Service Role (Admin) Client</strong> 
+                  to perform necessary lookups (e.g., fetching names) that regular users are blocked from seeing.
                 </p>
               </div>
             </CardContent>
@@ -144,8 +142,7 @@ export default function DeveloperDocsPage() {
                 <ul className={`text-sm space-y-2 pl-4 border-l border-zinc-300 dark:border-zinc-800 ${glassTextStyles}`}>
                   <li>
                     <code className="text-zinc-900 dark:text-zinc-200 bg-black/5 dark:bg-white/10 px-1 rounded">constants/</code>: 
-                    <strong> Single Sources of Truth.</strong> <br/>
-                    (e.g., <code>user-levels.ts</code>). If a value is used in 2+ places, it belongs here.
+                    <strong> Single Sources of Truth.</strong> (e.g., <code>user-levels.ts</code>).
                   </li>
                   <li>
                     <code className="text-zinc-900 dark:text-zinc-200 bg-black/5 dark:bg-white/10 px-1 rounded">utils/</code>: 
@@ -167,7 +164,7 @@ export default function DeveloperDocsPage() {
                     <strong>Pattern:</strong> Validate Input (Zod) → Check Permissions (Auth) → Execute DB Query → Revalidate Path.
                   </li>
                   <li>
-                    <em>Example:</em> <code>shuttle-operations.ts</code> handles complex fleet logic securely.
+                    <em>Example:</em> <code>approve-time-off.ts</code> handles Roster/Payroll logic consistently.
                   </li>
                 </ul>
               </div>
@@ -208,21 +205,44 @@ export default function DeveloperDocsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-zinc-400 dark:border-white/20 text-zinc-800 dark:text-zinc-200 bg-white/50">Next.js 16.1 (App Router)</Badge>
+                <Badge variant="outline" className="border-zinc-400 dark:border-white/20 text-zinc-800 dark:text-zinc-200 bg-white/50">Next.js 16.1</Badge>
                 <Badge variant="outline" className="border-blue-500/50 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20">TypeScript</Badge>
-                <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 bg-green-50/50 dark:bg-green-900/20">Supabase (PostgreSQL)</Badge>
-                <Badge variant="outline" className="border-cyan-500/50 text-cyan-600 dark:text-cyan-400 bg-cyan-50/50 dark:bg-cyan-900/20">Tailwind CSS</Badge>
-                <Badge variant="outline" className="border-yellow-500/50 text-yellow-600 dark:text-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/20">Vercel</Badge>
+                <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 bg-green-50/50 dark:bg-green-900/20">Supabase</Badge>
+                <Badge variant="outline" className="border-cyan-500/50 text-cyan-600 dark:text-cyan-400 bg-cyan-50/50 dark:bg-cyan-900/20">Tailwind</Badge>
+                <Badge variant="outline" className="border-purple-500/50 text-purple-600 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/20">Date-FNS</Badge>
               </div>
               <Separator className="bg-zinc-200 dark:bg-zinc-800" />
               <div className={`space-y-2 text-sm ${glassTextStyles}`}>
-                <p><strong className="text-zinc-900 dark:text-white">State Management:</strong> Use URL Search Params (Nuqs) for filter/table state. Use React Context only for global UI (Toast, Theme).</p>
+                <p><strong className="text-zinc-900 dark:text-white">State Management:</strong> Use URL Search Params (Nuqs) for filters. Use React Context only for global UI.</p>
                 <p><strong className="text-zinc-900 dark:text-white">Data Fetching:</strong> Prefer Server Components fetching data directly via Supabase helpers.</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* 4. CURRENT DEBT / TODO */}
+          {/* 4. NEW: SCHEDULE LOGIC */}
+          <Card className={glassCardStyles}>
+            <CardHeader>
+              <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
+                <CalendarClock size={24} />
+                <CardTitle className="uppercase tracking-widest">Schedule Logic</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <p>The <strong>Roster Grid</strong> uses a strict hierarchy to determine what to display in a cell:</p>
+              <ol className="list-decimal list-inside space-y-1 ml-1">
+                <li><strong className="text-green-600">Shift Card:</strong> (Top Priority) Shows if shift exists.</li>
+                <li><strong className="text-yellow-600">Approved Off:</strong> Blocks cell (Yellow).</li>
+                <li><strong className="text-orange-600">Pending Request:</strong> Clickable Review Modal.</li>
+                <li><strong className="text-blue-500">Preferred Off:</strong> Informational badge.</li>
+              </ol>
+              <Separator className="my-2"/>
+              <p className="text-xs">
+                <strong>CRITICAL:</strong> All date comparisons use <code>.substring(0,10)</code> to match "YYYY-MM-DD" strings strictly. This prevents UTC/Local timezone mismatch bugs.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* 5. CURRENT DEBT / TODO */}
           <Card className={`${glassCardStyles} border-dashed`}>
             <CardHeader>
               <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
@@ -233,16 +253,30 @@ export default function DeveloperDocsPage() {
             <CardContent className="space-y-4">
               <ul className="space-y-3">
                 
-                {/* DONE ITEM */}
+                {/* DONE */}
                 <li className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50/50 dark:bg-green-950/20 p-2 rounded-lg">
                   <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                   <span className="line-through opacity-80">
-                    <strong>Mobile Roster UI:</strong> The Roster page needs polish for mobile users (drag-and-drop or simplified card view).
+                    <strong>Mobile Roster UI:</strong> The Roster page needs polish for mobile users.
                   </span>
                   <Badge className="ml-auto bg-green-600 text-[10px] h-5">DONE (v9.7)</Badge>
                 </li>
 
-                {/* PENDING: DASHBOARD URL */}
+                {/* PARTIAL */}
+                <li className="flex items-start gap-2 text-sm text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 p-2 rounded-lg">
+                  <CircleDashed className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-1 w-full">
+                    <div className="flex justify-between items-center w-full">
+                      <span className="font-bold">Moment.js Migration</span>
+                      <Badge className="bg-blue-600 text-[10px] h-5">PARTIAL</Badge>
+                    </div>
+                    <span className="text-xs opacity-90">
+                      Roster & Time Off modules now use <code>date-fns</code>. Legacy charts still use Moment.
+                    </span>
+                  </div>
+                </li>
+
+                {/* PENDING */}
                 <li className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 p-2 border border-orange-200 dark:border-orange-900 bg-orange-50/50 dark:bg-orange-950/20 rounded-lg">
                   <CircleDashed className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
                   <div className="flex flex-col gap-1">
@@ -250,34 +284,14 @@ export default function DeveloperDocsPage() {
                     <span className="text-xs">
                       Move Legacy Las Vegas Dashboard from root <code>/biz/[date]</code> to explicit <code>/biz/vegas/[date]</code>.
                     </span>
-                    <div className="text-[10px] mt-1 text-zinc-500 flex flex-col gap-0.5">
-                      <span>1. Create <code>app/(biz)/biz/vegas/[date]/</code></span>
-                      <span>2. Replace root page with Redirect</span>
-                      <span>3. Update Roster Routing Logic</span>
-                    </div>
                   </div>
                 </li>
 
-                {/* PENDING: MOMENT.JS */}
-                <li className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 p-2">
-                  <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Moment.js Refactor:</strong> Currently using legacy <code>moment</code>. 
-                    Plan to migrate to <code>date-fns</code> or native <code>Intl</code> to reduce bundle size.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300 p-2">
-                  <Server className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>RLS Cleanup:</strong> Continue moving explicit role checks from UI logic to Database Policies where possible.
-                  </span>
-                </li>
               </ul>
             </CardContent>
           </Card>
 
-           {/* 5. DEV TOOLS */}
+           {/* 6. QUICK LINKS */}
            <Card className={glassCardStyles}>
             <CardHeader>
               <CardTitle className="text-sm uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Quick Links</CardTitle>
