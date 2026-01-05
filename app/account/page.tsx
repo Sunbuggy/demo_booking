@@ -1,7 +1,7 @@
 /**
  * @file /app/account/page.tsx
  * @description THE UNIVERSAL USER HUB.
- * Fixed: Handles hierarchical Department/Position selection to ensure correct Roster sorting.
+ * Updated: Handles strict Guest/Customer/Staff visibility rules and Homepage Preference.
  */
 
 import React from 'react';
@@ -22,6 +22,7 @@ import UserTimeSheet from '@/components/UserTimeSheet';
 import AdminAvailability from '@/app/(biz)/biz/users/[id]/components/admin-availability'; 
 import AdminTimeOff from '@/app/(biz)/biz/users/[id]/components/admin-time-off'; 
 import ScanHistory from '@/app/(biz)/biz/users/[id]/components/scan-history';
+import HomepageSelect from '@/components/account/HomepageSelect'; // <--- NEW COMPONENT
 
 // --- UI COMPONENTS ---
 import BackgroundPicker from './components/background-picker';
@@ -35,8 +36,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger 
 } from '@/components/ui/dialog';
 import { 
-  MapPin, UserCog, History, Trophy, 
-  CalendarOff, CalendarDays, Mail, Activity, ShieldAlert
+  MapPin, Settings, History, Trophy, 
+  CalendarOff, CalendarDays, Mail, Activity, ShieldAlert, Home
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -67,7 +68,7 @@ export default async function AccountPage(props: AccountPageProps) {
 
   // 1. Authenticate Viewer
   const { data: { user: currentUser } } = await supabase.auth.getUser();
-  if (!currentUser) return redirect('/signin');
+  if (!currentUser) return redirect('/login'); // Basic auth check
 
   // 2. Resolve Async SearchParams
   const searchParams = await props.searchParams;
@@ -117,9 +118,17 @@ export default async function AccountPage(props: AccountPageProps) {
         <div className="p-8 text-center text-red-500">
             <h1 className="text-2xl font-bold">User Not Found</h1>
             <p>The requested profile does not exist.</p>
-            <Button asChild className="mt-4"><Link href="/account">Return to My Account</Link></Button>
+            <Button asChild className="mt-4"><Link href="/">Return Home</Link></Button>
         </div>
       );
+  }
+
+  const userLevel = userProfile.user_level ?? 0;
+
+  // --- GATEKEEPER: GUESTS (0-99) ---
+  // If the user is viewing themselves and is < 100, kick them out.
+  if (!isViewingOther && userLevel < 100) {
+    return redirect('/login');
   }
 
   const employeeDetails = employeeDetailsRes || [];
@@ -131,19 +140,19 @@ export default async function AccountPage(props: AccountPageProps) {
     .map((item: any) => item.vehicle)
     .filter((v: any) => v !== null);
 
-  const userLevel = userProfile.user_level ?? 0;
-  const isStaff = userLevel > 284;
+  // Standardized "Staff" check (Level 300+)
+  const isStaff = userLevel >= 300; 
 
   // Use either the unified employee_details column or fallback to user table
   const currentDept = employeeDetails[0]?.department || userProfile.department || 'UNASSIGNED';
   const currentPos = employeeDetails[0]?.primary_position || userProfile.job_title || 'STAFF';
 
   return (
-    <div className="max-w-7xl mx-auto p-2 sm:p-8 space-y-8 pb-32 w-full overflow-hidden">
+    <div className="max-w-7xl mx-auto p-2 sm:p-8 space-y-8 pb-32 w-full overflow-hidden animate-in fade-in">
       
       {/* --- ADMIN MODE BANNER --- */}
       {isViewingOther && (
-        <div className="bg-amber-500/10 border border-amber-500/50 text-amber-500 p-3 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-4">
+        <div className="bg-amber-500/10 border border-amber-500/50 text-amber-500 p-3 rounded-lg flex items-center justify-between">
            <div className="flex items-center gap-2">
              <ShieldAlert className="w-5 h-5" />
              <span className="font-bold text-sm uppercase">Admin Override: {userProfile.full_name}</span>
@@ -180,25 +189,29 @@ export default async function AccountPage(props: AccountPageProps) {
              <div className="flex flex-wrap justify-center md:justify-start gap-3 items-center text-sm text-zinc-400 font-bold italic uppercase">
                 <MapPin className={`w-4 h-4 ${isStaff ? 'text-orange-500' : 'text-blue-500'}`} /> 
                 {employeeDetails[0]?.primary_work_location || 'REMOTE / GENERAL'}
-                <Badge variant="secondary" className="ml-2 bg-zinc-800 text-zinc-300 border-zinc-700">
-                  {currentDept} / {currentPos}
-                </Badge>
+                
+                {/* DEPT/POS: Hidden for customers to ensure privacy/simplicity */}
+                {isStaff && (
+                  <Badge variant="secondary" className="ml-2 bg-zinc-800 text-zinc-300 border-zinc-700">
+                    {currentDept} / {currentPos}
+                  </Badge>
+                )}
              </div>
 
              <div className="pt-4 flex flex-wrap gap-2 justify-center md:justify-start items-center">
                <Dialog>
                  <DialogTrigger asChild>
-                   <Button variant="outline" size="sm" className="gap-2 border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800 hover:text-orange-500">
-                     <UserCog className="w-4 h-4" /> Sync Profile
+                   {/* CHANGED: Replaced "Sync Profile" text with Gear Icon */}
+                   <Button size="icon" variant="ghost" className="rounded-full bg-white/5 hover:bg-primary hover:text-black border border-white/10" title="Settings">
+                     <Settings className="w-5 h-5" />
                    </Button>
                  </DialogTrigger>
                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-zinc-950 border-zinc-800">
                     <DialogHeader>
                       <DialogTitle className="text-xl font-bold italic uppercase tracking-tighter">
-                        Fleet Metadata Sync: <span className="text-orange-500">{userProfile.full_name}</span>
+                        Profile Settings: <span className="text-orange-500">{userProfile.full_name}</span>
                       </DialogTitle>
                     </DialogHeader>
-                    {/* UserForm updated to handle dual Department/Position selection */}
                     <UserForm user={userProfile as any} empDetails={employeeDetails} />
                  </DialogContent>
                </Dialog>
@@ -237,6 +250,7 @@ export default async function AccountPage(props: AccountPageProps) {
              </CardContent>
            </Card>
 
+           {/* OPERATIONS CARD - STAFF ONLY */}
            {isStaff && (
              <Card className="bg-zinc-900/30 border-orange-500/20">
                <CardHeader className="pb-2">
@@ -255,6 +269,22 @@ export default async function AccountPage(props: AccountPageProps) {
                     <span className="text-zinc-400">Position</span> 
                     <span className="text-white">{currentPos}</span>
                   </div>
+
+                  {/* --- NEW: HOMEPAGE SELECTOR --- */}
+                  <div className="py-2 border-t border-zinc-800/50">
+                    <div className="flex justify-between items-center mb-1">
+                       <span className="text-[10px] font-black uppercase text-orange-500 flex items-center gap-1">
+                         <Home className="w-3 h-3"/> Start Page
+                       </span>
+                    </div>
+                    <HomepageSelect 
+                      userId={targetUserId}
+                      currentHomepage={userProfile.homepage}
+                      userLevel={userLevel}
+                    />
+                  </div>
+                  {/* ----------------------------- */}
+
                   <div className="flex justify-between items-center pt-2 border-t border-zinc-800">
                     <span className="text-zinc-400">Hire Date</span> 
                     <span className="text-white font-mono">{employeeDetails[0]?.hire_date || 'N/A'}</span>
