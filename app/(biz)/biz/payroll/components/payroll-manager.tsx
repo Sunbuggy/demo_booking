@@ -1,20 +1,16 @@
-/**
- * PAYROLL MANAGER COMPONENT
- * Path: app/(biz)/biz/payroll/components/payroll-manager.tsx
- * Description: The interactive hub for approving requests and auditing time entries.
- * Updates: Added 'Audit Trail' tooltip to show edit history.
- */
-
+// app/(biz)/biz/payroll/components/payroll-manager.tsx
 'use client';
 
 import React from 'react';
+// FIX: Import the SHARED action used by the Roster
+import { approveTimeOffRequest } from '@/app/actions/approve-time-off'; 
 import { approveCorrectionRequest, denyCorrectionRequest } from '@/app/actions/admin-payroll';
-import { updateTimeOffStatus } from '@/app/actions/time-off'; 
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Check, X, AlertCircle, CalendarCheck, ArrowRight, PlaneTakeoff, Info } from 'lucide-react';
+import { ArrowRight, PlaneTakeoff, Info, AlertCircle, CalendarCheck, Check, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import moment from 'moment';
 import EditEntryDialog from './edit-entry-dialog';
@@ -26,8 +22,6 @@ import {
 } from "@/components/ui/tooltip";
 
 // --- TYPES ---
-
-// 1. Correction Request (Punch Edits)
 type Request = {
   id: string;
   user_id: string;
@@ -39,7 +33,6 @@ type Request = {
   user: { full_name: string; avatar_url: string };
 };
 
-// 2. Time Off Request (Vacation)
 type TimeOffRequest = {
   id: string;
   user_id: string;
@@ -50,20 +43,21 @@ type TimeOffRequest = {
   user: { full_name: string; avatar_url: string };
 };
 
-// 3. Time Entry (The actual record)
-// Updated to include the new 'audit_trail' JSON column
+type AuditLog = {
+    edited_by: string;
+    edited_at: string;
+    note: string;
+    changes: string;
+};
+
 type Entry = {
   id: string;
   user_id: string;
   start_time: string;
   end_time: string | null;
   user: { full_name: string; avatar_url: string };
-  audit_trail?: {
-    edited_by: string;
-    edited_at: string;
-    note: string;
-    changes: string;
-  }[];
+  // FIX: Ensure optional chaining in render if this is null
+  audit_trail?: AuditLog[] | null; 
 };
 
 interface PayrollManagerProps {
@@ -92,12 +86,14 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
     toast({ title: res.message });
   };
 
-  const handleTimeOffStatus = async (id: string, userId: string, status: 'approved' | 'denied') => {
-    const res = await updateTimeOffStatus(id, userId, status);
+  // FIX: Updated handler to use the robust shared action
+  const handleTimeOffStatus = async (id: string, status: 'approved' | 'denied') => {
+    const res = await approveTimeOffRequest(id, status);
+    
     if (res.success) {
-      toast({ title: `Time Off ${status}` });
+      toast({ title: `Time Off ${status.toUpperCase()}` });
     } else {
-      toast({ title: "Error", description: res.message, variant: "destructive" });
+      toast({ title: "Update Failed", description: res.error, variant: "destructive" });
     }
   };
 
@@ -122,7 +118,7 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
             ) : (
               <div className="space-y-3">
                 {requests.map((req) => (
-                  <div key={req.id} className="bg-white dark:bg-slate-900 p-3 rounded-md border text-sm">
+                  <div key={req.id} className="bg-white dark:bg-slate-900 p-3 rounded-md border text-sm shadow-sm">
                     <div className="flex items-center gap-3 mb-2">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={req.user?.avatar_url} />
@@ -133,12 +129,13 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
                     <div className="flex items-center gap-2 text-xs mb-2">
                        <Badge variant="outline">{moment(req.start_time).format('MMM D')}</Badge>
                        <span>{moment(req.start_time).format('h:mm A')}</span>
-                       <ArrowRight className="w-3 h-3" />
+                       <ArrowRight className="w-3 h-3 text-muted-foreground" />
                        <span>{moment(req.end_time).format('h:mm A')}</span>
                     </div>
+                    {req.reason && <p className="text-xs italic text-muted-foreground mb-2">"{req.reason}"</p>}
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => handleDenyPunch(req.id)}>Deny</Button>
-                      <Button size="sm" className="flex-1 bg-orange-600" onClick={() => handleApprovePunch(req.id)}>Approve</Button>
+                      <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => handleDenyPunch(req.id)}>Deny</Button>
+                      <Button size="sm" className="flex-1 bg-orange-600 h-8 text-xs hover:bg-orange-500" onClick={() => handleApprovePunch(req.id)}>Approve</Button>
                     </div>
                   </div>
                 ))}
@@ -162,7 +159,7 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
             ) : (
               <div className="space-y-3">
                 {timeOffRequests.map((req) => (
-                  <div key={req.id} className="bg-white dark:bg-slate-900 p-3 rounded-md border text-sm">
+                  <div key={req.id} className="bg-white dark:bg-slate-900 p-3 rounded-md border text-sm shadow-sm">
                     <div className="flex items-center gap-3 mb-2">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={req.user?.avatar_url} />
@@ -170,15 +167,16 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
                       </Avatar>
                       <span className="font-bold">{req.user?.full_name}</span>
                     </div>
-                    <div className="text-xs mb-2">
+                    <div className="text-xs mb-2 flex justify-between items-center">
                       <span className="font-mono bg-zinc-100 dark:bg-zinc-800 p-1 rounded">
                         {moment(req.start_date).format('M/D/YY')} - {moment(req.end_date).format('M/D/YY')}
                       </span>
-                      {req.reason && <p className="mt-2 italic text-zinc-500">"{req.reason}"</p>}
                     </div>
+                    {req.reason && <p className="mb-3 text-xs italic text-zinc-500">"{req.reason}"</p>}
                     <div className="flex gap-2">
-                      <Button size="sm" variant="ghost" className="flex-1 text-red-600" onClick={() => handleTimeOffStatus(req.id, req.user_id, 'denied')}>Deny</Button>
-                      <Button size="sm" className="flex-1 bg-blue-600 text-white" onClick={() => handleTimeOffStatus(req.id, req.user_id, 'approved')}>Approve</Button>
+                      {/* FIX: Removed userId arg, rely on shared action */}
+                      <Button size="sm" variant="ghost" className="flex-1 text-red-600 h-8 text-xs hover:bg-red-50" onClick={() => handleTimeOffStatus(req.id, 'denied')}><X className="w-3 h-3 mr-1"/> Deny</Button>
+                      <Button size="sm" className="flex-1 bg-blue-600 text-white h-8 text-xs hover:bg-blue-500" onClick={() => handleTimeOffStatus(req.id, 'approved')}><Check className="w-3 h-3 mr-1"/> Approve</Button>
                     </div>
                   </div>
                 ))}
@@ -197,8 +195,8 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
            <CardDescription>View and manually edit punches. Edits are audited.</CardDescription>
         </CardHeader>
         <CardContent>
-           <div className="rounded-md border">
-              <div className="grid grid-cols-4 bg-muted p-3 font-medium text-xs uppercase tracking-tighter">
+           <div className="rounded-md border bg-card">
+              <div className="grid grid-cols-4 bg-muted/50 p-3 font-medium text-xs uppercase tracking-tighter border-b">
                  <div>Employee</div>
                  <div>Date</div>
                  <div>Shift</div>

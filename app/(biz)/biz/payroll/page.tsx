@@ -1,9 +1,4 @@
-/**
- * @file /app/(biz)/biz/payroll/page.tsx
- * @description REGULATED PAYROLL HUB.
- * Fix: Stabilized auth call and added case-insensitive Time Off fetching.
- */
-
+// app/(biz)/biz/payroll/page.tsx
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import PayrollManager from './components/payroll-manager';
@@ -17,7 +12,7 @@ export default async function PayrollPage(props: {
 }) {
   const supabase = await createClient();
 
-  // 1. STABILIZED AUTH: Await the user session correctly
+  // 1. STABILIZED AUTH
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (!user || authError) return redirect('/signin');
 
@@ -63,13 +58,13 @@ export default async function PayrollPage(props: {
   ] = await Promise.all([
     supabase.from('users').select('id, full_name').gte('user_level', 300).order('full_name'),
     
-    // Correction Queue: Manual punch edits
+    // Correction Queue
     supabase.from('time_sheet_requests')
       .select(`*, user:users (full_name, avatar_url)`)
       .eq('status', 'pending')
       .order('created_at', { ascending: true }),
 
-    // Time Off Queue: Case-insensitive search to ensure Shana's requests appear
+    // Time Off Queue: Uses ILIKE for Case-Insensitive matching (Matches Roster logic)
     supabase.from('time_off_requests')
       .select(`*, user:users (full_name, avatar_url)`)
       .ilike('status', 'pending') 
@@ -91,9 +86,6 @@ export default async function PayrollPage(props: {
 
       <PayrollFilters users={allEmployeesRes.data || []} />
 
-      {/* FIX: Maintain 'requests' prop for Punch Corrections to prevent 
-        'undefined length' crash in PayrollManager.
-      */}
       <PayrollManager 
          requests={punchRequestsRes.data as any || []} 
          timeOffRequests={timeOffRequestsRes.data as any || []} 
