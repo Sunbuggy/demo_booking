@@ -1,7 +1,7 @@
 /**
  * @file app/(biz)/biz/admin/developer/docs/page.tsx
  * @description LIVING DOCUMENTATION.
- * Updated: Added Schedule Logic Hierarchy & Status of Date-FNS Migration.
+ * Updated: Added "Auth & Smart Routing" Architecture.
  * ACCESS: Level 950+ (Developers) Only.
  */
 import React from 'react';
@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   CheckCircle2, 
   CircleDashed,
-  CalendarClock // Added for Schedule Logic Section
+  CalendarClock,
+  KeyRound // Added for Auth Section
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -123,7 +124,65 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 2. FILE STRUCTURE MAP */}
+          {/* 2. NEW: AUTH & ROUTING ARCHITECTURE */}
+          <Card className={glassCardStyles}>
+            <CardHeader>
+              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-500">
+                <KeyRound size={24} />
+                <CardTitle className="uppercase tracking-widest">Auth & Smart Routing</CardTitle>
+              </div>
+              <CardDescription className={glassTextStyles}>
+                How we determine "Where to go" after sign-in.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              
+              <div className="bg-purple-50/50 dark:bg-purple-900/10 p-3 rounded-lg border border-purple-100 dark:border-purple-800">
+                <p className="font-bold text-purple-700 dark:text-purple-400 mb-2">The Decision Hierarchy</p>
+                <ol className="list-decimal list-inside space-y-1 text-zinc-700 dark:text-zinc-300">
+                  <li>
+                    <strong>User Preference:</strong> Checks <code>users.homepage</code> (Managed in <code>/account</code>).
+                  </li>
+                  <li>
+                    <strong>Role Check:</strong> If Level ≥ 300 (Staff), target <strong>Location Dashboard</strong>.
+                  </li>
+                  <li>
+                    <strong>Location Resolve:</strong> Maps <code>primary_work_location</code> (e.g., "Las Vegas") to URL slug (<code>/biz/vegas</code>).
+                  </li>
+                  <li>
+                    <strong>Fallback:</strong> Customers & Guests default to <strong>Root</strong> (<code>/</code>).
+                  </li>
+                </ol>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-zinc-800 dark:text-white mb-2">Key Files</h4>
+                <ul className="space-y-2 pl-2">
+                  <li className="flex gap-2">
+                    <code className="text-xs bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded h-fit">src/lib/utils/auth-routing.ts</code>
+                    <span className="text-xs text-zinc-500">
+                      <strong>"The Brain"</strong>. [cite_start]Pure function that calculates destination paths[cite: 38].
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <code className="text-xs bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded h-fit">app/auth/callback/route.ts</code>
+                    <span className="text-xs text-zinc-500">
+                      Handles Magic Link/OAuth redirects. Queries profile <em>before</em> redirecting.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <code className="text-xs bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded h-fit">app/page.tsx</code>
+                    <span className="text-xs text-zinc-500">
+                      <strong>"The Gatekeeper"</strong>. Redirects logged-in staff; renders Welcome UI for guests.
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+            </CardContent>
+          </Card>
+
+          {/* 3. FILE STRUCTURE MAP */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
@@ -142,11 +201,11 @@ export default function DeveloperDocsPage() {
                 <ul className={`text-sm space-y-2 pl-4 border-l border-zinc-300 dark:border-zinc-800 ${glassTextStyles}`}>
                   <li>
                     <code className="text-zinc-900 dark:text-zinc-200 bg-black/5 dark:bg-white/10 px-1 rounded">constants/</code>: 
-                    <strong> Single Sources of Truth.</strong> (e.g., <code>user-levels.ts</code>).
+                    [cite_start]<strong> Single Sources of Truth.</strong> (e.g., <code>user-levels.ts</code>)[cite: 42].
                   </li>
                   <li>
                     <code className="text-zinc-900 dark:text-zinc-200 bg-black/5 dark:bg-white/10 px-1 rounded">utils/</code>: 
-                    Pure helper functions (formatting dates, math, string manipulation).
+                    [cite_start]Pure helper functions (formatting dates, math, string manipulation)[cite: 43].
                   </li>
                 </ul>
               </div>
@@ -158,10 +217,10 @@ export default function DeveloperDocsPage() {
                 </h3>
                 <ul className={`text-sm space-y-2 pl-4 border-l border-zinc-300 dark:border-zinc-800 ${glassTextStyles}`}>
                   <li>
-                    All <strong>"Use Server"</strong> mutations live here.
+                    [cite_start]All <strong>"Use Server"</strong> mutations live here[cite: 45].
                   </li>
                   <li>
-                    <strong>Pattern:</strong> Validate Input (Zod) → Check Permissions (Auth) → Execute DB Query → Revalidate Path.
+                    [cite_start]<strong>Pattern:</strong> Validate Input (Zod) → Check Permissions (Auth) → Execute DB Query → Revalidate Path[cite: 46, 48].
                   </li>
                   <li>
                     <em>Example:</em> <code>approve-time-off.ts</code> handles Roster/Payroll logic consistently.
@@ -176,13 +235,13 @@ export default function DeveloperDocsPage() {
                 </h3>
                 <ul className={`text-sm space-y-2 pl-4 border-l border-zinc-300 dark:border-zinc-800 ${glassTextStyles}`}>
                   <li>
-                    Everything inside <code>(biz)</code> requires authentication.
+                    [cite_start]Everything inside <code>(biz)</code> requires authentication[cite: 51].
                   </li>
                   <li>
-                    <strong>Dashboard:</strong> <code>/biz/[location]/page.tsx</code>
+                    [cite_start]<strong>Dashboard:</strong> <code>/biz/[location]/page.tsx</code>[cite: 52].
                   </li>
                   <li>
-                    <strong>Admin Tools:</strong> <code>/biz/admin/...</code>
+                    [cite_start]<strong>Admin Tools:</strong> <code>/biz/admin/...</code>[cite: 53].
                   </li>
                 </ul>
               </div>
@@ -195,7 +254,7 @@ export default function DeveloperDocsPage() {
         {/* RIGHT COLUMN: TECH STACK & DEBT */}
         <div className="space-y-8">
           
-          {/* 3. TECH STACK */}
+          {/* 4. TECH STACK */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-green-600 dark:text-green-500">
@@ -213,13 +272,13 @@ export default function DeveloperDocsPage() {
               </div>
               <Separator className="bg-zinc-200 dark:bg-zinc-800" />
               <div className={`space-y-2 text-sm ${glassTextStyles}`}>
-                <p><strong className="text-zinc-900 dark:text-white">State Management:</strong> Use URL Search Params (Nuqs) for filters. Use React Context only for global UI.</p>
-                <p><strong className="text-zinc-900 dark:text-white">Data Fetching:</strong> Prefer Server Components fetching data directly via Supabase helpers.</p>
+                <p><strong className="text-zinc-900 dark:text-white">State Management:</strong> Use URL Search Params (Nuqs) for filters. [cite_start]Use React Context only for global UI[cite: 57].</p>
+                [cite_start]<p><strong className="text-zinc-900 dark:text-white">Data Fetching:</strong> Prefer Server Components fetching data directly via Supabase helpers[cite: 58].</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* 4. NEW: SCHEDULE LOGIC */}
+          {/* 5. SCHEDULE LOGIC */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
@@ -228,12 +287,12 @@ export default function DeveloperDocsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
-              <p>The <strong>Roster Grid</strong> uses a strict hierarchy to determine what to display in a cell:</p>
+              [cite_start]<p>The <strong>Roster Grid</strong> uses a strict hierarchy to determine what to display in a cell[cite: 60]:</p>
               <ol className="list-decimal list-inside space-y-1 ml-1">
-                <li><strong className="text-green-600">Shift Card:</strong> (Top Priority) Shows if shift exists.</li>
-                <li><strong className="text-yellow-600">Approved Off:</strong> Blocks cell (Yellow).</li>
-                <li><strong className="text-orange-600">Pending Request:</strong> Clickable Review Modal.</li>
-                <li><strong className="text-blue-500">Preferred Off:</strong> Informational badge.</li>
+                [cite_start]<li><strong className="text-green-600">Shift Card:</strong> (Top Priority) Shows if shift exists[cite: 61].</li>
+                [cite_start]<li><strong className="text-yellow-600">Approved Off:</strong> Blocks cell (Yellow)[cite: 62].</li>
+                [cite_start]<li><strong className="text-orange-600">Pending Request:</strong> Clickable Review Modal[cite: 63].</li>
+                [cite_start]<li><strong className="text-blue-500">Preferred Off:</strong> Informational badge[cite: 64].</li>
               </ol>
               <Separator className="my-2"/>
               <p className="text-xs">
@@ -242,7 +301,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 5. CURRENT DEBT / TODO */}
+          {/* 6. CURRENT DEBT / TODO */}
           <Card className={`${glassCardStyles} border-dashed`}>
             <CardHeader>
               <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
@@ -257,7 +316,7 @@ export default function DeveloperDocsPage() {
                 <li className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50/50 dark:bg-green-950/20 p-2 rounded-lg">
                   <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                   <span className="line-through opacity-80">
-                    <strong>Mobile Roster UI:</strong> The Roster page needs polish for mobile users.
+                    [cite_start]<strong>Mobile Roster UI:</strong> The Roster page needs polish for mobile users[cite: 71].
                   </span>
                   <Badge className="ml-auto bg-green-600 text-[10px] h-5">DONE (v9.7)</Badge>
                 </li>
@@ -271,7 +330,7 @@ export default function DeveloperDocsPage() {
                       <Badge className="bg-blue-600 text-[10px] h-5">PARTIAL</Badge>
                     </div>
                     <span className="text-xs opacity-90">
-                      Roster & Time Off modules now use <code>date-fns</code>. Legacy charts still use Moment.
+                      Roster & Time Off modules now use <code>date-fns</code>. [cite_start]Legacy charts still use Moment[cite: 75].
                     </span>
                   </div>
                 </li>
@@ -282,7 +341,7 @@ export default function DeveloperDocsPage() {
                   <div className="flex flex-col gap-1">
                     <span className="font-bold text-orange-700 dark:text-orange-400">Dashboard URL Standardization</span>
                     <span className="text-xs">
-                      Move Legacy Las Vegas Dashboard from root <code>/biz/[date]</code> to explicit <code>/biz/vegas/[date]</code>.
+                      [cite_start]Move Legacy Las Vegas Dashboard from root <code>/biz/[date]</code> to explicit <code>/biz/vegas/[date]</code>[cite: 77].
                     </span>
                   </div>
                 </li>
@@ -291,7 +350,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-           {/* 6. QUICK LINKS */}
+           {/* 7. QUICK LINKS */}
            <Card className={glassCardStyles}>
             <CardHeader>
               <CardTitle className="text-sm uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Quick Links</CardTitle>

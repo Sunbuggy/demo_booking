@@ -1,7 +1,7 @@
 /**
  * @file /components/UI/Navbar/NavSideBar.tsx
  * @description Main Sidebar Navigation.
- * Updated: Added link to System Architecture Docs.
+ * Updated: Added "Look & Feel" UI System link to Developer Tools.
  */
 'use client';
 
@@ -16,7 +16,8 @@ import {
   FileText, 
   Trash2,
   Car,
-  BookOpen // <-- New Import for Docs Icon
+  BookOpen,
+  Palette // <-- ADDED: Icon for Look & Feel
 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -90,8 +91,9 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   // --- 6. DEVELOPER (Level 950+) ---
   const devLinks: NavLink[] = [
     { href: '/biz/admin/health', label: 'System Health', minLevel: USER_LEVELS.DEV, icon: <Activity size={16} className="text-green-600 dark:text-green-400" /> },
-    // NEW LINK: System Architecture & Living Docs
     { href: '/biz/admin/developer/docs', label: 'System Architecture', minLevel: USER_LEVELS.DEV, icon: <BookOpen size={16} className="text-blue-500 dark:text-blue-400" /> },
+    // ADDED: Look and Feel Page
+    { href: '/biz/admin/developer/look-and-feel', label: 'Look & Feel', minLevel: USER_LEVELS.DEV, icon: <Palette size={16} className="text-purple-500 dark:text-purple-400" /> },
   ];
 
   /**

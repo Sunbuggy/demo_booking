@@ -3,24 +3,35 @@
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache'; // <--- Required to update UI state after login
 import { getURL, getErrorRedirect, getStatusRedirect } from 'utils/helpers';
 import { getAuthTypes } from 'utils/auth-helpers/settings';
 import { updatePhoneNumber, updateUserName } from '../supabase/queries';
 import { updateUserLevel } from '../supabase/queries';
+import { getPostLoginRedirect } from '@/lib/utils/auth-routing'; // <--- Smart Routing Utility
 
+/**
+ * Validates email format.
+ */
 function isValidEmail(email: string) {
   var regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
   return regex.test(email);
 }
 
+/**
+ * Simple wrapper to handle server-side redirects.
+ */
 export async function redirectToPath(path: string) {
   return redirect(path);
 }
 
+/**
+ * Handles User Sign Out.
+ */
 export async function SignOut(formData: FormData) {
   const pathName = String(formData.get('pathName')).trim();
 
-  const supabase =  await await createClient();
+  const supabase = await createClient(); // Fixed double await
   const { error } = await supabase.auth.signOut();
 
   if (error) {
@@ -34,6 +45,9 @@ export async function SignOut(formData: FormData) {
   return '/signin';
 }
 
+/**
+ * Handles Magic Link Sign In (Email OTP).
+ */
 export async function signInWithEmail(formData: FormData) {
   const cookieStore = cookies();
   const callbackURL = getURL('/auth/callback');
@@ -49,15 +63,15 @@ export async function signInWithEmail(formData: FormData) {
     );
   }
 
-  const supabase = await await createClient();
+  const supabase = await createClient(); // Fixed double await
   let options = {
     emailRedirectTo: callbackURL,
     shouldCreateUser: true
   };
 
-  // If allowPassword is false, do not create a new user
   const { allowPassword } = getAuthTypes();
   if (allowPassword) options.shouldCreateUser = false;
+  
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: options
@@ -88,10 +102,11 @@ export async function signInWithEmail(formData: FormData) {
   return redirectPath;
 }
 
+/**
+ * Handles Password Reset Request.
+ */
 export async function requestPasswordUpdate(formData: FormData) {
   const callbackURL = getURL('/auth/reset_password');
-
-  // Get form data
   const email = String(formData.get('email')).trim();
   let redirectPath: string;
 
@@ -103,7 +118,7 @@ export async function requestPasswordUpdate(formData: FormData) {
     );
   }
 
-  const supabase = await await createClient();
+  const supabase = await createClient(); // Fixed double await
 
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: callbackURL
@@ -133,13 +148,17 @@ export async function requestPasswordUpdate(formData: FormData) {
   return redirectPath;
 }
 
+/**
+ * Handles Standard Password Sign In.
+ * [UPDATED]: Includes "Tracer Bullets" logging and Smart Routing.
+ */
 export async function signInWithPassword(formData: FormData) {
   const cookieStore = cookies();
   const email = String(formData.get('email')).trim();
   const password = String(formData.get('password')).trim();
   let redirectPath: string;
 
-  const supabase = await await createClient();
+  const supabase = await createClient(); // Fixed double await
   const { error, data } = await supabase.auth.signInWithPassword({
     email,
     password
@@ -153,7 +172,52 @@ export async function signInWithPassword(formData: FormData) {
     );
   } else if (data.user) {
     (await cookieStore).set('preferredSignInView', 'password_signin', { path: '/' });
-    redirectPath = getStatusRedirect('/', 'Success!', 'You are now signed in.');
+    
+    // --- 🔫 TRACER BULLETS (DEBUG LOGS) START ---
+    console.log("✅ [Auth] User Authenticated via Password. ID:", data.user.id);
+
+    // 1. Fetch Profile Details
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select(`
+        user_level,
+        homepage,
+        employee_details ( primary_work_location )
+      `)
+      .eq('id', data.user.id)
+      .single();
+
+    if (profileError) {
+      console.error("❌ [Auth] Profile Fetch Error:", profileError.message);
+    } else {
+      console.log("📊 [Auth] Profile Loaded. Level:", profile?.user_level, "| Homepage Pref:", profile?.homepage);
+    }
+
+    // 2. Determine Destination using Smart Logic
+    let nextPath = '/'; // Default fallback
+    
+    if (profile) {
+      // Handle Supabase join quirk (array vs object)
+      const empData = Array.isArray(profile.employee_details) 
+        ? profile.employee_details[0] 
+        : profile.employee_details;
+
+      nextPath = getPostLoginRedirect({
+        user_level: profile.user_level ?? 0,
+        primary_work_location: empData?.primary_work_location,
+        homepage: profile.homepage
+      });
+    }
+
+    console.log("🚀 [Auth] Redirecting User To:", nextPath);
+    // --- 🔫 TRACER BULLETS END ---
+
+    // 3. Revalidate Root to ensure UI updates (e.g. Nav bar changes)
+    revalidatePath('/', 'layout');
+
+    // 4. Construct the Final Redirect
+    redirectPath = getStatusRedirect(nextPath, 'Success!', 'You are now signed in.');
+
   } else {
     redirectPath = getErrorRedirect(
       '/signin/password_signin',
@@ -165,6 +229,9 @@ export async function signInWithPassword(formData: FormData) {
   return redirectPath;
 }
 
+/**
+ * Handles New User Sign Up.
+ */
 export async function signUp(formData: FormData) {
   const callbackURL = getURL('/auth/callback');
 
@@ -188,11 +255,10 @@ export async function signUp(formData: FormData) {
     );
   }
 
-  const supabase = await await createClient();
+  const supabase = await createClient(); // Fixed double await
   const { error, data } = await supabase.auth.signUp({
     email,
     password,
-
     options: {
       emailRedirectTo: callbackURL,
       data: {
@@ -208,6 +274,7 @@ export async function signUp(formData: FormData) {
       error.message
     );
   } else if (data.session) {
+    // New users go to Root to book tours
     redirectPath = getStatusRedirect('/', 'Success!', 'You are now signed in.');
   } else if (
     data.user &&
@@ -236,12 +303,14 @@ export async function signUp(formData: FormData) {
   return redirectPath;
 }
 
+/**
+ * Handles Password Update.
+ */
 export async function updatePassword(formData: FormData) {
   const password = String(formData.get('password')).trim();
   const passwordConfirm = String(formData.get('passwordConfirm')).trim();
   let redirectPath: string;
 
-  // Check that the password and confirmation match
   if (password !== passwordConfirm) {
     redirectPath = getErrorRedirect(
       '/signin/update_password',
@@ -250,7 +319,7 @@ export async function updatePassword(formData: FormData) {
     );
   }
 
-  const supabase = await await createClient();
+  const supabase = await createClient(); // Fixed double await
   const { error, data } = await supabase.auth.updateUser({
     password
   });
@@ -278,11 +347,12 @@ export async function updatePassword(formData: FormData) {
   return redirectPath;
 }
 
+/**
+ * Handles Email Update.
+ */
 export async function updateEmail(formData: FormData) {
-  // Get form data
   const newEmail = String(formData.get('newEmail')).trim();
 
-  // Check that the email is valid
   if (!isValidEmail(newEmail)) {
     return getErrorRedirect(
       '/account',
@@ -291,7 +361,7 @@ export async function updateEmail(formData: FormData) {
     );
   }
 
-  const supabase = await await createClient();
+  const supabase = await createClient(); // Fixed double await
 
   const callbackUrl = getURL(
     getStatusRedirect('/account', 'Success!', `Your email has been updated.`)
@@ -319,11 +389,13 @@ export async function updateEmail(formData: FormData) {
   }
 }
 
+/**
+ * Handles Name Update.
+ */
 export async function updateName(formData: FormData) {
-  // Get form data
   const fullName = String(formData.get('fullName')).trim();
 
-  const supabase = await await createClient();
+  const supabase = await createClient(); // Fixed double await
   const { error } = await updateUserName(supabase, fullName);
   if (error) {
     return getErrorRedirect(
@@ -340,10 +412,12 @@ export async function updateName(formData: FormData) {
   }
 }
 
+/**
+ * Handles Phone Update.
+ */
 export async function updatePhone(formData: FormData) {
-  // Get form data
   const phone = String(formData.get('phone')).trim();
-  const supabase = await await createClient();
+  const supabase = await createClient(); // Fixed double await
   const { error } = await updatePhoneNumber(supabase, phone);
   if (error) {
     return getErrorRedirect(
@@ -360,11 +434,13 @@ export async function updatePhone(formData: FormData) {
   }
 }
 
+/**
+ * Handles Role Update.
+ */
 export async function updateRole(formData: FormData) {
-  // Get form data
   const role = Number(formData.get('current_role'));
 
-  const supabase =  await await createClient();
+  const supabase = await createClient(); // Fixed double await
   const { error } = await updateUserLevel(supabase, role);
   if (error) {
     return getErrorRedirect(

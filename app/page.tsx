@@ -1,26 +1,66 @@
-// app/page.tsx
+import { createClient } from '@/utils/supabase/server';
+import { getPostLoginRedirect } from '@/lib/utils/auth-routing';
+import { redirect } from 'next/navigation';
+
+// UI Imports (Preserved strictly)
 import { default as InstallSunbuggy } from '@/components/add-to-screen/page';
-import BackgroundVideo from '@/components/BackgroundVideo'; // Import the new component
+import BackgroundVideo from '@/components/BackgroundVideo'; 
 import Link from 'next/link';
 import { Users, Trophy } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
-const Home = async () => {
+export default async function Home() {
+  const supabase = await createClient();
+  
+  // 1. CHECK SESSION
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // 2. LOGGED IN USER -> CHECK REDIRECT
+  if (user) {
+    const { data: userRecord, error } = await supabase
+      .from('users')
+      .select(`
+        user_level,
+        homepage,
+        employee_details (
+          primary_work_location
+        )
+      `)
+      .eq('id', user.id)
+      .single();
+
+    if (!error && userRecord) {
+      const empData = userRecord.employee_details as any;
+      const locationVal = Array.isArray(empData) 
+        ? empData[0]?.primary_work_location 
+        : empData?.primary_work_location;
+
+      const nextPath = getPostLoginRedirect({
+        user_level: userRecord.user_level ?? 0,
+        primary_work_location: locationVal,
+        homepage: userRecord.homepage
+      });
+
+      // FIX: Only redirect if the destination is NOT the root page ('/')
+      // This allows Staff to go to Dashboard, but Customers/Adventures to stay here.
+      if (nextPath !== '/') {
+        redirect(nextPath);
+      }
+    }
+  }
+
+  // 3. RENDER WELCOME PAGE (For Guests & Users routed to '/')
   return (
     <main className="flex flex-col items-center min-h-screen text-white animate-in fade-in duration-500 relative">
       
-      {/* 1. Mobile Install Prompt (Pop-up logic is inside the component) */}
       <InstallSunbuggy />
-
-      {/* 2. Background Video */}
-      {/* Ensure you put the file in 'public/videos/' folder */}
       <BackgroundVideo 
         videoSrc="/videos/sunbuggy-intro.mp4" 
         poster="/videos/sunbuggy-poster.jpg" 
       />
 
-      {/* 3. Hero Section */}
+      {/* Hero Section */}
       <section className="w-full max-w-6xl px-4 pt-20 pb-8 text-center space-y-6 z-10">
         <div className="space-y-2 drop-shadow-lg">
           <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-white uppercase drop-shadow-md border-text">
@@ -31,9 +71,6 @@ const Home = async () => {
           </p>
         </div>
 
-        {/* ... (Rest of your existing content) ... */}
-        {/* Note: I changed bg-muted to bg-black/60 to look better over video */}
-        
         <div className="bg-black/60 backdrop-blur-sm p-6 rounded-2xl border-2 border-dashed border-white/20 mx-auto max-w-3xl text-white">
           <div className="space-y-1 text-lg md:text-xl font-bold uppercase tracking-wide">
             <p>SunBuggy Off Road Adventure Company</p>
@@ -45,17 +82,15 @@ const Home = async () => {
             <p>Dune Buggy Tours and Dune Buggy Rentals</p>
           </div>
           <p className="mt-4 text-lg italic text-yellow-400 font-serif">
-            "Often imitated, but never duplicated"
+            &quot;Often imitated, but never duplicated&quot;
           </p>
         </div>
       </section>
 
-      {/* 4. Location Selection Cards */}
+      {/* Location Cards */}
       <section className="w-full max-w-6xl px-4 py-8 z-10">
-        <h2 className="sr-only">Select a Location</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Example Card Update: Added backdrop blur to make them pop over video */}
           <Link href="/lasvegas" 
             className="group relative flex flex-col overflow-hidden rounded-xl border border-white/20 bg-black/60 backdrop-blur-md text-white shadow-lg transition-all hover:scale-[1.02] hover:border-primary/80 hover:bg-black/80"
           >
@@ -110,7 +145,7 @@ const Home = async () => {
         </div>
       </section>
 
-      {/* 5. Info Section */}
+      {/* Info Section */}
       <section className="w-full max-w-4xl px-4 py-12 space-y-12 text-lg leading-relaxed text-gray-100 z-10">
         
         <div className="bg-black/70 border-l-4 border-primary p-6 md:p-8 rounded-r-xl shadow-sm backdrop-blur-md">
@@ -126,7 +161,6 @@ const Home = async () => {
           <p>
             <strong className="text-white">AS SEEN ON OVER 50 TV SHOWS AROUND THE WORLD!</strong> Don&apos;t be duped by wanna-bees...
           </p>
-          {/* ... shortened for brevity, keep your original text here ... */}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-gray-200">
@@ -176,6 +210,4 @@ const Home = async () => {
 
     </main>
   );
-};
-
-export default Home;
+}
