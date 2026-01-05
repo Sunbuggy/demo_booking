@@ -1,7 +1,7 @@
 /**
  * @file app/actions/publish-schedule.ts
- * @description Generates and emails the Roster to active staff.
- * FIX v12.1: Joined 'employee_details' to fetch 'primary_work_location' correctly.
+ * @description Generates and emails the Roster to staff.
+ * FIX v12.2: Removed 'active' filter on users table (column missing in DB).
  */
 'use server';
 
@@ -64,7 +64,8 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
     console.log(`[Email] Generating ${targetLocation} roster for ${weekLabel}...`);
 
     const [usersRes, shiftsRes, timeOffRes] = await Promise.all([
-      // A. Active Staff - JOIN employee_details to get location
+      // A. Staff - JOIN employee_details to get location
+      // FIX v12.2: Removed .eq('active', true) as the column does not exist
       supabaseAdmin
         .from('users')
         .select(`
@@ -72,8 +73,7 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
           full_name, 
           email, 
           employee_details(primary_work_location)
-        `)
-        .eq('active', true),
+        `),
       
       // B. Shifts for the week
       supabaseAdmin
@@ -225,6 +225,7 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
       .filter(email => email.includes('@') && !email.endsWith('.test'));
 
     // SAFETY FOR DEV: Hardcoded for safety. 
+    // CHANGE THIS BEFORE PRODUCTION DEPLOYMENT
     const safeRecipients = ['scott@sunbuggy.com']; 
     // FOR PROD: const safeRecipients = recipients; 
 
