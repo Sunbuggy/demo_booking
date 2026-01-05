@@ -32,7 +32,7 @@ export function getPostLoginRedirect(profile: UserProfile): string {
       case 'VehiclesManagementPage':
         return `/biz/vehicles/admin`;
       case 'UnsettledPage':
-        if (user_level >= 800) return `/biz/reports/authorizenet/unsettled`;
+        if (user_level >= 800) return `/biz/reports`;
         break;
       case 'ChooseAdventure':
         return '/'; 
