@@ -207,7 +207,6 @@
 //     </div>
 //   );
 // }
-
 'use client';
 
 import { useState } from 'react';
@@ -216,15 +215,15 @@ export default function CheckoutForm({
   total, 
   isExpanded, 
   setIsExpanded, 
-  onPayment, // We'll re-purpose this to trigger the save
+  onPayment, 
   message, 
-  loading 
+  loading,
+  isEditing = false // <-- Defaults to false for new bookings
 }: any) {
   const [agreed, setAgreed] = useState(false);
 
-  // Simple handler to trigger the save
   const handleConfirm = () => {
-    onPayment(); // No token needed anymore
+    onPayment(); 
   };
 
   return (
@@ -235,20 +234,26 @@ export default function CheckoutForm({
       {!isExpanded ? (
         <div onClick={() => setIsExpanded(true)} className="flex justify-between items-center p-5 h-full">
           <span className="text-xl font-bold">Total: ${total.toFixed(2)}</span>
-          <span className="animate-pulse font-bold uppercase tracking-widest">Review & Book →</span>
+          <span className="animate-pulse font-bold uppercase tracking-widest">
+            {isEditing ? 'Review & Update →' : 'Review & Book →'}
+          </span>
         </div>
       ) : (
         <div className="p-6 md:p-8 overflow-y-auto h-full max-w-2xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <button onClick={() => setIsExpanded(false)} className="text-orange-400 hover:text-orange-300">← Back</button>
-            <h2 className="text-xl font-bold text-white">Review Reservation</h2>
+            <h2 className="text-xl font-bold text-white">
+                {isEditing ? 'Update Reservation' : 'Confirm Reservation'}
+            </h2>
           </div>
           
           <div className="bg-gray-800 p-6 rounded-xl mb-8 border border-gray-700 text-center">
              <div className="text-4xl font-bold text-white mb-2">
               ${total.toFixed(2)}
             </div>
-            <div className="text-gray-400 text-sm uppercase tracking-wide">Total Due Due Upon Arrival</div>
+            <div className="text-gray-400 text-sm uppercase tracking-wide">
+                {isEditing ? 'New Total Amount' : 'Total Due Upon Arrival'}
+            </div>
           </div>
 
           <label className="flex gap-4 items-start bg-red-950/30 p-4 rounded-xl mb-8 cursor-pointer border border-red-800/50 hover:bg-red-900/40 transition-colors">
@@ -265,7 +270,7 @@ export default function CheckoutForm({
 
           {message && (
             <div className={`text-center font-bold p-4 rounded-lg mb-6 border ${
-              message.includes('Success') || message.includes('Confirmed') 
+              message.includes('Success') || message.includes('Confirmed') || message.includes('Updated')
               ? 'bg-green-900/40 text-green-400 border-green-800' 
               : 'bg-red-900/40 text-red-400 border-red-800'
             }`}>
@@ -277,9 +282,9 @@ export default function CheckoutForm({
             type="button"
             onClick={handleConfirm} 
             disabled={loading || !agreed}
-            className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-95"
+            className={`w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-95`}
           >
-            {loading ? 'Saving...' : (agreed ? 'Confirm Booking' : 'Agree to Continue')}
+            {loading ? 'Saving...' : (agreed ? (isEditing ? 'Update Reservation' : 'Confirm Booking') : 'Agree to Continue')}
           </button>
         </div>
       )}

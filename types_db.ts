@@ -654,38 +654,50 @@ export type Database = {
       }
       employee_details: {
         Row: {
+          department: string | null
           dialpad_id: string | null
           dialpad_number: string | null
           emp_id: string | null
+          hire_date: string | null
           id: string
+          job_title: string | null
           payroll_company: string | null
           primary_position: string | null
           primary_work_location: string | null
           time_correction_count: number | null
+          timeclock_blocked: boolean | null
           user_id: string | null
           work_phone: string | null
         }
         Insert: {
+          department?: string | null
           dialpad_id?: string | null
           dialpad_number?: string | null
           emp_id?: string | null
+          hire_date?: string | null
           id?: string
+          job_title?: string | null
           payroll_company?: string | null
           primary_position?: string | null
           primary_work_location?: string | null
           time_correction_count?: number | null
+          timeclock_blocked?: boolean | null
           user_id?: string | null
           work_phone?: string | null
         }
         Update: {
+          department?: string | null
           dialpad_id?: string | null
           dialpad_number?: string | null
           emp_id?: string | null
+          hire_date?: string | null
           id?: string
+          job_title?: string | null
           payroll_company?: string | null
           primary_position?: string | null
           primary_work_location?: string | null
           time_correction_count?: number | null
+          timeclock_blocked?: boolean | null
           user_id?: string | null
           work_phone?: string | null
         }
@@ -1044,6 +1056,7 @@ export type Database = {
           last_name: string
           notes: string | null
           phone: string
+          reservation_id: number
           start_time: string
           status: string | null
           total_amount: number
@@ -1064,6 +1077,7 @@ export type Database = {
           last_name: string
           notes?: string | null
           phone: string
+          reservation_id?: number
           start_time: string
           status?: string | null
           total_amount: number
@@ -1084,6 +1098,7 @@ export type Database = {
           last_name?: string
           notes?: string | null
           phone?: string
+          reservation_id?: number
           start_time?: string
           status?: string | null
           total_amount?: number
@@ -1471,6 +1486,7 @@ export type Database = {
       }
       time_entries: {
         Row: {
+          audit_trail: Json | null
           break_start: string | null
           clock_in_id: string | null
           clock_in_lat: number | null
@@ -1495,6 +1511,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          audit_trail?: Json | null
           break_start?: string | null
           clock_in_id?: string | null
           clock_in_lat?: number | null
@@ -1519,6 +1536,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          audit_trail?: Json | null
           break_start?: string | null
           clock_in_id?: string | null
           clock_in_lat?: number | null
@@ -1571,33 +1589,39 @@ export type Database = {
           created_at: string | null
           end_date: string
           id: string
+          manager_note: string | null
           reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           start_date: string
           status: Database["public"]["Enums"]["request_status"]
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
           end_date: string
           id?: string
+          manager_note?: string | null
           reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           start_date: string
           status?: Database["public"]["Enums"]["request_status"]
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
           end_date?: string
           id?: string
+          manager_note?: string | null
           reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["request_status"]
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -2759,7 +2783,9 @@ export type Database = {
       auto_clock_out: { Args: never; Returns: undefined }
       clock_in_user: { Args: { user_id: string }; Returns: undefined }
       clock_out_user: { Args: { user_id: string }; Returns: undefined }
+      is_admin: { Args: never; Returns: boolean }
       is_high_level_user: { Args: { uid: string }; Returns: boolean }
+      is_staff: { Args: never; Returns: boolean }
     }
     Enums: {
       availability_preference:

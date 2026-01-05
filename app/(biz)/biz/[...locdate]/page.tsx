@@ -101,7 +101,11 @@ export default async function PismoBoardPage({
                         {res.start_time} - {res.end_time}
                       </td>
                       <td className="p-3 font-bold text-white">
-                        #{res.reservation_id}
+                                              <Link 
+                          href={`/biz/pismo/reservation/${res.reservation_id}`} 
+                          className="text-blue-400 hover:text-blue-300 underline text-sm"
+                        > #{res.reservation_id}
+                          </Link> 
                       </td>
                       <td className="p-3">
                         <div className="font-medium text-white">{res.first_name} {res.last_name}</div>

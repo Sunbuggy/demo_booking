@@ -1,16 +1,22 @@
+'use client';
+
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 export default function DateTimeSelector({ 
   selectedDate, setSelectedDate, 
   startTime, setStartTime, 
   endTime, setEndTime, 
   setDurationHours, setPricingCategories, 
-  setLoading, setMessage 
+  setLoading, setMessage,
+  initialData // <-- NEW PROP
 }: any) {
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [possibleEndTimes, setPossibleEndTimes] = useState<string[]>([]);
+  
+  // Track if we have already initialized the edit mode data to prevent infinite loops
+  const hasInitialized = useRef(false);
 
   // 1. Fetch available start times when date changes
   useEffect(() => {
@@ -18,20 +24,47 @@ export default function DateTimeSelector({
       setAvailableTimes([]);
       return;
     }
+
     const fetchTimes = async () => {
       setLoading(true);
       const dateStr = selectedDate.toISOString().split('T')[0];
-      const res = await fetch(`/api/pismo/times?date=${dateStr}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAvailableTimes(data.startTimes || []);
+      
+      try {
+        const res = await fetch(`/api/pismo/times?date=${dateStr}`);
+        if (res.ok) {
+          const data = await res.json();
+          let times = data.startTimes || [];
+
+          // SPECIAL HANDLING FOR EDIT MODE:
+          // If we are editing, the current start time might be "taken" or "in the past".
+          // We must ensure the initial start time is added to the list so it displays correctly.
+          if (initialData && initialData.start_time) {
+             if (!times.includes(initialData.start_time)) {
+                times = [initialData.start_time, ...times].sort();
+             }
+          }
+          setAvailableTimes(times);
+        }
+      } catch (err) {
+        console.error("Error fetching times:", err);
       }
       setLoading(false);
     };
-    fetchTimes();
-  }, [selectedDate, setLoading]);
 
-  // 2. Calculate possible end times (1-4 hours ahead)
+    fetchTimes();
+  }, [selectedDate, setLoading, initialData]);
+
+  // 2. Initialize Data on Load (Only for Edit Mode)
+  useEffect(() => {
+    if (initialData && !hasInitialized.current) {
+        // Pre-fill the start and end times from the DB
+        setStartTime(initialData.start_time);
+        setEndTime(initialData.end_time);
+        hasInitialized.current = true;
+    }
+  }, [initialData, setStartTime, setEndTime]);
+
+  // 3. Calculate possible end times (1-4 hours ahead)
   useEffect(() => {
     if (!startTime) {
       setPossibleEndTimes([]);
@@ -55,11 +88,14 @@ export default function DateTimeSelector({
     setPossibleEndTimes(ends);
   }, [startTime]);
 
-  // 3. Calculate Duration & Fetch Pricing when End Time is chosen
+  // 4. Calculate Duration & Fetch Pricing
   useEffect(() => {
     if (!endTime || !selectedDate || !startTime) {
-      setPricingCategories([]);
-      setDurationHours(null);
+      // Don't clear pricing if we are in the middle of initializing edit data
+      if (!initialData) {
+          setPricingCategories([]);
+          setDurationHours(null);
+      }
       return;
     }
 
@@ -84,79 +120,94 @@ export default function DateTimeSelector({
     const hours = calculateDuration();
     setDurationHours(hours);
 
+    // If we passed pricingRules from the server (Edit Mode), we might skip this fetch 
+    // BUT fetching again ensures if they change the time, the price updates correctly.
     const fetchPricing = async () => {
       setLoading(true);
       const dateStr = selectedDate.toISOString().split('T')[0];
-      const res = await fetch(`/api/pismo/pricing?date=${dateStr}&start=${startTime}&end=${endTime}`);
-      if (res.ok) {
-        const data = await res.json();
-        const sorted = data.sort((a: any, b: any) => (a.sort_order || 100) - (b.sort_order || 100));
-        setPricingCategories(sorted);
-      } else {
-        setMessage('No vehicles available');
+      try {
+        const res = await fetch(`/api/pismo/pricing?date=${dateStr}&start=${startTime}&end=${endTime}`);
+        if (res.ok) {
+          const data = await res.json();
+          const sorted = data.sort((a: any, b: any) => (a.sort_order || 100) - (b.sort_order || 100));
+          setPricingCategories(sorted);
+        } else {
+          setMessage('No vehicles available for this time slot.');
+        }
+      } catch (err) {
+        console.error("Pricing fetch error", err);
       }
       setLoading(false);
     };
 
-    fetchPricing();
+    // Debounce slightly to prevent double-firing on load
+    const timer = setTimeout(() => {
+        fetchPricing();
+    }, 100);
+
+    return () => clearTimeout(timer);
+
   }, [endTime, selectedDate, startTime, setDurationHours, setPricingCategories, setLoading, setMessage]);
 
   return (
     <section className="text-center space-y-12 mb-12">
       {/* Date Selection */}
       <div>
-        <label className="text-2xl block mb-4">1. Choose Reservation Date</label>
-        <DatePicker
-          selected={selectedDate}
-          onChange={(date: Date | null) => {
-            if (date) {
-              setSelectedDate(date);
-              setStartTime('');
-              setEndTime('');
-            }
-          }}
-          minDate={new Date()}
-          className="p-4 text-black text-xl rounded-lg cursor-pointer w-full max-w-xs border-2 border-orange-500"
-          placeholderText="Click to select date"
-        />
+        <label className="text-2xl block mb-4 font-bold text-orange-500">1. Choose Reservation Date</label>
+        <div className="flex justify-center">
+            <DatePicker
+            selected={selectedDate}
+            onChange={(date: Date | null) => {
+                if (date) {
+                setSelectedDate(date);
+                // Only reset times if the date actually changed significantly (not just re-render)
+                if (!initialData || date.toISOString().split('T')[0] !== initialData.booking_date) {
+                    setStartTime('');
+                    setEndTime('');
+                }
+                }
+            }}
+            // If editing, allow past dates? Usually strictly future unless admin.
+            minDate={new Date()} 
+            className="p-4 text-black text-xl rounded-lg cursor-pointer w-full max-w-xs border-2 border-orange-500 text-center font-bold"
+            placeholderText="Click to select date"
+            dateFormat="MMMM d, yyyy"
+            />
+        </div>
       </div>
 
       {/* Start Time Selection */}
-      {availableTimes.length > 0 && (
-        <div>
-          <label className="text-2xl block mb-4">2. Choose Start Time</label>
-          <select
-            value={startTime}
-            onChange={e => {
-              setStartTime(e.target.value);
-              setEndTime('');
-            }}
-            className="p-4 bg-gray-800 rounded-lg w-full max-w-md mx-auto text-xl border border-gray-600"
-          >
-            <option value="">Select start time</option>
-            {availableTimes.map(time => (
-              <option key={time} value={time}>{time}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      <div className={`transition-all duration-500 ${availableTimes.length > 0 ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
+        <label className="text-2xl block mb-4 font-bold text-orange-500">2. Choose Start Time</label>
+        <select
+          value={startTime}
+          onChange={e => {
+            setStartTime(e.target.value);
+            setEndTime('');
+          }}
+          className="p-4 bg-gray-800 rounded-lg w-full max-w-md mx-auto text-xl border border-gray-600 focus:ring-2 focus:ring-orange-500 outline-none text-white appearance-none text-center font-bold cursor-pointer hover:bg-gray-700 transition-colors"
+        >
+          <option value="">-- Select Start Time --</option>
+          {availableTimes.map(time => (
+            <option key={time} value={time}>{time}</option>
+          ))}
+        </select>
+      </div>
 
       {/* End Time Selection */}
-      {startTime && possibleEndTimes.length > 0 && (
-        <div>
-          <label className="text-2xl block mb-4">3. Choose End Time</label>
-          <select
-            value={endTime}
-            onChange={e => setEndTime(e.target.value)}
-            className="p-4 bg-gray-800 rounded-lg w-full max-w-md mx-auto text-xl border border-gray-600"
-          >
-            <option value="">Select end time</option>
-            {possibleEndTimes.map(time => (
-              <option key={time} value={time}>{time}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      <div className={`transition-all duration-500 ${startTime && possibleEndTimes.length > 0 ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
+        <label className="text-2xl block mb-4 font-bold text-orange-500">3. Choose End Time</label>
+        <select
+          value={endTime}
+          onChange={e => setEndTime(e.target.value)}
+          className="p-4 bg-gray-800 rounded-lg w-full max-w-md mx-auto text-xl border border-gray-600 focus:ring-2 focus:ring-orange-500 outline-none text-white appearance-none text-center font-bold cursor-pointer hover:bg-gray-700 transition-colors"
+        >
+          <option value="">-- Select End Time --</option>
+          {possibleEndTimes.map(time => (
+            <option key={time} value={time}>{time}</option>
+          ))}
+        </select>
+      </div>
     </section>
   );
 }
