@@ -1,18 +1,20 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (v10.8 - Locked Viewport & Tight Layout)
+// SUNBUGGY ROSTER PAGE (v10.19 - Department Block Integrity)
 // ============================================================================
-// CHANGELOG v10.8:
-// 1. LAYOUT ARCHITECTURE: Changed main container to `h-[calc(100vh-65px)]`.
-//    - This forces the scrollbar onto the TABLE ONLY, not the window.
-//    - Result: The "Control Bar" is physically unable to scroll away.
-// 2. SPACING: Reduced global padding (p-4 -> p-2) and removed margins.
-//    - The controls now sit tight against the top nav.
-// 3. LAYER MANAGEMENT: Enforced opaque backgrounds on headers to prevent 
-//    "visual bleed" when elements slide under one another.
+// CHANGELOG v10.19:
+// 1. PAGINATION LOGIC: Changed 'tbody.dept-block' to 'break-inside: avoid'.
+//    - Ensures departments (Header + Staff) stay together.
+//    - If a department cannot fit on the current page, the WHOLE block moves
+//      to the next page.
+// 2. RETAINED OPTIMIZATIONS:
+//    - Ultra-compact rows (p-0.5).
+//    - Circular Avatars (Status dot removed for cleaner print).
+//    - Side-by-side Department Headers (Name | Hours).
+//    - Single-line Date Headers (Mon 29).
 
-import { useState, useEffect, Fragment, useMemo } from 'react';
+import { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import Link from 'next/link'; 
 import { createClient } from '@/utils/supabase/client';
 import { getStaffRoster } from '@/utils/supabase/queries'; 
@@ -37,7 +39,8 @@ import {
   eachDayOfInterval,
   isSameMonth,
   isSameDay,
-  isToday
+  isToday,
+  isValid
 } from 'date-fns';
 
 import UserStatusAvatar from '@/components/UserStatusAvatar';
@@ -58,10 +61,10 @@ import { Switch } from "@/components/ui/switch";
 import { 
     ChevronLeft, ChevronRight, Plus, Trash2, MapPin, 
     Ban, Copy, Loader2, Plane, Filter, 
-    History, Users, 
-    Sun, Cloud, CloudRain, Snowflake, CloudLightning, Wind, Printer,
-    Flame, Wrench, Shield, CheckSquare, Mountain, LucideIcon,
-    Settings, Info, BarChart3, Calendar as CalendarIcon
+    History, Users, BarChart3, Calendar as CalendarIcon, 
+    Clock, Shield, CheckSquare, Mountain, LucideIcon,
+    Sun, Cloud, CloudRain, Snowflake, CloudLightning, Wind, Printer, 
+    Flame, Wrench, Info, Settings, User
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -100,8 +103,8 @@ const ROLE_GROUPS: Record<string, string[]> = {
 };
 
 const TASKS: Record<string, { label: string, color: string, code: string, icon: LucideIcon }> = {
-  'TORCH': { label: 'TORCH (Dispatch)', color: 'bg-red-600', code: 'T', icon: Flame },
-  'SST': { label: 'SST (Support)', color: 'bg-blue-600', code: 'S', icon: Wrench },
+  'TORCH': { label: 'TORCH (Dispatch)', color: 'bg-red-600', code: 'T', icon: Clock },
+  'SST': { label: 'SST (Support)', color: 'bg-blue-600', code: 'S', icon: Users },
   'SITE_MGR': { label: 'Site Manager', color: 'bg-green-600', code: 'SM', icon: Shield },
   'CHECK_IN': { label: 'Check-In', color: 'bg-purple-600', code: 'C', icon: CheckSquare },
   'VOF': { label: 'Valley of Fire', color: 'bg-orange-500', code: 'V', icon: Mountain }
@@ -161,9 +164,7 @@ interface ReservationStat {
 // --- HELPER FUNCTIONS ---
 
 const getDashboardLink = (locationName: string, dateStr: string) => {
-    if (locationName === 'Las Vegas') {
-        return `/biz/${dateStr}`;
-    }
+    if (locationName === 'Las Vegas') return `/biz/${dateStr}`;
     const slug = locationName.toLowerCase().replace(/\s+/g, '-');
     return `/biz/${slug}/${dateStr}`;
 };
@@ -173,12 +174,9 @@ const getDurationHours = (start: string, end: string): number => {
     return diffMinutes / 60;
 };
 
-// --- HELPER COMPONENTS ---
-
-// Custom Mini Calendar Component
+// --- MINI CALENDAR ---
 const MiniCalendar = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect: (d: Date) => void }) => {
     const [viewDate, setViewDate] = useState(startOfMonth(selectedDate));
-
     const days = useMemo(() => {
         const start = startOfLocalWeek(startOfMonth(viewDate));
         const end = endOfLocalWeek(endOfMonth(viewDate));
@@ -201,16 +199,16 @@ const MiniCalendar = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect
                 {days.map(day => {
                     const isSelected = isSameDay(day, selectedDate);
                     const isCurrentMonth = isSameMonth(day, viewDate);
-                    const isTodayDate = isToday(day);
                     return (
                         <button
                             key={day.toISOString()}
                             onClick={() => onSelect(day)}
+                            type="button"
                             className={cn(
-                                "h-8 w-8 rounded-md flex items-center justify-center transition-colors hover:bg-muted",
+                                "h-8 w-8 rounded-md flex items-center justify-center transition-colors hover:bg-muted text-xs",
                                 !isCurrentMonth && "text-muted-foreground/30",
-                                isSelected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground font-bold",
-                                isTodayDate && !isSelected && "border border-primary text-primary font-bold"
+                                isSelected && "bg-primary text-primary-foreground font-bold",
+                                isToday(day) && !isSelected && "border border-primary text-primary font-bold"
                             )}
                         >
                             {format(day, 'd')}
@@ -222,6 +220,7 @@ const MiniCalendar = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect
     );
 };
 
+// --- AUDIT LOG VIEWER ---
 const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: string }) => {
     const [open, setOpen] = useState(false);
     const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -230,35 +229,25 @@ const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: strin
 
     const loadLogs = async () => {
         setLoading(true);
-        const { data } = await supabase
-            .from('audit_logs')
-            .select('id, created_at, action, user_id, table_name, row')
-            .eq('table_name', tableName)
-            .eq('row', rowId)
-            .order('created_at', { ascending: false });
-        
+        const { data } = await supabase.from('audit_logs').select('*').eq('table_name', tableName).eq('row', rowId).order('created_at', { ascending: false });
         if (data) setLogs(data as AuditLog[]);
         setLoading(false);
     };
 
     return (
         <Popover open={open} onOpenChange={(isOpen) => { setOpen(isOpen); if(isOpen) loadLogs(); }}>
-            <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"><History className="h-4 w-4" /></Button>
-            </PopoverTrigger>
+            <PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"><History className="h-4 w-4" /></Button></PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="end">
                 <div className="p-4 space-y-2">
-                    <h4 className="font-medium leading-none mb-2">Change History</h4>
+                    <h4 className="font-medium leading-none mb-2 text-sm">History</h4>
                     {loading ? <div className="flex justify-center p-4"><Loader2 className="h-4 w-4 animate-spin" /></div> : (
                         <div className="max-h-[200px] overflow-y-auto text-xs space-y-2">
-                            {logs.length === 0 ? <div className="text-muted-foreground italic">No history found.</div> : 
-                                logs.map(log => (
-                                    <div key={log.id} className="border-b pb-1 last:border-0">
-                                        <div className="font-bold text-foreground">{log.action}</div>
-                                        <div className="text-[10px] text-muted-foreground">{format(parseISO(log.created_at), 'MMM d, h:mm a')}</div>
-                                    </div>
-                                ))
-                            }
+                            {logs.length === 0 ? <div className="italic opacity-50">No history.</div> : logs.map(log => (
+                                <div key={log.id} className="border-b pb-1 last:border-0">
+                                    <div className="font-bold">{log.action}</div>
+                                    <div className="text-[10px] opacity-60">{format(parseISO(log.created_at), 'MMM d, h:mm a')}</div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
@@ -267,6 +256,7 @@ const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: strin
     );
 };
 
+// --- WEATHER CELL ---
 const WeatherCell = ({ data }: { data: DailyWeather | undefined }) => {
     if (!data) return <div className="text-[10px] text-muted-foreground h-full flex items-center justify-center">-</div>;
     let Icon = Sun; let color = "text-yellow-500";
@@ -283,26 +273,32 @@ const WeatherCell = ({ data }: { data: DailyWeather | undefined }) => {
     );
 };
 
+// --- TASK BADGE ---
 const TaskBadge = ({ taskKey }: { taskKey: string }) => {
     const task = TASKS[taskKey];
     if (!task) return null;
-    return <div className={`${task.color} text-white text-[9px] font-bold px-1 rounded-sm flex items-center justify-center h-4 min-w-[14px] print-color-exact`} title={task.label}>{task.code}</div>;
+    return <div className={`${task.color} text-white text-[9px] font-bold px-1 rounded-sm flex items-center justify-center h-3 min-w-[12px] print-color-exact`} title={task.label}>{task.code}</div>;
 };
 
-// --- MAIN COMPONENT ---
+
+// --- MAIN PAGE COMPONENT ---
 export default function RosterPage() {
   const supabase = createClient();
   const [isMounted, setIsMounted] = useState(false);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   // -- STATE --
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  useEffect(() => {
+      if (dateInputRef.current) dateInputRef.current.value = format(currentDate, 'yyyy-MM-dd');
+  }, [currentDate]);
 
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [weatherData, setWeatherData] = useState<Record<string, DailyWeather[]>>({});
-  const [dailyStats, setDailyStats] = useState<Record<string, { people: number, vehicles: string, fullString: string }>>({});
+  const [dailyStats, setDailyStats] = useState<Record<string, { people: number, fullString: string }>>({});
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [currentUserLevel, setCurrentUserLevel] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -310,7 +306,7 @@ export default function RosterPage() {
   const [visibleLocs, setVisibleLocs] = useState<Record<string, boolean>>({ 'Las Vegas': true, 'Pismo': true, 'Michigan': true });
   const [lastShiftParams, setLastShiftParams] = useState<Record<string, ShiftDefaults>>({});
 
-  // -- MODALS --
+  // -- MODALS STATE --
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [selectedEmpId, setSelectedEmpId] = useState<string>('');
   const [selectedEmpName, setSelectedEmpName] = useState('');
@@ -325,11 +321,12 @@ export default function RosterPage() {
   const [profileEmp, setProfileEmp] = useState<Employee | null>(null);
 
   // DATE-FNS Helpers
-  const startOfWeek = startOfISOWeek(currentDate);
-  const endOfWeek = addDays(startOfWeek, 6);
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek, i));
-  const weekNumber = parseInt(format(startOfWeek, 'I')); 
-  
+  const startOfWeekDate = startOfISOWeek(currentDate);
+  const endOfWeekDate = addDays(startOfWeekDate, 6);
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeekDate, i));
+  const weekNumber = parseInt(format(startOfWeekDate, 'I')); 
+  const weekRangeText = `${format(startOfWeekDate, 'yyyy')} Week ${weekNumber} ${format(startOfWeekDate, 'MMM d')} - ${format(endOfWeekDate, 'd')}`;
+
   const isManager = currentUserLevel >= 500;
   const isAdmin = currentUserLevel >= 900;
 
@@ -360,10 +357,8 @@ export default function RosterPage() {
         if (userData) setCurrentUserLevel(userData.user_level || 0);
     }
 
-    const locationsToFetch = Object.keys(LOCATIONS);
     let aggregatedStaff: Employee[] = [];
-
-    await Promise.all(locationsToFetch.map(async (loc) => {
+    await Promise.all(Object.keys(LOCATIONS).map(async (loc) => {
         const roster = await getStaffRoster(supabase, loc);
         const mapped = roster.map((u: any) => ({
             id: u.id,
@@ -382,73 +377,49 @@ export default function RosterPage() {
         aggregatedStaff = [...aggregatedStaff, ...mapped];
     }));
 
-    const uniqueStaff = Array.from(new Map(aggregatedStaff.map(item => [item.id, item])).values());
-    const sortedEmps = uniqueStaff.sort((a, b) => {
+    setEmployees(Array.from(new Map(aggregatedStaff.map(item => [item.id, item])).values()).sort((a, b) => {
          if (b.user_level !== a.user_level) return b.user_level - a.user_level;
          if (!a.hire_date) return 1; if (!b.hire_date) return -1;
          return new Date(a.hire_date).getTime() - new Date(b.hire_date).getTime();
-    });
-    setEmployees(sortedEmps);
+    }));
     
-    const { data: shiftData } = await supabase.from('employee_schedules')
-      .select('*')
-      .gte('start_time', startOfWeek.toISOString())
-      .lte('start_time', addDays(startOfWeek, 7).toISOString());
+    const { data: shiftData } = await supabase.from('employee_schedules').select('*').gte('start_time', startOfWeekDate.toISOString()).lte('start_time', addDays(startOfWeekDate, 7).toISOString());
     if (shiftData) setShifts(shiftData);
 
     if (visibleLocs['Las Vegas']) {
-        const start = viewMode === 'week' ? format(startOfWeek, 'yyyy-MM-dd') : format(currentDate, 'yyyy-MM-dd');
-        const end = format(addDays(startOfWeek, 6), 'yyyy-MM-dd');
-        const query = `SELECT * FROM reservations_modified WHERE sch_date >= '${start}' AND sch_date <= '${end}'`;
+        const query = `SELECT * FROM reservations_modified WHERE sch_date >= '${format(startOfWeekDate, 'yyyy-MM-dd')}' AND sch_date <= '${format(endOfWeekDate, 'yyyy-MM-dd')}'`;
         try {
             const resData = (await fetch_from_old_db(query)) as ReservationStat[];
             if (Array.isArray(resData)) {
                 const newStats: Record<string, any> = {};
                 weekDays.forEach(day => {
                     const dateKey = format(day, 'yyyy-MM-dd');
-                    const daysRes = resData.filter(r => {
-                        if (!r.sch_date) return false;
-                        const rawDate = typeof r.sch_date === 'string' ? r.sch_date : (r.sch_date as Date).toISOString();
-                        return rawDate.substring(0, 10) === dateKey;
-                    });
+                    const daysRes = resData.filter(r => (typeof r.sch_date === 'string' ? r.sch_date : (r.sch_date as Date).toISOString()).substring(0, 10) === dateKey);
                     newStats[dateKey] = calculateDailyStats(daysRes);
                 });
                 setDailyStats(newStats);
             }
-        } catch (e) { console.error("Legacy fetch failed", e); }
+        } catch (e) { console.error(e); }
     }
 
     const weatherUpdates: Record<string, DailyWeather[]> = {};
     await Promise.all(Object.keys(LOCATIONS).map(async (loc) => {
         if (!visibleLocs[loc]) return;
-        const data = await getLocationWeather(loc, format(startOfWeek, 'yyyy-MM-dd'), 7);
+        const data = await getLocationWeather(loc, format(startOfWeekDate, 'yyyy-MM-dd'), 7);
         if (data) weatherUpdates[loc] = data;
     }));
     setWeatherData(weatherUpdates);
     setLoading(false);
   };
 
-  const sumDailyHours = (shiftList: Shift[], dateStr: string): number => {
-      const dailyShifts = shiftList.filter(s => {
-          return format(parseISO(s.start_time), 'yyyy-MM-dd') === dateStr;
-      });
-      return dailyShifts.reduce((acc, s) => acc + getDurationHours(s.start_time, s.end_time), 0);
-  };
-  
-  const sumWeeklyHours = (shiftList: Shift[]): number => {
-      return shiftList.reduce((acc, s) => acc + getDurationHours(s.start_time, s.end_time), 0);
-  };
+  const sumDailyHours = (list: Shift[], date: string) => list.filter(s => format(parseISO(s.start_time), 'yyyy-MM-dd') === date).reduce((acc, s) => acc + getDurationHours(s.start_time, s.end_time), 0);
+  const sumWeeklyHours = (list: Shift[]) => list.reduce((acc, s) => acc + getDurationHours(s.start_time, s.end_time), 0);
+
+  const handlePrint = () => { window.print(); };
 
   const logChange = async (action: string, table: string, rowId: string) => {
       if (!currentUserId) return;
       await supabase.from('audit_logs').insert({ action, table_name: table, row: rowId, user_id: currentUserId });
-  };
-
-  const handlePrint = () => {
-    const originalTitle = document.title;
-    document.title = `SunBuggy Schedule - Week ${weekNumber}`;
-    window.print();
-    document.title = originalTitle;
   };
 
   const handleCellClick = (emp: Employee, dateStr: string, existingShift?: Shift) => {
@@ -472,168 +443,55 @@ export default function RosterPage() {
   const handleSaveShift = async () => {
     if (!isManager) return;
     setLoading(true);
-
     try {
         const startISO = `${selectedDate}T${formStart}:00`;
         let endISO = `${selectedDate}T${formEnd}:00`;
-
         if (formEnd < formStart) {
             const nextDay = addDays(parseISO(selectedDate), 1);
             endISO = `${format(nextDay, 'yyyy-MM-dd')}T${formEnd}:00`;
         }
-
-        const payload = {
-            user_id: selectedEmpId,
-            start_time: new Date(startISO).toISOString(),
-            end_time: new Date(endISO).toISOString(),
-            role: formRole,
-            location: formLocation,
-            task: formTask === 'NONE' ? null : formTask
-        };
-
-        let error = null;
-        let resultData = null;
+        const payload = { user_id: selectedEmpId, start_time: new Date(startISO).toISOString(), end_time: new Date(endISO).toISOString(), role: formRole, location: formLocation, task: formTask === 'NONE' ? null : formTask };
 
         if (selectedShiftId) {
-            const response = await supabase
-                .from('employee_schedules')
-                .update(payload)
-                .eq('id', selectedShiftId)
-                .select()
-                .single();
-            error = response.error;
-            resultData = response.data;
-            if (!error && resultData) await logChange('Updated Shift', 'employee_schedules', selectedShiftId);
+            await supabase.from('employee_schedules').update(payload).eq('id', selectedShiftId);
+            await logChange('Updated Shift', 'employee_schedules', selectedShiftId);
         } else {
-            const response = await supabase
-                .from('employee_schedules')
-                .insert([payload])
-                .select()
-                .single();
-            error = response.error;
-            resultData = response.data;
-            if (!error && resultData) await logChange('Created Shift', 'employee_schedules', resultData.id);
+            const { data } = await supabase.from('employee_schedules').insert([payload]).select().single();
+            if (data) await logChange('Created Shift', 'employee_schedules', data.id);
         }
-
-        if (error) {
-            console.error('Supabase Save Error:', error);
-            toast.error(`Save Failed: ${error.message}`);
-            setLoading(false);
-            return;
-        }
-
-        setLastShiftParams(p => ({
-            ...p,
-            [selectedEmpId]: {
-                role: formRole,
-                task: formTask === 'NONE' ? undefined : formTask,
-                start: formStart,
-                end: formEnd,
-                location: formLocation
-            }
-        }));
-
-        toast.success("Shift Saved Successfully");
+        
+        setLastShiftParams(p => ({ ...p, [selectedEmpId]: { role: formRole, task: formTask === 'NONE' ? undefined : formTask, start: formStart, end: formEnd, location: formLocation }}));
+        toast.success("Shift Saved");
         setIsShiftModalOpen(false);
-        await fetchData();
-
-    } catch (err) {
-        console.error("Unexpected error:", err);
-        toast.error("An unexpected error occurred.");
-    } finally {
-        setLoading(false);
-    }
+        fetchData();
+    } catch (err) { toast.error("Error saving shift"); } finally { setLoading(false); }
   };
 
   const handleDeleteShift = async () => {
     if (!isManager || !selectedShiftId) return;
-
     await logChange(`Deleted shift`, 'employee_schedules', selectedShiftId);
-    
-    const { error } = await supabase
-        .from('employee_schedules')
-        .delete()
-        .eq('id', selectedShiftId);
-
-    if (error) {
-        console.error("Deletion error:", error);
-        toast.error("Deletion Failed");
-        return;
-    }
-
-    setShifts((prevShifts) => prevShifts.filter(s => s.id !== selectedShiftId));
+    await supabase.from('employee_schedules').delete().eq('id', selectedShiftId);
+    setShifts((prev) => prev.filter(s => s.id !== selectedShiftId));
     setIsShiftModalOpen(false); 
     toast.success("Shift Deleted");
-    fetchData(); 
   };
 
- const handleCopyWeek = async () => {
-      if (!isManager || shifts.length === 0) return;
-      if (!confirm(`Copy current shifts to next week?`)) return;
-      
-      setCopying(true);
-      
-      try {
+  const handleCopyWeek = async () => {
+    if (!isManager || shifts.length === 0) return;
+    if (!confirm(`Copy current shifts to next week?`)) return;
+    setCopying(true);
+    try {
         const newShifts = shifts.map(s => ({ 
-            user_id: s.user_id, 
-            role: s.role, 
-            task: s.task, 
+            user_id: s.user_id, role: s.role, task: s.task, 
             start_time: addWeeks(parseISO(s.start_time), 1).toISOString(), 
             end_time: addWeeks(parseISO(s.end_time), 1).toISOString(), 
             location: s.location || 'Las Vegas' 
         }));
-
-        const { error } = await supabase.from('employee_schedules').insert(newShifts);
-        if (error) throw error;
-        toast.success("Week Copied Successfully");
-        const nextWeek = addWeeks(currentDate, 1);
-        setCurrentDate(nextWeek);
-      } catch (e: any) {
-          console.error("Copy Error:", e);
-          toast.error(`Copy Failed: ${e.message}`);
-      } finally {
-          setCopying(false);
-      }
-  };
-
-const handleSaveProfile = async () => {
-      if (!isManager || !profileEmp) return;
-
-      const { error: userError } = await supabase.from('users').update({ 
-          phone: profileEmp.phone, 
-          avatar_url: profileEmp.avatar_url,
-      }).eq('id', profileEmp.id);
-      
-      if (userError) {
-          toast.error("Error updating user profile");
-          return;
-      }
-
-      const { error: empError } = await supabase.from('employee_details').upsert({
-          user_id: profileEmp.id,
-          hire_date: profileEmp.hire_date || null,
-          department: profileEmp.department,         
-          primary_position: profileEmp.job_title,    
-          primary_work_location: profileEmp.location,
-          timeclock_blocked: profileEmp.timeclock_blocked
-      }, { onConflict: 'user_id' });
-
-      if (empError) {
-          console.error(empError);
-          toast.error("Error updating employment details");
-          return;
-      }
-
-      fetchData(); 
-      setIsProfileModalOpen(false); 
-      toast.success("Saved");
-  };
-
-  const handleArchiveEmployee = async () => {
-      if (!isAdmin || !profileEmp) return;
-      if (!confirm(`Archive ${profileEmp.full_name}?`)) return;
-      await supabase.from('users').update({ user_level: 100 }).eq('id', profileEmp.id);
-      fetchData(); setIsProfileModalOpen(false); toast.success("Archived");
+        await supabase.from('employee_schedules').insert(newShifts);
+        toast.success("Week Copied");
+        setCurrentDate(addWeeks(currentDate, 1));
+    } catch (e: any) { toast.error(`Copy Failed: ${e.message}`); } 
+    finally { setCopying(false); }
   };
 
   const groupedEmployees = useMemo(() => {
@@ -656,125 +514,100 @@ const handleSaveProfile = async () => {
       return groups;
   }, [employees]);
 
+  // Handlers for Profile
+  const handleArchiveEmployee = async () => {
+      if (!isAdmin || !profileEmp) return;
+      if (!confirm(`Archive ${profileEmp.full_name}?`)) return;
+      await supabase.from('users').update({ user_level: 100 }).eq('id', profileEmp.id);
+      fetchData(); setIsProfileModalOpen(false); toast.success("Archived");
+  };
+
+  const handleSaveProfile = async () => {
+    if (!isManager || !profileEmp) return;
+    const { error: userError } = await supabase.from('users').update({ phone: profileEmp.phone, avatar_url: profileEmp.avatar_url }).eq('id', profileEmp.id);
+    if (userError) { toast.error("Error updating user profile"); return; }
+    const { error: empError } = await supabase.from('employee_details').upsert({
+        user_id: profileEmp.id, hire_date: profileEmp.hire_date || null,
+        department: profileEmp.department, primary_position: profileEmp.job_title,
+        primary_work_location: profileEmp.location, timeclock_blocked: profileEmp.timeclock_blocked
+    }, { onConflict: 'user_id' });
+    if (empError) { toast.error("Error updating details"); return; }
+    fetchData(); setIsProfileModalOpen(false); toast.success("Saved");
+  };
+
   if (!isMounted) return null;
 
   return (
-    <div id="roster-container" className="p-2 h-[calc(100vh-65px)] flex flex-col bg-background text-foreground print:p-0 print:bg-white print:h-auto print:block print:w-full">
+    <div id="roster-container" className="p-2 h-[calc(100vh-65px)] flex flex-col bg-background text-foreground print:p-0 print:bg-white print:h-auto print:block print:w-full print:m-0 print:overflow-visible">
+      {/* GLOBAL PRINT STYLES */}
       <style jsx global>{`
         @media print {
-            @page { size: landscape; margin: 0.25cm; }
-            body, .bg-slate-900, .bg-slate-100, .bg-card, .bg-background, .dark { background-color: white !important; color: black !important; border-color: #000 !important; }
-            #roster-container { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+            @page { size: landscape; margin: 5mm; } 
+            html, body, #roster-container, .bg-background, .bg-card, .dark {
+                background-color: white !important;
+                color: black !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            * { box-shadow: none !important; border-radius: 0 !important; }
             nav, header, aside, .print-hide { display: none !important; }
+            
+            #roster-container { 
+                position: static !important; 
+                height: auto !important; 
+                overflow: visible !important; 
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Prevent sticky breaking pagination */
+            .sticky { position: static !important; }
+            
+            /* Force breaks only on 2nd+ location */
+            .location-break { break-before: page; page-break-before: always; }
+            
+            /* v10.19: Strict grouping to keep headers & staff together */
+            tbody.dept-block { break-inside: avoid; page-break-inside: avoid; }
+
             .print-yellow { background-color: #fde047 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .print-color-exact { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            div[class*="rounded-r"] { background-color: white !important; border: 1px solid black !important; color: black !important; }
-            .print-break-before-page { break-before: page; page-break-before: always; }
-            .print-break-after-avoid { break-after: avoid; page-break-after: avoid; }
-            .dept-block { break-inside: avoid; page-break-inside: avoid; }
-            .print-show-phone { display: block !important; }
             tr { height: auto !important; }
-            td, th { padding: 1px 2px !important; font-size: 10px !important; vertical-align: middle !important; }
+            td, th { padding: 0.5px 2px !important; font-size: 10px !important; vertical-align: middle !important; border-color: #000 !important; border-width: 1px !important; }
+            
+            /* Hide web components */
             .print-no-avatar { display: none !important; }
         }
       `}</style>
 
-      {/* COMPACT HEADER V9.1 (Mobile Responsive) */}
+      {/* COMPACT HEADER (HIDDEN IN PRINT) */}
       <div className="flex flex-col gap-2 print-hide z-[60] sticky top-0 bg-background/95 backdrop-blur pb-2 pt-1">
           <div className="min-h-[3.5rem] h-auto flex flex-col md:flex-row items-center justify-between gap-y-3 p-2 border rounded-lg bg-card shadow-sm relative">
-            
-            {/* LEFT SECTION: Title & Filters */}
             <div className="w-full md:w-auto order-2 md:order-1 flex items-center gap-3">
                <h1 className="text-lg font-bold hidden lg:block">Roster</h1>
                <Separator orientation="vertical" className="h-6 hidden lg:block" />
                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full md:w-auto">
                 <Filter className="w-3.5 h-3.5 text-muted-foreground mr-1 flex-shrink-0" />
                 {Object.keys(LOCATIONS).map(loc => (
-                    <Badge 
-                        key={loc} 
-                        variant={visibleLocs[loc] ? 'default' : 'outline'} 
-                        className={`cursor-pointer select-none px-2 py-0.5 text-[10px] whitespace-nowrap ${visibleLocs[loc] ? 'bg-primary hover:bg-primary/90' : 'bg-transparent text-muted-foreground hover:bg-accent'}`} 
-                        onClick={() => { const newState = { ...visibleLocs, [loc]: !visibleLocs[loc] }; setVisibleLocs(newState); localStorage.setItem('roster_filters', JSON.stringify(newState)); }}
-                    >
-                        {loc}
-                    </Badge>
+                    <Badge key={loc} variant={visibleLocs[loc] ? 'default' : 'outline'} className={`cursor-pointer select-none px-2 py-0.5 text-[10px] whitespace-nowrap ${visibleLocs[loc] ? 'bg-primary hover:bg-primary/90' : 'bg-transparent text-muted-foreground hover:bg-accent'}`} onClick={() => { setVisibleLocs({ ...visibleLocs, [loc]: !visibleLocs[loc] }); }}>{loc}</Badge>
                 ))}
                </div>
             </div>
 
-            {/* CENTER SECTION: UNIFIED DATE COMMAND CENTER (v10.6 Fix) */}
             <div className="w-full md:w-auto order-1 md:order-2 flex justify-center md:absolute md:left-1/2 md:-translate-x-1/2 z-10">
                 <div className="flex flex-col items-center gap-1">
-                    
-                    {/* TOP: Date Display (Text) */}
                     <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                        <PopoverTrigger asChild>
-                            <div className="text-xs font-bold text-foreground leading-none cursor-pointer hover:underline text-center">
-                                {viewMode === 'week' 
-                                    ? `${format(startOfWeek, 'yyyy')} Week ${weekNumber} ${format(startOfWeek, 'MMM d')} - ${format(endOfWeek, 'd')}` 
-                                    : format(currentDate, 'yyyy MMM do')
-                                }
-                            </div>
-                        </PopoverTrigger>
-                        
-                        {/* CUSTOM MINI CALENDAR CONTENT */}
-                        <PopoverContent className="w-auto p-0" align="center">
-                            <MiniCalendar 
-                                selectedDate={currentDate} 
-                                onSelect={(d) => {
-                                    setCurrentDate(d);
-                                    setIsCalendarOpen(false);
-                                }} 
-                            />
-                        </PopoverContent>
+                        <PopoverTrigger asChild><div className="text-xs font-bold text-foreground leading-none cursor-pointer hover:underline text-center">{viewMode === 'week' ? weekRangeText : format(currentDate, 'yyyy MMM do')}</div></PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="center"><MiniCalendar selectedDate={currentDate} onSelect={(d) => { setCurrentDate(d); setIsCalendarOpen(false); }} /></PopoverContent>
                     </Popover>
-
-                    {/* BOTTOM: Nav Controls */}
                     <div className="flex items-center gap-1">
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6" 
-                            onClick={() => setCurrentDate(viewMode === 'week' ? subWeeks(currentDate, 1) : subDays(currentDate, 1))}
-                        >
-                            <ChevronLeft className="w-4 h-4" />
-                        </Button>
-
-                        {/* Calendar Icon Button (Triggers Popover) */}
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6" 
-                            onClick={() => setIsCalendarOpen(true)}
-                        >
-                            <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-                        </Button>
-
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6" 
-                            onClick={() => setCurrentDate(viewMode === 'week' ? addWeeks(currentDate, 1) : addDays(currentDate, 1))}
-                        >
-                            <ChevronRight className="w-4 h-4" />
-                        </Button>
-
-                        {/* NOW Button */}
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-6 px-2 text-[10px] uppercase font-bold text-muted-foreground ml-1"
-                            onClick={() => setCurrentDate(new Date())}
-                            title="Jump to Today"
-                        >
-                            Now
-                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentDate(viewMode === 'week' ? subWeeks(currentDate, 1) : subDays(currentDate, 1))}><ChevronLeft className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsCalendarOpen(true)}><CalendarIcon className="w-4 h-4 text-muted-foreground" /></Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCurrentDate(viewMode === 'week' ? addWeeks(currentDate, 1) : addDays(currentDate, 1))}><ChevronRight className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] uppercase font-bold text-muted-foreground ml-1" onClick={() => setCurrentDate(new Date())}>Now</Button>
                     </div>
-
                 </div>
             </div>
 
-            {/* RIGHT SECTION: Tools */}
             <div className="w-full md:w-auto order-3 md:order-3 flex items-center justify-between md:justify-end gap-2">
                 <div className="flex items-center bg-muted p-0.5 rounded-lg border">
                   <Button variant={viewMode === 'day' ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2 text-[10px]" onClick={() => setViewMode('day')}>Day</Button>
@@ -782,44 +615,12 @@ const handleSaveProfile = async () => {
                 </div>
                 <div className="flex items-center gap-2">
                     <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs">
-                            <Info className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Key</span>
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-3" align="end">
-                            <h4 className="font-bold text-xs mb-2 text-muted-foreground">Task Legend</h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                {Object.values(TASKS).map(task => (
-                                    <div key={task.code} className="flex items-center gap-2">
-                                        <div className={`w-4 h-4 ${task.color} rounded flex items-center justify-center text-[9px] text-white font-bold`}>{task.code}</div>
-                                        <span className="text-xs">{task.label}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </PopoverContent>
+                        <PopoverTrigger asChild><Button variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs"><Info className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Key</span></Button></PopoverTrigger>
+                        <PopoverContent className="w-auto p-3" align="end"><h4 className="font-bold text-xs mb-2 text-muted-foreground text-center">Task Legend</h4><div className="grid grid-cols-2 gap-2">{Object.values(TASKS).map(task => (<div key={task.code} className="flex items-center gap-2"><div className={`w-4 h-4 ${task.color} rounded flex items-center justify-center text-[9px] text-white font-bold`}>{task.code}</div><span className="text-xs">{task.label}</span></div>))}</div></PopoverContent>
                     </Popover>
                     <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs">
-                                <Settings className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Manage</span>
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-48 p-2" align="end">
-                            <div className="flex flex-col gap-1">
-                                <Button variant="ghost" size="sm" onClick={handlePrint} className="justify-start h-8 text-xs w-full"><Printer className="w-3.5 h-3.5 mr-2" /> Print Schedule</Button>
-                                {isManager && (
-                                    <>
-                                        <Button variant="ghost" size="sm" onClick={handleCopyWeek} disabled={copying || shifts.length === 0} className="justify-start h-8 text-xs w-full">
-                                            {copying ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <Copy className="w-3.5 h-3.5 mr-2" />} Copy Previous Week
-                                        </Button>
-                                        <div className="pt-1 mt-1 border-t">
-                                            <PublishButton weekStart={format(startOfWeek, 'yyyy-MM-dd')} />
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </PopoverContent>
+                        <PopoverTrigger asChild><Button variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs"><Settings className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Manage</span></Button></PopoverTrigger>
+                        <PopoverContent className="w-48 p-2" align="end"><div className="flex flex-col gap-1"><Button variant="ghost" size="sm" onClick={handlePrint} className="justify-start h-8 text-xs w-full"><Printer className="w-3.5 h-3.5 mr-2" /> Print Schedule</Button>{isManager && (<PublishButton weekStart={format(startOfWeekDate, 'yyyy-MM-dd')} />)}</div></PopoverContent>
                     </Popover>
                 </div>
             </div>
@@ -827,26 +628,14 @@ const handleSaveProfile = async () => {
       </div>
 
       {/* TABLE GRID */}
-      <div className="flex-1 overflow-auto border rounded-lg shadow-sm bg-card print:overflow-visible print:h-auto print:border-none print:shadow-none print:bg-white relative">
+      <div className={cn("flex-1 overflow-auto border rounded-lg shadow-sm bg-card print:overflow-visible print:h-auto print:border-none print:shadow-none print:bg-white relative", loading && "opacity-50 pointer-events-none")}>
         {viewMode === 'week' && (
         <table className="w-full border-collapse min-w-[1000px] text-sm print:w-full print:min-w-0 print:text-[10px]">
-          {/* MAIN HEADER: Sticky Top-0, Z-50 (Highest) */}
           <thead className="sticky top-0 bg-muted z-50 shadow-sm print:static print:bg-white print:border-b-2 print:border-black h-8">
+            <tr className="hidden print:table-row h-6"><th colSpan={8} className="p-0 border-b-2 border-black bg-white text-black"><div className="flex justify-between items-center w-full px-1"><span className="text-sm font-bold">{weekRangeText}</span><span className="text-[9px] font-mono opacity-50 italic">Printed: {format(new Date(), 'M/d/yy h:mm a')}</span></div></th></tr>
             <tr>
-                {/* UPDATED HEADER CELL (v9.5): Fixed Width: w-32 (128px) */}
-                <th className="p-1 h-8 text-center w-32 border-b font-bold text-muted-foreground bg-muted print:pl-1 print:bg-white print:text-black z-50">
-                    <div className="flex flex-row items-center justify-center gap-1">
-                         <Users className="w-4 h-4" />
-                         <span className="text-[10px] uppercase">Staff</span>
-                    </div>
-                </th>
-                {weekDays.map(day => (
-                    // UPDATED DATE CELL (v10.7)
-                    <th key={day.toISOString()} className="p-1 h-8 text-center border-b min-w-[100px] border-l bg-muted print:bg-white print:text-black print:w-[12%]">
-                        <span className="text-xs font-bold text-foreground">{format(day, 'EEE')}</span>
-                        <span className="text-xs ml-1 text-muted-foreground">{format(day, 'd')}</span>
-                    </th>
-                ))}
+                <th className="p-1 h-8 text-center w-32 border-b font-bold text-muted-foreground bg-muted print:pl-1 print:bg-white print:text-black z-50"><div className="flex row items-center justify-center gap-1"><Users className="w-4 h-4" /><span className="text-[10px] uppercase">Staff</span></div></th>
+                {weekDays.map(day => (<th key={day.toISOString()} className="p-1 h-8 text-center border-b min-w-[100px] border-l bg-muted print:bg-white print:text-black print:w-[12%]"><span className="text-xs font-bold text-foreground flex items-center justify-center gap-1 print:text-black">{format(day, 'EEE')} {format(day, 'd')}</span></th>))}
             </tr>
           </thead>
           
@@ -858,40 +647,28 @@ const handleSaveProfile = async () => {
                 return (
                     <Fragment key={locName}>
                         <tbody className="print:break-after-avoid relative">
-                            {/* LOCATION HEADER: Sticky Top-8 (Just under Main Header), Z-40 */}
-                            <tr className={`bg-yellow-400 text-black print-yellow border-b-2 border-black sticky top-8 z-40 ${locIndex > 0 ? 'print-break-before-page' : ''}`}>
-                                <td className="p-2 font-bold uppercase tracking-wider text-xs border-b border-black sticky left-0 z-40 bg-yellow-400 print-yellow print:static print:text-black print:text-sm">
+                            {/* LOCATION HEADER - Force break only if NOT first group */}
+                            <tr className={cn(
+                                "bg-yellow-400 text-black print-yellow border-b-2 border-black sticky top-8 z-40",
+                                locIndex > 0 && "location-break"
+                            )}>
+                                <td className="p-2 font-bold uppercase tracking-wider text-xs border-b border-black sticky left-0 z-40 bg-yellow-400 print:static print:text-black print:text-sm">
                                     <div className="flex flex-col justify-center items-center text-center">
-                                        <div className="flex items-center justify-center gap-1">
-                                            <MapPin className="w-3 h-3 print:hidden" /> 
-                                            <span className="text-[10px]">{locName}</span>
-                                        </div>
+                                        <div className="flex items-center justify-center gap-1"><MapPin className="w-3 h-3 print:hidden" /> <span className="text-[10px]">{locName}</span></div>
                                         <span className="bg-white/50 text-[10px] px-1.5 py-0.5 rounded text-black font-mono border border-black/20 mt-1">{sumWeeklyHours(locShifts).toFixed(1)}h</span>
                                     </div>
                                 </td>
                                 {weekDays.map(day => {
                                     const dateStr = format(day, 'yyyy-MM-dd');
-                                    const dailyTotal = sumDailyHours(locShifts, dateStr);
                                     const stats = locName === 'Las Vegas' ? dailyStats[dateStr] : null;
                                     return (
                                         <td key={dateStr} className="border-l border-black bg-yellow-400 print-yellow text-center text-[10px] font-mono text-black align-top p-1 sticky top-8 z-30">
-                                            <div className="font-bold">{dailyTotal > 0 ? `${dailyTotal.toFixed(1)}h` : '-'}</div>
+                                            <div className="font-bold">{sumDailyHours(locShifts, dateStr) > 0 ? `${sumDailyHours(locShifts, dateStr).toFixed(1)}h` : '-'}</div>
                                             {stats && stats.people > 0 && (
-                                                /* UPDATED DASHBOARD LINK (v9.7) - Uses getDashboardLink helper */
-                                                <Button 
-                                                    asChild 
-                                                    variant="ghost" 
-                                                    className="mt-1 h-auto py-1 px-1.5 border border-black/10 hover:bg-black/10 text-orange-900 rounded-sm w-full flex flex-col items-center gap-0.5"
-                                                    title={stats.fullString}
-                                                >
+                                                <Button asChild variant="ghost" className="mt-1 h-auto py-1 px-1.5 border border-black/10 hover:bg-black/10 text-orange-900 rounded-sm w-full flex flex-col items-center gap-0.5 print:border-none print:p-0">
                                                     <Link href={getDashboardLink(locName, dateStr)}>
-                                                        <div className="font-bold flex items-center gap-1 text-xs">
-                                                            <BarChart3 className="w-3 h-3 opacity-50" />
-                                                            {stats.people} <span className="text-[8px] uppercase opacity-70">ppl</span>
-                                                        </div>
-                                                        <div className="text-[8px] leading-none opacity-80 whitespace-nowrap overflow-hidden text-ellipsis w-full max-w-[60px] text-center">
-                                                            {stats.fullString}
-                                                        </div>
+                                                        <div className="font-bold flex items-center gap-1 text-xs"><BarChart3 className="w-3 h-3 opacity-50 print:hidden" />{stats.people} <span className="text-[8px] uppercase opacity-70">ppl</span></div>
+                                                        <div className="text-[8px] leading-none opacity-80 whitespace-nowrap overflow-hidden text-ellipsis w-full max-w-[60px] text-center">{stats.fullString}</div>
                                                     </Link>
                                                 </Button>
                                             )}
@@ -899,7 +676,6 @@ const handleSaveProfile = async () => {
                                     );
                                 })}
                             </tr>
-                            {/* FORECAST ROW: Scrolls under the sticky headers */}
                             <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 h-8 print:h-auto print:border-black print:break-after-avoid">
                                 <td className="p-1 text-[10px] font-semibold text-muted-foreground uppercase border-r sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 print:bg-white print:static print:text-black text-center">Forecast</td>
                                 {weekDays.map(day => (<td key={day.toISOString()} className="border-l p-0 text-center print:border-gray-300"><WeatherCell data={locWeather.find(w => w.date === format(day, 'yyyy-MM-dd'))} /></td>))}
@@ -909,24 +685,20 @@ const handleSaveProfile = async () => {
                         {Object.entries(departments).map(([deptName, roleGroups]) => {
                             if (!Object.values(roleGroups as Record<string, Employee[]>).some(g => (g).length > 0)) return null;
                             const deptEmps = Object.values(roleGroups as Record<string, Employee[]>).flat();
-                            const deptShifts = locShifts.filter(s => (deptEmps as any[]).some(e => e.id === s.user_id));
+                            const deptShifts = locShifts.filter(s => deptEmps.some(e => e.id === s.user_id));
                             const isVisiting = deptName === 'Visiting Staff';
-                            const deptColorClass = DEPT_STYLES[deptName] || DEPT_STYLES['DEFAULT'];
 
                             return (
                                 <tbody key={`${locName}-${deptName}`} className="dept-block">
-                                    <tr className={`${isVisiting ? 'bg-amber-50 dark:bg-amber-950/30' : deptColorClass} print-color-exact border-t-2 border-slate-200 print:border-black`}>
+                                    <tr className={`${isVisiting ? 'bg-amber-50 dark:bg-amber-950/30' : DEPT_STYLES[deptName] || DEPT_STYLES['DEFAULT']} print-color-exact border-t-2 border-slate-200 print:border-black`}>
                                         <td className={`p-1 font-bold text-xs uppercase border-b sticky left-0 z-30 w-32 ${isVisiting ? 'text-amber-600' : ''} print:static print:text-black print:border-black`}>
-                                            <div className="flex flex-col justify-center items-center text-center w-full whitespace-normal leading-tight">
+                                            {/* v10.18: COMPACT HEADER (SIDE-BY-SIDE) */}
+                                            <div className="flex flex-row justify-between items-center w-full px-1">
                                                 <span>{isVisiting && <Plane className="w-3 h-3 inline mr-1 mb-0.5" />} {deptName}</span>
-                                                <span className="text-[10px] opacity-70 bg-black/5 dark:bg-white/10 px-1 rounded print:bg-white print:text-black print:border print:border-black mt-0.5">{sumWeeklyHours(deptShifts).toFixed(1)}h</span>
+                                                <span className="text-[10px] opacity-70 bg-black/5 dark:bg-white/10 px-1 rounded print:bg-white print:text-black print:border print:border-black">{sumWeeklyHours(deptShifts).toFixed(1)}h</span>
                                             </div>
                                         </td>
-                                        {weekDays.map(day => (
-                                            <td key={day.toISOString()} className="border-l border-b bg-inherit text-center text-[10px] font-mono opacity-70 print:text-black print:border-black">
-                                                {sumDailyHours(deptShifts, format(day, 'yyyy-MM-dd')) > 0 && <span>{sumDailyHours(deptShifts, format(day, 'yyyy-MM-dd')).toFixed(1)}h</span>}
-                                            </td>
-                                        ))}
+                                        {weekDays.map(day => (<td key={day.toISOString()} className="border-l border-b bg-inherit text-center text-[10px] font-mono opacity-70 print:text-black print:border-black">{sumDailyHours(deptShifts, format(day, 'yyyy-MM-dd')) > 0 && <span>{sumDailyHours(deptShifts, format(day, 'yyyy-MM-dd')).toFixed(1)}h</span>}</td>))}
                                     </tr>
 
                                     {Object.entries(roleGroups as Record<string, Employee[]>).map(([roleName, emps]) => {
@@ -942,10 +714,11 @@ const handleSaveProfile = async () => {
                                                     const empShifts = shifts.filter(s => s.user_id === emp.id);
                                                     return (
                                                     <tr key={`${locName}-${emp.id}`} className="hover:bg-muted/20 transition-colors border-b print:border-gray-400 print:h-auto">
-                                                        {/* EMPLOYEE CELL (v9.4 layout preserved): w-32, Side-by-Side */}
+                                                        {/* EMPLOYEE CELL (v10.18 AVATAR FIX & COMPACT LAYOUT) */}
                                                         <td className="p-0 border-r border-r-slate-100 dark:border-r-slate-800 sticky left-0 z-30 bg-card print:static print:border-r print:border-black print:p-0">
                                                             <div className="p-1 w-32 flex flex-row items-center justify-start h-full gap-2 print:w-auto">
-                                                                <div className="flex-shrink-0 print:hidden ml-1">
+                                                                {/* WEB AVATAR */}
+                                                                <div className="flex-shrink-0 ml-1 print:hidden">
                                                                     <UserStatusAvatar 
                                                                         user={emp} 
                                                                         currentUserLevel={currentUserLevel} 
@@ -953,25 +726,32 @@ const handleSaveProfile = async () => {
                                                                         size="md" 
                                                                     />
                                                                 </div>
-                                                                <div className="flex flex-col items-start justify-center min-w-0 overflow-hidden">
+                                                                {/* PRINT AVATAR (RAW) */}
+                                                                <div className="hidden print:block flex-shrink-0 ml-1 h-5 w-5 rounded-full border border-black/20 overflow-hidden">
+                                                                    {emp.avatar_url ? (
+                                                                        <img src={emp.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                                    ) : (
+                                                                        <div className="w-full h-full bg-gray-100 flex items-center justify-center"><User className="w-3 h-3 text-gray-400" /></div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="flex flex-col items-start justify-center min-w-0 overflow-hidden print:justify-start">
                                                                     <div className="font-bold text-xs truncate w-full text-left" title={emp.full_name}>
                                                                         {emp.stage_name}
                                                                         {emp.timeclock_blocked && <Ban className="w-3 h-3 text-red-500 inline ml-1" />}
                                                                     </div>
-                                                                    <div className="mt-0.5">
+                                                                    {/* WEB: Hours */}
+                                                                    <div className="mt-0.5 print:hidden">
                                                                         {sumWeeklyHours(empShifts) > 0 && (
                                                                             <span className="text-[10px] bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-200 px-1.5 py-0.5 rounded-sm font-mono inline-block">
                                                                                 {sumWeeklyHours(empShifts).toFixed(1)}h
                                                                             </span>
                                                                         )}
                                                                     </div>
-                                                                </div>
-                                                                
-                                                                <div className="hidden print:flex flex-row items-center justify-between w-full">
-                                                                    <div className="flex items-center gap-1.5 overflow-hidden">
-                                                                        <span className="font-bold text-[10px] truncate">{emp.stage_name}</span>
+                                                                    {/* PRINT: Phone Number (Small) */}
+                                                                    <div className="hidden print:block text-[8px] font-mono leading-none opacity-80 -mt-0.5">
+                                                                        {emp.phone || 'No Phone'}
                                                                     </div>
-                                                                    {sumWeeklyHours(empShifts) > 0 && <span className="text-[10px] font-mono font-bold border border-black px-1 ml-1 whitespace-nowrap">{sumWeeklyHours(empShifts).toFixed(1)}h</span>}
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -983,11 +763,12 @@ const handleSaveProfile = async () => {
                                                             return (
                                                                 <td key={dateStr} className={`p-1 border-l relative h-14 print:h-auto print:border-black ${isManager ? 'cursor-pointer group' : ''}`} onClick={() => isManager && handleCellClick(emp, dateStr, shift)}>
                                                                     {shouldRender ? (
-                                                                        <div className={`h-full w-full border-l-2 rounded-r p-1 flex flex-col justify-center print:bg-white print:border print:border-black print:p-0.5 print:rounded-none ${isAway ? 'bg-amber-50 border-l-amber-500' : 'bg-blue-100 border-l-blue-500 dark:bg-blue-900'}`}>
-                                                                            {shift.task && <div className="absolute top-0 right-0 p-0.5"><TaskBadge taskKey={shift.task} /></div>}
-                                                                            <span className="font-bold text-foreground text-xs leading-none mb-0.5 print:text-black">{format(parseISO(shift.start_time), 'h:mma')}</span>
-                                                                            <span className="text-[10px] text-muted-foreground leading-none print:text-black">- {format(parseISO(shift.end_time), 'h:mma')}</span>
-                                                                            {isAway && <div className="text-[9px] font-bold text-amber-700 mt-1 uppercase print:text-black"><Plane className="w-2 h-2 inline" /> {shift.location}</div>}
+                                                                        // v10.19: Shift Cell Compression
+                                                                        <div className={`h-full w-full border-l-2 rounded-r p-1 flex flex-col justify-center relative print:bg-white print:border print:border-black print:p-0.5 print:rounded-none ${isAway ? 'bg-amber-50 border-l-amber-500' : 'bg-blue-100 border-l-blue-500 dark:bg-blue-900'}`}>
+                                                                            {shift.task && <div className="absolute top-0 right-0 p-0.5 print:p-0 print:top-0 print:right-0"><TaskBadge taskKey={shift.task} /></div>}
+                                                                            <span className="font-bold text-foreground text-xs leading-none mb-0.5 print:text-black print:mb-0 print:text-[10px]">{format(parseISO(shift.start_time), 'h:mma')}</span>
+                                                                            <span className="text-[10px] text-muted-foreground leading-none print:text-black print:text-[9px]">- {format(parseISO(shift.end_time), 'h:mma')}</span>
+                                                                            {isAway && <div className="text-[9px] font-bold text-amber-700 mt-1 uppercase print:text-black print:mt-0 print:text-[8px]"><Plane className="w-2 h-2 inline" /> {shift.location}</div>}
                                                                         </div>
                                                                     ) : (!isVisiting && isManager && <div className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-100 print:hidden"><Plus className="w-4 h-4 text-muted-foreground/30" /></div>)}
                                                                 </td>
@@ -1008,7 +789,7 @@ const handleSaveProfile = async () => {
         </table>
         )}
 
-        {/* --- DAY VIEW (Refactored to date-fns) --- */}
+        {/* --- DAY VIEW --- */}
         {viewMode === 'day' && (
             <div className="p-4 space-y-6 print:space-y-4">
                 {Object.entries(groupedEmployees).map(([locName, departments]) => {
