@@ -1,10 +1,7 @@
 /**
  * @file app/actions/publish-schedule.ts
  * @description Generates and emails the Roster to active staff.
- * UPDATES:
- * 1. LOCATION FILTERING: Now accepts a 'targetLocation' to send specific schedules.
- * 2. INTEGRATION: Includes Approved Time Off (Yellow) vs Shifts (Blue/Green).
- * 3. TECH: Uses Date-FNS and Resend.
+ * FIX v12.1: Joined 'employee_details' to fetch 'primary_work_location' correctly.
  */
 'use server';
 
@@ -67,10 +64,15 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
     console.log(`[Email] Generating ${targetLocation} roster for ${weekLabel}...`);
 
     const [usersRes, shiftsRes, timeOffRes] = await Promise.all([
-      // A. Active Staff
+      // A. Active Staff - JOIN employee_details to get location
       supabaseAdmin
         .from('users')
-        .select('id, full_name, email, primary_work_location')
+        .select(`
+          id, 
+          full_name, 
+          email, 
+          employee_details(primary_work_location)
+        `)
         .eq('active', true),
       
       // B. Shifts for the week
@@ -92,12 +94,23 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
     if (usersRes.error) throw new Error(`User Fetch Error: ${usersRes.error.message}`);
     if (shiftsRes.error) throw new Error(`Shift Fetch Error: ${shiftsRes.error.message}`);
 
-    const staff = (usersRes.data || []) as StaffMember[];
+    // MAPPING: Flatten the nested employee_details into a clean object
+    const rawStaff = (usersRes.data || []) as any[];
+    const staff: StaffMember[] = rawStaff.map(u => {
+      // Handle array or object response from join
+      const details = Array.isArray(u.employee_details) ? u.employee_details[0] : u.employee_details;
+      return {
+        id: u.id,
+        full_name: u.full_name,
+        email: u.email,
+        primary_work_location: details?.primary_work_location || 'Las Vegas' // Default fallback
+      };
+    });
+
     const shifts = (shiftsRes.data || []) as Shift[];
     const timeOffs = (timeOffRes.data || []) as TimeOff[];
 
     // 3. FILTER LOCATIONS
-    // If target is 'ALL', use all locations. Otherwise, just the target.
     const allLocations = ['Las Vegas', 'Pismo', 'Michigan'];
     const activeLocations = targetLocation === 'ALL' 
       ? allLocations 
@@ -121,12 +134,10 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
           <p>The roster has been updated. Please review your shifts below.</p>
     `;
 
-    // We will collect email addresses of staff who actually appear in this report
     const staffInReport = new Set<string>();
 
     activeLocations.forEach(loc => {
       // Find staff relevant to this location
-      // Logic: Their home base is here, OR they have a shift here this week.
       const locStaff = staff.filter(u => 
         u.primary_work_location === loc || 
         shifts.some(s => s.user_id === u.id && s.location === loc)
@@ -141,10 +152,7 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
 
       if (activeStaff.length === 0) return;
 
-      // Add their emails to our recipient list
       activeStaff.forEach(u => { if (u.email) staffInReport.add(u.email); });
-
-      // Sort alphabetically
       activeStaff.sort((a, b) => a.full_name.localeCompare(b.full_name));
 
       // Append Table Header
@@ -169,9 +177,7 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
         days.forEach(day => {
           const dateStr = format(day, 'yyyy-MM-dd');
           
-          // Match Shift
           const shift = empShifts.find(s => s.start_time.startsWith(dateStr));
-          // Match Time Off
           const isOff = empOffs.find(t => dateStr >= t.start_date.substring(0, 10) && dateStr <= t.end_date.substring(0, 10));
 
           let cellStyle = "text-align: center; color: #94a3b8;"; 
@@ -180,8 +186,6 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
           if (shift) {
             const timeStart = format(parseISO(shift.start_time), 'h:mm a');
             const timeEnd = format(parseISO(shift.end_time), 'h:mm a');
-            
-            // Highlight if shift location differs from report location (traveling staff)
             const isAway = shift.location && shift.location !== loc;
             const colorBg = isAway ? "#fef3c7" : "#e0f2fe"; 
             const colorText = isAway ? "#92400e" : "#0369a1";
@@ -217,11 +221,10 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
     `;
 
     // 5. SEND EMAIL
-    // Only send to staff who were actually included in this specific report
     const recipients = Array.from(staffInReport)
       .filter(email => email.includes('@') && !email.endsWith('.test'));
 
-    // SAFETY FOR DEV: Hardcoded for safety. Swap logic for production.
+    // SAFETY FOR DEV: Hardcoded for safety. 
     const safeRecipients = ['scott@sunbuggy.com']; 
     // FOR PROD: const safeRecipients = recipients; 
 
@@ -229,7 +232,7 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
 
     const { error } = await resend.emails.send({
       from: 'SunBuggy Schedule <schedule@sunbuggy.fun>',
-      to: safeRecipients, // In Prod, this would be `recipients` or BCC
+      to: safeRecipients,
       subject: `📅 ${targetLocation === 'ALL' ? 'Master' : targetLocation} Schedule: ${weekLabel}`,
       html: emailHtml,
     });
@@ -239,9 +242,7 @@ export async function sendRosterEmail(weekStart: string, targetLocation: string 
       return { success: false, error: "Email provider rejected the request." };
     }
 
-    // 6. AUDIT LOG (Update last_notified)
-    // Update timestamps for the shifts included in this email
-    // If Location is ALL, update all shifts in week. If specific, filter by location.
+    // 6. AUDIT LOG
     let updateQuery = supabaseAdmin
       .from('employee_schedules')
       .update({ last_notified: new Date().toISOString() })
