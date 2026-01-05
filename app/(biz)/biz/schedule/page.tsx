@@ -1,20 +1,21 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (v11.6 - Review Dialog & Optional Notes)
+// SUNBUGGY ROSTER PAGE (v12.0 - COMPLETE INTEGRATION)
 // ============================================================================
-// CHANGELOG v11.6:
-// 1. REVIEW MODAL: Clicking a "PENDING" request now opens a Dialog.
-//    - Allows entering an OPTIONAL Manager Note.
-//    - Prevents accidental clicks on tiny buttons.
-// 2. ERROR FIX: Server Action now handles empty notes gracefully.
-// 3. UI CLEANUP: Removed the cluttered Check/X buttons from the grid cell.
+// RESTORED: Full Day View, MiniCalendar, Print Styles, and Legacy Stats.
+// NEW FEATURES:
+// 1. Time Off Indicators: Yellow (Approved), Orange (Pending), Blue (Pref).
+// 2. Review Modal: Click "Pending" or "Approved" to manage requests/notes.
+// 3. Server Actions: Uses 'approveTimeOffRequest' for DB updates.
+// 4. Safety: 'getHistoricalWeather' fallback for dates >10 days out.
 
 import { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import Link from 'next/link'; 
 import { createClient } from '@/utils/supabase/client';
 import { getStaffRoster } from '@/utils/supabase/queries'; 
 import { getLocationWeather, DailyWeather } from '@/app/actions/weather'; 
+// SERVER ACTION: Handles the database update for time off (Approve/Deny)
 import { approveTimeOffRequest } from '@/app/actions/approve-time-off';
 
 // --- DATE-FNS IMPORTS ---
@@ -44,6 +45,7 @@ import UserStatusAvatar from '@/components/UserStatusAvatar';
 import { fetch_from_old_db } from '@/utils/old_db/actions';
 import { vehiclesList } from '@/utils/old_db/helpers';
 
+// --- UI IMPORTS ---
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -55,7 +57,7 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea"; // NEW
+import { Textarea } from "@/components/ui/textarea"; 
 import { Switch } from "@/components/ui/switch";
 import { 
     ChevronLeft, ChevronRight, Plus, Trash2, MapPin, 
@@ -77,7 +79,7 @@ import PublishButton from './components/publish-button';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 
-// --- CONSTANTS & STYLES ---
+// --- CONSTANTS ---
 const LOCATIONS: Record<string, string[]> = {
   'Las Vegas': ['ADMIN', 'OFFICE', 'DUNES', 'SHUTTLES', 'SHOP'],
   'Pismo': ['ADMIN', 'CLUBHOUSE', 'BEACH', 'SHOP'],
@@ -134,6 +136,7 @@ interface Shift {
   role: string;
   location?: string;
   task?: string;
+  last_notified?: string | null;
 }
 
 interface TimeOffRequest {
@@ -144,8 +147,7 @@ interface TimeOffRequest {
     type: 'TIME_OFF' | 'PREFER_OFF';
     status: string; 
     reason: string | null;
-    // user_name is added during mapping for the modal
-    user_name?: string; 
+    user_name?: string; // Populated during fetch for modal context
 }
 
 interface AvailabilityRule {
@@ -164,6 +166,7 @@ interface AuditLog {
   user_id: string;
   table_name: string;
   row: string;
+  actor_name?: string;
 }
 
 interface ShiftDefaults {
@@ -191,13 +194,7 @@ const getHistoricalWeather = (location: string, date: Date): DailyWeather => {
     };
     const locKey = Object.keys(norms).find(k => location.includes(k)) || 'Las Vegas';
     const maxTemp = norms[locKey][month] || 70;
-    return {
-        date: format(date, 'yyyy-MM-dd'),
-        min_temp: maxTemp - 15,
-        max_temp: maxTemp,
-        code: 1,
-        condition: 'Seasonal Norm'
-    };
+    return { date: format(date, 'yyyy-MM-dd'), min_temp: maxTemp - 15, max_temp: maxTemp, code: 1, condition: 'Seasonal Norm' };
 };
 
 const getDashboardLink = (locationName: string, dateStr: string) => {
@@ -338,7 +335,7 @@ export default function RosterPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   
-  // METADATA
+  // METADATA: Requests & Availability
   const [rosterMetadata, setRosterMetadata] = useState<Record<string, { requests: TimeOffRequest[], availability: AvailabilityRule[] }>>({});
 
   const [weatherData, setWeatherData] = useState<Record<string, DailyWeather[]>>({});
@@ -357,11 +354,12 @@ export default function RosterPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
   
-  // Time Off Review Modal State
+  // REVIEW MODAL (Time Off Approval)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<TimeOffRequest | null>(null);
   const [managerNote, setManagerNote] = useState('');
 
+  // Shift Edit State
   const [formRole, setFormRole] = useState('Guide');
   const [formTask, setFormTask] = useState<string>('NONE');
   const [formStart, setFormStart] = useState('09:00');
@@ -429,6 +427,7 @@ export default function RosterPage() {
     const requestStart = format(subDays(startOfWeekDate, 7), 'yyyy-MM-dd');
     const requestEnd = format(addDays(endOfWeekDate, 7), 'yyyy-MM-dd');
 
+    // Fetch ALL requests (we filter in JS to be safe on case sensitivity)
     const requestsPromise = supabase
         .from('time_off_requests')
         .select('*')
@@ -442,6 +441,7 @@ export default function RosterPage() {
         .gte('start_time', startOfWeekDate.toISOString())
         .lte('start_time', addDays(startOfWeekDate, 7).toISOString());
 
+    // Execute All
     const [staffResults, reqRes, availRes, shiftData] = await Promise.all([
         Promise.all(staffPromises), 
         requestsPromise,
@@ -465,12 +465,8 @@ export default function RosterPage() {
     (reqRes.data || []).forEach((r: TimeOffRequest) => {
         const normStatus = r.status.trim().toUpperCase();
         if ((normStatus === 'APPROVED' || normStatus === 'PENDING') && metaMap[r.user_id]) {
-             // Find user name for modal display context
              const user = uniqueStaff.find(u => u.id === r.user_id);
-             metaMap[r.user_id].requests.push({
-                 ...r,
-                 user_name: user?.full_name || 'Unknown'
-             });
+             metaMap[r.user_id].requests.push({ ...r, user_name: user?.full_name || 'Unknown' });
         }
     });
     (availRes.data || []).forEach((a: AvailabilityRule) => {
@@ -480,7 +476,7 @@ export default function RosterPage() {
 
     if (shiftData.data) setShifts(shiftData.data);
 
-    // Stats
+    // Stats (Legacy)
     if (visibleLocs['Las Vegas']) {
         const query = `SELECT * FROM reservations_modified WHERE sch_date >= '${format(startOfWeekDate, 'yyyy-MM-dd')}' AND sch_date <= '${format(endOfWeekDate, 'yyyy-MM-dd')}'`;
         try {
@@ -497,7 +493,7 @@ export default function RosterPage() {
         } catch (e) { console.error(e); }
     }
 
-    // Weather
+    // Weather Fetch Logic
     const weatherUpdates: Record<string, DailyWeather[]> = {};
     const daysUntilStart = differenceInDays(startOfWeekDate, new Date());
     const useHistorical = daysUntilStart > 10; 
@@ -526,7 +522,8 @@ export default function RosterPage() {
       await supabase.from('audit_logs').insert({ action, table_name: table, row: rowId, user_id: currentUserId });
   };
 
-  // v11.6: OPEN REVIEW MODAL
+  // --- REVIEW ACTIONS ---
+  
   const openReviewModal = (request: TimeOffRequest, e: React.MouseEvent) => {
       e.stopPropagation();
       if(!isManager) return;
@@ -535,13 +532,9 @@ export default function RosterPage() {
       setIsReviewModalOpen(true);
   };
 
-  // v11.6: SUBMIT REVIEW (Approved/Denied)
   const submitReview = async (status: 'approved' | 'denied') => {
       if(!selectedRequest) return;
-      
-      // Call Server Action with Optional Note
       const result = await approveTimeOffRequest(selectedRequest.id, status, managerNote);
-      
       if(result.error) {
           toast.error(`Failed: ${result.error}`);
       } else {
@@ -550,6 +543,8 @@ export default function RosterPage() {
           fetchData();
       }
   };
+
+  // --- GRID INTERACTIONS ---
 
   const handleCellClick = (emp: Employee, dateStr: string, existingShift?: Shift) => {
     if (!isManager) return;
@@ -668,10 +663,7 @@ export default function RosterPage() {
 
   return (
     <div id="roster-container" className="p-2 h-[calc(100vh-65px)] flex flex-col bg-background text-foreground print:p-0 print:bg-white print:h-auto print:block print:w-full print:m-0 print:overflow-visible">
-      
-      {/* ... [STYLES and HEADER unchanged] ... */}
-      {/* ... [Keeping styles and header from previous version for brevity] ... */}
-      {/* Insert Global Styles & Header here if re-pasting entire file, otherwise they persist */}
+      {/* GLOBAL PRINT STYLES */}
       <style jsx global>{`
         @media print {
             @page { size: landscape; margin: 5mm; } 
@@ -683,13 +675,30 @@ export default function RosterPage() {
             }
             * { box-shadow: none !important; border-radius: 0 !important; }
             nav, header, aside, .print-hide { display: none !important; }
-            #roster-container { position: static !important; height: auto !important; overflow: visible !important; display: block !important; margin: 0 !important; padding: 0 !important; }
+            
+            #roster-container { 
+                position: static !important; 
+                height: auto !important; 
+                overflow: visible !important; 
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Prevent sticky breaking pagination */
             .sticky { position: static !important; }
+            
+            /* Force breaks only on 2nd+ location */
             .location-break { break-before: page; page-break-before: always; }
+            
+            /* v10.19: Strict grouping to keep headers & staff together */
             tbody.dept-block { break-inside: avoid; page-break-inside: avoid; }
+
             .print-yellow { background-color: #fde047 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             tr { height: auto !important; }
             td, th { padding: 0.5px 2px !important; font-size: 10px !important; vertical-align: middle !important; border-color: #000 !important; border-width: 1px !important; }
+            
+            /* Hide web components */
             .print-no-avatar { display: none !important; }
         }
       `}</style>
@@ -746,7 +755,6 @@ export default function RosterPage() {
       <div className={cn("flex-1 overflow-auto border rounded-lg shadow-sm bg-card print:overflow-visible print:h-auto print:border-none print:shadow-none print:bg-white relative", loading && "opacity-50 pointer-events-none")}>
         {viewMode === 'week' && (
         <table className="w-full border-collapse min-w-[1000px] text-sm print:w-full print:min-w-0 print:text-[10px]">
-          {/* ... [Table Header same as previous] ... */}
           <thead className="sticky top-0 bg-muted z-50 shadow-sm print:static print:bg-white print:border-b-2 print:border-black h-8">
             <tr className="hidden print:table-row h-6"><th colSpan={8} className="p-0 border-b-2 border-black bg-white text-black"><div className="flex justify-between items-center w-full px-1"><span className="text-sm font-bold">{weekRangeText}</span><span className="text-[9px] font-mono opacity-50 italic">Printed: {format(new Date(), 'M/d/yy h:mm a')}</span></div></th></tr>
             <tr>
@@ -763,8 +771,11 @@ export default function RosterPage() {
                 return (
                     <Fragment key={locName}>
                         <tbody className="print:break-after-avoid relative">
-                            {/* ... [Location Header same as previous] ... */}
-                            <tr className={cn("bg-yellow-400 text-black print-yellow border-b-2 border-black sticky top-8 z-40", locIndex > 0 && "location-break")}>
+                            {/* LOCATION HEADER - Force break only if NOT first group */}
+                            <tr className={cn(
+                                "bg-yellow-400 text-black print-yellow border-b-2 border-black sticky top-8 z-40",
+                                locIndex > 0 && "location-break"
+                            )}>
                                 <td className="p-2 font-bold uppercase tracking-wider text-xs border-b border-black sticky left-0 z-40 bg-yellow-400 print:static print:text-black print:text-sm">
                                     <div className="flex flex-col justify-center items-center text-center">
                                         <div className="flex items-center justify-center gap-1"><MapPin className="w-3 h-3 print:hidden" /> <span className="text-[10px]">{locName}</span></div>
@@ -824,19 +835,37 @@ export default function RosterPage() {
                                                 )}
                                                 {emps.map((emp: Employee) => {
                                                     const empShifts = shifts.filter(s => s.user_id === emp.id);
+                                                    
                                                     const empReqs = rosterMetadata[emp.id]?.requests || [];
                                                     const empAvail = rosterMetadata[emp.id]?.availability || [];
 
                                                     return (
                                                     <tr key={`${locName}-${emp.id}`} className="hover:bg-muted/20 transition-colors border-b print:border-gray-400 print:h-auto">
-                                                        {/* User Cell - Same as before */}
                                                         <td className="p-0 border-r border-r-slate-100 dark:border-r-slate-800 sticky left-0 z-30 bg-card print:static print:border-r print:border-black print:p-0">
                                                             <div className="p-1 w-32 flex flex-row items-center justify-start h-full gap-2 print:w-auto">
-                                                                <div className="flex-shrink-0 ml-1 print:hidden"><UserStatusAvatar user={emp} currentUserLevel={currentUserLevel} isCurrentUser={currentUserId === emp.id} size="md" /></div>
-                                                                <div className="hidden print:block flex-shrink-0 ml-1 h-5 w-5 rounded-full border border-black/20 overflow-hidden">{emp.avatar_url ? (<img src={emp.avatar_url} alt="" className="w-full h-full object-cover" />) : (<div className="w-full h-full bg-gray-100 flex items-center justify-center"><User className="w-3 h-3 text-gray-400" /></div>)}</div>
+                                                                <div className="flex-shrink-0 ml-1 print:hidden">
+                                                                    <UserStatusAvatar 
+                                                                        user={emp} 
+                                                                        currentUserLevel={currentUserLevel} 
+                                                                        isCurrentUser={currentUserId === emp.id}
+                                                                        size="md" 
+                                                                    />
+                                                                </div>
+                                                                <div className="hidden print:block flex-shrink-0 ml-1 h-5 w-5 rounded-full border border-black/20 overflow-hidden">
+                                                                    {emp.avatar_url ? (<img src={emp.avatar_url} alt="" className="w-full h-full object-cover" />) : (<div className="w-full h-full bg-gray-100 flex items-center justify-center"><User className="w-3 h-3 text-gray-400" /></div>)}
+                                                                </div>
                                                                 <div className="flex flex-col items-start justify-center min-w-0 overflow-hidden print:justify-start">
-                                                                    <div className="font-bold text-xs truncate w-full text-left" title={emp.full_name}>{emp.stage_name}{emp.timeclock_blocked && <Ban className="w-3 h-3 text-red-500 inline ml-1" />}</div>
-                                                                    <div className="mt-0.5 print:hidden">{sumWeeklyHours(empShifts) > 0 && (<span className="text-[10px] bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-200 px-1.5 py-0.5 rounded-sm font-mono inline-block">{sumWeeklyHours(empShifts).toFixed(1)}h</span>)}</div>
+                                                                    <div className="font-bold text-xs truncate w-full text-left" title={emp.full_name}>
+                                                                        {emp.stage_name}
+                                                                        {emp.timeclock_blocked && <Ban className="w-3 h-3 text-red-500 inline ml-1" />}
+                                                                    </div>
+                                                                    <div className="mt-0.5 print:hidden">
+                                                                        {sumWeeklyHours(empShifts) > 0 && (
+                                                                            <span className="text-[10px] bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-200 px-1.5 py-0.5 rounded-sm font-mono inline-block">
+                                                                                {sumWeeklyHours(empShifts).toFixed(1)}h
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                     <div className="hidden print:block text-[8px] font-mono leading-none opacity-80 -mt-0.5">{emp.phone || 'No Phone'}</div>
                                                                 </div>
                                                             </div>
@@ -845,20 +874,31 @@ export default function RosterPage() {
                                                             const dateStr = format(day, 'yyyy-MM-dd');
                                                             const shift = shifts.find(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateStr);
                                                             const isAway = shift && shift.location !== emp.location && !isVisiting;
-                                                            const request = empReqs.find(r => dateStr >= r.start_date.substring(0,10) && dateStr <= r.end_date.substring(0,10));
+                                                            
+                                                            // v11.4: Strict 10-char matching
+                                                            const request = empReqs.find(r => 
+                                                                dateStr >= r.start_date.substring(0,10) && 
+                                                                dateStr <= r.end_date.substring(0,10)
+                                                            );
+
                                                             const availRule = empAvail.find(a => a.day_of_week === day.getDay());
+
+                                                            // Normalize status for check
                                                             const reqStatus = request?.status.trim().toUpperCase();
 
                                                             return (
                                                                 <td key={dateStr} className={`p-1 border-l relative h-14 print:h-auto print:border-black ${isManager ? 'cursor-pointer group' : ''}`} onClick={() => isManager && handleCellClick(emp, dateStr, shift)}>
                                                                     
-                                                                    {/* 1. SHIFT EXISTS */}
+                                                                    {/* PRIORITY 1: SHIFT EXISTS (Overlay Mode) */}
                                                                     {shift ? (
                                                                         <div className={`h-full w-full border-l-2 rounded-r p-1 flex flex-col justify-center relative print:bg-white print:border print:border-black print:p-0.5 print:rounded-none ${isAway ? 'bg-amber-50 border-l-amber-500' : 'bg-blue-100 border-l-blue-500 dark:bg-blue-900'}`}>
-                                                                            {/* ALERTS */}
+                                                                            
+                                                                            {/* ALERT 1: Approved Off + Shift = Red Conflict (v11.4: z-50 to force top) */}
                                                                             {reqStatus === 'APPROVED' && (
-                                                                                <div className="absolute -top-1 -left-1 z-50 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold shadow-sm" title="Conflict">!</div>
+                                                                                <div className="absolute -top-1 -left-1 z-50 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold shadow-sm" title="Conflict: Scheduled during Time Off">!</div>
                                                                             )}
+
+                                                                            {/* ALERT 2: Pending Request + Shift = Orange Action Needed (v11.4: z-50) */}
                                                                             {reqStatus === 'PENDING' && (
                                                                                  <div className="absolute inset-x-0 -top-2 z-50 flex justify-center cursor-pointer" onClick={(e) => openReviewModal(request!, e)}>
                                                                                      <div className="bg-orange-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-sm border border-orange-600 flex items-center gap-1 hover:bg-orange-600">
@@ -866,42 +906,52 @@ export default function RosterPage() {
                                                                                      </div>
                                                                                  </div>
                                                                             )}
+
                                                                             {shift.task && <div className="absolute top-0 right-0 p-0.5 print:p-0 print:top-0 print:right-0"><TaskBadge taskKey={shift.task} /></div>}
                                                                             <span className="font-bold text-foreground text-xs leading-none mb-0.5 print:text-black print:mb-0 print:text-[10px]">{format(parseISO(shift.start_time), 'h:mma')}</span>
                                                                             <span className="text-[10px] text-muted-foreground leading-none print:text-black print:text-[9px]">- {format(parseISO(shift.end_time), 'h:mma')}</span>
                                                                             {isAway && <div className="text-[9px] font-bold text-amber-700 mt-1 uppercase print:text-black print:mt-0 print:text-[8px]"><Plane className="w-2 h-2 inline" /> {shift.location}</div>}
                                                                         </div>
                                                                     ) : (
-                                                                    /* 2. APPROVED TIME OFF */
+                                                                    /* PRIORITY 2: APPROVED TIME OFF (YELLOW) */
+                                                                    /* v11.8 FIX: Truncate to avoid table blowout */
                                                                     reqStatus === 'APPROVED' ? (
                                                                          <div className="h-full w-full bg-yellow-400 dark:bg-yellow-600 flex flex-col items-center justify-center p-1 border-l-4 border-yellow-600 dark:border-yellow-400 print-yellow">
                                                                             <span className="text-[10px] font-black uppercase text-black">OFF</span>
-                                                                            <span className="text-[8px] leading-none text-black/70 font-bold truncate max-w-full">{request!.reason || 'Approved'}</span>
+                                                                            <span className="text-[8px] leading-none text-black/70 font-bold truncate max-w-[60px] mx-auto">{request!.reason || 'Approved'}</span>
                                                                          </div>
                                                                     ) : 
-                                                                    /* 3. PENDING REQUEST (CLICKABLE) */
+                                                                    /* PRIORITY 3: PENDING REQUEST (ORANGE + BUTTONS) */
+                                                                    /* v11.8 FIX: Removed dynamic text, just says REVIEW */
                                                                     reqStatus === 'PENDING' ? (
                                                                         <div className="h-full w-full bg-orange-100 dark:bg-orange-900/40 border border-orange-300 dark:border-orange-700 p-0.5 flex flex-col justify-center items-center animate-in fade-in cursor-pointer hover:bg-orange-200 dark:hover:bg-orange-900/60 transition-colors group/pending" 
                                                                              onClick={(e) => openReviewModal(request!, e)}>
                                                                             <AlertCircle className="w-4 h-4 text-orange-600 mb-1" />
-                                                                            <span className="text-[8px] font-bold text-orange-800 dark:text-orange-200 leading-tight text-center uppercase tracking-wide">Review Request</span>
+                                                                            <span className="text-[8px] font-bold text-orange-800 dark:text-orange-200 leading-tight text-center uppercase tracking-wide">REVIEW</span>
                                                                         </div>
                                                                     ) :
-                                                                    /* 4. UNAVAILABLE */
+                                                                    /* PRIORITY 4: UNAVAILABLE (GRAY HATCH) */
                                                                     availRule?.preference_level === 'unavailable' ? (
                                                                         <div className="h-full w-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center opacity-70 cursor-not-allowed">
-                                                                            <div className="flex flex-col items-center text-slate-400"><Ban className="w-3 h-3 mb-0.5" /><span className="text-[9px] font-bold uppercase">N/A</span></div>
+                                                                            <div className="flex flex-col items-center text-slate-400">
+                                                                                <Ban className="w-3 h-3 mb-0.5" />
+                                                                                <span className="text-[9px] font-bold uppercase">N/A</span>
+                                                                            </div>
                                                                         </div>
                                                                     ) :
-                                                                    /* 5. PREFERRED OFF */
+                                                                    /* PRIORITY 5: PREFERRED OFF (BLUE BADGE) */
                                                                     availRule?.preference_level === 'preferred_off' ? (
                                                                         <div className="h-full w-full relative group">
                                                                             <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800/20 opacity-30" />
-                                                                            <div className="absolute top-1 right-1"><Badge variant="secondary" className="text-[8px] h-4 px-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 flex items-center gap-0.5"><ThumbsDown className="w-2 h-2" /> Pref Off</Badge></div>
+                                                                            <div className="absolute top-1 right-1">
+                                                                               <Badge variant="secondary" className="text-[8px] h-4 px-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 flex items-center gap-0.5">
+                                                                                 <ThumbsDown className="w-2 h-2" /> Pref Off
+                                                                               </Badge>
+                                                                            </div>
                                                                             {isManager && <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100"><Plus className="w-4 h-4 text-muted-foreground/50" /></div>}
                                                                         </div>
                                                                     ) :
-                                                                    /* 6. EMPTY CELL */
+                                                                    /* DEFAULT: EMPTY CELL */
                                                                     (!isVisiting && isManager && <div className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-100 print:hidden"><Plus className="w-4 h-4 text-muted-foreground/30" /></div>)
                                                                     )}
                                                                 </td>
@@ -922,7 +972,79 @@ export default function RosterPage() {
         </table>
         )}
 
-        {/* ... [Day View omitted for brevity - logic same as v11.3] ... */}
+        {/* --- DAY VIEW --- */}
+        {viewMode === 'day' && (
+            <div className="p-4 space-y-6 print:space-y-4">
+                {Object.entries(groupedEmployees).map(([locName, departments]) => {
+                    if (!visibleLocs[locName]) return null;
+                    const dateKey = format(currentDate, 'yyyy-MM-dd');
+                    const activeDepts = Object.entries(departments).filter(([deptName, roleGroups]) => 
+                         Object.values(roleGroups as Record<string, Employee[]>).some((group: any) => group.some((emp: any) => shifts.some(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateKey)))
+                    );
+
+                    if (activeDepts.length === 0) return null;
+                    const todayWeather = weatherData[locName]?.find(w => w.date === dateKey);
+
+                    return (
+                        <div key={locName} className="border rounded-lg overflow-hidden bg-card shadow-sm print:border-black print:shadow-none">
+                            <div className="bg-slate-900 text-white p-3 font-bold uppercase flex justify-between items-center print:bg-white print:text-black print:border-b print:border-black">
+                                <div className="flex flex-col">
+                                    <div className="flex items-center"><MapPin className="w-4 h-4 inline mr-2" /> {locName}</div>
+                                    {locName === 'Las Vegas' && dailyStats[dateKey] && (
+                                        <div className="text-xs font-normal text-orange-300 normal-case mt-1 font-mono">
+                                            People: {dailyStats[dateKey].people} — {dailyStats[dateKey].fullString}
+                                        </div>
+                                    )}
+                                </div>
+                                {todayWeather && (<div className="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-slate-700 print:bg-white print:text-black print:border-black"><WeatherCell data={todayWeather} /></div>)}
+                            </div>
+                            <div className="divide-y divide-slate-100 dark:divide-slate-800 print:divide-black">
+                                {activeDepts.map(([deptName, roleGroups]) => {
+                                    const allDeptEmps = Object.values(roleGroups as Record<string, Employee[]>).flat();
+                                    return (
+                                    <div key={deptName} className="p-0 print:break-before">
+                                        <div className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-b ${DEPT_STYLES[deptName] || 'bg-muted'} print:bg-gray-100 print:text-black print:border-black`}>
+                                            {deptName === 'Visiting Staff' && <Plane className="w-3 h-3 inline mr-1" />} {deptName}
+                                        </div>
+                                        <div className="divide-y divide-slate-100 dark:divide-slate-800 print:divide-black">
+                                            {allDeptEmps.map((emp: any) => {
+                                                const shift = shifts.find(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateKey);
+                                                if (!shift) return null;
+                                                return (
+                                                    <div key={emp.id} className="flex items-center justify-between p-3 hover:bg-muted/10 print:p-2 print:border-b print:border-gray-200">
+                                                        <div className="flex items-center gap-3">
+                                                            <UserStatusAvatar 
+                                                                user={emp} 
+                                                                currentUserLevel={currentUserLevel} 
+                                                                isCurrentUser={currentUserId === emp.id}
+                                                                size="md" 
+                                                            />
+                                                            <div>
+                                                                <div className="font-semibold text-sm flex items-center gap-2"><span className="">{emp.stage_name}</span></div>
+                                                                <div className="hidden print:block text-[9px] font-mono leading-tight">{emp.phone}</div>
+                                                                <div className="text-xs text-muted-foreground flex items-center gap-1 print:text-black">
+                                                                    <Badge variant="outline" className="text-[10px] h-5 px-1 print:border-black">{shift.role}</Badge>
+                                                                    {shift.task && <TaskBadge taskKey={shift.task} />}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="font-mono font-bold text-sm bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-100 px-2 py-1 rounded border border-blue-100 dark:border-blue-900 print:bg-white print:text-black print:border-black">
+                                                                {format(parseISO(shift.start_time), 'h:mm a')} - {format(parseISO(shift.end_time), 'h:mm a')}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )})}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        )}
       </div>
 
       {/* MODALS */}
@@ -993,11 +1115,21 @@ export default function RosterPage() {
                         <div><label className="text-xs">End</label><Input type="time" disabled={!isManager} value={formEnd} onChange={e => setFormEnd(e.target.value)} /></div>
                     </div>
                     <div><label className="text-xs">Role</label><Select value={formRole} onValueChange={setFormRole} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['Guide','Desk','Driver','Mechanic','Manager'].map(r=><SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div>
-                    <div><label className="text-xs">Special Task</label><Select value={formTask} onValueChange={setFormTask} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">None</SelectItem>{Object.entries(TASKS).map(([key, task]) => (<SelectItem key={key} value={key}><div className="flex items-center gap-2"><div className={`w-3 h-3 ${task.color} rounded-sm`}></div>{task.label}</div></SelectItem>))}</SelectContent></Select></div>
+                    
+                    <div>
+                        <label className="text-xs">Special Task</label>
+                        <Select value={formTask} onValueChange={setFormTask} disabled={!isManager}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent><SelectItem value="NONE">None</SelectItem>{Object.entries(TASKS).map(([key, task]) => (<SelectItem key={key} value={key}><div className="flex items-center gap-2"><div className={`w-3 h-3 ${task.color} rounded-sm`}></div>{task.label}</div></SelectItem>))}</SelectContent></Select></div>
                     <div><label className="text-xs">Location</label><Select value={formLocation} onValueChange={setFormLocation} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.keys(LOCATIONS).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent></Select></div>
                 </div>
                 <DialogFooter className="flex justify-between w-full">
-                    {selectedShiftId && isManager ? (<Button variant="destructive" size="sm" onClick={handleDeleteShift}><Trash2 className="w-4 h-4 mr-2" /> Delete</Button>) : <div/>}
+                    {selectedShiftId && isManager ? (
+                        <Button variant="destructive" size="sm" onClick={handleDeleteShift}>
+                            <Trash2 className="w-4 h-4 mr-2" /> Delete
+                        </Button>
+                    ) : <div/>}
+                    
                     {isManager && <Button size="sm" onClick={handleSaveShift}>Save</Button>}
                 </DialogFooter>
             </DialogContent>
@@ -1006,7 +1138,12 @@ export default function RosterPage() {
           {/* 3. PROFILE EDITOR MODAL (Existing) */}
           <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
             <DialogContent className="max-w-md">
-                <DialogHeader><DialogTitle className="flex items-center justify-between w-full"><span>Edit Employee</span>{profileEmp && <ChangeLogViewer tableName="users" rowId={profileEmp.id} />}</DialogTitle></DialogHeader>
+                <DialogHeader>
+                    <DialogTitle className="flex items-center justify-between w-full">
+                        <span>Edit Employee</span>
+                        {profileEmp && <ChangeLogViewer tableName="users" rowId={profileEmp.id} />}
+                    </DialogTitle>
+                </DialogHeader>
                 {profileEmp && (
                 <div className="grid gap-4 py-2">
                     <div className="flex items-center gap-4 border-b pb-4 mb-2"><UserStatusAvatar user={profileEmp} currentUserLevel={currentUserLevel} size="lg" /><div><div className="text-lg font-bold">{profileEmp.full_name}</div><div className="text-xs text-muted-foreground">{profileEmp.email}</div></div></div>
@@ -1014,7 +1151,22 @@ export default function RosterPage() {
                         <div><label className="text-xs">Location</label><Select value={profileEmp.location} onValueChange={(v)=>setProfileEmp({...profileEmp,location:v})} disabled={!isManager}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{Object.keys(LOCATIONS).map(l=><SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent></Select></div>
                         <div><label className="text-xs">Department</label><Select value={profileEmp.department} onValueChange={(v)=>setProfileEmp({...profileEmp,department:v})} disabled={!isManager}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{(LOCATIONS[profileEmp.location as keyof typeof LOCATIONS]||[]).map(d=><SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div>
                     </div>
-                    <div><label className="text-xs">Job Title / Role</label><Select value={profileEmp.job_title} onValueChange={(v) => setProfileEmp({ ...profileEmp, job_title: v })} disabled={!isManager}><SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger><SelectContent>{(ROLE_GROUPS[profileEmp.department] || ['STAFF']).map(role => (<SelectItem key={role} value={role}>{role}</SelectItem>))}</SelectContent></Select></div>
+                    <div>
+                        <label className="text-xs">Job Title / Role</label>
+                        <Select 
+                            value={profileEmp.job_title} 
+                            onValueChange={(v) => setProfileEmp({ ...profileEmp, job_title: v })} 
+                            disabled={!isManager}
+                        >
+                            <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
+                            <SelectContent>
+                                {(ROLE_GROUPS[profileEmp.department] || ['STAFF']).map(role => (
+                                    <SelectItem key={role} value={role}>{role}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                         <div><label className="text-xs">Hire Date</label><Input type="date" disabled={!isManager} value={profileEmp.hire_date||''} onChange={(e)=>setProfileEmp({...profileEmp,hire_date:e.target.value})} /></div>
                         <div><label className="text-xs">Phone Number</label><Input type="tel" disabled={!isManager} value={profileEmp.phone || ''} onChange={(e) => setProfileEmp({...profileEmp, phone: e.target.value})} /></div>
