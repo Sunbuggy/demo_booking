@@ -57,6 +57,38 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
+
+  /* * HIGH CONTRAST / OUTDOOR THEME 
+   * Optimized for Direct Sunlight Operation
+   * Uses Pure Black/White and Deep Blue for glare reduction
+   */
+  [data-theme='high-contrast'] {
+    --background: 0 0% 100%;       /* Pure White */
+    --foreground: 0 0% 0%;         /* Pure Black */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 220 100% 35%;       /* High Vis Blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 90%;         /* Light Grey separation */
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 20%;  /* Dark Grey (not faint) */
+    --accent: 0 0% 85%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 100% 50%;     /* Pure Red */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 0%;             /* Solid Black Borders */
+    --input: 0 0% 0%;
+    --ring: 220 100% 35%;
+    --radius: 0.25rem;             /* Sharper edges */
+    --chart-1: 220 100% 35%;
+    --chart-2: 0 0% 0%;
+    --chart-3: 0 0% 40%;
+    --chart-4: 0 0% 60%;
+    --chart-5: 0 0% 80%;
+  }
 }
 
 /* === BUTTON UTILITIES === */
