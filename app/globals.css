@@ -244,9 +244,32 @@
 }
 
 /* === GLASS EFFECT UTILITIES (New Addition) === */
+/* === GLASS EFFECT UTILITIES === */
 .glass {
-  @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-sm dark:bg-black/60 dark:border-white/10 dark:text-zinc-50;
+  /* BASE SHARED STYLES */
+  @apply backdrop-blur-xl shadow-lg transition-all duration-300;
+  
+  /* LIGHT THEME GLASS 
+     - High opacity white (75%) for readability
+     - distinct white border to mimic glass edge
+  */
+  @apply bg-white/75 border border-white/60;
+
+  /* DARK THEME GLASS 
+     - Lower opacity black (60%) 
+     - Very subtle white border (10%) for that "premium" edge
+  */
+  @apply dark:bg-zinc-950/60 dark:border-white/10 dark:text-zinc-100;
 }
+
+/* HIGH CONTRAST OVERRIDE (Safety First)
+   - Disables glass in outdoor mode for maximum legibility
+*/
+[data-theme='high-contrast'] .glass {
+  @apply bg-white border-2 border-black backdrop-blur-none opacity-100 shadow-none;
+}
+
+/* ... keep the rest ... */
 
 /* === CRITICAL GLOBAL FIXES === */
 @layer base {
