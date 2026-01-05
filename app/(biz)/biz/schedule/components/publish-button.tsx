@@ -1,10 +1,16 @@
 'use client';
 
+/**
+ * @file app/(biz)/biz/schedule/components/publish-button.tsx
+ * @description Button to trigger the Weekly Roster Email.
+ * Updated: Restored Location Selection (ALL vs Specific).
+ */
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { publishWeeklySchedule } from '@/app/actions/publish-schedule';
-import { Send, Loader2, MapPin } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { sendRosterEmail } from '@/app/actions/publish-schedule'; // Points to the new logic
+import { Send, Loader2, Mail, Info, MapPin } from 'lucide-react';
+import { toast } from 'sonner'; 
 import {
   Dialog,
   DialogContent,
@@ -13,46 +19,41 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
-import moment from 'moment';
-
-const LOCATIONS = ['ALL', 'Las Vegas', 'Pismo', 'Michigan'];
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { format, parseISO } from 'date-fns';
 
 export default function PublishButton({ weekStart }: { weekStart: string }) {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
-  const [targetLocation, setTargetLocation] = useState('Las Vegas'); // Default to LV
-  const { toast } = useToast();
+  const [targetLocation, setTargetLocation] = useState('Las Vegas'); // Default
 
-  const weekEnd = moment(weekStart).add(6, 'days').endOf('day').toISOString();
-  // Ensure we compare ISO strings properly in the server action
+  // Format date for display (e.g. "Oct 12")
+  const formattedDate = format(parseISO(weekStart), 'MMM d');
 
   const handleSend = async () => {
     setLoading(true);
-    // Pass the selected location to the server action
-    const result = await publishWeeklySchedule(weekStart, weekEnd, targetLocation);
+    
+    // Call the server action with the selected location
+    const result = await sendRosterEmail(weekStart, targetLocation);
+    
     setLoading(false);
 
     if (result.success) {
-      toast({ 
-        title: "Schedules Sent!", 
-        description: result.message, 
-        variant: "success" 
+      toast.success("Schedules Sent!", {
+        description: result.message
       });
       setOpen(false);
     } else {
-      toast({ 
-        title: "Error Sending", 
-        description: result.message, 
-        variant: "destructive" 
+      toast.error("Error Sending", {
+        description: result.error || "Unknown server error."
       });
     }
   };
@@ -60,22 +61,23 @@ export default function PublishButton({ weekStart }: { weekStart: string }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-           <Send className="w-4 h-4" />
-           Publish
+        <Button variant="outline" size="sm" className="w-full justify-start text-xs h-8">
+           <Mail className="w-3.5 h-3.5 mr-2" />
+           Email Schedule
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Publish Schedule</DialogTitle>
           <DialogDescription>
-            Email shifts for the week of <strong>{moment(weekStart).format('MMM D')}</strong>.
+            Email roster for week of <strong className="text-foreground">{formattedDate}</strong>.
           </DialogDescription>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
+          
           <div className="space-y-2">
-            <Label>Select Location to Publish</Label>
+            <Label>Select Location</Label>
             <Select value={targetLocation} onValueChange={setTargetLocation}>
               <SelectTrigger>
                 <SelectValue />
@@ -88,24 +90,30 @@ export default function PublishButton({ weekStart }: { weekStart: string }) {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Only employees with shifts in <strong>{targetLocation === 'ALL' ? 'any location' : targetLocation}</strong> will receive an email.
+              {targetLocation === 'ALL' 
+                ? "Emails ALL staff active in ANY location."
+                : `Emails only staff with shifts or time off in ${targetLocation}.`}
             </p>
           </div>
 
-          <div className="text-sm bg-slate-50 dark:bg-slate-900 p-3 rounded-md border text-muted-foreground">
-             <ul className="list-disc pl-4 space-y-1">
-               <li>Staff receive only their own shifts.</li>
-               <li>Includes link to live roster.</li>
-               <li>Does not email staff who are off this week.</li>
-             </ul>
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-100 dark:border-blue-900 flex gap-3">
+             <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+             <div className="text-sm text-blue-800 dark:text-blue-300">
+               <p className="font-bold mb-1">What's included?</p>
+               <ul className="list-disc pl-4 space-y-1 text-xs opacity-90">
+                 <li>Shift Assignments for <strong>{targetLocation}</strong>.</li>
+                 <li>Approved Time Off (Yellow flags).</li>
+                 <li>Link to the live Roster page.</li>
+               </ul>
+             </div>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleSend} disabled={loading} className="gap-2">
+          <Button onClick={handleSend} disabled={loading} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            {loading ? "Sending..." : `Send to ${targetLocation}`}
+            {loading ? "Sending..." : "Send Emails"}
           </Button>
         </DialogFooter>
       </DialogContent>
