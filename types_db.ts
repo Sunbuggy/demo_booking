@@ -996,6 +996,33 @@ export type Database = {
         }
         Relationships: []
       }
+      payroll_reports: {
+        Row: {
+          generated_at: string | null
+          generated_by: string | null
+          id: string
+          period_end: string
+          period_start: string
+          status: string | null
+        }
+        Insert: {
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          period_end: string
+          period_start: string
+          status?: string | null
+        }
+        Update: {
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       pismo_booking_items: {
         Row: {
           has_waiver: boolean | null
@@ -1037,6 +1064,70 @@ export type Database = {
             columns: ["pricing_category_id"]
             isOneToOne: false
             referencedRelation: "pismo_pricing_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pismo_booking_logs: {
+        Row: {
+          action_description: string
+          booking_id: string | null
+          created_at: string | null
+          editor_name: string
+          id: string
+        }
+        Insert: {
+          action_description: string
+          booking_id?: string | null
+          created_at?: string | null
+          editor_name: string
+          id?: string
+        }
+        Update: {
+          action_description?: string
+          booking_id?: string | null
+          created_at?: string | null
+          editor_name?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pismo_booking_logs_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "pismo_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pismo_booking_notes: {
+        Row: {
+          author_name: string
+          booking_id: string | null
+          created_at: string | null
+          id: string
+          note_text: string
+        }
+        Insert: {
+          author_name: string
+          booking_id?: string | null
+          created_at?: string | null
+          id?: string
+          note_text: string
+        }
+        Update: {
+          author_name?: string
+          booking_id?: string | null
+          created_at?: string | null
+          id?: string
+          note_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pismo_booking_notes_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "pismo_bookings"
             referencedColumns: ["id"]
           },
         ]

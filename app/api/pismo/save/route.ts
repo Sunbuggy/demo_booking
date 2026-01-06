@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/server'; // <--- Server Client
 
-// Setup Admin Client to bypass RLS for inserts
+// Admin client for writes
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
@@ -10,38 +11,57 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { total_amount, holder, booking } = body;
 
-    // 1. Initialize Supabase Admin
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // 1. Identify the Creator (Staff or Customer)
+    const cookieClient = await createClient();
+    const { data: { user } } = await cookieClient.auth.getUser();
+    
+    let creatorName = 'Online'; // Default for public bookings
 
-    console.log("Saving Booking for:", holder.firstName, holder.lastName);
+    if (user) {
+      // If logged in, fetch profile
+      const { data: profile } = await cookieClient
+        .from('users')
+        .select('full_name, email')
+        .eq('id', user.id)
+        .single();
+      
+      if (profile && profile.full_name) {
+        creatorName = profile.full_name;
+      } else {
+        creatorName = 'Staff';
+      }
+    } else {
+        // If not logged in, trust the holder if it says 'Guest', otherwise 'Online'
+        creatorName = holder.booked_by === 'Guest' ? 'Guest' : 'Online';
+    }
 
-    // 2. Insert Booking Header (pismo_bookings)
-    const { data: bookingRec, error: bookingErr } = await supabase
+    // 2. Init Admin Client
+    const adminSupabase = createAdminClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // 3. Insert Booking Header
+    const { data: bookingRec, error: bookingErr } = await adminSupabase
       .from('pismo_bookings')
       .insert({
         first_name: holder.firstName,
         last_name: holder.lastName,
         email: holder.email,
         phone: holder.phone,
-        booked_by: holder.booked_by || 'Guest',
+        booked_by: creatorName, // <--- Enforced by Server
         booking_date: booking.date,
         start_time: booking.startTime,
         end_time: booking.endTime,
         duration_hours: booking.duration,
         goggles_qty: booking.goggles || 0,
         bandannas_qty: booking.bandannas || 0,
-        total_amount: total_amount, // Matches schema 'total_amount' (number)
+        total_amount: Math.round(total_amount * 100), 
         status: 'confirmed'
       })
       .select()
       .single();
 
-    if (bookingErr) {
-      console.error("Booking Table Error:", bookingErr);
-      return NextResponse.json({ success: false, error: bookingErr.message }, { status: 500 });
-    }
+    if (bookingErr) throw bookingErr;
 
-    // 3. Prepare Line Items (pismo_booking_items)
+    // 4. Insert Line Items
     const itemsToInsert = [];
     const vehicles = booking.vehicles || {};
 
@@ -49,7 +69,7 @@ export async function POST(request: Request) {
       const item = itemData as any;
       if (item.qty > 0) {
         itemsToInsert.push({
-          pismo_booking_id: bookingRec.id, // Matches schema 'pismo_booking_id'
+          pismo_booking_id: bookingRec.id,
           pricing_category_id: catId,
           vehicle_name_snapshot: item.name || 'Unknown',
           quantity: item.qty,
@@ -59,23 +79,28 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Insert Line Items
     if (itemsToInsert.length > 0) {
-      const { error: itemsErr } = await supabase
+      const { error: itemsErr } = await adminSupabase
         .from('pismo_booking_items')
         .insert(itemsToInsert);
 
-      if (itemsErr) {
-        console.error("Items Table Error:", itemsErr);
-        // Note: Header was created, but items failed. 
-        // In a real app, you might delete the header here to cleanup.
-        return NextResponse.json({ success: false, error: itemsErr.message }, { status: 500 });
-      }
+      if (itemsErr) throw itemsErr;
     }
 
-    return NextResponse.json({ success: true, booking_id: bookingRec.id });
+    // 5. Create Initial Log Entry
+    await adminSupabase.from('pismo_booking_logs').insert({
+        booking_id: bookingRec.id,
+        editor_name: creatorName,
+        action_description: `Created new reservation. Total: $${total_amount.toFixed(2)}`
+    });
 
-  } catch (error) {
+    return NextResponse.json({ 
+        success: true, 
+        booking_id: bookingRec.id, 
+        reservation_id: bookingRec.reservation_id 
+    });
+
+  } catch (error: any) {
     console.error("API Error:", error);
     return NextResponse.json({ success: false, error: 'Server Error' }, { status: 500 });
   }
