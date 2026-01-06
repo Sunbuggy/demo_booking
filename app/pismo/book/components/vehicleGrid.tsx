@@ -31,37 +31,42 @@ export default function VehicleGrid({ categories, selections, setSelections, dur
               </p>
               
               <div className="mt-auto space-y-4">
-                {/* Quantity Controls */}
-                <div className={`flex items-center rounded p-1 ${isSelected ? 'bg-orange-900/30' : 'bg-gray-700'}`}>
+                {/* Quantity Controls - UPDATED */}
+                <div className={`flex items-center justify-between rounded p-1 ${isSelected ? 'bg-orange-900/30' : 'bg-gray-700'}`}>
+                   {/* Minus Button: Fixed width/height, no shrink */}
                    <button 
+                     type="button"
                      onClick={() => updateSelection(cat.id, Math.max(0, qty - 1), selections[cat.id]?.waiver)}
-                     className="px-4 py-2 bg-gray-600 rounded text-white font-bold hover:bg-gray-500 transition-colors"
+                     className="w-10 h-10 flex items-center justify-center flex-shrink-0 bg-gray-600 rounded text-white font-bold hover:bg-gray-500 transition-colors"
                    >-</button>
                    
+                   {/* Input: min-w-0 allows it to shrink if needed */}
                    <input 
                       type="number" 
                       min="0" 
                       value={qty} 
                       onChange={e => updateSelection(cat.id, parseInt(e.target.value) || 0, selections[cat.id]?.waiver)}
-                      className="flex-1 bg-transparent text-center font-bold text-xl focus:outline-none text-white" 
+                      className="w-full min-w-0 bg-transparent text-center font-bold text-xl focus:outline-none text-white appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                    />
                    
+                   {/* Plus Button: Fixed width/height, no shrink */}
                    <button 
+                     type="button"
                      onClick={() => updateSelection(cat.id, qty + 1, selections[cat.id]?.waiver)}
-                     className={`px-4 py-2 rounded text-white font-bold transition-colors ${isSelected ? 'bg-orange-600 hover:bg-orange-500' : 'bg-gray-600 hover:bg-gray-500'}`}
+                     className={`w-10 h-10 flex items-center justify-center flex-shrink-0 rounded text-white font-bold transition-colors ${isSelected ? 'bg-orange-600 hover:bg-orange-500' : 'bg-gray-600 hover:bg-gray-500'}`}
                    >+</button>
                 </div>
                 
                 {/* Waiver Checkbox */}
-                <label className={`flex items-center text-sm p-3 rounded cursor-pointer border transition-colors ${
+                <label className={`flex items-center text-sm p-3 rounded cursor-pointer border transition-colors select-none ${
                     selections[cat.id]?.waiver 
                     ? 'border-green-500 bg-green-900/20 text-green-200' 
                     : 'border-gray-600 text-gray-400 hover:border-gray-500'
                 }`}>
                   <input type="checkbox" checked={selections[cat.id]?.waiver || false}
                     onChange={e => updateSelection(cat.id, qty, e.target.checked)}
-                    className="mr-3 accent-green-500 w-5 h-5" />
-                  Add Damage Waiver (${cat.damage_waiver}/unit)
+                    className="mr-3 accent-green-500 w-5 h-5 flex-shrink-0" />
+                  <span>Add Damage Waiver (${cat.damage_waiver}/unit)</span>
                 </label>
               </div>
             </div>
