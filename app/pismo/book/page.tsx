@@ -46,9 +46,9 @@ export default function PismoBookingPage() {
     setTotal(calc);
   }, [selections, goggles, bandannas, pricingCategories, durationHours]);
 
-  const handleBooking = useCallback(async () => {
+const handleBooking = useCallback(async (paymentToken?: string | null) => { // <--- Accept Token
     setLoading(true);
-    setMessage('Saving reservation...');
+    setMessage(paymentToken ? 'Processing Payment...' : 'Saving reservation...');
 
     const vehiclesPayload: Record<string, any> = {};
     pricingCategories.forEach(cat => {
@@ -71,6 +71,7 @@ export default function PismoBookingPage() {
         body: JSON.stringify({
           total_amount: total, 
           holder: holderInfo, 
+          payment_token: paymentToken, 
           booking: { 
             date: selectedDate?.toISOString().split('T')[0], 
             startTime, endTime, duration: durationHours, 

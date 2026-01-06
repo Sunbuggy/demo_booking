@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import PaymentFields from './paymentFields';
 
 export default function CheckoutForm({ 
   total, 
@@ -10,20 +11,45 @@ export default function CheckoutForm({
   message, 
   loading,
   isEditing = false,
-  // New Props for Summary
-  selectedItems = [], // Array of { name, qty, price, waiver }
+  selectedItems = [],
   goggles = 0,
   bandannas = 0
 }: any) {
   const [agreed, setAgreed] = useState(false);
+  const [payNow, setPayNow] = useState(false); // Checkbox state
+  const [cardError, setCardError] = useState<string | null>(null);
 
+  // Trigger the tokenization process
   const handleConfirm = () => {
-    onPayment(); 
+    setCardError(null);
+
+    if (payNow && window.CollectJS) {
+        // 1. Trigger NMI Tokenization
+        window.CollectJS.startPaymentRequest(); 
+        // Note: The actual 'onPayment' will be called inside the callback in PaymentFields
+        // But since PaymentFields is a child, we need a way to bubble it up.
+        // A simpler way for Collect.js inline:
+        // We configure the callback in PaymentFields to call a prop function 'onToken'.
+    } else {
+        // No payment or Pay Later -> Standard submit
+        onPayment(null); // null token
+    }
+  };
+
+  // Callback passed to PaymentFields
+  const handleTokenGenerated = (token: string) => {
+      // Token received! Now we submit the booking to backend
+      onPayment(token);
+  };
+
+  const handleCardError = (err: string) => {
+      setCardError(err);
+      // Do not submit
   };
 
   return (
     <div className={`fixed bottom-0 left-0 right-0 z-[100] transition-all duration-300 ${
-      isExpanded ? 'bg-gray-900 h-[70vh] rounded-t-3xl shadow-2xl border-t border-gray-700' : 'bg-orange-600 h-20 cursor-pointer'
+      isExpanded ? 'bg-gray-900 h-[80vh] rounded-t-3xl shadow-2xl border-t border-gray-700' : 'bg-orange-600 h-20 cursor-pointer'
     }`}>
       
       {!isExpanded ? (
@@ -34,7 +60,8 @@ export default function CheckoutForm({
           </span>
         </div>
       ) : (
-        <div className="p-6 md:p-8 overflow-y-auto h-full max-w-2xl mx-auto custom-scrollbar pb-24">
+        <div className="p-6 md:p-8 overflow-y-auto h-full max-w-2xl mx-auto custom-scrollbar pb-32">
+          {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <button onClick={() => setIsExpanded(false)} className="text-orange-400 hover:text-orange-300">← Back</button>
             <h2 className="text-xl font-bold text-white">
@@ -42,58 +69,54 @@ export default function CheckoutForm({
             </h2>
           </div>
           
+          {/* Total Box */}
           <div className="bg-gray-800 p-6 rounded-xl mb-8 border border-gray-700">
              <div className="text-center mb-6 border-b border-gray-700 pb-6">
-                <div className="text-4xl font-bold text-white mb-2">
-                  ${total.toFixed(2)}
-                </div>
-                <div className="text-gray-400 text-sm uppercase tracking-wide">
-                    {isEditing ? 'New Total Amount' : 'Total Due Upon Arrival'}
-                </div>
+                <div className="text-4xl font-bold text-white mb-2">${total.toFixed(2)}</div>
+                <div className="text-gray-400 text-sm uppercase tracking-wide">Total Due</div>
              </div>
 
-             {/* === ORDER SUMMARY SECTION === */}
+             {/* Order Summary */}
              <div className="space-y-3 text-sm">
                 <h3 className="font-bold text-gray-400 uppercase text-xs mb-3">Order Summary</h3>
-                
-                {/* Vehicles */}
                 {selectedItems.map((item: any, idx: number) => (
-                  <div key={idx} className="flex flex-col mb-2">
-                    <div className="flex justify-between text-white font-medium">
-                      <span>{item.qty}x {item.name}</span>
-                      <span>${item.price.toFixed(2)}</span>
-                    </div>
-                    {item.waiver && (
-                      <div className="flex justify-between text-gray-400 text-xs pl-4">
-                        <span>+ Damage Waiver</span>
-                        <span>Included</span> 
-                      </div>
-                    )}
+                  <div key={idx} className="flex justify-between text-white font-medium">
+                    <span>{item.qty}x {item.name} {item.waiver ? '(+Waiver)' : ''}</span>
+                    <span>${item.price.toFixed(2)}</span>
                   </div>
                 ))}
-
-                {/* Upsells */}
-                {goggles > 0 && (
-                  <div className="flex justify-between text-gray-300">
-                    <span>{goggles}x Goggles</span>
-                    <span>${(goggles * 4).toFixed(2)}</span>
-                  </div>
-                )}
-                {bandannas > 0 && (
-                  <div className="flex justify-between text-gray-300">
-                    <span>{bandannas}x Bandannas</span>
-                    <span>${(bandannas * 5).toFixed(2)}</span>
-                  </div>
-                )}
-
-                {/* Empty State */}
-                {selectedItems.length === 0 && goggles === 0 && bandannas === 0 && (
-                   <p className="text-gray-500 italic text-center">No items selected.</p>
-                )}
+                {goggles > 0 && <div className="flex justify-between text-gray-300"><span>{goggles}x Goggles</span><span>${(goggles * 4).toFixed(2)}</span></div>}
+                {bandannas > 0 && <div className="flex justify-between text-gray-300"><span>{bandannas}x Bandannas</span><span>${(bandannas * 5).toFixed(2)}</span></div>}
              </div>
-             {/* ============================= */}
           </div>
 
+          {/* === PAYMENT TOGGLE === */}
+          {!isEditing && (
+            <div className="mb-8">
+                <label className="flex items-center gap-3 bg-gray-800 p-4 rounded-lg border border-gray-600 cursor-pointer hover:bg-gray-750">
+                    <input 
+                        type="checkbox" 
+                        checked={payNow} 
+                        onChange={e => setPayNow(e.target.checked)} 
+                        className="w-5 h-5 accent-orange-500"
+                    />
+                    <div>
+                        <span className="block font-bold text-white">Pay with Card Now</span>
+                        <span className="text-xs text-gray-400">Process payment immediately via NMI</span>
+                    </div>
+                </label>
+            </div>
+          )}
+
+          {/* === PAYMENT FIELDS (Conditional) === */}
+          {payNow && (
+              <PaymentFields 
+                onTokenGenerated={handleTokenGenerated} 
+                onError={handleCardError} 
+              />
+          )}
+
+          {/* Agreements */}
           <label className="flex gap-4 items-start bg-red-950/30 p-4 rounded-xl mb-8 cursor-pointer border border-red-800/50 hover:bg-red-900/40 transition-colors">
             <input 
               type="checkbox" 
@@ -102,241 +125,36 @@ export default function CheckoutForm({
               className="w-6 h-6 mt-1 accent-orange-500 cursor-pointer" 
             />
             <span className="text-sm text-gray-200 font-medium">
-                I agree to the liability waiver and assume responsibility for equipment damages.
+                I agree to the liability waiver and assume responsibility.
             </span>
           </label>
 
-          {message && (
+          {/* Messages */}
+          {(message || cardError) && (
             <div className={`text-center font-bold p-4 rounded-lg mb-6 border ${
-              message.includes('Success') || message.includes('Confirmed') || message.includes('Updated')
+              (message?.includes('Confirmed') && !cardError)
               ? 'bg-green-900/40 text-green-400 border-green-800' 
               : 'bg-red-900/40 text-red-400 border-red-800'
             }`}>
-              {message}
+              {cardError || message}
             </div>
           )}
 
+          {/* Action Button */}
           <button 
             type="button"
             onClick={handleConfirm} 
             disabled={loading || !agreed}
             className={`w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-95`}
           >
-            {loading ? 'Saving...' : (agreed ? (isEditing ? 'Update Reservation' : 'Confirm Booking') : 'Agree to Continue')}
+            {loading ? 'Processing...' : (
+                agreed 
+                 ? (isEditing ? 'Update Reservation' : (payNow ? `Pay $${total.toFixed(2)} & Book` : 'Confirm Booking')) 
+                 : 'Agree to Continue'
+            )}
           </button>
         </div>
       )}
     </div>
   );
 }
-
-
-// 'use client';
-
-// import { useState, useEffect, useRef } from 'react';
-
-// declare global {
-//   interface Window {
-//     CollectJS: any;
-//   }
-// }
-
-// export default function CheckoutForm({ 
-//   total, 
-//   isExpanded, 
-//   setIsExpanded, 
-//   onPayment, 
-//   message, 
-//   loading 
-// }: any) {
-//   const [agreed, setAgreed] = useState(false);
-//   const [billing, setBilling] = useState({ address: '', city: '', state: '', zip: '' });
-//   const [isNmiReady, setIsNmiReady] = useState(false);
-  
-//   const initializationAttempted = useRef(false);
-
-//   // === 1. Load & Configure NMI ===
-//   useEffect(() => {
-//     if (!isExpanded) {
-//       initializationAttempted.current = false;
-//       setIsNmiReady(false);
-//       return;
-//     }
-
-//     if (initializationAttempted.current) return;
-
-//     // Use hardcoded key for testing to rule out .env issues
-//     const tokenKey = process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY || 'THwEs5-Fd5nGt-kAkBMB-yHr7Qz';
-
-//     // --- Configuration Logic ---
-//     const configureCollectJS = () => {
-//       const field = document.getElementById('cc-number');
-//       if (!field) {
-//         setTimeout(configureCollectJS, 200);
-//         return;
-//       }
-
-//       if (!window.CollectJS) {
-//          console.warn("CollectJS not loaded yet...");
-//          setTimeout(configureCollectJS, 200);
-//          return;
-//       }
-
-//       try {
-//         console.log("Configuring NMI...");
-        
-//         // Strict configuration
-//         window.CollectJS.configure({
-//           variant: 'inline',
-//           price: total.toFixed(2),
-//           currency: 'USD',
-//           country: 'US',
-//           fields: {
-//             ccnumber: {
-//               selector: '#cc-number',
-//               placeholder: '0000 0000 0000 0000'
-//             },
-//             ccexp: {
-//               selector: '#cc-exp',
-//               placeholder: 'MM / YY'
-//             },
-//             cvv: {
-//               selector: '#cc-cvv',
-//               placeholder: '123'
-//             }
-//           },
-//           callback: (response: { token?: string; error?: string }) => {
-//             if (response.token) {
-//               onPayment(response.token, billing);
-//             } else {
-//               console.error("Token Error:", response);
-//               alert("Payment Error: " + (response.error || "Check card details"));
-//             }
-//           }
-//         });
-
-//         // Verify it actually worked
-//         if (typeof window.CollectJS.tokenise === 'function' || typeof window.CollectJS.tokenize === 'function') {
-//             console.log("NMI Ready!");
-//             setIsNmiReady(true);
-//             initializationAttempted.current = true;
-//         } else {
-//             console.error("NMI loaded but rejected key/domain. Check NMI Portal Settings.");
-//         }
-
-//       } catch (err) {
-//         console.error("NMI Config Error:", err);
-//       }
-//     };
-
-//     // --- Script Loading (With 'inline' variant forced) ---
-//     if (!window.CollectJS) {
-//       const script = document.createElement('script');
-//       script.src = "https://secure.networkmerchants.com/token/Collect.js";
-//       script.setAttribute('data-tokenization-key', tokenKey);
-//       // FORCE INLINE VARIANT ON LOAD
-//       script.setAttribute('data-variant', 'inline'); 
-//       script.async = true;
-//       script.onload = () => setTimeout(configureCollectJS, 500);
-//       document.body.appendChild(script);
-//     } else {
-//       configureCollectJS();
-//     }
-//   }, [isExpanded, total, onPayment, billing]);
-
-//   // === 2. Submit Handler ===
-//   const handleSubmit = () => {
-//     if (!billing.zip || !billing.address) {
-//         alert("Please enter billing address.");
-//         return;
-//     }
-    
-//     if (window.CollectJS) {
-//        if (typeof window.CollectJS.tokenise === 'function') {
-//           window.CollectJS.tokenise();
-//        } else if (typeof window.CollectJS.tokenize === 'function') {
-//           window.CollectJS.tokenize();
-//        } else {
-//           // If we reach here, the key is definitely blocked by NMI settings
-//           alert("Payment Error: NMI rejected this domain (localhost). Whitelist it in NMI settings.");
-//        }
-//     } else {
-//        alert("Payment system loading...");
-//     }
-//   };
-
-//   return (
-//     <div className={`fixed bottom-0 left-0 right-0 z-[100] transition-all duration-300 ${
-//       isExpanded ? 'bg-gray-900 h-[90vh] rounded-t-3xl shadow-2xl border-t border-gray-700' : 'bg-orange-600 h-20 cursor-pointer'
-//     }`}>
-      
-//       {!isExpanded ? (
-//         <div onClick={() => setIsExpanded(true)} className="flex justify-between items-center p-5 h-full">
-//           <span className="text-xl font-bold">Total: ${total.toFixed(2)}</span>
-//           <span className="animate-pulse font-bold uppercase tracking-widest">Review & Pay →</span>
-//         </div>
-//       ) : (
-//         <div className="p-6 md:p-8 overflow-y-auto h-full max-w-2xl mx-auto">
-//           <div className="flex justify-between items-center mb-6">
-//             <button onClick={() => setIsExpanded(false)} className="text-orange-400 hover:text-orange-300">← Back</button>
-//             <h2 className="text-xl font-bold text-white">Secure Payment</h2>
-//           </div>
-          
-//           <div className="bg-gray-800 p-4 rounded-xl mb-6 border border-gray-700">
-//              <div className="flex justify-between font-bold text-lg text-white">
-//               <span>Total Amount:</span>
-//               <span>${total.toFixed(2)}</span>
-//             </div>
-//           </div>
-
-//           <div className="space-y-4 mb-8">
-//               <h3 className="text-white font-semibold mb-2">Billing Address</h3>
-//               <input placeholder="Street Address" value={billing.address} onChange={e => setBilling({...billing, address: e.target.value})} className="w-full p-3 bg-white rounded text-black focus:outline-none focus:ring-2 focus:ring-orange-500" />
-//               <div className="grid grid-cols-2 gap-4">
-//                  <input placeholder="City" value={billing.city} onChange={e => setBilling({...billing, city: e.target.value})} className="p-3 bg-white rounded text-black focus:outline-none focus:ring-2 focus:ring-orange-500" />
-//                  <div className="grid grid-cols-2 gap-2">
-//                     <input placeholder="State" maxLength={2} value={billing.state} onChange={e => setBilling({...billing, state: e.target.value.toUpperCase()})} className="p-3 bg-white rounded text-black focus:outline-none focus:ring-2 focus:ring-orange-500" />
-//                     <input placeholder="ZIP" value={billing.zip} onChange={e => setBilling({...billing, zip: e.target.value})} className="p-3 bg-white rounded text-black focus:outline-none focus:ring-2 focus:ring-orange-500" />
-//                  </div>
-//               </div>
-//           </div>
-
-//           <label className="flex gap-4 items-start bg-red-950/30 p-4 rounded-xl mb-8 cursor-pointer border border-red-800/50">
-//             <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="w-6 h-6 mt-1 accent-orange-500 cursor-pointer" />
-//             <span className="text-sm text-gray-200 font-medium">I agree to the liability waiver and assume responsibility.</span>
-//           </label>
-
-//           <div className="space-y-6 pb-24">
-//               <div className="space-y-1">
-//                 <label className="text-xs font-semibold text-gray-400 uppercase ml-1">Card Number</label>
-//                 <div id="cc-number" className="p-4 bg-white rounded-lg h-14 w-full shadow-inner" />
-//               </div>
-//               <div className="grid grid-cols-2 gap-4">
-//                 <div className="space-y-1">
-//                   <label className="text-xs font-semibold text-gray-400 uppercase ml-1">Expiration</label>
-//                   <div id="cc-exp" className="p-4 bg-white rounded-lg h-14 w-full shadow-inner" />
-//                 </div>
-//                 <div className="space-y-1">
-//                   <label className="text-xs font-semibold text-gray-400 uppercase ml-1">CVV</label>
-//                   <div id="cc-cvv" className="p-4 bg-white rounded-lg h-14 w-full shadow-inner" />
-//                 </div>
-//               </div>
-
-//               {message && (
-//                 <div className={`text-center font-bold p-4 rounded-lg border ${message.includes('Success') ? 'bg-green-900/40 text-green-400 border-green-800' : 'bg-red-900/40 text-red-400 border-red-800'}`}>{message}</div>
-//               )}
-
-//               <button 
-//                 type="button"
-//                 onClick={handleSubmit} 
-//                 disabled={loading || !agreed}
-//                 className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-95"
-//               >
-//                 {loading ? 'Processing...' : (agreed ? `Pay $${total.toFixed(2)} Now` : 'Accept Waiver to Pay')}
-//               </button>
-//           </div>
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
