@@ -1,8 +1,12 @@
-// app/(biz)/biz/payroll/components/payroll-manager.tsx
+/**
+ * PAYROLL MANAGER
+ * Path: app/(biz)/biz/payroll/components/payroll-manager.tsx
+ * Description: Client component orchestrating the 3 main sections: Correction Queue, Time Off, and Entry List.
+ */
+
 'use client';
 
 import React from 'react';
-// FIX: Import the SHARED action used by the Roster
 import { approveTimeOffRequest } from '@/app/actions/approve-time-off'; 
 import { approveCorrectionRequest, denyCorrectionRequest } from '@/app/actions/admin-payroll';
 
@@ -12,65 +16,25 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowRight, PlaneTakeoff, Info, AlertCircle, CalendarCheck, Check, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import moment from 'moment';
+import { format, parseISO } from 'date-fns'; // Replaced moment
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 import EditEntryDialog from './edit-entry-dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import AddEntryDialog from './add-entry-dialog';
 
-// --- TYPES ---
-type Request = {
-  id: string;
-  user_id: string;
-  start_time: string;
-  end_time: string;
-  reason: string | null;
-  created_at: string;
-  status: string;
-  user: { full_name: string; avatar_url: string };
-};
-
-type TimeOffRequest = {
-  id: string;
-  user_id: string;
-  start_date: string;
-  end_date: string;
-  reason: string | null;
-  status: string;
-  user: { full_name: string; avatar_url: string };
-};
-
-type AuditLog = {
-    edited_by: string;
-    edited_at: string;
-    note: string;
-    changes: string;
-};
-
-type Entry = {
-  id: string;
-  user_id: string;
-  start_time: string;
-  end_time: string | null;
-  user: { full_name: string; avatar_url: string };
-  // FIX: Ensure optional chaining in render if this is null
-  audit_trail?: AuditLog[] | null; 
-};
-
+// --- PROPS ---
 interface PayrollManagerProps {
-  requests: Request[]; 
-  timeOffRequests: TimeOffRequest[]; 
-  entries: Entry[];
+  requests: any[]; 
+  timeOffRequests: any[]; 
+  entries: any[];
+  users: any[];     // For Add Entry Dropdown
+  isLocked: boolean; // Read-only mode
 }
 
-export default function PayrollManager({ requests, timeOffRequests, entries }: PayrollManagerProps) {
+export default function PayrollManager({ requests, timeOffRequests, entries, users, isLocked }: PayrollManagerProps) {
   const { toast } = useToast();
 
-  // --- ACTIONS ---
-
+  // --- HANDLERS ---
   const handleApprovePunch = async (id: string) => {
     const res = await approveCorrectionRequest(id);
     toast({ 
@@ -86,31 +50,26 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
     toast({ title: res.message });
   };
 
-  // FIX: Updated handler to use the robust shared action
   const handleTimeOffStatus = async (id: string, status: 'approved' | 'denied') => {
     const res = await approveTimeOffRequest(id, status);
-    
-    if (res.success) {
-      toast({ title: `Time Off ${status.toUpperCase()}` });
-    } else {
-      toast({ title: "Update Failed", description: res.error, variant: "destructive" });
-    }
+    if (res.success) toast({ title: `Time Off ${status.toUpperCase()}` });
+    else toast({ title: "Update Failed", description: res.error, variant: "destructive" });
   };
 
   return (
     <div className="space-y-6">
       
-      {/* --- TOP SECTION: ACTION QUEUES --- */}
+      {/* --- QUEUES SECTION --- */}
       <div className="grid gap-6 md:grid-cols-2">
         
-        {/* 1. CORRECTION QUEUE (PUNCHES) */}
-        <Card className="border-l-4 border-l-orange-500 bg-orange-50/20">
+        {/* 1. CORRECTION QUEUE */}
+        <Card className="border-l-4 border-l-orange-500 bg-orange-50/20 dark:bg-orange-950/10">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <AlertCircle className="w-5 h-5 text-orange-600" /> 
               Correction Queue ({requests.length})
             </CardTitle>
-            <CardDescription>Punch edit requests.</CardDescription>
+            <CardDescription>Punch edit requests from staff.</CardDescription>
           </CardHeader>
           <CardContent>
             {requests.length === 0 ? (
@@ -127,16 +86,20 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
                       <span className="font-bold">{req.user?.full_name}</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs mb-2">
-                       <Badge variant="outline">{moment(req.start_time).format('MMM D')}</Badge>
-                       <span>{moment(req.start_time).format('h:mm A')}</span>
+                       <Badge variant="outline">{format(parseISO(req.start_time), 'MMM d')}</Badge>
+                       <span>{format(parseISO(req.start_time), 'h:mm a')}</span>
                        <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                       <span>{moment(req.end_time).format('h:mm A')}</span>
+                       <span>{format(parseISO(req.end_time), 'h:mm a')}</span>
                     </div>
                     {req.reason && <p className="text-xs italic text-muted-foreground mb-2">"{req.reason}"</p>}
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => handleDenyPunch(req.id)}>Deny</Button>
-                      <Button size="sm" className="flex-1 bg-orange-600 h-8 text-xs hover:bg-orange-500" onClick={() => handleApprovePunch(req.id)}>Approve</Button>
-                    </div>
+                    
+                    {/* Hide actions if Locked */}
+                    {!isLocked && (
+                        <div className="flex gap-2">
+                            <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => handleDenyPunch(req.id)}>Deny</Button>
+                            <Button size="sm" className="flex-1 bg-orange-600 h-8 text-xs hover:bg-orange-500" onClick={() => handleApprovePunch(req.id)}>Approve</Button>
+                        </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -145,7 +108,7 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
         </Card>
 
         {/* 2. TIME OFF QUEUE */}
-        <Card className="border-l-4 border-l-blue-500 bg-blue-50/20">
+        <Card className="border-l-4 border-l-blue-500 bg-blue-50/20 dark:bg-blue-950/10">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <PlaneTakeoff className="w-5 h-5 text-blue-600" /> 
@@ -169,12 +132,11 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
                     </div>
                     <div className="text-xs mb-2 flex justify-between items-center">
                       <span className="font-mono bg-zinc-100 dark:bg-zinc-800 p-1 rounded">
-                        {moment(req.start_date).format('M/D/YY')} - {moment(req.end_date).format('M/D/YY')}
+                        {format(parseISO(req.start_date), 'M/d/yy')} - {format(parseISO(req.end_date), 'M/d/yy')}
                       </span>
                     </div>
                     {req.reason && <p className="mb-3 text-xs italic text-zinc-500">"{req.reason}"</p>}
                     <div className="flex gap-2">
-                      {/* FIX: Removed userId arg, rely on shared action */}
                       <Button size="sm" variant="ghost" className="flex-1 text-red-600 h-8 text-xs hover:bg-red-50" onClick={() => handleTimeOffStatus(req.id, 'denied')}><X className="w-3 h-3 mr-1"/> Deny</Button>
                       <Button size="sm" className="flex-1 bg-blue-600 text-white h-8 text-xs hover:bg-blue-500" onClick={() => handleTimeOffStatus(req.id, 'approved')}><Check className="w-3 h-3 mr-1"/> Approve</Button>
                     </div>
@@ -186,13 +148,19 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
         </Card>
       </div>
 
-      {/* --- BOTTOM SECTION: TIMESHEET REVIEW --- */}
+      {/* --- ENTRIES SECTION --- */}
       <Card>
-        <CardHeader>
-           <CardTitle className="flex items-center gap-2">
-             <CalendarCheck className="w-5 h-5" /> Recent Time Entries
-           </CardTitle>
-           <CardDescription>View and manually edit punches. Edits are audited.</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+           <div>
+               <CardTitle className="flex items-center gap-2">
+                 <CalendarCheck className="w-5 h-5" /> Time Entries
+               </CardTitle>
+               <CardDescription>View and manually edit punches.</CardDescription>
+           </div>
+           
+           <div className="ml-auto">
+               <AddEntryDialog users={users} isLocked={isLocked} />
+           </div>
         </CardHeader>
         <CardContent>
            <div className="rounded-md border bg-card">
@@ -206,7 +174,7 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
                  {entries.map((entry) => (
                     <div key={entry.id} className="grid grid-cols-4 p-3 items-center text-sm hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                        
-                       {/* Column 1: Employee Name */}
+                       {/* Column 1: Name */}
                        <div className="col-span-1 font-medium truncate flex items-center gap-2">
                           <Avatar className="h-6 w-6">
                             <AvatarImage src={entry.user?.avatar_url} />
@@ -215,11 +183,11 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
                           {entry.user?.full_name}
                        </div>
                        
-                       {/* Column 2: Date & Audit Indicator */}
+                       {/* Column 2: Date & Audit Info */}
                        <div className="col-span-1 text-muted-foreground flex items-center gap-2">
-                          {moment(entry.start_time).format('MMM D, YYYY')}
+                          {format(parseISO(entry.start_time), 'MMM d, yyyy')}
                           
-                          {/* AUDIT TOOLTIP: Only shows if 'audit_trail' has data */}
+                          {/* Tooltip for Audit Trail */}
                           {entry.audit_trail && entry.audit_trail.length > 0 && (
                             <TooltipProvider>
                               <Tooltip delayDuration={0}>
@@ -231,11 +199,11 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
                                      <p className="font-bold text-[10px] uppercase tracking-wider text-orange-500">Edit History</p>
                                   </div>
                                   <div className="max-h-[200px] overflow-y-auto p-2 space-y-3">
-                                    {entry.audit_trail.slice().reverse().map((log, idx) => (
+                                    {entry.audit_trail.slice().reverse().map((log: any, idx: number) => (
                                       <div key={idx} className="text-xs space-y-1 border-b border-slate-800 pb-2 last:border-0 last:pb-0">
                                         <div className="flex justify-between items-center">
                                            <span className="font-bold text-white">{log.edited_by}</span>
-                                           <span className="text-[10px] text-slate-500">{moment(log.edited_at).format('MMM D h:mm A')}</span>
+                                           <span className="text-[10px] text-slate-500">{format(parseISO(log.edited_at), 'MMM d h:mm a')}</span>
                                         </div>
                                         <div className="text-[10px] font-mono bg-slate-900 p-1 rounded text-slate-400 truncate">
                                            {log.changes}
@@ -252,19 +220,19 @@ export default function PayrollManager({ requests, timeOffRequests, entries }: P
                        
                        {/* Column 3: Shift Times */}
                        <div className="col-span-1">
-                          <span className="block">{entry.start_time ? moment(entry.start_time).format('h:mm A') : '---'}</span>
+                          <span className="block">{entry.start_time ? format(parseISO(entry.start_time), 'h:mm a') : '---'}</span>
                           <span className="block text-muted-foreground text-xs">
                              {entry.end_time ? (
-                                moment(entry.end_time).format('h:mm A')
+                                format(parseISO(entry.end_time), 'h:mm a')
                              ) : (
                                 <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 animate-pulse border-none">LIVE</Badge>
                              )}
                           </span>
                        </div>
                        
-                       {/* Column 4: Edit Action */}
+                       {/* Column 4: Edit Button */}
                        <div className="col-span-1 flex justify-end">
-                          <EditEntryDialog entry={entry} />
+                          <EditEntryDialog entry={entry} isLocked={isLocked} />
                        </div>
                     </div>
                  ))}

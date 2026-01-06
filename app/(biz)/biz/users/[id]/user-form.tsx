@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Save, Info, Briefcase, MapPin, Layout, Mail } from 'lucide-react';
+import { Loader2, Save, Info, Briefcase, MapPin, Layout, Mail, DollarSign } from 'lucide-react';
 
 // --- IMPORT: Single Source of Truth for Roles ---
 // Ensures this form stays in sync with database policies and admin tables
@@ -116,9 +116,7 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
           <p className="text-[10px] text-zinc-500 italic">Displayed on public schedules and dashboards.</p>
         </div>
 
-        {/* --- CRITICAL FIX: EMAIL FIELD --- 
-            Ensures the server action receives the email string to pass Zod validation
-        */}
+        {/* Email */}
         <div className="space-y-2">
           <Label className="text-xs font-bold uppercase text-zinc-500 flex items-center gap-1">
             <Mail size={12} /> Email Address
@@ -139,12 +137,7 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
             <Input name="phone" defaultValue={user?.phone} className="bg-zinc-900 border-zinc-800" />
           </div>
 
-          {/* --- ACCESS LEVEL SELECTOR ---
-            SECURITY WARNING: 
-            This input allows changing the user's privilege level. 
-            The Server Action MUST verify that the requestor has permission to grant this level.
-            A user should NEVER be allowed to escalate their own level via this form.
-          */}
+          {/* ACCESS LEVEL SELECTOR */}
           <div className="space-y-2">
             <Label className="text-xs font-bold uppercase text-zinc-500">Access Level</Label>
             <Select 
@@ -196,7 +189,7 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
             {/* Department (The Roster Sorting Bucket) */}
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase text-zinc-500 flex items-center gap-1">
-                <Layout size={10} /> Department (Sorting Group)
+                <Layout size={10} /> Department (Sort Group)
               </Label>
               <Select name="department" value={selectedDept} onValueChange={setSelectedDept}>
                 <SelectTrigger className="bg-zinc-950 border-zinc-800 text-white">
@@ -228,34 +221,61 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
             </div>
           </div>
 
-          {/* HR Data */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase text-zinc-500">Hire Date (Seniority)</Label>
-              <Input 
-                name="hire_date" 
-                type="date" 
-                defaultValue={details?.hire_date} 
-                className="bg-zinc-950 border-zinc-800 text-white" 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase text-zinc-500">Employee ID</Label>
-              <Input 
-                name="payroll_id" 
-                defaultValue={details?.emp_id} 
-                className="bg-zinc-950 border-zinc-800 font-mono" 
-              />
-            </div>
-          </div>
+          {/* HR & Payroll Data */}
+          <div className="space-y-2 border-t border-orange-500/20 pt-4 mt-2">
+             <Label className="text-[10px] font-bold uppercase text-orange-400 flex items-center gap-1 mb-2">
+                <DollarSign size={10} /> HR & Payroll Configuration
+             </Label>
+             
+             <div className="grid grid-cols-2 gap-4">
+                {/* Hire Date */}
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-zinc-500">Hire Date</Label>
+                  <Input 
+                    name="hire_date" 
+                    type="date" 
+                    defaultValue={details?.hire_date} 
+                    className="bg-zinc-950 border-zinc-800 text-white" 
+                  />
+                </div>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase text-zinc-500">Dialpad Extension</Label>
-            <Input 
-                name="dialpad_number" 
-                defaultValue={details?.dialpad_number} 
-                className="bg-zinc-950 border-zinc-800 font-mono" 
-            />
+                {/* Dialpad */}
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-zinc-500">Dialpad Ext.</Label>
+                  <Input 
+                      name="dialpad_number" 
+                      defaultValue={details?.dialpad_number} 
+                      className="bg-zinc-950 border-zinc-800 font-mono" 
+                  />
+                </div>
+
+                {/* Payroll Company (New Feature) */}
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-zinc-500">Payroll Company</Label>
+                  <Select name="payroll_company" defaultValue={details?.payroll_company || ''}>
+                    <SelectTrigger className="bg-zinc-950 border-zinc-800 text-white">
+                      <SelectValue placeholder="Select Provider..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
+                      <SelectItem value="NV-ModernHR">NV - ModernHR</SelectItem>
+                      <SelectItem value="NV-BBSI">NV - BBSI</SelectItem>
+                      <SelectItem value="CA-ModernHR">CA - ModernHR (Daily OT)</SelectItem>
+                      <SelectItem value="MI-BBSI">MI - BBSI</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Employee ID */}
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase text-zinc-500">Payroll ID</Label>
+                  <Input 
+                    name="payroll_id" 
+                    defaultValue={details?.emp_id} 
+                    placeholder="e.g. NV011325"
+                    className="bg-zinc-950 border-zinc-800 font-mono" 
+                  />
+                </div>
+             </div>
           </div>
         </div>
       ) : (
