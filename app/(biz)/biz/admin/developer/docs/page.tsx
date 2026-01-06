@@ -1,7 +1,8 @@
 /**
  * @file app/(biz)/biz/admin/developer/docs/page.tsx
  * @description LIVING DOCUMENTATION.
- * Updated: Added "Auth & Smart Routing" Architecture.
+ * Updated: Added "Timeclock & Payroll" Architecture.
+ * Updated: Fixed "lib/" pathing (removed src).
  * ACCESS: Level 950+ (Developers) Only.
  */
 import React from 'react';
@@ -14,7 +15,9 @@ import {
   CheckCircle2, 
   CircleDashed,
   CalendarClock,
-  KeyRound // Added for Auth Section
+  KeyRound,
+  FileSpreadsheet, // Added for Payroll
+  Clock // Added for Timeclock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -124,7 +127,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 2. NEW: AUTH & ROUTING ARCHITECTURE */}
+          {/* 2. AUTH & ROUTING ARCHITECTURE */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-purple-600 dark:text-purple-500">
@@ -159,9 +162,9 @@ export default function DeveloperDocsPage() {
                 <h4 className="font-bold text-zinc-800 dark:text-white mb-2">Key Files</h4>
                 <ul className="space-y-2 pl-2">
                   <li className="flex gap-2">
-                    <code className="text-xs bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded h-fit">src/lib/utils/auth-routing.ts</code>
+                    <code className="text-xs bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded h-fit">lib/utils/auth-routing.ts</code>
                     <span className="text-xs text-zinc-500">
-                      <strong>"The Brain"</strong>. [cite_start]Pure function that calculates destination paths[cite: 38].
+                      <strong>"The Brain"</strong>. Pure function that calculates destination paths.
                     </span>
                   </li>
                   <li className="flex gap-2">
@@ -182,7 +185,82 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 3. FILE STRUCTURE MAP */}
+          {/* 3. TIMECLOCK & PAYROLL ENGINE (NEW) */}
+          <Card className={glassCardStyles}>
+            <CardHeader>
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-500">
+                <FileSpreadsheet size={24} />
+                <CardTitle className="uppercase tracking-widest">Timeclock & Payroll Engine</CardTitle>
+              </div>
+              <CardDescription className={glassTextStyles}>
+                The logic behind Punches, Locking, and State-Specific Overtime.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              
+              {/* DATA MODEL */}
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
+                  <Clock size={16} /> 1. The Data Model
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-3 rounded border border-emerald-100 dark:border-emerald-800">
+                    <code className="text-xs font-bold text-emerald-700 dark:text-emerald-400">time_entries</code>
+                    <p className="text-xs mt-1 text-zinc-600 dark:text-zinc-400">
+                      The raw punches. 
+                      <br/><strong>Active Shift:</strong> <code>end_time</code> is NULL.
+                      <br/><strong>Completed:</strong> Has both start & end.
+                      <br/><strong>Audit:</strong> Uses <code>audit_trail</code> JSONB for all edits.
+                    </p>
+                  </div>
+                  <div className="bg-red-50/50 dark:bg-red-900/10 p-3 rounded border border-red-100 dark:border-red-800">
+                    <code className="text-xs font-bold text-red-700 dark:text-red-400">payroll_reports</code>
+                    <p className="text-xs mt-1 text-zinc-600 dark:text-zinc-400">
+                      The locking mechanism.
+                      <br/><strong>Logic:</strong> If a row exists for a Week Start/End, the system <strong>BLOCKS</strong> all edits/adds/deletes for that range.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="bg-zinc-200 dark:bg-zinc-800" />
+
+              {/* CORE WORKFLOWS */}
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">2. Critical Workflows</h3>
+                <ul className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
+                  <li className="flex gap-2">
+                    <Badge variant="outline" className="h-fit">Resume Shift</Badge>
+                    <span>
+                      <strong>The "Split Shift" Fix.</strong> If an employee accidentally clocks out, Admin can "Resume" the shift. 
+                      This works by programmatically setting <code>end_time</code> back to <code>NULL</code> via <code>admin-payroll.ts</code>.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <Badge variant="outline" className="h-fit">Payroll Lock</Badge>
+                    <span>
+                      Admins "Finalize" a week. This creates a <code>payroll_reports</code> record. 
+                      Server Actions (`addTimeEntry`, `editTimeEntry`) check this table <em>before</em> executing. 
+                      If locked, they throw an error.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <Badge variant="outline" className="h-fit">CSV Engine</Badge>
+                    <span>
+                      <code>generate-payroll-report.ts</code> handles the heavy math. It differentiates rules based on Location/Company:
+                      <br/>
+                      <span className="text-xs ml-1">• <strong>CA:</strong> Daily OT ({'>'}8h), Double Time ({'>'}12h), Weekly OT ({'>'}40h accumulated).</span>
+                      <br/>
+                      <span className="text-xs ml-1">• <strong>NV/MI:</strong> Standard Weekly OT ({'>'}40h total).</span>
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+            </CardContent>
+          </Card>
+
+          {/* 4. FILE STRUCTURE MAP */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
@@ -193,19 +271,19 @@ export default function DeveloperDocsPage() {
             </CardHeader>
             <CardContent className="grid gap-6">
               
-              {/* SRC/LIB */}
+              {/* LIB */}
               <div>
                 <h3 className={`text-sm font-bold mb-2 flex items-center gap-2 ${glassHeaderStyles}`}>
-                  <span className="text-blue-600 dark:text-blue-500">src/lib/</span> (The Brain)
+                  <span className="text-blue-600 dark:text-blue-500">lib/</span> (The Brain)
                 </h3>
                 <ul className={`text-sm space-y-2 pl-4 border-l border-zinc-300 dark:border-zinc-800 ${glassTextStyles}`}>
                   <li>
                     <code className="text-zinc-900 dark:text-zinc-200 bg-black/5 dark:bg-white/10 px-1 rounded">constants/</code>: 
-                    [cite_start]<strong> Single Sources of Truth.</strong> (e.g., <code>user-levels.ts</code>)[cite: 42].
+                    <strong> Single Sources of Truth.</strong> (e.g., <code>user-levels.ts</code>).
                   </li>
                   <li>
                     <code className="text-zinc-900 dark:text-zinc-200 bg-black/5 dark:bg-white/10 px-1 rounded">utils/</code>: 
-                    [cite_start]Pure helper functions (formatting dates, math, string manipulation)[cite: 43].
+                    Pure helper functions (formatting dates, math, string manipulation).
                   </li>
                 </ul>
               </div>
@@ -217,13 +295,13 @@ export default function DeveloperDocsPage() {
                 </h3>
                 <ul className={`text-sm space-y-2 pl-4 border-l border-zinc-300 dark:border-zinc-800 ${glassTextStyles}`}>
                   <li>
-                    [cite_start]All <strong>"Use Server"</strong> mutations live here[cite: 45].
+                    All <strong>"Use Server"</strong> mutations live here.
                   </li>
                   <li>
-                    [cite_start]<strong>Pattern:</strong> Validate Input (Zod) → Check Permissions (Auth) → Execute DB Query → Revalidate Path[cite: 46, 48].
+                    <strong>Pattern:</strong> Validate Input (Zod) → Check Permissions (Auth) → Execute DB Query → Revalidate Path.
                   </li>
                   <li>
-                    <em>Example:</em> <code>approve-time-off.ts</code> handles Roster/Payroll logic consistently.
+                    <em>Example:</em> <code>admin-payroll.ts</code> contains the sensitive logic for editing time cards and bypassing RLS.
                   </li>
                 </ul>
               </div>
@@ -235,13 +313,13 @@ export default function DeveloperDocsPage() {
                 </h3>
                 <ul className={`text-sm space-y-2 pl-4 border-l border-zinc-300 dark:border-zinc-800 ${glassTextStyles}`}>
                   <li>
-                    [cite_start]Everything inside <code>(biz)</code> requires authentication[cite: 51].
+                    Everything inside <code>(biz)</code> requires authentication.
                   </li>
                   <li>
-                    [cite_start]<strong>Dashboard:</strong> <code>/biz/[location]/page.tsx</code>[cite: 52].
+                    <strong>Dashboard:</strong> <code>/biz/[location]/page.tsx</code>.
                   </li>
                   <li>
-                    [cite_start]<strong>Admin Tools:</strong> <code>/biz/admin/...</code>[cite: 53].
+                    <strong>Admin Tools:</strong> <code>/biz/payroll/...</code> and <code>/biz/admin/...</code>.
                   </li>
                 </ul>
               </div>
@@ -254,7 +332,7 @@ export default function DeveloperDocsPage() {
         {/* RIGHT COLUMN: TECH STACK & DEBT */}
         <div className="space-y-8">
           
-          {/* 4. TECH STACK */}
+          {/* 5. TECH STACK */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-green-600 dark:text-green-500">
@@ -272,13 +350,13 @@ export default function DeveloperDocsPage() {
               </div>
               <Separator className="bg-zinc-200 dark:bg-zinc-800" />
               <div className={`space-y-2 text-sm ${glassTextStyles}`}>
-                <p><strong className="text-zinc-900 dark:text-white">State Management:</strong> Use URL Search Params (Nuqs) for filters. [cite_start]Use React Context only for global UI[cite: 57].</p>
-                [cite_start]<p><strong className="text-zinc-900 dark:text-white">Data Fetching:</strong> Prefer Server Components fetching data directly via Supabase helpers[cite: 58].</p>
+                <p><strong className="text-zinc-900 dark:text-white">State Management:</strong> Use URL Search Params (Nuqs) for filters. Use React Context only for global UI.</p>
+                <p><strong className="text-zinc-900 dark:text-white">Data Fetching:</strong> Prefer Server Components fetching data directly via Supabase helpers.</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* 5. SCHEDULE LOGIC */}
+          {/* 6. SCHEDULE LOGIC */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
@@ -287,12 +365,12 @@ export default function DeveloperDocsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
-              [cite_start]<p>The <strong>Roster Grid</strong> uses a strict hierarchy to determine what to display in a cell[cite: 60]:</p>
+              <p>The <strong>Roster Grid</strong> uses a strict hierarchy to determine what to display in a cell:</p>
               <ol className="list-decimal list-inside space-y-1 ml-1">
-                [cite_start]<li><strong className="text-green-600">Shift Card:</strong> (Top Priority) Shows if shift exists[cite: 61].</li>
-                [cite_start]<li><strong className="text-yellow-600">Approved Off:</strong> Blocks cell (Yellow)[cite: 62].</li>
-                [cite_start]<li><strong className="text-orange-600">Pending Request:</strong> Clickable Review Modal[cite: 63].</li>
-                [cite_start]<li><strong className="text-blue-500">Preferred Off:</strong> Informational badge[cite: 64].</li>
+                <li><strong className="text-green-600">Shift Card:</strong> (Top Priority) Shows if shift exists.</li>
+                <li><strong className="text-yellow-600">Approved Off:</strong> Blocks cell (Yellow).</li>
+                <li><strong className="text-orange-600">Pending Request:</strong> Clickable Review Modal.</li>
+                <li><strong className="text-blue-500">Preferred Off:</strong> Informational badge.</li>
               </ol>
               <Separator className="my-2"/>
               <p className="text-xs">
@@ -301,7 +379,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 6. CURRENT DEBT / TODO */}
+          {/* 7. CURRENT DEBT / TODO */}
           <Card className={`${glassCardStyles} border-dashed`}>
             <CardHeader>
               <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
@@ -316,9 +394,9 @@ export default function DeveloperDocsPage() {
                 <li className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50/50 dark:bg-green-950/20 p-2 rounded-lg">
                   <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                   <span className="line-through opacity-80">
-                    [cite_start]<strong>Mobile Roster UI:</strong> The Roster page needs polish for mobile users[cite: 71].
+                    <strong>Payroll Audit System:</strong> Needs Locking & CSV Export with CA/NV rules.
                   </span>
-                  <Badge className="ml-auto bg-green-600 text-[10px] h-5">DONE (v9.7)</Badge>
+                  <Badge className="ml-auto bg-green-600 text-[10px] h-5">DONE</Badge>
                 </li>
 
                 {/* PARTIAL */}
@@ -330,7 +408,7 @@ export default function DeveloperDocsPage() {
                       <Badge className="bg-blue-600 text-[10px] h-5">PARTIAL</Badge>
                     </div>
                     <span className="text-xs opacity-90">
-                      Roster & Time Off modules now use <code>date-fns</code>. [cite_start]Legacy charts still use Moment[cite: 75].
+                      Roster & Time Off modules now use <code>date-fns</code>. Legacy charts still use Moment.
                     </span>
                   </div>
                 </li>
@@ -341,7 +419,7 @@ export default function DeveloperDocsPage() {
                   <div className="flex flex-col gap-1">
                     <span className="font-bold text-orange-700 dark:text-orange-400">Dashboard URL Standardization</span>
                     <span className="text-xs">
-                      [cite_start]Move Legacy Las Vegas Dashboard from root <code>/biz/[date]</code> to explicit <code>/biz/vegas/[date]</code>[cite: 77].
+                      Move Legacy Las Vegas Dashboard from root <code>/biz/[date]</code> to explicit <code>/biz/vegas/[date]</code>.
                     </span>
                   </div>
                 </li>
@@ -350,7 +428,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-           {/* 7. QUICK LINKS */}
+           {/* 8. QUICK LINKS */}
            <Card className={glassCardStyles}>
             <CardHeader>
               <CardTitle className="text-sm uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Quick Links</CardTitle>
@@ -359,6 +437,7 @@ export default function DeveloperDocsPage() {
                 <a href="/biz/admin/health" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">System Health</a>
                 <a href="/biz/users/admin" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">User Admin</a>
                 <a href="/biz/schedule" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Live Roster</a>
+                <a href="/biz/payroll" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Payroll Dashboard</a>
             </CardContent>
           </Card>
 

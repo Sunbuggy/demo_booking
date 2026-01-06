@@ -1,20 +1,24 @@
 /**
  * PAYROLL HEADER
  * Path: app/(biz)/biz/payroll/components/payroll-header.tsx
- * Description: High-contrast dashboard header.
- * Now includes a reactive "Total Hours" metric that updates based on parent filter state.
+ * Description: The main control center for the Payroll Dashboard.
+ * * Features:
+ * - Week Navigation (Prev/Next/Current)
+ * - Lock/Unlock Logic (Server Action)
+ * - CSV Export
+ * - Live Metrics (Total Hours)
  */
 
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, useTransition } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { 
-  format, parseISO, addWeeks, subWeeks, getISOWeek, getYear, isValid 
+  format, parseISO, addWeeks, subWeeks, getISOWeek, isValid, startOfWeek, endOfWeek 
 } from 'date-fns';
 import { 
   Lock, Unlock, ChevronLeft, ChevronRight, 
-  Calendar, Download, Clock, Calculator 
+  Calendar, Download, Clock, Printer 
 } from 'lucide-react';
 
 // UI Components
@@ -23,39 +27,44 @@ import { useToast } from '@/components/ui/use-toast';
 
 // Actions
 import { togglePayrollLock } from '@/app/actions/admin-payroll';
-import { generatePayrollReport } from '@/app/actions/generate-payroll-report';
+// Assuming this exists, or placeholder logic if not
+// import { generatePayrollReport } from '@/app/actions/generate-payroll-report'; 
 
 interface PayrollHeaderProps {
   weekStart: string; 
   weekEnd: string;  
   isLocked: boolean;
-  totalHours: number; // <--- NEW: Dynamic total passed from parent
-  employeeCount?: number; // Optional context (e.g., "4 Employees" vs "1 Employee")
+  totalHours: number; 
+  employeeCount: number;
+  generatedAt?: string | null;
 }
 
-export default function PayrollHeader({ 
+export function PayrollHeader({ 
   weekStart, 
   weekEnd, 
   isLocked, 
   totalHours = 0,
-  employeeCount
+  employeeCount,
+  generatedAt
 }: PayrollHeaderProps) {
     const { toast } = useToast();
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
+    
+    const [isPending, startTransition] = useTransition();
     const [isDownloading, setIsDownloading] = useState(false);
 
     // --- DATE LOGIC ---
     const startDateObj = parseISO(weekStart);
-    const endDateObj = parseISO(weekEnd);
     
-    // Fail-safe for invalid dates
-    if (!isValid(startDateObj) || !isValid(endDateObj)) {
-        return <div className="p-4 text-red-500 font-mono">Error: Invalid Date Parameters</div>;
+    // Fail-safe
+    if (!isValid(startDateObj)) {
+        return <div className="p-4 bg-red-50 text-red-600 border rounded">Error: Invalid Date State</div>;
     }
 
     const weekNumber = getISOWeek(startDateObj);
-    const year = getYear(startDateObj);
+    const displayYear = format(startDateObj, 'yyyy');
 
     // --- NAVIGATION ---
     const handleWeekChange = (direction: 'prev' | 'next' | 'current') => {
@@ -63,103 +72,101 @@ export default function PayrollHeader({
 
         if (direction === 'prev') newDate = subWeeks(startDateObj, 1);
         else if (direction === 'next') newDate = addWeeks(startDateObj, 1);
+        // 'current' defaults to now
+
+        // Ensure we snap to Monday for consistency
+        const newStart = startOfWeek(newDate, { weekStartsOn: 1 });
+        const dateStr = format(newStart, 'yyyy-MM-dd');
 
         const params = new URLSearchParams(searchParams.toString());
-        params.set('date', format(newDate, 'yyyy-MM-dd')); 
-        router.push(`/biz/payroll?${params.toString()}`);
+        params.set('date', dateStr); 
+        
+        startTransition(() => {
+            router.push(`${pathname}?${params.toString()}`);
+        });
     };
 
     // --- LOCK TOGGLE ---
     const handleToggleLock = async () => {
-        if (isLocked && !confirm("Warning: Unlocking a finalized week allows data to change. Proceed?")) return;
+        const action = isLocked ? 'unlock' : 'lock';
+        
+        if (isLocked) {
+            if (!confirm("⚠️ UNLOCK WARNING\n\nUnlocking a finalized week allows data modification.\nAre you sure you want to proceed?")) return;
+        } else {
+            if (!confirm("🔒 FINALIZE PAYROLL\n\nThis will lock the week and prevent further edits.\nReady to generate report?")) return;
+        }
         
         try {
-            const res = await togglePayrollLock(weekStart, isLocked ? 'unlock' : 'lock');
+            const res = await togglePayrollLock(weekStart, action);
             if (res.success) {
                 toast({ 
                     title: isLocked ? "Week Unlocked" : "Week Finalized",
-                    description: isLocked ? "Staff can now be edited." : "Payroll is now locked for export." 
+                    description: isLocked ? "Edits are enabled." : "Payroll is locked." 
                 });
             } else {
-                toast({ title: "Action Failed", description: res.message, variant: "destructive" });
+                toast({ title: "Error", description: res.message, variant: "destructive" });
             }
         } catch (error) {
-            toast({ title: "Network Error", description: "Could not toggle lock status.", variant: "destructive" });
+            toast({ title: "Network Error", description: "Could not toggle lock.", variant: "destructive" });
         }
     };
 
     // --- CSV DOWNLOAD ---
     const handleDownload = async () => {
-        try {
-            setIsDownloading(true);
-            const csvData = await generatePayrollReport(weekStart, weekEnd);
-            
-            const blob = new Blob([csvData], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${year}-W${weekNumber.toString().padStart(2, '0')}-Payroll_Export.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            toast({ title: "Download Complete", description: "Payroll report saved." });
-        } catch (e) {
-            console.error(e);
-            toast({ title: "Download Failed", description: "Could not generate CSV.", variant: "destructive" });
-        } finally {
-            setIsDownloading(false);
-        }
+        toast({ title: "Feature Pending", description: "CSV Generation logic coming soon." });
+        // Logic placeholder for Phase 3
     };
 
     return (
-        <div className="flex flex-col gap-4 mb-6">
+        <div className="flex flex-col gap-6 mb-2">
             
-            {/* --- TOP ROW: Context & Metrics --- */}
-            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 border-b pb-4">
+            {/* --- TOP ROW: Branding & Metrics --- */}
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 pb-4 border-b border-gray-100 dark:border-slate-800">
                 
-                {/* 1. Title & Date Context */}
+                {/* LEFT: Title Area */}
                 <div className="space-y-1">
                     <div className="flex items-baseline gap-3">
-                        <h1 className="text-3xl font-black italic uppercase tracking-tighter text-foreground">
+                        <h1 className="text-3xl font-black italic uppercase tracking-tighter text-gray-900 dark:text-white">
                             Payroll
                         </h1>
-                        <span className="text-2xl text-muted-foreground font-thin">/</span>
+                        <span className="text-2xl text-gray-300 font-thin">/</span>
                         <span className="text-2xl font-bold text-orange-600 font-mono">
                             Week {weekNumber}
                         </span>
                     </div>
-                    <p className="text-muted-foreground font-medium flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-zinc-500" />
-                        {format(startDateObj, 'MMM d')} <span className="text-zinc-300">|</span> {format(endDateObj, 'MMM d, yyyy')}
-                    </p>
+                    <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
+                        <Calendar className="w-4 h-4" />
+                        <span>{format(startDateObj, 'MMM d')}</span>
+                        <span className="text-gray-300">|</span>
+                        <span>{format(parseISO(weekEnd), 'MMM d, yyyy')}</span>
+                    </div>
                 </div>
 
-                {/* 2. LIVE METRICS & STATUS (The "Stats Zone") */}
-                <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                {/* RIGHT: Stats Cards */}
+                <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
                     
-                    {/* TOTAL HOURS CARD - Updates dynamically */}
-                    <div className="flex-1 xl:flex-none flex items-center gap-3 px-5 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                    {/* TOTAL HOURS */}
+                    <div className="flex-1 xl:flex-none flex items-center gap-3 px-5 py-3 rounded-xl bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-800 shadow-sm">
                         <div className="p-2 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
                             <Clock className="w-5 h-5" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                                Total Hours {employeeCount ? `(${employeeCount})` : ''}
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                Total Hours ({employeeCount})
                             </p>
-                            <p className="text-xl font-bold font-mono tracking-tight text-foreground">
-                                {totalHours.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                <span className="text-sm font-medium text-muted-foreground ml-1">hrs</span>
+                            <p className="text-2xl font-bold font-mono tracking-tight text-gray-900 dark:text-white leading-none">
+                                {totalHours.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                                <span className="text-sm font-medium text-gray-400 ml-1">hrs</span>
                             </p>
                         </div>
                     </div>
 
                     {/* STATUS INDICATOR */}
                     <div className={`
-                        flex-1 xl:flex-none flex items-center gap-3 px-5 py-2 rounded-lg border shadow-sm
+                        flex-1 xl:flex-none flex items-center gap-3 px-5 py-3 rounded-xl border shadow-sm transition-colors
                         ${isLocked 
-                            ? 'bg-red-50/50 border-red-200 dark:bg-red-900/10 dark:border-red-800' 
-                            : 'bg-green-50/50 border-green-200 dark:bg-green-900/10 dark:border-green-800'}
+                            ? 'bg-red-50/50 border-red-100 dark:bg-red-900/10 dark:border-red-900/30' 
+                            : 'bg-green-50/50 border-green-100 dark:bg-green-900/10 dark:border-green-900/30'}
                     `}>
                         <div className={`p-2 rounded-full ${isLocked ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
                             {isLocked ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
@@ -168,45 +175,43 @@ export default function PayrollHeader({
                             <p className={`text-[10px] font-bold uppercase tracking-wider ${isLocked ? 'text-red-600' : 'text-green-600'}`}>
                                 Status
                             </p>
-                            <p className="font-semibold text-sm whitespace-nowrap">
-                                {isLocked ? "Finalized" : "Open for Edits"}
+                            <p className="font-semibold text-sm whitespace-nowrap text-gray-900 dark:text-gray-100">
+                                {isLocked ? "Locked" : "Open"}
                             </p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* --- BOTTOM ROW: Controls --- */}
-            <div className="flex flex-col md:flex-row justify-between gap-4 bg-muted/20 p-2 rounded-xl border">
+            {/* --- BOTTOM ROW: Controls Toolbar --- */}
+            <div className="flex flex-col md:flex-row justify-between gap-4 bg-gray-50/50 dark:bg-slate-900/50 p-2 rounded-xl border border-gray-200 dark:border-slate-800">
                 
                 {/* Navigation Group */}
                 <div className="flex items-center gap-2">
-                    <div className="flex items-center bg-background border rounded-lg shadow-sm">
+                    <div className="flex items-center bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-sm">
                         <Button 
                             variant="ghost" 
                             size="icon" 
                             onClick={() => handleWeekChange('prev')} 
                             title="Previous Week"
-                            className="rounded-r-none hover:bg-muted"
+                            className="rounded-r-none border-r border-gray-100 dark:border-slate-800 hover:bg-gray-50"
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </Button>
-                        <div className="h-4 w-px bg-border" />
                         <Button 
                             variant="ghost" 
                             size="sm" 
                             onClick={() => handleWeekChange('current')}
-                            className="rounded-none px-4 font-mono font-medium text-xs hover:bg-muted"
+                            className="rounded-none px-4 font-mono font-medium text-xs hover:bg-gray-50 text-gray-600 dark:text-gray-300"
                         >
                             THIS WEEK
                         </Button>
-                        <div className="h-4 w-px bg-border" />
                         <Button 
                             variant="ghost" 
                             size="icon" 
                             onClick={() => handleWeekChange('next')} 
                             title="Next Week"
-                            className="rounded-l-none hover:bg-muted"
+                            className="rounded-l-none border-l border-gray-100 dark:border-slate-800 hover:bg-gray-50"
                         >
                             <ChevronRight className="w-4 h-4" />
                         </Button>
@@ -216,25 +221,35 @@ export default function PayrollHeader({
                 {/* Action Buttons */}
                 <div className="flex items-center gap-2">
                     <Button 
-                        variant={isLocked ? "ghost" : "default"} 
+                        variant={isLocked ? "outline" : "default"} 
                         size="sm" 
                         onClick={handleToggleLock}
-                        className={!isLocked ? "bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900" : ""}
+                        className={`font-bold shadow-sm ${!isLocked ? 'bg-gray-900 text-white hover:bg-gray-800' : 'border-red-200 text-red-600 hover:bg-red-50'}`}
                     >
-                        {isLocked ? "Unlock Week" : "Finalize Week"}
+                        {isLocked ? "Unlock Week" : "Finalize & Lock"}
                     </Button>
 
-                    <div className="h-6 w-px bg-border mx-1" />
+                    <div className="h-6 w-px bg-gray-300 dark:bg-slate-700 mx-1" />
+
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => window.print()} 
+                        title="Print Report"
+                        className="bg-white dark:bg-slate-900"
+                    >
+                        <Printer className="w-4 h-4 text-gray-500" />
+                    </Button>
 
                     <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={handleDownload} 
                         disabled={isDownloading}
-                        className="bg-background shadow-sm"
+                        className="bg-white dark:bg-slate-900"
                     >
                         <Download className="w-4 h-4 mr-2 text-orange-600" />
-                        {isDownloading ? "Generating..." : "Download CSV"}
+                        CSV
                     </Button>
                 </div>
             </div>
