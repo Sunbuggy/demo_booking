@@ -10,7 +10,7 @@ export default function DateTimeSelector({
   endTime, setEndTime, 
   setDurationHours, setPricingCategories, 
   setLoading, setMessage,
-  initialData // <-- NEW PROP
+  initialData 
 }: any) {
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [possibleEndTimes, setPossibleEndTimes] = useState<string[]>([]);
@@ -35,9 +35,6 @@ export default function DateTimeSelector({
           const data = await res.json();
           let times = data.startTimes || [];
 
-          // SPECIAL HANDLING FOR EDIT MODE:
-          // If we are editing, the current start time might be "taken" or "in the past".
-          // We must ensure the initial start time is added to the list so it displays correctly.
           if (initialData && initialData.start_time) {
              if (!times.includes(initialData.start_time)) {
                 times = [initialData.start_time, ...times].sort();

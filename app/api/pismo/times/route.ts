@@ -1,6 +1,6 @@
-// app/api/pismo/times/route.ts
 import { NextRequest } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+// CHANGE 1: Import from standard library, not local utils
+import { createClient } from '@supabase/supabase-js';
 
 // Pismo Beach coordinates for sunset
 const PISMO_LAT = 35.1428;
@@ -50,11 +50,16 @@ export async function GET(request: NextRequest) {
   }
 
   const targetDate = new Date(dateStr);
-  const jsDay = targetDate.getDay(); // 0=Sun ... 6=Sat
-  const ruleDay = jsDay === 0 ? 7 : jsDay; // 1=Mon ... 7=Sun
+  const jsDay = targetDate.getDay(); 
+  const ruleDay = jsDay === 0 ? 7 : jsDay; 
   const sunset = getSunsetTime(targetDate);
 
-  const supabase = await createClient();
+  // CHANGE 2: Create a stateless client using public keys
+  // This bypasses the cookie check entirely
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   const { data: rules, error } = await supabase
     .from('pismo_rental_rules')

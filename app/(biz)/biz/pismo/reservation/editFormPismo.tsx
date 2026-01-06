@@ -215,7 +215,7 @@ export default function PismoReservationEditForm({
                   <textarea 
                       value={newNote}
                       onChange={e => setNewNote(e.target.value)}
-                      placeholder="Type a new note here... (Saved on Update)"
+                      placeholder="Add a note for this reservation..."
                       className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500 min-h-[80px]"
                   />
                   {/* <p className="text-xs text-gray-500 mt-1 text-right">
