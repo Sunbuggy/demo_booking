@@ -1,3 +1,136 @@
+'use client';
+
+import { useState } from 'react';
+
+export default function CheckoutForm({ 
+  total, 
+  isExpanded, 
+  setIsExpanded, 
+  onPayment, 
+  message, 
+  loading,
+  isEditing = false,
+  // New Props for Summary
+  selectedItems = [], // Array of { name, qty, price, waiver }
+  goggles = 0,
+  bandannas = 0
+}: any) {
+  const [agreed, setAgreed] = useState(false);
+
+  const handleConfirm = () => {
+    onPayment(); 
+  };
+
+  return (
+    <div className={`fixed bottom-0 left-0 right-0 z-[100] transition-all duration-300 ${
+      isExpanded ? 'bg-gray-900 h-[70vh] rounded-t-3xl shadow-2xl border-t border-gray-700' : 'bg-orange-600 h-20 cursor-pointer'
+    }`}>
+      
+      {!isExpanded ? (
+        <div onClick={() => setIsExpanded(true)} className="flex justify-between items-center p-5 h-full">
+          <span className="text-xl font-bold">Total: ${total.toFixed(2)}</span>
+          <span className="animate-pulse font-bold uppercase tracking-widest">
+            {isEditing ? 'Review & Update →' : 'Review & Book →'}
+          </span>
+        </div>
+      ) : (
+        <div className="p-6 md:p-8 overflow-y-auto h-full max-w-2xl mx-auto custom-scrollbar pb-24">
+          <div className="flex justify-between items-center mb-6">
+            <button onClick={() => setIsExpanded(false)} className="text-orange-400 hover:text-orange-300">← Back</button>
+            <h2 className="text-xl font-bold text-white">
+                {isEditing ? 'Update Reservation' : 'Confirm Reservation'}
+            </h2>
+          </div>
+          
+          <div className="bg-gray-800 p-6 rounded-xl mb-8 border border-gray-700">
+             <div className="text-center mb-6 border-b border-gray-700 pb-6">
+                <div className="text-4xl font-bold text-white mb-2">
+                  ${total.toFixed(2)}
+                </div>
+                <div className="text-gray-400 text-sm uppercase tracking-wide">
+                    {isEditing ? 'New Total Amount' : 'Total Due Upon Arrival'}
+                </div>
+             </div>
+
+             {/* === ORDER SUMMARY SECTION === */}
+             <div className="space-y-3 text-sm">
+                <h3 className="font-bold text-gray-400 uppercase text-xs mb-3">Order Summary</h3>
+                
+                {/* Vehicles */}
+                {selectedItems.map((item: any, idx: number) => (
+                  <div key={idx} className="flex flex-col mb-2">
+                    <div className="flex justify-between text-white font-medium">
+                      <span>{item.qty}x {item.name}</span>
+                      <span>${item.price.toFixed(2)}</span>
+                    </div>
+                    {item.waiver && (
+                      <div className="flex justify-between text-gray-400 text-xs pl-4">
+                        <span>+ Damage Waiver</span>
+                        <span>Included</span> 
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Upsells */}
+                {goggles > 0 && (
+                  <div className="flex justify-between text-gray-300">
+                    <span>{goggles}x Goggles</span>
+                    <span>${(goggles * 4).toFixed(2)}</span>
+                  </div>
+                )}
+                {bandannas > 0 && (
+                  <div className="flex justify-between text-gray-300">
+                    <span>{bandannas}x Bandannas</span>
+                    <span>${(bandannas * 5).toFixed(2)}</span>
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {selectedItems.length === 0 && goggles === 0 && bandannas === 0 && (
+                   <p className="text-gray-500 italic text-center">No items selected.</p>
+                )}
+             </div>
+             {/* ============================= */}
+          </div>
+
+          <label className="flex gap-4 items-start bg-red-950/30 p-4 rounded-xl mb-8 cursor-pointer border border-red-800/50 hover:bg-red-900/40 transition-colors">
+            <input 
+              type="checkbox" 
+              checked={agreed} 
+              onChange={e => setAgreed(e.target.checked)} 
+              className="w-6 h-6 mt-1 accent-orange-500 cursor-pointer" 
+            />
+            <span className="text-sm text-gray-200 font-medium">
+                I agree to the liability waiver and assume responsibility for equipment damages.
+            </span>
+          </label>
+
+          {message && (
+            <div className={`text-center font-bold p-4 rounded-lg mb-6 border ${
+              message.includes('Success') || message.includes('Confirmed') || message.includes('Updated')
+              ? 'bg-green-900/40 text-green-400 border-green-800' 
+              : 'bg-red-900/40 text-red-400 border-red-800'
+            }`}>
+              {message}
+            </div>
+          )}
+
+          <button 
+            type="button"
+            onClick={handleConfirm} 
+            disabled={loading || !agreed}
+            className={`w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-95`}
+          >
+            {loading ? 'Saving...' : (agreed ? (isEditing ? 'Update Reservation' : 'Confirm Booking') : 'Agree to Continue')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // 'use client';
 
 // import { useState, useEffect, useRef } from 'react';
@@ -207,87 +340,3 @@
 //     </div>
 //   );
 // }
-'use client';
-
-import { useState } from 'react';
-
-export default function CheckoutForm({ 
-  total, 
-  isExpanded, 
-  setIsExpanded, 
-  onPayment, 
-  message, 
-  loading,
-  isEditing = false // <-- Defaults to false for new bookings
-}: any) {
-  const [agreed, setAgreed] = useState(false);
-
-  const handleConfirm = () => {
-    onPayment(); 
-  };
-
-  return (
-    <div className={`fixed bottom-0 left-0 right-0 z-[100] transition-all duration-300 ${
-      isExpanded ? 'bg-gray-900 h-[50vh] rounded-t-3xl shadow-2xl border-t border-gray-700' : 'bg-orange-600 h-20 cursor-pointer'
-    }`}>
-      
-      {!isExpanded ? (
-        <div onClick={() => setIsExpanded(true)} className="flex justify-between items-center p-5 h-full">
-          <span className="text-xl font-bold">Total: ${total.toFixed(2)}</span>
-          <span className="animate-pulse font-bold uppercase tracking-widest">
-            {isEditing ? 'Review & Update →' : 'Review & Book →'}
-          </span>
-        </div>
-      ) : (
-        <div className="p-6 md:p-8 overflow-y-auto h-full max-w-2xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <button onClick={() => setIsExpanded(false)} className="text-orange-400 hover:text-orange-300">← Back</button>
-            <h2 className="text-xl font-bold text-white">
-                {isEditing ? 'Update Reservation' : 'Confirm Reservation'}
-            </h2>
-          </div>
-          
-          <div className="bg-gray-800 p-6 rounded-xl mb-8 border border-gray-700 text-center">
-             <div className="text-4xl font-bold text-white mb-2">
-              ${total.toFixed(2)}
-            </div>
-            <div className="text-gray-400 text-sm uppercase tracking-wide">
-                {isEditing ? 'New Total Amount' : 'Total Due Upon Arrival'}
-            </div>
-          </div>
-
-          <label className="flex gap-4 items-start bg-red-950/30 p-4 rounded-xl mb-8 cursor-pointer border border-red-800/50 hover:bg-red-900/40 transition-colors">
-            <input 
-              type="checkbox" 
-              checked={agreed} 
-              onChange={e => setAgreed(e.target.checked)} 
-              className="w-6 h-6 mt-1 accent-orange-500 cursor-pointer" 
-            />
-            <span className="text-sm text-gray-200 font-medium">
-                I agree to the liability waiver and assume responsibility for equipment damages.
-            </span>
-          </label>
-
-          {message && (
-            <div className={`text-center font-bold p-4 rounded-lg mb-6 border ${
-              message.includes('Success') || message.includes('Confirmed') || message.includes('Updated')
-              ? 'bg-green-900/40 text-green-400 border-green-800' 
-              : 'bg-red-900/40 text-red-400 border-red-800'
-            }`}>
-              {message}
-            </div>
-          )}
-
-          <button 
-            type="button"
-            onClick={handleConfirm} 
-            disabled={loading || !agreed}
-            className={`w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-95`}
-          >
-            {loading ? 'Saving...' : (agreed ? (isEditing ? 'Update Reservation' : 'Confirm Booking') : 'Agree to Continue')}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}

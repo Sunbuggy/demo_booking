@@ -15,38 +15,25 @@ export default function PismoBookingPage() {
   const [durationHours, setDurationHours] = useState<number | null>(null);
   const [pricingCategories, setPricingCategories] = useState<any[]>([]);
   
-  // Store selections
   const [selections, setSelections] = useState<Record<string, { qty: number; waiver: boolean }>>({});
   
-  // === Upsell State ===
   const [goggles, setGoggles] = useState<number>(0);
   const [bandannas, setBandannas] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
   
-  // === UI State ===
   const [loading, setLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>('');
   
   const [holderInfo, setHolderInfo] = useState({ 
-    firstName: '', 
-    lastName: '', 
-    email: '', 
-    phone: '',
-    booked_by: 'Guest' 
+    firstName: '', lastName: '', email: '', phone: '', booked_by: 'Guest' 
   });
   
   const [isCheckoutExpanded, setIsCheckoutExpanded] = useState(false);
 
-  // === Handler for Form Updates ===
   const handleHolderUpdate = (newInfo: any) => {
-     setHolderInfo(prev => ({
-        ...prev,
-        ...newInfo,
-        booked_by: newInfo.booked_by || prev.booked_by
-     }));
+     setHolderInfo(prev => ({ ...prev, ...newInfo, booked_by: newInfo.booked_by || prev.booked_by }));
   };
 
-  // === Total Calculation ===
   useEffect(() => {
     let calc = goggles * 4 + bandannas * 5;
     pricingCategories.forEach(cat => {
@@ -59,14 +46,11 @@ export default function PismoBookingPage() {
     setTotal(calc);
   }, [selections, goggles, bandannas, pricingCategories, durationHours]);
 
-  // === The Booking Logic (Database Save Only) ===
   const handleBooking = useCallback(async () => {
     setLoading(true);
     setMessage('Saving reservation...');
 
-    // Prepare enriched vehicle data for the API snapshot
     const vehiclesPayload: Record<string, any> = {};
-    
     pricingCategories.forEach(cat => {
         const sel = selections[cat.id];
         if (sel && sel.qty > 0) {
@@ -74,38 +58,30 @@ export default function PismoBookingPage() {
             vehiclesPayload[cat.id] = {
                 qty: sel.qty,
                 waiver: sel.waiver,
-                name: cat.vehicle_name, // Snapshot name
-                price: cat[priceKey] || 0 // Snapshot unit price
+                name: cat.vehicle_name, 
+                price: cat[priceKey] || 0 
             };
         }
     });
 
     try {
-      // Call the SAVE API, not the charge API
       const res = await fetch('/api/pismo/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          total_amount: total, // Sending exact dollar amount
+          total_amount: total, 
           holder: holderInfo, 
           booking: { 
             date: selectedDate?.toISOString().split('T')[0], 
-            startTime, 
-            endTime, 
-            duration: durationHours, 
-            vehicles: vehiclesPayload, 
-            goggles, 
-            bandannas 
+            startTime, endTime, duration: durationHours, 
+            vehicles: vehiclesPayload, goggles, bandannas 
           }
         }),
       });
 
       const result = await res.json();
-
       if (result.success) {
         setMessage(`Confirmed! Booking ID: ${result.booking_id}`);
-        // Optional: Redirect user to a success page
-        // router.push(`/confirmation/${result.booking_id}`);
       } else {
         setMessage(`Failed: ${result.error || 'Could not save booking.'}`);
       }
@@ -117,41 +93,43 @@ export default function PismoBookingPage() {
     }
   }, [total, holderInfo, selectedDate, startTime, endTime, durationHours, selections, pricingCategories, goggles, bandannas]);
 
+  // --- HELPER: Build Selected Items List for Summary ---
+  const selectedItemsList = pricingCategories
+    .filter(cat => (selections[cat.id]?.qty || 0) > 0)
+    .map(cat => {
+        const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
+        // Use logic to find price, default to 0 if time not selected yet
+        const basePrice = cat[priceKey] !== undefined ? cat[priceKey] : (cat.price_1hr || 0);
+        const waiverPrice = selections[cat.id].waiver ? (cat.damage_waiver || 0) : 0;
+        
+        return {
+            id: cat.id,
+            name: cat.vehicle_name,
+            qty: selections[cat.id].qty,
+            waiver: selections[cat.id].waiver,
+            price: (basePrice + waiverPrice) * selections[cat.id].qty
+        };
+    });
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 pb-64 md:p-8">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold text-center mb-8 text-orange-500">Pismo Beach Rentals</h1>
         
-        <BookingProgress 
-            isStep1={!!endTime && !!durationHours} 
-            isStep2={total > 0} 
-            isStep3={isCheckoutExpanded} 
-        />
-
+        <BookingProgress isStep1={!!endTime && !!durationHours} isStep2={total > 0} isStep3={isCheckoutExpanded} />
         <ReservationHolderForm onUpdate={handleHolderUpdate} />
-
         <DateTimeSelector 
-          selectedDate={selectedDate} 
-          setSelectedDate={setSelectedDate}
-          startTime={startTime} 
-          setStartTime={setStartTime}
-          endTime={endTime} 
-          setEndTime={setEndTime}
-          setDurationHours={setDurationHours}
-          setPricingCategories={setPricingCategories}
-          setLoading={setLoading}
-          setMessage={setMessage}
+          selectedDate={selectedDate} setSelectedDate={setSelectedDate}
+          startTime={startTime} setStartTime={setStartTime}
+          endTime={endTime} setEndTime={setEndTime}
+          setDurationHours={setDurationHours} setPricingCategories={setPricingCategories}
+          setLoading={setLoading} setMessage={setMessage}
         />
 
         {loading && !isCheckoutExpanded && <p className="text-center text-2xl text-orange-400 mb-12 animate-pulse">{message || "Updating information..."}</p>}
 
         {pricingCategories.length > 0 && (
-          <VehicleGrid 
-            categories={pricingCategories}
-            selections={selections}
-            setSelections={setSelections}
-            durationHours={durationHours}
-          />
+          <VehicleGrid categories={pricingCategories} selections={selections} setSelections={setSelections} durationHours={durationHours} />
         )}
 
         <section className="bg-gray-800 rounded-2xl p-6 md:p-8 mb-12 shadow-xl">
@@ -172,17 +150,11 @@ export default function PismoBookingPage() {
       <CheckoutForm 
         total={total}
         holderInfo={holderInfo}
-        selectedItems={pricingCategories.filter(cat => (selections[cat.id]?.qty || 0) > 0).map(cat => ({
-            id: cat.id,
-            name: cat.vehicle_name,
-            qty: selections[cat.id].qty,
-            waiver: selections[cat.id].waiver,
-            price: (durationHours ? cat[`price_${durationHours}hr`] : cat.price_1hr) * selections[cat.id].qty
-        }))}
+        selectedItems={selectedItemsList} // <--- Pass Calculated List
+        goggles={goggles}                 // <--- Pass Goggles
+        bandannas={bandannas}             // <--- Pass Bandannas
         isExpanded={isCheckoutExpanded}
         setIsExpanded={setIsCheckoutExpanded}
-        // IMPORTANT: We pass handleBooking here. 
-        // Since we are skipping NMI, this function won't expect a token.
         onPayment={handleBooking} 
         message={message}
         loading={loading}

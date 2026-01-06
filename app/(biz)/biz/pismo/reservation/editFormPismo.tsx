@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// Components
 import DateTimeSelector from '@/app/pismo/book/components/dateTimeSelector';
 import ReservationHolderForm from '@/app/pismo/book/components/reservationForm';
 import VehicleGrid from '@/app/pismo/book/components/vehicleGrid';
@@ -17,7 +16,7 @@ export default function PismoReservationEditForm({
   pricingRules: any[] 
 }) {
   
-  // --- 1. Initialize State ---
+  // --- State Initialization ---
   const [selectedDate, setSelectedDate] = useState<Date | null>(
     initialData.booking_date ? new Date(initialData.booking_date + 'T00:00:00') : null
   );
@@ -52,13 +51,10 @@ export default function PismoReservationEditForm({
     booked_by: initialData.booked_by
   });
 
-  // --- Notes & History State ---
-  // We sort notes by date descending (newest on top)
   const [existingNotes] = useState<any[]>(
       initialData.pismo_booking_notes?.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) || []
   );
   const [newNote, setNewNote] = useState('');
-  
   const [logs] = useState<any[]>(
       initialData.pismo_booking_logs?.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) || []
   );
@@ -68,7 +64,7 @@ export default function PismoReservationEditForm({
   const [message, setMessage] = useState('');
   const [isCheckoutExpanded, setIsCheckoutExpanded] = useState(false);
 
-  // --- 2. Live Total Calculation ---
+  // --- Live Total Calculation ---
   useEffect(() => {
     if (!pricingCategories || pricingCategories.length === 0) return;
     let calc = goggles * 4 + bandannas * 5;
@@ -82,12 +78,11 @@ export default function PismoReservationEditForm({
     setTotal(calc);
   }, [selections, goggles, bandannas, pricingCategories, durationHours]);
 
-  // --- 3. Update Handler ---
+  // --- Update Handler ---
   const handleUpdate = async () => {
     setLoading(true);
     setMessage('Updating Reservation...');
 
-    // Prepare enriched vehicle data
     const vehiclesPayload: Record<string, any> = {};
     pricingCategories.forEach(cat => {
         const sel = selections[cat.id];
@@ -111,30 +106,22 @@ export default function PismoReservationEditForm({
                 booking_id: initialData.id,
                 total_amount: total,
                 holder: holderInfo,
-                // Pass the new note along with the main payload
                 note: newNote, 
                 booking: { 
                     date: selectedDate?.toISOString().split('T')[0],
-                    startTime,
-                    endTime,
-                    duration: durationHours,
-                    vehicles: vehiclesPayload, 
-                    goggles, 
-                    bandannas 
+                    startTime, endTime, duration: durationHours,
+                    vehicles: vehiclesPayload, goggles, bandannas 
                 }
             }),
         });
 
         const result = await res.json();
-
         if (result.success) {
             setMessage('Reservation Updated Successfully');
-            // Reload page to show the new note in the list and update logs
             setTimeout(() => window.location.reload(), 800);
         } else {
             setMessage(`Update Failed: ${result.error}`);
         }
-
     } catch (err) {
         console.error(err);
         setMessage("Server Error during update.");
@@ -143,12 +130,29 @@ export default function PismoReservationEditForm({
     }
   };
 
+  // --- HELPER: Build Selected Items List for Summary (Edit Mode) ---
+  const selectedItemsList = pricingCategories
+    .filter(cat => (selections[cat.id]?.qty || 0) > 0)
+    .map(cat => {
+        const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
+        // Use logic to find price, default to 0 if time not selected yet
+        const basePrice = cat[priceKey] !== undefined ? cat[priceKey] : (cat.price_1hr || 0);
+        const waiverPrice = selections[cat.id].waiver ? (cat.damage_waiver || 0) : 0;
+        
+        return {
+            id: cat.id,
+            name: cat.vehicle_name,
+            qty: selections[cat.id].qty,
+            waiver: selections[cat.id].waiver,
+            price: (basePrice + waiverPrice) * selections[cat.id].qty
+        };
+    });
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto text-white pb-32 flex flex-col lg:flex-row gap-8">
       
       {/* LEFT COLUMN: Main Editing Form */}
       <div className="flex-1 min-w-0">
-          {/* Header */}
           <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-700">
             <div>
               <Link href={`/biz/pismo/${initialData.booking_date}`} className="text-orange-400 hover:text-orange-300 mb-2 block">
@@ -171,7 +175,7 @@ export default function PismoReservationEditForm({
               startTime={startTime} setStartTime={setStartTime}
               endTime={endTime} setEndTime={setEndTime}
               setDurationHours={setDurationHours} setPricingCategories={setPricingCategories}
-              setLoading={setLoading} setMessage={setMessage}
+              setLoading={setLoading} setMessage={setMessage} initialData={initialData}
           />
 
           <section className="mb-12 mt-8">
@@ -198,31 +202,27 @@ export default function PismoReservationEditForm({
           <CheckoutForm 
             total={total} holderInfo={holderInfo} isExpanded={isCheckoutExpanded} setIsExpanded={setIsCheckoutExpanded}
             onPayment={handleUpdate} message={message} loading={loading} isEditing={true}
+            // --- PASS SUMMARY DATA HERE ---
+            selectedItems={selectedItemsList}
+            goggles={goggles}
+            bandannas={bandannas}
           />
       </div>
 
       {/* RIGHT COLUMN: Notes & History */}
       <div className="w-full lg:w-96 space-y-8 flex-shrink-0">
-          
           {/* Notes Section */}
           <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-              <h3 className="text-xl font-bold text-orange-400 mb-4 flex items-center gap-2">
-                  📝 Notes
-              </h3>
-              
-              {/* Note Input */}
+              <h3 className="text-xl font-bold text-orange-400 mb-4 flex items-center gap-2">📝 Notes</h3>
               <div className="mb-4">
                   <textarea 
                       value={newNote}
                       onChange={e => setNewNote(e.target.value)}
-                      placeholder="Add a note for this reservation..."
+                      placeholder="Type a new note here... (Saved on Update)"
                       className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500 min-h-[80px]"
                   />
-                  {/* <p className="text-xs text-gray-500 mt-1 text-right">
-                     Click "Update Reservation" to save this note.
-                  </p> */}
+                  <p className="text-xs text-gray-500 mt-1 text-right">Click "Update Reservation" to save this note.</p>
               </div>
-
               <div className="max-h-64 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                   {existingNotes.length === 0 && <p className="text-gray-500 text-sm italic">No past notes.</p>}
                   {existingNotes.map((note: any) => (
@@ -239,9 +239,7 @@ export default function PismoReservationEditForm({
 
           {/* History/Log Section */}
           <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-              <h3 className="text-xl font-bold text-blue-400 mb-4 flex items-center gap-2">
-                  🕒 Edit History
-              </h3>
+              <h3 className="text-xl font-bold text-blue-400 mb-4 flex items-center gap-2">🕒 Edit History</h3>
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                   <div className="relative pl-4 border-l-2 border-green-500/30">
                       <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-green-500"></div>
@@ -250,7 +248,6 @@ export default function PismoReservationEditForm({
                           By {initialData.booked_by} • {new Date(initialData.created_at).toLocaleString()}
                       </div>
                   </div>
-
                   {logs.map((log: any) => (
                       <div key={log.id} className="relative pl-4 border-l-2 border-blue-500/30">
                           <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-blue-500"></div>
@@ -262,7 +259,6 @@ export default function PismoReservationEditForm({
                   ))}
               </div>
           </div>
-
       </div>
     </div>
   );
