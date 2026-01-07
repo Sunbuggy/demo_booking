@@ -1,8 +1,13 @@
 /**
- * REFACTORED: SunBuggy Smart Time Clock (Bulletproof Edition)
+ * REFACTORED: SunBuggy Smart Time Clock (Final "Bulletproof" Edition)
  * Path: app/(biz)/biz/users/admin/tables/employee/time-clock/clock-in.tsx
- * Fixes: 406 Errors (using maybeSingle) & Missing Locations (using manual join).
+ * * FEATURES:
+ * 1. Manager Proxy: Allows managers (Level 500+) to punch for staff using rear camera.
+ * 2. Location Filtering: Filters staff list by 'primary_work_location'.
+ * 3. Bulletproof Data: Uses manual mapping and .maybeSingle() to prevent 406 errors and join failures.
+ * 4. Graceful Fallback: Detects camera failures (desktops) and allows text-only punches.
  */
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -13,7 +18,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch"; 
 import { Label } from "@/components/ui/label";
-import { Loader2, Clock, Coffee, Ban, MapPinOff, CheckCircle2, LogOut, MapPin, Users, User, Filter, AlertTriangle } from 'lucide-react';
+import { 
+  Loader2, Clock, Coffee, Ban, MapPinOff, CheckCircle2, LogOut, 
+  MapPin, Users, User, Filter, AlertTriangle, CameraOff 
+} from 'lucide-react';
 import { toast } from 'sonner';
 import moment from 'moment';
 import { useRouter } from 'next/navigation';
@@ -59,7 +67,7 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
   const router = useRouter();
   const cameraRef = useRef<TimeclockCameraHandle>(null);
 
-  // Manager State
+  // --- STATE: MANAGER PROXY ---
   const [isManager, setIsManager] = useState(false);
   const [proxyMode, setProxyMode] = useState(false);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
@@ -67,24 +75,27 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
   const [targetUserId, setTargetUserId] = useState(employeeId); 
   const [locationFilter, setLocationFilter] = useState<string>('All');
 
-  // Core State
+  // --- STATE: DATA & LOGIC ---
   const [loading, setLoading] = useState(true);
   const [activeShift, setActiveShift] = useState<TimeEntry | null>(null);
   const [todaySchedule, setTodaySchedule] = useState<Schedule | null>(null);
   const [manualBlock, setManualBlock] = useState(false);
   
-  // Hardware State
+  // --- STATE: HARDWARE ---
   const [locationCoords, setLocationCoords] = useState<{lat: number, lon: number} | null>(null);
   const [gpsError, setGpsError] = useState(false); 
   const [cameraReady, setCameraReady] = useState(false); 
+  
+  // NEW: Tracks if camera failed (e.g. desktop) to allow fallback
+  const [noCameraMode, setNoCameraMode] = useState(false);
 
-  // Success State
+  // --- STATE: UI FLOW ---
   const [successAction, setSuccessAction] = useState<'in' | 'out' | null>(null);
   const [capturedImageBase64, setCapturedImageBase64] = useState<string | null>(null); 
   const [countdown, setCountdown] = useState(3); 
   const [successLocation, setSuccessLocation] = useState<string>(''); 
 
-  // --- INIT ---
+  // --- INITIALIZATION ---
   useEffect(() => {
     checkManagerStatus();
     getCurrentLocation();
@@ -94,7 +105,7 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
     fetchStatus();
   }, [targetUserId]);
 
-  // --- FILTERING LOGIC ---
+  // Filter Logic: Filters staff list based on the selected location button
   useEffect(() => {
       if (locationFilter === 'All') {
           setFilteredStaff(staffList);
@@ -105,6 +116,8 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
       }
   }, [locationFilter, staffList]);
 
+  // --- DATA FETCHING ---
+
   const checkManagerStatus = async () => {
     const { data } = await supabase.from('users').select('user_level').eq('id', employeeId).single();
     if (data && data.user_level >= 500) {
@@ -114,28 +127,19 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
   };
 
   /**
-   * FIX: BULLETPROOF STAFF FETCHING
-   * Instead of relying on a join that might fail, we fetch data in parallel and map it manually.
+   * ROBUST STAFF FETCHING:
+   * Fetches users and details separately to avoid join failures if RLS blocks details.
    */
   const fetchStaffList = async () => {
-      // 1. Fetch Users
-      const { data: users } = await supabase
-        .from('users')
-        .select('id, full_name')
-        .eq('user_type', 'employee')
-        .order('full_name');
-
-      // 2. Fetch Details (for location)
-      const { data: details } = await supabase
-        .from('employee_details')
-        .select('user_id, primary_work_location');
-
-      // 3. Fetch Active Punches
+      // 1. Get Employees
+      const { data: users } = await supabase.from('users').select('id, full_name').eq('user_type', 'employee').order('full_name');
+      // 2. Get Locations
+      const { data: details } = await supabase.from('employee_details').select('user_id, primary_work_location');
+      // 3. Get Active Punches
       const { data: activeEntries } = await supabase.from('time_entries').select('user_id').is('end_time', null);
 
       if (!users) return;
 
-      // Create lookup maps for speed
       const locationMap = new Map(details?.map(d => [d.user_id, d.primary_work_location]) || []);
       const activeSet = new Set(activeEntries?.map(e => e.user_id));
 
@@ -143,7 +147,7 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
           id: u.id,
           full_name: u.full_name,
           is_active: activeSet.has(u.id),
-          location: locationMap.get(u.id) || 'Las Vegas' // Default if not found
+          location: locationMap.get(u.id) || 'Las Vegas' 
       }));
 
       setStaffList(mapped);
@@ -159,13 +163,13 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
     if (userData?.timeclock_blocked) setManualBlock(true);
     else setManualBlock(false);
 
-    // 1. Check Active Shift
+    // 1. Check Active Shift (Use maybeSingle to prevent 406 error)
     const { data: currentEntry } = await supabase
         .from('time_entries')
         .select('*')
         .eq('user_id', targetUserId)
         .is('end_time', null)
-        .maybeSingle(); // FIX: Prevents 406 if no rows found
+        .maybeSingle();
     
     if (currentEntry) {
         setActiveShift(currentEntry);
@@ -174,14 +178,14 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
         setActiveShift(null);
     }
 
-    // 2. Check Schedule (FIX: 406 Error)
+    // 2. Check Schedule (Use maybeSingle to prevent 406 error)
     const { data: schedule } = await supabase
         .from('employee_schedules')
         .select('*')
         .eq('user_id', targetUserId)
         .gte('start_time', startOfDay)
         .lte('start_time', endOfDay)
-        .maybeSingle(); // FIX: Changed from .single() to .maybeSingle()
+        .maybeSingle(); 
     
     if (schedule) setTodaySchedule(schedule);
     else setTodaySchedule(null);
@@ -189,18 +193,7 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
     setLoading(false);
   };
 
-  const getScheduleStatus = () => {
-      if (!manualBlock) return { allowed: true, reason: "" };
-      if (!todaySchedule) return { allowed: false, reason: "Restricted Access: Blocked with no schedule." };
-      
-      const now = moment();
-      const start = moment(todaySchedule.start_time);
-      const earlyLimit = start.clone().subtract(15, 'minutes');
-      
-      if (!isManager && now.isBefore(earlyLimit)) return { allowed: false, reason: `Too early. Clock in starts at ${earlyLimit.format('h:mm A')}.` };
-      
-      return { allowed: true, reason: "" };
-  };
+  // --- HARDWARE HANDLERS ---
 
   const getCurrentLocation = () => {
       if (!navigator.geolocation) { setGpsError(true); return; }
@@ -209,6 +202,20 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
           () => setGpsError(true),
           { enableHighAccuracy: true, timeout: 10000 }
       );
+  };
+
+  /**
+   * HANDLE CAMERA ERRORS:
+   * If camera fails (desktop/permissions), we enable "No Camera Mode" 
+   * so the user isn't locked out.
+   */
+  const handleCameraError = (err: string) => {
+      console.warn("Camera Init Failed:", err);
+      setNoCameraMode(true);
+      setCameraReady(true); // Fakes readiness to unblock buttons
+      
+      // USER NOTIFICATION REQUESTED:
+      toast.warning("Camera unavailable. Please try to use a personal device with a camera next time to verify your punch.");
   };
 
   const uploadPhoto = async (base64Data: string, type: 'in' | 'out'): Promise<string | null> => {
@@ -226,7 +233,21 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
       }
   };
 
-  // --- ACTIONS ---
+  const getScheduleStatus = () => {
+      if (!manualBlock) return { allowed: true, reason: "" };
+      if (!todaySchedule) return { allowed: false, reason: "Restricted Access: Blocked with no schedule." };
+      
+      const now = moment();
+      const start = moment(todaySchedule.start_time);
+      const earlyLimit = start.clone().subtract(15, 'minutes');
+      
+      if (!isManager && now.isBefore(earlyLimit)) return { allowed: false, reason: `Too early. Clock in starts at ${earlyLimit.format('h:mm A')}.` };
+      
+      return { allowed: true, reason: "" };
+  };
+
+
+  // --- MAIN ACTIONS ---
 
   const handleClockIn = async () => {
     const { allowed, reason } = getScheduleStatus();
@@ -234,26 +255,32 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
 
     setLoading(true);
 
-    const imageBase64 = cameraRef.current?.capture();
-    if (!imageBase64) {
-        toast.error("Camera failed to capture.");
-        setLoading(false);
-        return;
-    }
+    // 1. Photo Capture Logic (Conditional)
+    let photoUrl: string | null = null;
+    let imageBase64: string | null = null;
 
-    setCapturedImageBase64(imageBase64);
-    let photoUrl = await uploadPhoto(imageBase64, 'in');
+    if (!noCameraMode) {
+        imageBase64 = cameraRef.current?.capture() || null;
+        if (imageBase64) {
+             setCapturedImageBase64(imageBase64);
+             photoUrl = await uploadPhoto(imageBase64, 'in');
+        } else {
+             // Camera was supposed to be ready but failed capture
+             toast.error("Photo capture failed."); 
+             // We could return here, or fall back. Let's return to enforce photo if possible.
+             // But if it's a glitch, maybe we want to let them through? 
+             // For strictness: return.
+             setLoading(false);
+             return; 
+        }
+    }
 
     const now = new Date().toISOString();
-    
-    // Logic: Use scheduled role/loc if available, otherwise use Filter selection, fallback to Vegas
     const role = todaySchedule?.role || 'Staff'; 
     let loc = todaySchedule?.location;
-    if (!loc) {
-        // If no schedule, use the selected filter location (unless it's 'All')
-        loc = locationFilter !== 'All' ? locationFilter : 'Las Vegas';
-    }
+    if (!loc) loc = locationFilter !== 'All' ? locationFilter : 'Las Vegas';
 
+    // 2. Insert Record
     const { data, error } = await supabase.from('time_entries').insert([{
         user_id: targetUserId, 
         start_time: now,
@@ -280,15 +307,20 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
     if (!activeShift) return;
     setLoading(true);
 
-    const imageBase64 = cameraRef.current?.capture();
-    if (!imageBase64) {
-        toast.error("Camera capture failed.");
-        setLoading(false);
-        return;
-    }
+    let photoUrl: string | null = null;
+    let imageBase64: string | null = null;
 
-    setCapturedImageBase64(imageBase64);
-    let photoUrl = await uploadPhoto(imageBase64, 'out');
+    if (!noCameraMode) {
+        imageBase64 = cameraRef.current?.capture() || null;
+        if (imageBase64) {
+            setCapturedImageBase64(imageBase64);
+            photoUrl = await uploadPhoto(imageBase64, 'out');
+        } else {
+             toast.error("Photo capture failed.");
+             setLoading(false);
+             return;
+        }
+    }
 
     const { error } = await supabase.from('time_entries').update({ 
           end_time: new Date().toISOString(), status: 'closed',
@@ -299,14 +331,19 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
     else { setActiveShift(null); setSuccessAction('out'); setLoading(false); }
   };
 
+  // --- REDIRECT / RESET LOGIC ---
   useEffect(() => {
       if (!successAction) return;
+      
+      // Sticky Mode for Managers: Let them punch multiple people quickly
       if (proxyMode && countdown === 0) {
           setSuccessAction(null);
           setCapturedImageBase64(null);
           setCountdown(3);
           return;
       }
+      
+      // Normal Redirect
       if (countdown === 0) {
           if (onClose) onClose();
           else {
@@ -322,24 +359,40 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
   }, [successAction, countdown, router, successLocation, onClose, proxyMode]);
 
 
-  // --- RENDER ---
+  // --- RENDER HELPERS ---
   const wrapperClass = onClose ? "w-full flex justify-center items-center py-4" : "w-full flex justify-center items-center min-h-[50vh]";
   
-  const renderCameraSection = () => (
-    <div className="flex flex-col gap-3">
-        <TimeclockCamera 
-            ref={cameraRef}
-            onReady={setCameraReady} 
-            onError={(err) => toast.error(err)}
-            facingMode={proxyMode ? 'environment' : 'user'} 
-        />
-        <div className={`text-center text-[10px] uppercase font-bold tracking-wider py-1 rounded ${gpsError ? 'bg-red-100 text-red-600' : locationCoords ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>
-            {gpsError ? <span className="flex items-center justify-center gap-1"><MapPinOff className="w-3 h-3" /> No GPS</span> 
-            : locationCoords ? <span className="flex items-center justify-center gap-1"><MapPin className="w-3 h-3" /> Location Verified</span> 
-            : <span className="flex items-center justify-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Locating...</span>}
+  const renderCameraSection = () => {
+    // FALLBACK UI
+    if (noCameraMode) {
+        return (
+            <div className="w-full aspect-video bg-slate-100 dark:bg-slate-800 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-muted-foreground p-4 text-center">
+                <CameraOff className="w-8 h-8 mb-2 opacity-50 text-orange-500" />
+                <span className="font-bold text-sm text-slate-700 dark:text-slate-300">Camera Unavailable</span>
+                <span className="text-[10px] text-orange-600 font-medium mt-1 px-4">
+                   Please try to use a personal device with a camera next time to verify your punch.
+                </span>
+            </div>
+        );
+    }
+
+    // NORMAL CAMERA UI
+    return (
+        <div className="flex flex-col gap-3">
+            <TimeclockCamera 
+                ref={cameraRef}
+                onReady={setCameraReady} 
+                onError={handleCameraError} // Pass the error handler
+                facingMode={proxyMode ? 'environment' : 'user'} 
+            />
+            <div className={`text-center text-[10px] uppercase font-bold tracking-wider py-1 rounded ${gpsError ? 'bg-red-100 text-red-600' : locationCoords ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                {gpsError ? <span className="flex items-center justify-center gap-1"><MapPinOff className="w-3 h-3" /> No GPS</span> 
+                : locationCoords ? <span className="flex items-center justify-center gap-1"><MapPin className="w-3 h-3" /> Location Verified</span> 
+                : <span className="flex items-center justify-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Locating...</span>}
+            </div>
         </div>
-    </div>
-  );
+    );
+  };
 
   const renderManagerControls = () => {
     if (!isManager) return null;
@@ -425,6 +478,7 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
 
   if (loading && !successAction) return <div className={wrapperClass}><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
+  // --- SUCCESS STATE RENDER ---
   if (successAction) {
       return (
         <div className={wrapperClass}>
@@ -437,9 +491,14 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
                 </p>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
-                {capturedImageBase64 && (
+                {capturedImageBase64 ? (
                     <div className="relative w-48 h-48 rounded-lg overflow-hidden border-4 border-white shadow-md rotate-2">
                         <img src={capturedImageBase64} alt="Verification" className="w-full h-full object-cover" />
+                    </div>
+                ) : (
+                    <div className="w-full p-4 bg-slate-100 dark:bg-slate-800 rounded text-center text-sm text-muted-foreground border-dashed border-2">
+                        <CameraOff className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                        No photo captured
                     </div>
                 )}
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-background/50 px-3 py-1 rounded-full">
@@ -455,6 +514,7 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
       );
   }
 
+  // --- BLOCKED STATE RENDER ---
   const scheduleStatus = getScheduleStatus();
   if (!activeShift && !scheduleStatus.allowed && !isManager) {
       return (
@@ -470,6 +530,7 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
       );
   }
 
+  // --- ACTIVE SHIFT STATE RENDER ---
   if (activeShift?.status === 'active') {
       return (
         <div className={wrapperClass}>
@@ -485,7 +546,13 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
                 {renderCameraSection()}
                 <div className="grid grid-cols-2 gap-3">
                     <Button variant="secondary" className="h-14 font-medium" disabled={loading}><Coffee className="w-4 h-4 mr-2" /> Start Break</Button>
-                    <Button variant="destructive" className="h-14 font-bold shadow-md" onClick={handleClockOut} disabled={loading || !cameraReady}>
+                    <Button 
+                        variant="destructive" 
+                        className="h-14 font-bold shadow-md" 
+                        onClick={handleClockOut} 
+                        // Enabled if camera works OR if camera failed (noCameraMode)
+                        disabled={loading || (!cameraReady && !noCameraMode)}
+                    >
                         {loading ? <Loader2 className="animate-spin mr-2" /> : <><LogOut className="w-4 h-4 mr-2" /> CLOCK OUT</>}
                     </Button>
                 </div>
@@ -495,6 +562,7 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
       );
   }
 
+  // --- DEFAULT RENDER (CLOCK IN) ---
   return (
     <div className={wrapperClass}>
     <Card className="w-full max-w-md shadow-xl border-t-4 border-t-blue-500">
@@ -518,7 +586,12 @@ export default function SmartTimeClock({ employeeId, onClose }: SmartTimeClockPr
            </div>
         )}
         {renderCameraSection()}
-        <Button className="w-full h-20 text-xl font-bold bg-blue-600 hover:bg-blue-700 shadow-lg transition-all active:scale-[0.98]" onClick={handleClockIn} disabled={loading || !cameraReady}>
+        {/* BUTTON: Enabled if camera is ready OR we are in fallback mode */}
+        <Button 
+            className="w-full h-20 text-xl font-bold bg-blue-600 hover:bg-blue-700 shadow-lg transition-all active:scale-[0.98]" 
+            onClick={handleClockIn} 
+            disabled={loading || (!cameraReady && !noCameraMode)}
+        >
           {loading ? <Loader2 className="animate-spin mr-2" /> : "CLOCK IN"}
         </Button>
       </CardContent>
