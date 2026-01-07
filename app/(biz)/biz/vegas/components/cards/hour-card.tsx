@@ -15,12 +15,6 @@ import CreateGroupWizard from '../groups/create-group-wizard';
 // Types
 import { Reservation } from '../../../types';
 
-/**
- * HourCard Component
- * ------------------
- * Displays a summary of operations for a specific hour block.
- * Includes stats, driver loads, active groups, and reservation lists.
- */
 const HourCard = async ({
   hr,
   data,
@@ -98,41 +92,39 @@ const HourCard = async ({
 
   // --- 4. RENDER ---
   return (
-    <Card key={hr} className="border-2 border-yellow-500 bg-slate-950/20 overflow-hidden shadow-sm mb-4 rounded-lg">
+    <Card key={hr} className="border-2 border-yellow-500 bg-slate-950/20 overflow-hidden shadow-sm mb-4 rounded-lg w-full max-w-full">
       
       {/* HEADER SECTION */}
       <div className="flex flex-col border-b border-slate-800 bg-slate-950">
          
-         <div className="flex items-center justify-between px-3 py-2">
+         <div className="flex items-center justify-between px-3 py-2 w-full">
             
             {/* Left Side: Time and Totals */}
-            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                <span className="text-2xl font-bold text-white tracking-tight">
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 max-w-full">
+                <span className="text-2xl font-bold text-white tracking-tight shrink-0">
                   {displayTime}
                 </span>
 
-                <div className="flex items-baseline gap-3 text-sm">
-                   <span className="font-bold text-orange-500">
-                     {totalPeople}-People
+                {/* [FIX] Added flex-wrap here to prevent vehicle string from forcing width */}
+                <div className="flex flex-wrap items-baseline gap-2 text-sm max-w-full">
+                   <span className="font-bold text-orange-500 whitespace-nowrap">
+                     {totalPeople} Ppl
                    </span>
-                   <span className="font-bold text-orange-600">
-                     {totalVehicles}-Vehicles
+                   <span className="font-bold text-orange-600 whitespace-nowrap">
+                     {totalVehicles} Veh
                    </span>
                    {vehicleString && (
-                     <span className="font-mono text-xs text-slate-500 italic hidden sm:inline">
+                     <span className="font-mono text-xs text-slate-500 italic break-words hidden sm:inline">
                        ({vehicleString})
                      </span>
                    )}
                 </div>
             </div>
 
-            {/* Right Side: Create Reservation Button */}
-            {/* UPDATED: Green circular button styling */}
+            {/* Right Side: Button */}
             <Button 
               size="icon" 
-              // Removed variant="ghost" to use custom background colors
-              // Added bg-green-600, hover:bg-green-700, text-white, shadow-sm
-              className="ml-2 h-8 w-8 rounded-full bg-green-600 hover:bg-green-700 text-white transition-colors shadow-sm border border-green-500 flex items-center justify-center"
+              className="ml-2 h-8 w-8 shrink-0 rounded-full bg-green-600 hover:bg-green-700 text-white transition-colors shadow-sm border border-green-500 flex items-center justify-center"
               title={`Create reservation for ${displayTime}`}
               asChild
             >
@@ -144,9 +136,9 @@ const HourCard = async ({
          
          {/* Bottom Row: Compact Driver Load List */}
          {driverSummaryStrings.length > 0 && (
-           <div className="px-3 pb-2 flex flex-wrap gap-x-3 gap-y-1">
+           <div className="px-3 pb-2 flex flex-wrap gap-2 w-full">
              {driverSummaryStrings.map((str, idx) => (
-               <span key={idx} className="font-mono text-[10px] font-bold text-yellow-600/90 bg-slate-900/50 px-1 rounded">
+               <span key={idx} className="font-mono text-[10px] font-bold text-yellow-600/90 bg-slate-900/50 px-1 rounded whitespace-nowrap">
                  {str}
                </span>
              ))}

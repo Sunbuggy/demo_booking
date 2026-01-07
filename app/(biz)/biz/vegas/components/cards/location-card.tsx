@@ -11,37 +11,32 @@ const LocationCard = ({
   data,
   locationKey,
   display_cost,
-  // --- NEW SHUTTLE PROPS ---
   activeFleet,
   reservationStatusMap,
   hourlyUtilization,
   hourContext,
-  drivers // <--- NEW PROP: The full list of employees
+  drivers
 }: {
-  id: string; // The specific hour string (e.g. "08:00:00")
+  id: string;
   data: Record<string, Record<string, Reservation[]>>;
   locationKey: string;
   display_cost: boolean;
-  // New Props to pass down to the row
   activeFleet: any[];
   reservationStatusMap: any;
   hourlyUtilization: any;
-  hourContext: string; // The simple hour (e.g. "8")
-  drivers: any[]; // <--- TYPE DEFINITION
+  hourContext: string;
+  drivers: any[]; 
 }) => {
-  // Helper: count vehicles booked in a single reservation
   const getVehicleCount = (reservation: Reservation): number => {
     return vehiclesList.reduce((acc, key) => {
       return acc + Number(reservation[key as keyof Reservation] || 0);
     }, 0);
   };
 
-  // Helper: total people in a reservation
   const countPeople = (reservation: Reservation): number => {
     return reservation.ppl_count || 0;
   };
 
-  // Get list of vehicles actually used in this location (with counts)
   const usedVehicles = vehiclesList
     .filter((key) => {
       return data[id][locationKey].some(
@@ -56,36 +51,28 @@ const LocationCard = ({
     })
     .join(', ');
 
-  // Calculate totals once for cleaner JSX
   const totalPeople = data[id][locationKey].reduce((acc, r) => acc + countPeople(r), 0);
   const totalVehicles = data[id][locationKey].reduce((acc, r) => acc + getVehicleCount(r), 0);
   const totalCost = data[id][locationKey].reduce((acc, r) => acc + Number(r.total_cost || 0), 0);
 
   return (
-    <Card key={locationKey} className="LocationCardStyle mb-4 overflow-hidden border border-slate-200 dark:border-slate-800">
-      {/* HEADER FIX: 
-        - Light Mode: bg-slate-100 (Light Grey)
-        - Dark Mode: bg-gray-900/40 (Dark Transparent)
-      */}
+    <Card key={locationKey} className="LocationCardStyle mb-4 overflow-hidden border border-slate-200 dark:border-slate-800 w-full max-w-full">
       <CardTitle className="px-4 py-2 border-b border-slate-200 dark:border-gray-800 bg-slate-100 dark:bg-gray-900/40">
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          {/* 1. Tour Name - Dark in light mode, White in dark mode */}
-          <span className="text-lg font-bold text-slate-800 dark:text-white">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 w-full">
+          {/* 1. Tour Name */}
+          <span className="text-lg font-bold text-slate-800 dark:text-white shrink-0">
             {locationKey}
           </span>
 
-          {/* 2. Stats Row 
-             - Light Mode: darker orange (text-orange-700) for contrast
-             - Dark Mode: bright orange (text-orange-500) for pop
-          */}
-          <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-orange-700 dark:text-orange-500">
-            <span>{totalPeople} People</span>
-            <span className="hidden sm:inline text-slate-400">•</span>
-            <span>{totalVehicles} Vehicles</span>
+          {/* 2. Stats Row (Wraps on mobile) */}
+          <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-orange-700 dark:text-orange-500">
+            <span className="whitespace-nowrap">{totalPeople} People</span>
+            <span className="hidden sm:inline text-slate-400">â€¢</span>
+            <span className="whitespace-nowrap">{totalVehicles} Vehicles</span>
             
             {/* 3. Vehicle Breakdown */}
             {usedVehicles && (
-              <span className="font-light italic text-orange-600/80 dark:text-orange-400/80">
+              <span className="font-light italic text-orange-600/80 dark:text-orange-400/80 break-words max-w-full">
                 ({usedVehicles})
               </span>
             )}
@@ -107,13 +94,11 @@ const LocationCard = ({
             key={index}
             vehiclesList={vehiclesList as readonly string[]}
             display_cost={display_cost}
-            
-            // --- PROP DRILLING: PASS DATA TO ROW ---
             activeFleet={activeFleet}
             reservationStatusMap={reservationStatusMap}
             hourlyUtilization={hourlyUtilization}
             hourContext={hourContext}
-            drivers={drivers} // <--- PASSING DRIVERS DOWN
+            drivers={drivers} 
           />
         ))}
       </CardContent>
