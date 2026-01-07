@@ -23,18 +23,23 @@ export default function CheckoutForm({
     setCardError(null);
 
     if (payNow) {
-        // Verify the function exists before calling
-        if (window.CollectJS && typeof window.CollectJS.createToken === 'function') {
+        // Try to trigger tokenization
+        if (window.CollectJS) {
             console.log("Starting Tokenization...");
-            window.CollectJS.createToken((response: any) => {
-                // If this callback runs with an error, show it
-                if (response && response.error) {
-                    console.error("Token Error:", response.error);
-                    setCardError(response.error);
-                }
-            });
+            try {
+                window.CollectJS.createToken((response: any) => {
+                    // Success is handled by PaymentFields.tsx callback
+                    // Errors are handled here
+                    if (response && response.error) {
+                        setCardError(response.error);
+                    }
+                });
+            } catch (err) {
+                console.error("Tokenization Crash:", err);
+                setCardError("Payment system error. Please refresh the page.");
+            }
         } else {
-            setCardError("Payment system is still initializing. Please wait 2 seconds.");
+            setCardError("Payment fields haven't loaded yet. Please wait a moment.");
         }
     } else {
         onPayment(null); 
@@ -62,10 +67,10 @@ export default function CheckoutForm({
           </span>
         </div>
       ) : (
-        // === CHANGED STRUCTURE FOR STICKY HEADER ===
+        // STICKY HEADER LAYOUT
         <div className="flex flex-col h-full max-w-2xl mx-auto">
           
-          {/* 1. Sticky Header (Always Visible) */}
+          {/* 1. Header */}
           <div className="flex-shrink-0 px-6 py-5 md:px-8 border-b border-gray-800 bg-gray-900 rounded-t-3xl flex justify-between items-center z-50">
             <button 
               onClick={() => setIsExpanded(false)} 
@@ -78,7 +83,7 @@ export default function CheckoutForm({
             </h2>
           </div>
           
-          {/* 2. Scrollable Content Area */}
+          {/* 2. Scrollable Content */}
           <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar pb-32">
             
              <div className="bg-gray-800 p-6 rounded-xl mb-8 border border-gray-700 shadow-lg">
@@ -100,7 +105,6 @@ export default function CheckoutForm({
                </div>
             </div>
 
-            {/* Payment Checkbox */}
             {!isEditing && (
               <div className="mb-8">
                   <label className="flex items-center gap-3 bg-gray-800 p-4 rounded-lg border border-gray-600 cursor-pointer hover:bg-gray-750 transition-colors">
@@ -118,7 +122,6 @@ export default function CheckoutForm({
               </div>
             )}
 
-            {/* Payment Fields */}
             {payNow && (
                 <div className="animate-in fade-in slide-in-from-top-4 duration-300">
                   <PaymentFields 
@@ -128,7 +131,6 @@ export default function CheckoutForm({
                 </div>
             )}
 
-            {/* Agreement Checkbox */}
             <label className="flex gap-4 items-start bg-red-950/30 p-4 rounded-xl mb-8 cursor-pointer border border-red-800/50 hover:bg-red-900/40 transition-colors">
               <input 
                 type="checkbox" 
@@ -141,7 +143,6 @@ export default function CheckoutForm({
               </span>
             </label>
 
-            {/* Error/Status Messages */}
             {(message || cardError) && (
               <div className={`text-center font-bold p-4 rounded-lg mb-6 border animate-pulse ${
                 (message?.includes('Confirmed') && !cardError)
@@ -152,7 +153,6 @@ export default function CheckoutForm({
               </div>
             )}
 
-            {/* Action Button */}
             <button 
               type="button"
               onClick={handleConfirm} 

@@ -23,13 +23,11 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
 
         try {
             window.CollectJS.configure({
-                // CRITICAL: Tells NMI we are using custom DIVs, not a popup
+                // CRITICAL: Tells NMI we are using custom DIVs
                 'variant': 'inline', 
                 
-                // CRITICAL: Must disable wallets for inline to work reliably in React
-                'googlePay': false,
-                'applePay': false,
-
+                // REMOVED: googlePay/applePay to prevent "Unexpected fields" error
+                
                 // Map your DIV IDs
                 'fields': {
                     'ccnumber': {
@@ -70,7 +68,8 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
                     clearInterval(checkInterval);
                 } else if (attempts > 50) { // Wait up to 10 seconds
                     console.error("NMI Timeout");
-                    setLoadingStatus("Payment system slow to load. Please refresh.");
+                    // Even if timeout, sometimes it works, so we just clear message
+                    setLoadingStatus(""); 
                     clearInterval(checkInterval);
                 }
             }, 200);
@@ -114,7 +113,6 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
     
     document.body.appendChild(script);
 
-    // Cleanup not typically needed for singleton script
   }, [onTokenGenerated, onError]);
 
   return (
@@ -127,9 +125,7 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
           </div>
       )}
 
-      {/* IMPORTANT: These DIVs must exist before configure() runs.
-          We use 'relative' and fixed heights to hold the iframe.
-      */}
+      {/* IMPORTANT: These DIVs must exist before configure() runs. */}
       <div className="space-y-4">
         <div>
            <label className="block text-xs text-gray-400 uppercase mb-1">Card Number</label>
