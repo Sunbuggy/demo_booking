@@ -1,20 +1,19 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (v12.3 - WEATHER & TIDE DETAILS)
+// SUNBUGGY ROSTER PAGE (v12.9 - DESKTOP SCROLL ENHANCEMENTS)
 // ============================================================================
-// CHANGELOG v12.3:
-// 1. FEATURE: Interactive Weather Cells. Clicking forecast opens details.
-// 2. FEATURE: Pismo Beach Tide Chart. Specialized modal section for Pismo tides.
-// 3. UI: Added 'WeatherDetailsModal' with rich data visualization (Wind, Sun, Tides).
-// 4. PRESERVED: All Roster, Time Off, and 8-Hour Auto-fill logic from v12.2.
+// CHANGELOG v12.9:
+// 1. FEATURE: Desktop Scroll Arrows. Added L/R buttons to hourly timeline for mouse users.
+// 2. UI: Visible scrollbar on desktop (thin), hidden on mobile (swipe).
+// 3. UX: Programmatic scrolling for the new arrows.
+// 4. PRESERVED: Mobile constraints, Date Nav, Tides, all Logic.
 
 import { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import Link from 'next/link'; 
 import { createClient } from '@/utils/supabase/client';
 import { getStaffRoster } from '@/utils/supabase/queries'; 
 import { getLocationWeather, DailyWeather } from '@/app/actions/weather'; 
-// SERVER ACTION: Handles the database update for time off (Approve/Deny)
 import { approveTimeOffRequest } from '@/app/actions/approve-time-off';
 
 // --- DATE-FNS IMPORTS ---
@@ -24,8 +23,6 @@ import {
   subDays, 
   addWeeks, 
   subWeeks, 
-  addMonths, 
-  subMonths, 
   startOfISOWeek, 
   differenceInMinutes, 
   parseISO, 
@@ -38,8 +35,7 @@ import {
   isSameDay, 
   isToday, 
   differenceInDays,
-  addHours,
-  getHours
+  addHours
 } from 'date-fns';
 
 import UserStatusAvatar from '@/components/UserStatusAvatar';
@@ -53,8 +49,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription
+  DialogDescription,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -62,12 +58,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { 
     ChevronLeft, ChevronRight, Plus, Trash2, MapPin, 
-    Ban, Copy, Loader2, Plane, Filter, 
-    History, Users, BarChart3, Calendar as CalendarIcon, 
+    Ban, Filter, History, Users, BarChart3, Calendar as CalendarIcon, 
     Clock, Shield, CheckSquare, Mountain, LucideIcon,
     Sun, Cloud, CloudRain, Snowflake, CloudLightning, Wind, Printer, 
-    Info, Settings, User,
-    AlertCircle, Check, X, ThumbsDown, CalendarClock, Eraser,
+    Info, Settings, User, Plane,
+    AlertCircle, Check, X, ThumbsDown, CalendarClock,
     Waves, Sunrise, Sunset, Droplets
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -185,11 +180,19 @@ interface ReservationStat {
   [key: string]: string | number | boolean | Date | null | undefined; 
 }
 
-// [DEV NOTE] New Interface for Tides
 interface TideEvent {
     time: string;
     type: 'High' | 'Low';
     height: string;
+}
+
+interface HourlyForecast {
+    hourLabel: string; // "9 AM"
+    hour24: number; // 9
+    temp: number;
+    wind: number;
+    precip_chance: number;
+    icon: LucideIcon;
 }
 
 // --- HELPER FUNCTIONS ---
@@ -206,36 +209,66 @@ const getHistoricalWeather = (location: string, date: Date): DailyWeather => {
     return { date: format(date, 'yyyy-MM-dd'), min_temp: maxTemp - 15, max_temp: maxTemp, code: 1, condition: 'Seasonal Norm' };
 };
 
-// [DEV NOTE] GENERATE MOCK TIDES FOR PISMO
-// Creates a realistic semi-diurnal tide cycle (2 highs, 2 lows) shifted by ~50 mins/day.
+// [DEV NOTE] MOCK TIDE GENERATOR
 const getMockTides = (dateStr: string): TideEvent[] => {
     const date = parseISO(dateStr);
-    const dayOffset = date.getDate() + date.getMonth() * 30; // Simple offset seed
-    
-    // Base times for a reference day
-    const baseTimes = [4.5, 10.5, 16.8, 23.0]; // Hours: 4:30am, 10:30am, 4:48pm, 11:00pm
-    const shift = (dayOffset * 0.8) % 24; // Shift ~50 mins per day
+    const dayOffset = date.getDate() + date.getMonth() * 30; 
+    const baseTimes = [4.5, 10.5, 16.8, 23.0]; 
+    const shift = (dayOffset * 0.8) % 24; 
     
     return baseTimes.map((t, i) => {
         let hour = (t + shift) % 24;
-        const isHigh = i % 2 !== 0; // Low, High, Low, High pattern
+        const isHigh = i % 2 !== 0; 
         const height = isHigh ? (4 + Math.random() * 2).toFixed(1) : (-1 + Math.random() * 2).toFixed(1);
-        
         const h = Math.floor(hour);
         const m = Math.floor((hour - h) * 60);
         const ampm = h >= 12 ? 'PM' : 'AM';
         const displayH = h % 12 || 12;
         const displayM = m < 10 ? `0${m}` : m;
-        
-        return {
-            time: `${displayH}:${displayM} ${ampm}`,
-            type: isHigh ? 'High' : 'Low',
-            height: `${height} ft`
-        };
-    }).sort((a, b) => {
-        // Simple sort isn't strictly needed for this mock display, keeping order of generation
-        return 0; 
+        return { time: `${displayH}:${displayM} ${ampm}`, type: isHigh ? 'High' : 'Low', height: `${height} ft` };
     });
+};
+
+// [DEV NOTE] HOURLY FORECAST GENERATOR
+const getMockHourlyForecast = (daily: DailyWeather): HourlyForecast[] => {
+    const hours: HourlyForecast[] = [];
+    const min = daily.min_temp;
+    const max = daily.max_temp;
+    const range = max - min;
+    
+    // Operating hours 6 AM to 10 PM
+    for (let h = 6; h <= 22; h++) {
+        const peak = 15;
+        const dist = Math.abs(h - peak);
+        const factor = Math.max(0, 1 - (dist / 10)); 
+        const temp = Math.round(min + (range * factor));
+
+        let wind = 5 + Math.random() * 5;
+        if (h >= 13 && h <= 18) wind += 10; 
+
+        let precip = Math.floor(Math.random() * 10);
+        if (daily.code > 50) precip += 40; 
+
+        let Icon = Sun;
+        if (h < 7 || h > 19) Icon = Sunset; 
+        if (precip > 40) Icon = CloudRain;
+        else if (wind > 15) Icon = Wind;
+        else if (h > 11 && h < 16) Icon = Sun;
+        else Icon = Cloud;
+
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const displayH = h % 12 || 12;
+
+        hours.push({
+            hourLabel: `${displayH} ${ampm}`,
+            hour24: h,
+            temp,
+            wind: Math.round(wind),
+            precip_chance: precip,
+            icon: Icon
+        });
+    }
+    return hours;
 };
 
 const getDashboardLink = (locationName: string, dateStr: string) => {
@@ -261,13 +294,9 @@ const MiniCalendar = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect
     return (
         <div className="p-3 w-64">
             <div className="flex items-center justify-between mb-4">
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setViewDate(subMonths(viewDate, 1))}>
-                    <ChevronLeft className="w-4 h-4" />
-                </Button>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setViewDate(subMonths(viewDate, 1))}><ChevronLeft className="w-4 h-4" /></Button>
                 <span className="font-bold text-sm">{format(viewDate, 'MMMM yyyy')}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setViewDate(addMonths(viewDate, 1))}>
-                    <ChevronRight className="w-4 h-4" />
-                </Button>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setViewDate(addMonths(viewDate, 1))}><ChevronRight className="w-4 h-4" /></Button>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center text-[10px]">
                 {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => <div key={d} className="text-muted-foreground font-bold pb-1">{d}</div>)}
@@ -275,17 +304,7 @@ const MiniCalendar = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect
                     const isSelected = isSameDay(day, selectedDate);
                     const isCurrentMonth = isSameMonth(day, viewDate);
                     return (
-                        <button
-                            key={day.toISOString()}
-                            onClick={() => onSelect(day)}
-                            type="button"
-                            className={cn(
-                                "h-8 w-8 rounded-md flex items-center justify-center transition-colors hover:bg-muted text-xs",
-                                !isCurrentMonth && "text-muted-foreground/30",
-                                isSelected && "bg-primary text-primary-foreground font-bold",
-                                isToday(day) && !isSelected && "border border-primary text-primary font-bold"
-                            )}
-                        >
+                        <button key={day.toISOString()} onClick={() => onSelect(day)} type="button" className={cn("h-8 w-8 rounded-md flex items-center justify-center transition-colors hover:bg-muted text-xs", !isCurrentMonth && "text-muted-foreground/30", isSelected && "bg-primary text-primary-foreground font-bold", isToday(day) && !isSelected && "border border-primary text-primary font-bold")}>
                             {format(day, 'd')}
                         </button>
                     );
@@ -318,10 +337,7 @@ const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: strin
                     {loading ? <div className="flex justify-center p-4"><Loader2 className="h-4 w-4 animate-spin" /></div> : (
                         <div className="max-h-[200px] overflow-y-auto text-xs space-y-2">
                             {logs.length === 0 ? <div className="italic opacity-50">No history.</div> : logs.map(log => (
-                                <div key={log.id} className="border-b pb-1 last:border-0">
-                                    <div className="font-bold">{log.action}</div>
-                                    <div className="text-[10px] opacity-60">{format(parseISO(log.created_at), 'MMM d, h:mm a')}</div>
-                                </div>
+                                <div key={log.id} className="border-b pb-1 last:border-0"><div className="font-bold">{log.action}</div><div className="text-[10px] opacity-60">{format(parseISO(log.created_at), 'MMM d, h:mm a')}</div></div>
                             ))}
                         </div>
                     )}
@@ -331,7 +347,7 @@ const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: strin
     );
 };
 
-// --- WEATHER CELL (Presentational) ---
+// --- WEATHER CELL ---
 const WeatherCell = ({ data }: { data: DailyWeather | undefined }) => {
     if (!data) return <div className="text-[10px] text-muted-foreground h-full flex items-center justify-center">-</div>;
     let Icon = Sun; let color = "text-yellow-500";
@@ -367,18 +383,15 @@ export default function RosterPage() {
 
   // -- STATE --
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  useEffect(() => {
-      if (dateInputRef.current) dateInputRef.current.value = format(currentDate, 'yyyy-MM-dd');
-  }, [currentDate]);
+  useEffect(() => { if (dateInputRef.current) dateInputRef.current.value = format(currentDate, 'yyyy-MM-dd'); }, [currentDate]);
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   
-  // METADATA: Requests & Availability
+  // METADATA
   const [rosterMetadata, setRosterMetadata] = useState<Record<string, { requests: TimeOffRequest[], availability: AvailabilityRule[] }>>({});
-
   const [weatherData, setWeatherData] = useState<Record<string, DailyWeather[]>>({});
   const [dailyStats, setDailyStats] = useState<Record<string, { people: number, fullString: string }>>({});
   const [currentUserId, setCurrentUserId] = useState<string>('');
@@ -395,15 +408,16 @@ export default function RosterPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
   
-  // REVIEW MODAL (Time Off)
+  // REVIEW MODAL
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<TimeOffRequest | null>(null);
   const [managerNote, setManagerNote] = useState('');
 
-  // WEATHER MODAL (New)
+  // WEATHER MODAL
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
   const [selectedWeatherLoc, setSelectedWeatherLoc] = useState('');
-  const [selectedWeatherDay, setSelectedWeatherDay] = useState<DailyWeather | null>(null);
+  const [selectedWeatherDate, setSelectedWeatherDate] = useState<string>('');
+  const hourlyScrollRef = useRef<HTMLDivElement>(null);
 
   // Shift Edit State
   const [formRole, setFormRole] = useState('Guide');
@@ -432,6 +446,34 @@ export default function RosterPage() {
 
   useEffect(() => { if (isMounted) fetchData(); }, [currentDate, isMounted]);
 
+  // [DEV NOTE] AUTO-SCROLL LOGIC for Hourly Timeline
+  useEffect(() => {
+      if (isWeatherModalOpen && hourlyScrollRef.current) {
+          const currentHour = new Date().getHours();
+          // Hours start at 6am. Each card approx 80px + gap.
+          const hourIndex = Math.max(0, currentHour - 6);
+          const scrollPos = Math.max(0, (hourIndex * 88) - 40); 
+          
+          setTimeout(() => {
+              if(hourlyScrollRef.current) {
+                  hourlyScrollRef.current.scrollTo({ left: scrollPos, behavior: 'smooth' });
+              }
+          }, 200);
+      }
+  }, [isWeatherModalOpen, selectedWeatherDate]);
+
+  // [DEV NOTE] DESKTOP SCROLL HANDLER
+  const scrollHourly = (dir: 'left' | 'right') => {
+      if(hourlyScrollRef.current) {
+          const scrollAmount = 200;
+          const currentLeft = hourlyScrollRef.current.scrollLeft;
+          hourlyScrollRef.current.scrollTo({
+              left: dir === 'left' ? currentLeft - scrollAmount : currentLeft + scrollAmount,
+              behavior: 'smooth'
+          });
+      }
+  };
+
   const calculateDailyStats = (reservations: ReservationStat[]) => {
     const totalPeople = reservations.reduce((acc, r) => acc + (Number(r.ppl_count) || 0), 0);
     const breakdown = vehiclesList.map((key) => {
@@ -450,7 +492,6 @@ export default function RosterPage() {
         if (userData) setCurrentUserLevel(userData.user_level || 0);
     }
 
-    // 1. FETCH STAFF
     const staffPromises = Object.keys(LOCATIONS).map(async (loc) => {
         const roster = await getStaffRoster(supabase, loc);
         return roster.map((u: any) => ({
@@ -469,22 +510,12 @@ export default function RosterPage() {
         }));
     });
 
-    // 2. FETCH META & SHIFTS
     const requestStart = format(subDays(startOfWeekDate, 7), 'yyyy-MM-dd');
     const requestEnd = format(addDays(endOfWeekDate, 7), 'yyyy-MM-dd');
 
-    const requestsPromise = supabase
-        .from('time_off_requests')
-        .select('*')
-        .gte('end_date', requestStart)
-        .lte('start_date', requestEnd);
-
+    const requestsPromise = supabase.from('time_off_requests').select('*').gte('end_date', requestStart).lte('start_date', requestEnd);
     const availPromise = supabase.from('employee_availability_patterns').select('*');
-
-    const shiftsPromise = supabase.from('employee_schedules')
-        .select('*')
-        .gte('start_time', startOfWeekDate.toISOString())
-        .lte('start_time', addDays(startOfWeekDate, 7).toISOString());
+    const shiftsPromise = supabase.from('employee_schedules').select('*').gte('start_time', startOfWeekDate.toISOString()).lte('start_time', addDays(startOfWeekDate, 7).toISOString());
 
     const [staffResults, reqRes, availRes, shiftData] = await Promise.all([
         Promise.all(staffPromises), 
@@ -595,10 +626,9 @@ export default function RosterPage() {
       }
   };
 
-  // --- WEATHER MODAL HANDLERS ---
-  const handleWeatherClick = (loc: string, data: DailyWeather) => {
+  const handleWeatherClick = (loc: string, dateStr: string) => {
       setSelectedWeatherLoc(loc);
-      setSelectedWeatherDay(data);
+      setSelectedWeatherDate(dateStr);
       setIsWeatherModalOpen(true);
   };
 
@@ -712,7 +742,6 @@ export default function RosterPage() {
       return groups;
   }, [employees]);
 
-  // Handlers for Profile
   const handleArchiveEmployee = async () => {
       if (!isAdmin || !profileEmp) return;
       if (!confirm(`Archive ${profileEmp.full_name}?`)) return;
@@ -733,31 +762,40 @@ export default function RosterPage() {
     fetchData(); setIsProfileModalOpen(false); toast.success("Saved");
   };
 
+  // Helper to safely get the current day's weather from state
+  const getCurrentWeatherDay = () => {
+      const forecast = weatherData[selectedWeatherLoc];
+      if (!forecast) return null;
+      return forecast.find(d => d.date === selectedWeatherDate) || null;
+  }
+
+  const selectedWeatherDayData = getCurrentWeatherDay();
+
+  const handleNavWeatherDay = (direction: 'prev' | 'next') => {
+      const current = parseISO(selectedWeatherDate);
+      const newDate = direction === 'next' ? addDays(current, 1) : subDays(current, 1);
+      const newDateStr = format(newDate, 'yyyy-MM-dd');
+      
+      const hasData = weatherData[selectedWeatherLoc]?.some(d => d.date === newDateStr);
+      if(hasData) {
+          setSelectedWeatherDate(newDateStr);
+      } else {
+          toast.error("No forecast data for that day.");
+      }
+  };
+
   if (!isMounted) return null;
 
   return (
-    <div id="roster-container" className="p-2 h-[calc(100vh-65px)] flex flex-col bg-background text-foreground print:p-0 print:bg-white print:h-auto print:block print:w-full print:m-0 print:overflow-visible">
+    <div id="roster-container" className="p-2 h-[calc(100vh-65px)] flex flex-col bg-background text-foreground overflow-hidden print:p-0 print:bg-white print:h-auto print:block print:w-full print:m-0 print:overflow-visible">
       {/* GLOBAL PRINT STYLES */}
       <style jsx global>{`
         @media print {
             @page { size: landscape; margin: 5mm; } 
-            html, body, #roster-container, .bg-background, .bg-card, .dark {
-                background-color: white !important;
-                color: black !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
+            html, body, #roster-container, .bg-background, .bg-card, .dark { background-color: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
             * { box-shadow: none !important; border-radius: 0 !important; }
             nav, header, aside, .print-hide { display: none !important; }
-            
-            #roster-container { 
-                position: static !important; 
-                height: auto !important; 
-                overflow: visible !important; 
-                display: block !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
+            #roster-container { position: static !important; height: auto !important; overflow: visible !important; display: block !important; margin: 0 !important; padding: 0 !important; }
             .sticky { position: static !important; }
             .location-break { break-before: page; page-break-before: always; }
             tbody.dept-block { break-inside: avoid; page-break-inside: avoid; }
@@ -868,8 +906,7 @@ export default function RosterPage() {
                                     const wData = locWeather.find(w => w.date === dStr);
                                     return (
                                     <td key={dStr} className="border-l p-0 text-center print:border-gray-300">
-                                        {/* [DEV NOTE] Wrapped in clickable div for modal trigger */}
-                                        <div onClick={() => wData && handleWeatherClick(locName, wData)} className="cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors h-full w-full">
+                                        <div onClick={() => wData && handleWeatherClick(locName, dStr)} className="cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors h-full w-full">
                                             <WeatherCell data={wData} />
                                         </div>
                                     </td>
@@ -1003,8 +1040,7 @@ export default function RosterPage() {
                                     {locName === 'Las Vegas' && dailyStats[dateKey] && (<div className="text-xs font-normal text-orange-300 normal-case mt-1 font-mono">People: {dailyStats[dateKey].people} — {dailyStats[dateKey].fullString}</div>)}
                                 </div>
                                 {todayWeather && (
-                                    // [DEV NOTE] Wrapped Day View weather in click handler too
-                                    <div onClick={() => handleWeatherClick(locName, todayWeather)} className="cursor-pointer hover:scale-105 transition-transform flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-slate-700 print:bg-white print:text-black print:border-black">
+                                    <div onClick={() => handleWeatherClick(locName, dateKey)} className="cursor-pointer hover:scale-105 transition-transform flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-slate-700 print:bg-white print:text-black print:border-black">
                                         <WeatherCell data={todayWeather} />
                                     </div>
                                 )}
@@ -1046,45 +1082,85 @@ export default function RosterPage() {
 
       {/* MODALS */}
       <div className="print-hide">
-          {/* 1. WEATHER DETAILS MODAL (NEW v12.3) */}
+          {/* 1. WEATHER DETAILS MODAL (Updated v12.9) */}
           <Dialog open={isWeatherModalOpen} onOpenChange={setIsWeatherModalOpen}>
-            <DialogContent className="max-w-md sm:max-w-lg">
-                <DialogHeader className="pb-4 border-b">
-                    <DialogTitle className="flex items-center gap-3 text-xl">
-                        {/* Dynamic Title Icon based on condition */}
-                        {selectedWeatherDay?.code && selectedWeatherDay.code > 50 ? <CloudRain className="w-8 h-8 text-blue-500" /> : <Sun className="w-8 h-8 text-yellow-500" />}
-                        <div>
-                            <div>{selectedWeatherLoc} Forecast</div>
-                            <div className="text-sm font-normal text-muted-foreground">{selectedWeatherDay?.date ? format(parseISO(selectedWeatherDay.date), 'EEEE, MMMM do') : ''}</div>
+            <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
+                <DialogHeader className="p-4 pb-2 border-b shrink-0">
+                    <DialogTitle className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-xl">
+                            {selectedWeatherDayData?.code && selectedWeatherDayData.code > 50 ? <CloudRain className="w-8 h-8 text-blue-500" /> : <Sun className="w-8 h-8 text-yellow-500" />}
+                            <div className="flex flex-col">
+                                <div className="text-sm uppercase tracking-wide opacity-70">{selectedWeatherLoc}</div>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => handleNavWeatherDay('prev')}><ChevronLeft className="w-4 h-4"/></Button>
+                                    <span className="text-lg font-bold min-w-[120px] text-center">{selectedWeatherDayData?.date ? format(parseISO(selectedWeatherDayData.date), 'EEE, MMM do') : ''}</span>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => handleNavWeatherDay('next')}><ChevronRight className="w-4 h-4"/></Button>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Sunrise / Sunset Header Badge */}
+                        <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1"><Sunrise className="w-3 h-3 text-amber-500"/> <span>6:12 AM</span></div>
+                            <div className="flex items-center gap-1"><Sunset className="w-3 h-3 text-indigo-500"/> <span>8:45 PM</span></div>
                         </div>
                     </DialogTitle>
                 </DialogHeader>
                 
-                {selectedWeatherDay && (
-                    <div className="space-y-6 pt-4">
-                        {/* Main Weather Grid */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl flex flex-col items-center justify-center text-center border">
-                                <span className="text-muted-foreground text-xs uppercase font-bold tracking-widest mb-2">Temperature</span>
+                <div className="overflow-y-auto p-4 space-y-6 max-w-[calc(100vw-32px)]">
+                {selectedWeatherDayData ? (
+                    <>
+                        {/* Top Stats Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl flex flex-col items-center justify-center text-center border col-span-2 md:col-span-1">
+                                <span className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest mb-1">Temp</span>
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-black">{selectedWeatherDay.max_temp}°</span>
-                                    <span className="text-xl text-muted-foreground font-medium">/ {selectedWeatherDay.min_temp}°</span>
+                                    <span className="text-3xl font-black">{selectedWeatherDayData.max_temp}°</span>
+                                    <span className="text-lg text-muted-foreground font-medium">/ {selectedWeatherDayData.min_temp}°</span>
                                 </div>
-                                <span className="text-xs text-slate-500 mt-1">{selectedWeatherDay.condition}</span>
                             </div>
-                            <div className="grid grid-cols-1 gap-2">
-                                <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg flex items-center justify-between border border-blue-100 dark:border-blue-900">
-                                    <div className="flex items-center gap-2"><Wind className="w-4 h-4 text-blue-500" /><span className="text-sm font-medium">Wind</span></div>
-                                    <span className="font-mono font-bold text-sm">{(Math.random() * 15 + 5).toFixed(0)} mph</span>
-                                </div>
-                                <div className="bg-purple-50 dark:bg-purple-950/30 p-3 rounded-lg flex items-center justify-between border border-purple-100 dark:border-purple-900">
-                                    <div className="flex items-center gap-2"><Droplets className="w-4 h-4 text-purple-500" /><span className="text-sm font-medium">Humidity</span></div>
-                                    <span className="font-mono font-bold text-sm">{(Math.random() * 40 + 20).toFixed(0)}%</span>
-                                </div>
-                                <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg flex items-center justify-between border border-amber-100 dark:border-amber-900">
-                                    <div className="flex items-center gap-2"><Sunrise className="w-4 h-4 text-amber-500" /><span className="text-sm font-medium">Sunrise</span></div>
-                                    <span className="font-mono font-bold text-sm">6:{(Math.random() * 59).toFixed(0).padStart(2,'0')} AM</span>
-                                </div>
+                            <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg flex flex-col items-center justify-center border border-blue-100 dark:border-blue-900">
+                                <Wind className="w-5 h-5 text-blue-500 mb-1" />
+                                <span className="font-mono font-bold text-sm">{(Math.random() * 15 + 5).toFixed(0)} mph</span>
+                                <span className="text-[10px] text-muted-foreground uppercase">Wind</span>
+                            </div>
+                            <div className="bg-purple-50 dark:bg-purple-950/30 p-3 rounded-lg flex flex-col items-center justify-center border border-purple-100 dark:border-purple-900">
+                                <Droplets className="w-5 h-5 text-purple-500 mb-1" />
+                                <span className="font-mono font-bold text-sm">{(Math.random() * 40 + 20).toFixed(0)}%</span>
+                                <span className="text-[10px] text-muted-foreground uppercase">Humidity</span>
+                            </div>
+                            <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg flex flex-col items-center justify-center border border-amber-100 dark:border-amber-900">
+                                <Sun className="w-5 h-5 text-amber-500 mb-1" />
+                                <span className="font-mono font-bold text-sm">11</span>
+                                <span className="text-[10px] text-muted-foreground uppercase">UV Index</span>
+                            </div>
+                        </div>
+
+                        {/* HOURLY FORECAST (Fixed Scroll Container v12.9) */}
+                        <div className="relative group">
+                            <div className="text-xs font-bold text-muted-foreground uppercase mb-2 flex justify-between items-center">
+                                <span>Hourly Timeline</span>
+                                <span className="text-[10px] font-normal opacity-50 md:hidden">Swipe to see more</span>
+                            </div>
+                            
+                            {/* [DEV NOTE] Desktop Nav Arrows (Hidden on Mobile) */}
+                            <Button variant="secondary" size="icon" className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => scrollHourly('left')}>
+                                <ChevronLeft className="w-4 h-4"/>
+                            </Button>
+                            <Button variant="secondary" size="icon" className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => scrollHourly('right')}>
+                                <ChevronRight className="w-4 h-4"/>
+                            </Button>
+
+                            <div ref={hourlyScrollRef} className="flex overflow-x-auto gap-2 pb-4 w-full snap-x touch-pan-x relative no-scrollbar md:scrollbar-thin">
+                                {getMockHourlyForecast(selectedWeatherDayData).map((h, i) => (
+                                    <div key={i} className="snap-center flex-shrink-0 w-20 flex flex-col items-center gap-1 p-2 rounded-lg border bg-card hover:bg-accent transition-colors">
+                                        <span className="text-[10px] text-muted-foreground font-bold">{h.hourLabel}</span>
+                                        <h.icon className={`w-5 h-5 ${h.icon === Sun ? 'text-yellow-500' : h.icon === CloudRain ? 'text-blue-500' : 'text-slate-400'}`} />
+                                        <span className="text-sm font-bold">{h.temp}°</span>
+                                        <div className="flex items-center gap-1 text-[9px] text-blue-500 font-mono">
+                                            <Wind className="w-2 h-2" /> {h.wind}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
@@ -1095,31 +1171,29 @@ export default function RosterPage() {
                                     <Waves className="w-4 h-4" />
                                     <span className="font-bold text-sm uppercase tracking-wide">Tide Chart</span>
                                 </div>
-                                <div className="bg-blue-50/50 dark:bg-blue-900/10 p-0">
-                                    {getMockTides(selectedWeatherDay.date).map((tide, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-3 border-b last:border-0 hover:bg-white/50 dark:hover:bg-black/20 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${tide.type === 'High' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
-                                                    {tide.type === 'High' ? <ChevronLeft className="w-4 h-4 rotate-90" /> : <ChevronLeft className="w-4 h-4 -rotate-90" />}
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold text-sm">{tide.type} Tide</div>
-                                                    <div className="text-xs text-muted-foreground">{tide.time}</div>
-                                                </div>
+                                <div className="bg-blue-50/50 dark:bg-blue-900/10 p-0 grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0">
+                                    {getMockTides(selectedWeatherDayData.date).map((tide, idx) => (
+                                        <div key={idx} className="flex flex-col items-center justify-center p-3 hover:bg-white/50 dark:hover:bg-black/20 transition-colors">
+                                            <div className="text-xs text-muted-foreground font-bold mb-1">{tide.type} Tide</div>
+                                            <div className="flex items-center gap-1 mb-1">
+                                                {tide.type === 'High' ? <ChevronLeft className="w-3 h-3 rotate-90 text-blue-600" /> : <ChevronLeft className="w-3 h-3 -rotate-90 text-slate-500" />}
+                                                <span className="font-mono font-bold text-sm text-foreground">{tide.height}</span>
                                             </div>
-                                            <div className="font-mono font-bold text-lg text-slate-700 dark:text-slate-300">
-                                                {tide.height}
-                                            </div>
+                                            <div className="text-[10px] bg-slate-200 dark:bg-slate-800 px-1.5 rounded text-slate-600 dark:text-slate-300">{tide.time}</div>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="bg-slate-50 dark:bg-black/20 p-2 text-center text-[10px] text-muted-foreground">
-                                    Predictions based on NOAA historical data for Port San Luis.
-                                </div>
                             </div>
                         )}
+                    </>
+                ) : (
+                    <div className="py-10 text-center text-muted-foreground">
+                        <Cloud className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                        <p>No forecast data available for this date.</p>
+                        <Button variant="link" onClick={() => setSelectedWeatherDate(format(new Date(), 'yyyy-MM-dd'))}>Return to Today</Button>
                     </div>
                 )}
+                </div>
             </DialogContent>
           </Dialog>
 
