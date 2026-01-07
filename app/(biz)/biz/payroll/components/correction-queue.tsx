@@ -2,12 +2,13 @@
  * CORRECTION QUEUE
  * Path: app/(biz)/biz/payroll/components/correction-queue.tsx
  * Description: A list of pending time card correction requests.
+ * * FIX: Forces database strings to be treated as UTC before converting to Vegas Time.
  */
 
 'use client';
 
 import React, { useState } from 'react';
-import { format, parseISO, differenceInHours } from 'date-fns';
+import { parseISO, differenceInMinutes } from 'date-fns';
 import { Check, X, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { approveCorrectionRequest, denyCorrectionRequest } from '@/app/actions/admin-payroll';
@@ -22,6 +23,52 @@ interface Request {
   reason: string;
   status: string;
 }
+
+// ----------------------------------------------------------------------
+// HELPER: Force Vegas Time Display
+// ----------------------------------------------------------------------
+const formatVegasTime = (isoString: string) => {
+  if (!isoString) return '--:--';
+  try {
+    // CRITICAL FIX: Ensure the string is treated as UTC ("Z")
+    // If the DB sends "2026-01-06 15:38:00", browsers treat that as Local Time.
+    // We add "Z" to force "2026-01-06 15:38:00Z" (UTC).
+    const cleanString = isoString.endsWith('Z') || isoString.includes('+') 
+      ? isoString 
+      : `${isoString}Z`;
+
+    const date = new Date(cleanString);
+
+    return date.toLocaleTimeString('en-US', {
+      timeZone: 'America/Los_Angeles', // 📍 HARDCODED TO VEGAS
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (e) {
+    return 'Err';
+  }
+};
+
+const formatVegasDate = (isoString: string) => {
+  if (!isoString) return '';
+  try {
+    const cleanString = isoString.endsWith('Z') || isoString.includes('+') 
+      ? isoString 
+      : `${isoString}Z`;
+
+    const date = new Date(cleanString);
+    
+    return date.toLocaleDateString('en-US', {
+      timeZone: 'America/Los_Angeles',
+      month: 'short',
+      day: 'numeric'
+    });
+  } catch (e) {
+    return '';
+  }
+};
+// ----------------------------------------------------------------------
 
 export function CorrectionQueue({ requests, onSuccess }: { requests: Request[], onSuccess: () => void }) {
   const { toast } = useToast();
@@ -60,7 +107,13 @@ export function CorrectionQueue({ requests, onSuccess }: { requests: Request[], 
   return (
     <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
       {requests.map((req) => {
-        const duration = differenceInHours(parseISO(req.end_time), parseISO(req.start_time)).toFixed(1);
+        // Calculate Duration using the cleaner strings to ensure safety
+        // We use parseISO on the fixed string
+        const cleanStart = req.start_time.endsWith('Z') || req.start_time.includes('+') ? req.start_time : `${req.start_time}Z`;
+        const cleanEnd = req.end_time.endsWith('Z') || req.end_time.includes('+') ? req.end_time : `${req.end_time}Z`;
+
+        const diffMins = differenceInMinutes(parseISO(cleanEnd), parseISO(cleanStart));
+        const duration = (diffMins / 60).toFixed(1);
         
         return (
           <div key={req.id} className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center animate-in fade-in slide-in-from-bottom-2">
@@ -68,19 +121,22 @@ export function CorrectionQueue({ requests, onSuccess }: { requests: Request[], 
              {/* LEFT: INFO */}
              <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/20 text-orange-600 flex items-center justify-center font-bold">
-                  {req.user.full_name.substring(0,2).toUpperCase()}
+                  {req.user?.full_name ? req.user.full_name.substring(0,2).toUpperCase() : '??'}
                 </div>
                 <div>
-                   <h4 className="font-bold text-gray-900 dark:text-white">{req.user.full_name}</h4>
+                   <h4 className="font-bold text-gray-900 dark:text-white">{req.user?.full_name || 'Unknown User'}</h4>
+                   
+                   {/* TIME DISPLAY (Now Forced to Vegas Time) */}
                    <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
                       <Clock className="w-3 h-3" />
                       <span className="font-mono font-medium text-gray-700 dark:text-gray-300">
-                        {format(parseISO(req.start_time), 'MMM d, h:mm a')} - {format(parseISO(req.end_time), 'h:mm a')}
+                        {formatVegasDate(req.start_time)}, {formatVegasTime(req.start_time)} - {formatVegasTime(req.end_time)}
                       </span>
-                      <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 font-bold">
+                      <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 font-bold border border-gray-200 dark:border-slate-700">
                         {duration}h
                       </span>
                    </div>
+
                    {req.reason && (
                      <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-slate-800 p-2 rounded border border-gray-100 dark:border-slate-700 max-w-md">
                         <span className="font-bold text-gray-400 text-[10px] uppercase mr-1">Reason:</span>
