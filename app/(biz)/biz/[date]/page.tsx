@@ -17,6 +17,10 @@ import { getDailyOperations } from '@/app/actions/shuttle-operations';
 import { getVegasShuttleDrivers } from '@/app/actions/user-actions'; 
 import RealtimeGroupsListener from '../vegas/components/realtime-groups-listener';
 
+// --- WEATHER INTEGRATION ---
+import { getLocationWeather } from '@/app/actions/weather';
+import DashboardWeatherPill from '../vegas/components/dashboard-weather-pill';
+
 export const dynamic = 'force-dynamic';
 
 /**
@@ -43,7 +47,7 @@ async function fetchReservationsForDate(date: string): Promise<Reservation[]> {
 function BizContent({
   date, dcos, role, full_name, reservations, yesterday, tomorrow,
   activeFleet, reservationStatusMap, hourlyUtilization, drivers,
-  todaysShifts, realFleet 
+  todaysShifts, realFleet, weatherData
 }: any) {
   const hasReservations = reservations.length > 0;
   let sortedData = hasReservations ? getTimeSortedData(reservations) : null;
@@ -63,7 +67,7 @@ function BizContent({
       {/* --- GLOBAL REALTIME LISTENER --- */}
       <RealtimeGroupsListener />
 
-      {/* --- FLOATING DATE NAVIGATION --- */}
+      {/* --- FLOATING DATE NAVIGATION & WEATHER --- */}
       {/* Visible to all authorized staff (Level 300+) */}
       {role >= 300 && (
         <div className="sticky top-20 z-50 mx-auto w-fit flex justify-center">
@@ -94,6 +98,14 @@ function BizContent({
             >
               <RiArrowRightWideFill className="text-2xl" />
             </Link>
+
+            {/* Weather Pill (New) */}
+            {weatherData && (
+              <>
+                <div className="h-6 w-px bg-slate-700 mx-1" /> {/* Divider */}
+                <DashboardWeatherPill data={weatherData} location="Las Vegas" />
+              </>
+            )}
           </div>
         </div>
       )}
@@ -181,14 +193,17 @@ export default async function BizPage({ params, searchParams }: any) {
 
     const reservations = await reservationsPromise;
 
-    const [operationsData, drivers, shiftsResult, shuttles] = await Promise.all([
+    // Fetch Operations, Drivers, Shifts, Shuttles, AND WEATHER
+    const [operationsData, drivers, shiftsResult, shuttles, weatherResult] = await Promise.all([
       getDailyOperations(date, reservations),
       getVegasShuttleDrivers(),
       shiftsQuery,
-      fetchShuttlesOnly(supabase) 
+      fetchShuttlesOnly(supabase),
+      getLocationWeather('Las Vegas', date, 1) // Fetch single day weather
     ]);
 
     const todaysShifts = shiftsResult.data || [];
+    const dailyWeather = weatherResult && weatherResult.length > 0 ? weatherResult[0] : null;
 
     // 7. Render
     return (
@@ -207,6 +222,7 @@ export default async function BizPage({ params, searchParams }: any) {
           drivers={drivers}
           todaysShifts={todaysShifts}
           realFleet={shuttles}
+          weatherData={dailyWeather}
         />
       </Suspense>
     );
