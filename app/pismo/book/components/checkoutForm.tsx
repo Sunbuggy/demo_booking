@@ -19,45 +19,29 @@ export default function CheckoutForm({
   const [payNow, setPayNow] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
 
-// Inside handleConfirm...
-
   const handleConfirm = () => {
     setCardError(null);
 
     if (payNow) {
-        // 1. Check if NMI loaded at all
-        if (!window.CollectJS) {
-            setCardError("Payment system not loaded. Please refresh page.");
-            return;
-        }
-
-        // 2. Check if the function exists
-        if (typeof window.CollectJS.createToken !== 'function') {
-            console.error("NMI Error: createToken missing. State:", window.CollectJS);
-            setCardError("System initializing... please wait 3 seconds and try again.");
-            
-            // Optional: Try to clear inputs or re-trigger config if needed
-            // But usually just waiting is enough
-            return;
-        }
-
-        // 3. Safe to call
-        console.log("Sending Card Data...");
-        try {
-            window.CollectJS.createToken((response: any) => {
-                if (response && response.error) {
-                    setCardError(response.error);
-                }
-                // Success is handled by PaymentFields callback
-            });
-        } catch (err) {
-            console.error("Tokenization Exception:", err);
-            setCardError("Payment error. Please check card details.");
+        // STRATEGY: Click the hidden button inside PaymentFields
+        // This triggers NMI's internal handler which bypasses the 'createToken' bug
+        const hiddenBtn = document.getElementById('nmi-hidden-btn');
+        
+        if (hiddenBtn && window.CollectJS) {
+            console.log("Triggering NMI via Hidden Button...");
+            hiddenBtn.click();
+            // NMI will now process the fields and call the 'callback' 
+            // defined in PaymentFields.tsx
+        } else {
+            setCardError("Payment system is still loading. Please refresh.");
         }
     } else {
+        // "Pay Later" or Edit Mode
         onPayment(null); 
     }
   };
+
+  // Called when PaymentFields successfully gets a token
   const handleTokenGenerated = (token: string) => {
       onPayment(token); 
   };
@@ -79,23 +63,15 @@ export default function CheckoutForm({
           </span>
         </div>
       ) : (
-        // STICKY HEADER LAYOUT
         <div className="flex flex-col h-full max-w-2xl mx-auto">
           
-          {/* 1. Header */}
+          {/* Header */}
           <div className="flex-shrink-0 px-6 py-5 md:px-8 border-b border-gray-800 bg-gray-900 rounded-t-3xl flex justify-between items-center z-50">
-            <button 
-              onClick={() => setIsExpanded(false)} 
-              className="text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1"
-            >
-              <span>←</span> Back
-            </button>
-            <h2 className="text-xl font-bold text-white">
-                {isEditing ? 'Update Reservation' : 'Confirm Reservation'}
-            </h2>
+            <button onClick={() => setIsExpanded(false)} className="text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1"><span>←</span> Back</button>
+            <h2 className="text-xl font-bold text-white">{isEditing ? 'Update Reservation' : 'Confirm Reservation'}</h2>
           </div>
           
-          {/* 2. Scrollable Content */}
+          {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar pb-32">
             
              <div className="bg-gray-800 p-6 rounded-xl mb-8 border border-gray-700 shadow-lg">
@@ -103,7 +79,6 @@ export default function CheckoutForm({
                   <div className="text-4xl font-bold text-white mb-2">${total.toFixed(2)}</div>
                   <div className="text-gray-400 text-sm uppercase tracking-wide">Total Due</div>
                </div>
-
                <div className="space-y-3 text-sm">
                   <h3 className="font-bold text-gray-400 uppercase text-xs mb-3">Order Summary</h3>
                   {selectedItems.map((item: any, idx: number) => (
@@ -120,12 +95,7 @@ export default function CheckoutForm({
             {!isEditing && (
               <div className="mb-8">
                   <label className="flex items-center gap-3 bg-gray-800 p-4 rounded-lg border border-gray-600 cursor-pointer hover:bg-gray-750 transition-colors">
-                      <input 
-                          type="checkbox" 
-                          checked={payNow} 
-                          onChange={e => setPayNow(e.target.checked)} 
-                          className="w-5 h-5 accent-orange-500 cursor-pointer"
-                      />
+                      <input type="checkbox" checked={payNow} onChange={e => setPayNow(e.target.checked)} className="w-5 h-5 accent-orange-500 cursor-pointer"/>
                       <div>
                           <span className="block font-bold text-white">Pay with Card Now</span>
                           <span className="text-xs text-gray-400">Process payment immediately via NMI</span>
@@ -136,33 +106,19 @@ export default function CheckoutForm({
 
             {payNow && (
                 <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-                  <PaymentFields 
-                    onTokenGenerated={handleTokenGenerated} 
-                    onError={handleCardError} 
-                  />
+                  <PaymentFields onTokenGenerated={handleTokenGenerated} onError={handleCardError} />
                 </div>
             )}
 
             <label className="flex gap-4 items-start bg-red-950/30 p-4 rounded-xl mb-8 cursor-pointer border border-red-800/50 hover:bg-red-900/40 transition-colors">
-              <input 
-                type="checkbox" 
-                checked={agreed} 
-                onChange={e => setAgreed(e.target.checked)} 
-                className="w-6 h-6 mt-1 accent-orange-500 cursor-pointer shrink-0" 
-              />
-              <span className="text-sm text-gray-200 font-medium leading-relaxed">
-                  I agree to the liability waiver and assume full responsibility for any equipment damages.
-              </span>
+              <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="w-6 h-6 mt-1 accent-orange-500 cursor-pointer shrink-0" />
+              <span className="text-sm text-gray-200 font-medium leading-relaxed">I agree to the liability waiver and assume full responsibility for any equipment damages.</span>
             </label>
 
             {(message || cardError) && (
               <div className={`text-center font-bold p-4 rounded-lg mb-6 border animate-pulse ${
-                (message?.includes('Confirmed') && !cardError)
-                ? 'bg-green-900/40 text-green-400 border-green-800' 
-                : 'bg-red-900/40 text-red-400 border-red-800'
-              }`}>
-                {cardError || message}
-              </div>
+                (message?.includes('Confirmed') && !cardError) ? 'bg-green-900/40 text-green-400 border-green-800' : 'bg-red-900/40 text-red-400 border-red-800'
+              }`}>{cardError || message}</div>
             )}
 
             <button 
@@ -171,11 +127,7 @@ export default function CheckoutForm({
               disabled={loading || !agreed}
               className={`w-full bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed text-white py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-[0.98]`}
             >
-              {loading ? 'Processing...' : (
-                  agreed 
-                   ? (isEditing ? 'Update Reservation' : (payNow ? `Pay $${total.toFixed(2)} & Book` : 'Confirm Booking')) 
-                   : 'Agree to Continue'
-              )}
+              {loading ? 'Processing...' : (agreed ? (isEditing ? 'Update Reservation' : (payNow ? `Pay $${total.toFixed(2)} & Book` : 'Confirm Booking')) : 'Agree to Continue')}
             </button>
             
           </div>

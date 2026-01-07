@@ -13,35 +13,26 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
   const configAttempted = useRef(false);
 
   useEffect(() => {
-    let checkInterval: NodeJS.Timeout;
-
-    // Defines the setup logic
     const setupNMI = () => {
-        // 1. Check if the script exists
-        if (!window.CollectJS) return false;
+        if (!window.CollectJS) return;
+        if (configAttempted.current) return;
+        
+        // Ensure the hidden button exists before configuring
+        if (!document.getElementById('nmi-hidden-btn')) return;
 
-        // 2. CRITICAL: Check if the DIVs are actually in the DOM yet
-        const ccDiv = document.getElementById('cc-number');
-        if (!ccDiv) return false;
-
-        // Prevent double-configuration
-        if (configAttempted.current) return true;
-
-        console.log("DOM Ready. Configuring NMI...");
+        console.log("Configuring NMI (Button Mode)...");
         configAttempted.current = true;
 
         try {
             window.CollectJS.configure({
-                // Force Inline Mode
+                // 1. "Inline" mode for custom divs
                 'variant': 'inline', 
                 
-                // Disable wallets to prevent "PaymentRequestAbstraction" crash
-                // Note: If these cause "Unexpected Fields" again, remove them, 
-                // but usually 'variant: inline' requires these to be false or omitted.
-                // 'googlePay': false,
-                // 'applePay': false,
+                // 2. Attach to a hidden button instead of using createToken()
+                // This bypasses the initialization crash you were seeing.
+                'paymentSelector': '#nmi-hidden-btn',
 
-                // Map Fields
+                // 3. Map Fields
                 'fields': {
                     'ccnumber': {
                         'selector': '#cc-number',
@@ -57,70 +48,43 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
                     }
                 },
                 
-                // Styling
-                'styleSniffer': 'true',
-
-                // Callback
+                // 4. Callbacks
                 'callback': (response: any) => {
+                    // This runs when the hidden button is clicked and NMI finishes
                     if (response.token) {
                         onTokenGenerated(response.token);
                     } else {
+                        console.error("NMI Error:", response);
                         onError(response.error || "Check card details");
                     }
                 }
             });
             
-            // Verify if createToken appeared
-            let attempts = 0;
-            const verifyInterval = setInterval(() => {
-                attempts++;
-                if (typeof window.CollectJS.createToken === 'function') {
-                    console.log("NMI Ready: createToken function found.");
-                    setLoadingStatus(""); 
-                    clearInterval(verifyInterval);
-                } else if (attempts > 50) { 
-                    console.error("NMI Configured but createToken missing.");
-                    setLoadingStatus("Payment system error. Please refresh.");
-                    clearInterval(verifyInterval);
-                }
-            }, 100);
-
-            return true;
+            // Just clear the loading text, we assume it works if no immediate crash
+            setLoadingStatus(""); 
+            console.log("NMI Ready (Button Attached)");
 
         } catch (e) {
-            console.error("NMI Config Error:", e);
+            console.error("NMI Config Crash:", e);
             setLoadingStatus("Error loading payment.");
-            return false;
         }
     };
 
-    // --- SCRIPT LOADING LOGIC ---
-
-    // 1. Inject Script if missing
-    if (!document.getElementById('nmi-collect-js')) {
-        const script = document.createElement('script');
-        script.id = 'nmi-collect-js';
-        script.src = 'https://secure.nmi.com/token/Collect.js';
-        script.setAttribute('data-tokenization-key', process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY!);
-        script.async = true;
-        document.body.appendChild(script);
+    // Script Loading
+    if (document.getElementById('nmi-collect-js')) {
+        if (window.CollectJS) setTimeout(setupNMI, 500);
+        return;
     }
 
-    // 2. Start Polling Loop
-    // We poll until both Script AND Divs are ready
-    checkInterval = setInterval(() => {
-        const success = setupNMI();
-        if (success) {
-            clearInterval(checkInterval);
-        }
-    }, 200);
-
-    // Cleanup
-    return () => {
-        if (checkInterval) clearInterval(checkInterval);
-        // We reset the ref so if the user closes/reopens the section, it re-mounts
-        configAttempted.current = false;
+    const script = document.createElement('script');
+    script.id = 'nmi-collect-js';
+    script.src = 'https://secure.nmi.com/token/Collect.js';
+    script.setAttribute('data-tokenization-key', process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY!);
+    script.async = true;
+    script.onload = () => {
+        setTimeout(setupNMI, 500);
     };
+    document.body.appendChild(script);
 
   }, [onTokenGenerated, onError]);
 
@@ -134,6 +98,7 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
           </div>
       )}
 
+      {/* Fields */}
       <div className="space-y-4">
         <div>
            <label className="block text-xs text-gray-400 uppercase mb-1">Card Number</label>
@@ -154,6 +119,16 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
       <p className="text-xs text-gray-500 text-center mt-2 flex items-center justify-center gap-1">
         🔒 Payments secured by NMI
       </p>
+
+      {/* --- THE HIDDEN TRIGGER BUTTON --- */}
+      {/* We click this programmatically from CheckoutForm */}
+      <button 
+        id="nmi-hidden-btn" 
+        type="button" 
+        style={{ display: 'none' }}
+      >
+        Submit to NMI
+      </button>
     </div>
   );
 }
