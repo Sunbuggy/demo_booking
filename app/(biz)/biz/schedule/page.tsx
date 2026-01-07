@@ -1,15 +1,13 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (v12.0 - COMPLETE INTEGRATION)
+// SUNBUGGY ROSTER PAGE (v12.2 - FIXED REVOKE LOGIC)
 // ============================================================================
-// RESTORED: Full Day View, MiniCalendar, Print Styles, and Legacy Stats.
-// NEW FEATURES:
-// 1. Time Off Indicators: Yellow (Approved), Orange (Pending), Blue (Pref).
-// 2. Review Modal: Click "Pending" or "Approved" to manage requests/notes.
-// 3. Server Actions: Uses 'approveTimeOffRequest' for DB updates.
-// 4. Safety: 'getHistoricalWeather' fallback for dates >10 days out.
-// 5. UX FIXES: 8-Hour Auto-fill and Per-Employee Schedule Persistence.
+// CHANGELOG v12.2:
+// 1. FIXED: "Revoke" off-by-one error. Added strict date slicing and request sorting.
+// 2. FEATURE: Manager can click YELLOW (Approved) cells to Open Review Modal.
+// 3. FEATURE: 'Revoke & Delete' button for Managers to remove approved time off.
+// 4. UX: Modal now explicitly warns which dates will be removed.
 
 import { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import Link from 'next/link'; 
@@ -40,7 +38,7 @@ import {
   isSameDay, 
   isToday, 
   differenceInDays,
-  addHours // [DEV NOTE] Added for 8-hour auto-calculation
+  addHours 
 } from 'date-fns';
 
 import UserStatusAvatar from '@/components/UserStatusAvatar';
@@ -347,9 +345,6 @@ export default function RosterPage() {
   const [loading, setLoading] = useState(true);
   const [copying, setCopying] = useState(false);
   const [visibleLocs, setVisibleLocs] = useState<Record<string, boolean>>({ 'Las Vegas': true, 'Pismo': true, 'Michigan': true });
-  
-  // [DEV NOTE] This state holds the "last used" settings per employee to enable sticky defaults.
-  // When a shift is saved for an employee, we update this map.
   const [lastShiftParams, setLastShiftParams] = useState<Record<string, ShiftDefaults>>({});
 
   // -- MODALS STATE --
@@ -359,7 +354,7 @@ export default function RosterPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
   
-  // REVIEW MODAL (Time Off Approval)
+  // REVIEW MODAL (Time Off Approval & REVOKE)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<TimeOffRequest | null>(null);
   const [managerNote, setManagerNote] = useState('');
@@ -527,7 +522,7 @@ export default function RosterPage() {
       await supabase.from('audit_logs').insert({ action, table_name: table, row: rowId, user_id: currentUserId });
   };
 
-  // --- REVIEW ACTIONS ---
+  // --- REVIEW ACTIONS (APPROVE / DENY / REVOKE) ---
   
   const openReviewModal = (request: TimeOffRequest, e: React.MouseEvent) => {
       e.stopPropagation();
@@ -549,14 +544,29 @@ export default function RosterPage() {
       }
   };
 
+  // [DEV NOTE] NEW FUNCTION: Handles the deletion of an ALREADY APPROVED request.
+  const handleRevokeTimeOff = async () => {
+      if(!selectedRequest || !isManager) return;
+      
+      // Delete the request entirely from the database to clear the schedule
+      const { error } = await supabase.from('time_off_requests').delete().eq('id', selectedRequest.id);
+      
+      if (error) {
+          toast.error("Failed to revoke request");
+      } else {
+          await logChange(`Revoked/Deleted Time Off Request`, 'time_off_requests', selectedRequest.id);
+          toast.success("Time Off Removed from Schedule");
+          setIsReviewModalOpen(false);
+          fetchData();
+      }
+  };
+
   // --- GRID INTERACTIONS ---
 
   const handleCellClick = (emp: Employee, dateStr: string, existingShift?: Shift) => {
     if (!isManager) return;
     setSelectedEmpId(emp.id); setSelectedEmpName(emp.full_name); setSelectedDate(dateStr);
-    
     if (existingShift) {
-      // EDITING EXISTING SHIFT
       setSelectedShiftId(existingShift.id); 
       setFormRole(existingShift.role); 
       setFormTask(existingShift.task || 'NONE'); 
@@ -564,19 +574,15 @@ export default function RosterPage() {
       setFormStart(format(parseISO(existingShift.start_time), 'HH:mm')); 
       setFormEnd(format(parseISO(existingShift.end_time), 'HH:mm'));
     } else {
-      // CREATING NEW SHIFT - [DEV NOTE] Persistence Logic
-      // Check if we have saved params for this employee in this session.
       setSelectedShiftId(null); 
       const defaults = lastShiftParams[emp.id];
       if (defaults) { 
-          // Use sticky defaults
           setFormRole(defaults.role); 
           setFormTask(defaults.task || 'NONE'); 
           setFormStart(defaults.start); 
           setFormEnd(defaults.end); 
           setFormLocation(defaults.location); 
       } else { 
-          // Fallback defaults
           setFormRole('Guide'); 
           setFormTask('NONE'); 
           setFormLocation(emp.location); 
@@ -607,9 +613,6 @@ export default function RosterPage() {
             if (data) await logChange('Created Shift', 'employee_schedules', data.id);
         }
         
-        // [DEV NOTE] Save Sticky Defaults
-        // Store the values used in this save to the state map, keyed by Employee ID.
-        // Next time we click an empty cell for this employee, these values will be used.
         setLastShiftParams(p => ({ 
             ...p, 
             [selectedEmpId]: { 
@@ -872,7 +875,9 @@ export default function RosterPage() {
                                                 {emps.map((emp: Employee) => {
                                                     const empShifts = shifts.filter(s => s.user_id === emp.id);
                                                     
-                                                    const empReqs = rosterMetadata[emp.id]?.requests || [];
+                                                    // [DEV NOTE] SORTING REQUESTS to avoid "Off By One" mismatch in grid rendering
+                                                    // If multiple requests exist, ensure we check them in date order.
+                                                    const empReqs = (rosterMetadata[emp.id]?.requests || []).sort((a,b) => a.start_date.localeCompare(b.start_date));
                                                     const empAvail = rosterMetadata[emp.id]?.availability || [];
 
                                                     return (
@@ -911,11 +916,13 @@ export default function RosterPage() {
                                                             const shift = shifts.find(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateStr);
                                                             const isAway = shift && shift.location !== emp.location && !isVisiting;
                                                             
-                                                            // v11.4: Strict 10-char matching
-                                                            const request = empReqs.find(r => 
-                                                                dateStr >= r.start_date.substring(0,10) && 
-                                                                dateStr <= r.end_date.substring(0,10)
-                                                            );
+                                                            // [DEV NOTE] STRICT DATE MATCHING to prevent "Revoked Wrong Day" bug
+                                                            // We slice the ISO string to get strict YYYY-MM-DD for comparison, ignoring timezones.
+                                                            const request = empReqs.find(r => {
+                                                                const start = r.start_date.slice(0, 10);
+                                                                const end = r.end_date.slice(0, 10);
+                                                                return dateStr >= start && dateStr <= end;
+                                                            });
 
                                                             const availRule = empAvail.find(a => a.day_of_week === day.getDay());
 
@@ -950,9 +957,12 @@ export default function RosterPage() {
                                                                             </div>
                                                                         ) : (
                                                                         /* PRIORITY 2: APPROVED TIME OFF (YELLOW) */
-                                                                        /* v11.8 FIX: Truncate to avoid table blowout */
+                                                                        /* v12.1 FIX: Now clickable for Managers to REVOKE approval */
                                                                         reqStatus === 'APPROVED' ? (
-                                                                             <div className="h-full w-full bg-yellow-400 dark:bg-yellow-600 flex flex-col items-center justify-center p-1 border-l-4 border-yellow-600 dark:border-yellow-400 print-yellow">
+                                                                             <div 
+                                                                               className={`h-full w-full bg-yellow-400 dark:bg-yellow-600 flex flex-col items-center justify-center p-1 border-l-4 border-yellow-600 dark:border-yellow-400 print-yellow ${isManager ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                                                                               onClick={(e) => isManager && openReviewModal(request!, e)}
+                                                                             >
                                                                                 <span className="text-[10px] font-black uppercase text-black">OFF</span>
                                                                                 <span className="text-[8px] leading-none text-black/70 font-bold truncate max-w-[60px] mx-auto">{request!.reason || 'Approved'}</span>
                                                                              </div>
@@ -1085,12 +1095,14 @@ export default function RosterPage() {
 
       {/* MODALS */}
       <div className="print-hide">
-          {/* 1. REVIEW REQUEST MODAL (New v11.6) */}
+          {/* 1. REVIEW REQUEST MODAL (Pending OR Approved) */}
           <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
             <DialogContent className="max-w-sm">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-orange-600">
-                        <CalendarClock className="w-5 h-5" /> Review Time Off
+                    {/* [DEV NOTE] Header changes based on status (Review vs Manage Approved) */}
+                    <DialogTitle className={`flex items-center gap-2 ${selectedRequest?.status.toUpperCase() === 'APPROVED' ? 'text-zinc-600' : 'text-orange-600'}`}>
+                        <CalendarClock className="w-5 h-5" /> 
+                        {selectedRequest?.status.toUpperCase() === 'APPROVED' ? 'Manage Approved Time Off' : 'Review Request'}
                     </DialogTitle>
                     <DialogDescription>
                         Request for {selectedRequest?.user_name}
@@ -1103,6 +1115,7 @@ export default function RosterPage() {
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Dates:</span>
                                 <span className="font-mono font-bold">
+                                    {/* [DEV NOTE] Explicitly warn which dates are affected to prevent user confusion */}
                                     {format(parseISO(selectedRequest.start_date), 'MMM d')} - {format(parseISO(selectedRequest.end_date), 'MMM d')}
                                 </span>
                             </div>
@@ -1112,24 +1125,44 @@ export default function RosterPage() {
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-semibold uppercase">Manager Note (Optional)</label>
-                            <Textarea 
-                                placeholder="Reason for approval/denial..." 
-                                value={managerNote}
-                                onChange={(e) => setManagerNote(e.target.value)}
-                                className="resize-none"
-                            />
-                        </div>
-
-                        <div className="flex gap-2 pt-2">
-                            <Button variant="outline" className="flex-1 border-red-200 text-red-600 hover:bg-red-50" onClick={() => submitReview('denied')}>
-                                <X className="w-4 h-4 mr-2" /> Deny
-                            </Button>
-                            <Button className="flex-1 bg-green-600 hover:bg-green-500" onClick={() => submitReview('approved')}>
-                                <Check className="w-4 h-4 mr-2" /> Approve
-                            </Button>
-                        </div>
+                        {/* [DEV NOTE] CONDITIONAL UI:
+                            If PENDING -> Show Textarea + Approve/Deny buttons.
+                            If APPROVED -> Show Warning + Revoke button.
+                        */}
+                        {selectedRequest.status.toUpperCase() === 'APPROVED' ? (
+                            <div className="pt-2">
+                                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 rounded text-xs text-yellow-800 dark:text-yellow-200 mb-4 flex items-start gap-2">
+                                    <Info className="w-4 h-4 shrink-0 mt-0.5"/>
+                                    <span>
+                                        This time off is currently active on the schedule. Revoking it will remove the "OFF" block and allow you to schedule shifts for these dates.
+                                    </span>
+                                </div>
+                                <Button variant="destructive" className="w-full" onClick={handleRevokeTimeOff}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Revoke Approval & Remove
+                                </Button>
+                            </div>
+                        ) : (
+                            // DEFAULT PENDING VIEW
+                            <>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold uppercase">Manager Note (Optional)</label>
+                                    <Textarea 
+                                        placeholder="Reason for approval/denial..." 
+                                        value={managerNote}
+                                        onChange={(e) => setManagerNote(e.target.value)}
+                                        className="resize-none"
+                                    />
+                                </div>
+                                <div className="flex gap-2 pt-2">
+                                    <Button variant="outline" className="flex-1 border-red-200 text-red-600 hover:bg-red-50" onClick={() => submitReview('denied')}>
+                                        <X className="w-4 h-4 mr-2" /> Deny
+                                    </Button>
+                                    <Button className="flex-1 bg-green-600 hover:bg-green-500" onClick={() => submitReview('approved')}>
+                                        <Check className="w-4 h-4 mr-2" /> Approve
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
             </DialogContent>
