@@ -19,33 +19,45 @@ export default function CheckoutForm({
   const [payNow, setPayNow] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
 
+// Inside handleConfirm...
+
   const handleConfirm = () => {
     setCardError(null);
 
     if (payNow) {
-        // Try to trigger tokenization
-        if (window.CollectJS) {
-            console.log("Starting Tokenization...");
-            try {
-                window.CollectJS.createToken((response: any) => {
-                    // Success is handled by PaymentFields.tsx callback
-                    // Errors are handled here
-                    if (response && response.error) {
-                        setCardError(response.error);
-                    }
-                });
-            } catch (err) {
-                console.error("Tokenization Crash:", err);
-                setCardError("Payment system error. Please refresh the page.");
-            }
-        } else {
-            setCardError("Payment fields haven't loaded yet. Please wait a moment.");
+        // 1. Check if NMI loaded at all
+        if (!window.CollectJS) {
+            setCardError("Payment system not loaded. Please refresh page.");
+            return;
+        }
+
+        // 2. Check if the function exists
+        if (typeof window.CollectJS.createToken !== 'function') {
+            console.error("NMI Error: createToken missing. State:", window.CollectJS);
+            setCardError("System initializing... please wait 3 seconds and try again.");
+            
+            // Optional: Try to clear inputs or re-trigger config if needed
+            // But usually just waiting is enough
+            return;
+        }
+
+        // 3. Safe to call
+        console.log("Sending Card Data...");
+        try {
+            window.CollectJS.createToken((response: any) => {
+                if (response && response.error) {
+                    setCardError(response.error);
+                }
+                // Success is handled by PaymentFields callback
+            });
+        } catch (err) {
+            console.error("Tokenization Exception:", err);
+            setCardError("Payment error. Please check card details.");
         }
     } else {
         onPayment(null); 
     }
   };
-
   const handleTokenGenerated = (token: string) => {
       onPayment(token); 
   };

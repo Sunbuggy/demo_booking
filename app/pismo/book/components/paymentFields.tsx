@@ -9,26 +9,39 @@ declare global {
 }
 
 export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGenerated: (t: string) => void, onError: (e: string) => void }) {
-  const [loadingStatus, setLoadingStatus] = useState("Initializing secure payment...");
+  const [loadingStatus, setLoadingStatus] = useState("Loading secure fields...");
   const configAttempted = useRef(false);
 
   useEffect(() => {
+    let checkInterval: NodeJS.Timeout;
+
     // Defines the setup logic
     const setupNMI = () => {
-        if (!window.CollectJS) return;
-        if (configAttempted.current) return; 
+        // 1. Check if the script exists
+        if (!window.CollectJS) return false;
 
-        console.log("Configuring NMI...");
+        // 2. CRITICAL: Check if the DIVs are actually in the DOM yet
+        const ccDiv = document.getElementById('cc-number');
+        if (!ccDiv) return false;
+
+        // Prevent double-configuration
+        if (configAttempted.current) return true;
+
+        console.log("DOM Ready. Configuring NMI...");
         configAttempted.current = true;
 
         try {
             window.CollectJS.configure({
-                // CRITICAL: Tells NMI we are using custom DIVs
+                // Force Inline Mode
                 'variant': 'inline', 
                 
-                // REMOVED: googlePay/applePay to prevent "Unexpected fields" error
-                
-                // Map your DIV IDs
+                // Disable wallets to prevent "PaymentRequestAbstraction" crash
+                // Note: If these cause "Unexpected Fields" again, remove them, 
+                // but usually 'variant: inline' requires these to be false or omitted.
+                // 'googlePay': false,
+                // 'applePay': false,
+
+                // Map Fields
                 'fields': {
                     'ccnumber': {
                         'selector': '#cc-number',
@@ -44,10 +57,10 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
                     }
                 },
                 
-                // Style Sniffer helps NMI match your font color/size
+                // Styling
                 'styleSniffer': 'true',
 
-                // The callback that runs when a token is created
+                // Callback
                 'callback': (response: any) => {
                     if (response.token) {
                         onTokenGenerated(response.token);
@@ -57,61 +70,57 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
                 }
             });
             
-            // Wait for NMI to finish rendering the iframes
+            // Verify if createToken appeared
             let attempts = 0;
-            const checkInterval = setInterval(() => {
+            const verifyInterval = setInterval(() => {
                 attempts++;
-                // We check if createToken is available
                 if (typeof window.CollectJS.createToken === 'function') {
-                    console.log("NMI Ready.");
+                    console.log("NMI Ready: createToken function found.");
                     setLoadingStatus(""); 
-                    clearInterval(checkInterval);
-                } else if (attempts > 50) { // Wait up to 10 seconds
-                    console.error("NMI Timeout");
-                    // Even if timeout, sometimes it works, so we just clear message
-                    setLoadingStatus(""); 
-                    clearInterval(checkInterval);
+                    clearInterval(verifyInterval);
+                } else if (attempts > 50) { 
+                    console.error("NMI Configured but createToken missing.");
+                    setLoadingStatus("Payment system error. Please refresh.");
+                    clearInterval(verifyInterval);
                 }
-            }, 200);
+            }, 100);
+
+            return true;
 
         } catch (e) {
             console.error("NMI Config Error:", e);
             setLoadingStatus("Error loading payment.");
+            return false;
         }
     };
 
     // --- SCRIPT LOADING LOGIC ---
 
-    // 1. If script is already loaded globally, just configure
-    if (window.CollectJS) {
-        setupNMI();
-        return;
+    // 1. Inject Script if missing
+    if (!document.getElementById('nmi-collect-js')) {
+        const script = document.createElement('script');
+        script.id = 'nmi-collect-js';
+        script.src = 'https://secure.nmi.com/token/Collect.js';
+        script.setAttribute('data-tokenization-key', process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY!);
+        script.async = true;
+        document.body.appendChild(script);
     }
 
-    // 2. If script tag exists but not ready, wait for it
-    if (document.getElementById('nmi-collect-js')) {
-        const interval = setInterval(() => {
-            if (window.CollectJS) {
-                clearInterval(interval);
-                setupNMI();
-            }
-        }, 200);
-        return;
-    }
+    // 2. Start Polling Loop
+    // We poll until both Script AND Divs are ready
+    checkInterval = setInterval(() => {
+        const success = setupNMI();
+        if (success) {
+            clearInterval(checkInterval);
+        }
+    }, 200);
 
-    // 3. Otherwise, inject script
-    const script = document.createElement('script');
-    script.id = 'nmi-collect-js';
-    script.src = 'https://secure.nmi.com/token/Collect.js';
-    script.setAttribute('data-tokenization-key', process.env.NEXT_PUBLIC_NMI_TOKENIZATION_KEY!);
-    script.async = true;
-    
-    script.onload = () => {
-        // Give the script a moment to parse
-        setTimeout(setupNMI, 200);
+    // Cleanup
+    return () => {
+        if (checkInterval) clearInterval(checkInterval);
+        // We reset the ref so if the user closes/reopens the section, it re-mounts
+        configAttempted.current = false;
     };
-    
-    document.body.appendChild(script);
 
   }, [onTokenGenerated, onError]);
 
@@ -125,7 +134,6 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
           </div>
       )}
 
-      {/* IMPORTANT: These DIVs must exist before configure() runs. */}
       <div className="space-y-4">
         <div>
            <label className="block text-xs text-gray-400 uppercase mb-1">Card Number</label>
