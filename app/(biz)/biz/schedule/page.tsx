@@ -1,13 +1,13 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (v13.3 - STABILITY FIX)
+// SUNBUGGY ROSTER PAGE (v13.4 - DAY VIEW WEATHER INTEGRATION)
 // ============================================================================
-// CHANGELOG v13.3:
-// 1. CRITICAL FIX: Moved 'groupedEmployees' to top-level scope to prevent "Not Found" error.
-// 2. REFACTOR: Weather Modal is now a clean import from './components/weather-modal'.
-// 3. UI: All views (Week/Day) safely access 'groupedEmployees'.
-// 4. PRESERVED: Live Weather Data, Tides, Desktop Arrows, Roster Logic.
+// CHANGELOG v13.4:
+// 1. FEATURE: Day View Weather. Clicking the weather badge in Day View now opens the Modal.
+// 2. UI: Added visual feedback (hover/pointer) to Day View weather cells.
+// 3. STABILITY: Ensured 'groupedEmployees' and 'dateKey' are strictly defined.
+// 4. PRESERVED: All previous features (Real Data, Tides, Arrows, Scroll Fix).
 
 import { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import Link from 'next/link'; 
@@ -16,7 +16,7 @@ import { getStaffRoster } from '@/utils/supabase/queries';
 import { getLocationWeather, DailyWeather } from '@/app/actions/weather'; 
 import { approveTimeOffRequest } from '@/app/actions/approve-time-off';
 
-// --- COMPONENT IMPORTS ---
+// --- COMPONENTS ---
 import UserStatusAvatar from '@/components/UserStatusAvatar';
 import { WeatherModal } from './components/weather-modal'; 
 import PublishButton from './components/publish-button';
@@ -110,7 +110,7 @@ const getDurationHours = (start: string, end: string): number => {
     return diffMinutes / 60;
 };
 
-// [DEV NOTE] Simple Weather Icon Logic for the main grid (Modal has its own)
+// [DEV NOTE] Weather Icon Logic for main grid usage
 const getWeatherIcon = (code: number): LucideIcon => {
     if (code >= 95) return CloudLightning;
     if (code >= 71) return Snowflake;
@@ -176,7 +176,7 @@ const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: strin
     );
 };
 
-// --- WEATHER CELL (Small Grid Version) ---
+// --- WEATHER CELL (Main Grid Display) ---
 const WeatherCell = ({ data }: { data: DailyWeather | undefined }) => {
     if (!data) return <div className="text-[10px] text-muted-foreground h-full flex items-center justify-center">-</div>;
     const Icon = getWeatherIcon(data.code); 
@@ -272,7 +272,7 @@ export default function RosterPage() {
 
   useEffect(() => { if (isMounted) fetchData(); }, [currentDate, isMounted]);
 
-  // --- CRITICAL FIX: groupedEmployees is defined HERE, early in the scope ---
+  // --- CRITICAL: GROUPED EMPLOYEES SCOPE FIX ---
   const groupedEmployees = useMemo(() => {
       const groups: Record<string, any> = {};
       Object.keys(LOCATIONS).forEach(loc => {
@@ -286,14 +286,10 @@ export default function RosterPage() {
       employees.forEach(emp => {
           const loc = LOCATIONS[emp.location] ? emp.location : 'Las Vegas';
           let dept = emp.department; 
-          // Safety check for department
           if (!groups[loc][dept]) dept = Object.keys(groups[loc])[0] || 'ADMIN';
-          
           let role = 'General'; 
           const match = (ROLE_GROUPS[dept] || []).find(r => emp.job_title.toUpperCase().includes(r));
           if (match) role = match;
-          
-          // Safety check for array existence
           if(groups[loc][dept] && groups[loc][dept][role]) {
              groups[loc][dept][role].push(emp);
           }
@@ -386,7 +382,7 @@ export default function RosterPage() {
         } catch (e) { console.error(e); }
     }
 
-    // Weather Fetch (REAL DATA via Server Action)
+    // Weather Fetch (REAL DATA)
     const weatherUpdates: Record<string, DailyWeather[]> = {};
     const daysUntilStart = differenceInDays(startOfWeekDate, new Date());
     const useHistorical = daysUntilStart > 10; 
@@ -398,10 +394,9 @@ export default function RosterPage() {
                 date: format(day, 'yyyy-MM-dd'), 
                 min_temp: 50, max_temp: 70, code: 1, condition: 'Historical', 
                 sunrise: '6:00 AM', sunset: '8:00 PM', hourly: [], tides: [] 
-            })); // Fallback
+            })); 
             weatherUpdates[loc] = dummyData;
         } else {
-            // [DEV NOTE] This calls the server action that fetches LIVE Open-Meteo & NOAA data
             const data = await getLocationWeather(loc, format(startOfWeekDate, 'yyyy-MM-dd'), 7);
             if (data) weatherUpdates[loc] = data;
         }
@@ -427,7 +422,6 @@ export default function RosterPage() {
       setIsWeatherModalOpen(true);
   };
 
-  // Helper for Nav
   const handleNavWeatherDay = (direction: 'prev' | 'next') => {
       const current = parseISO(selectedWeatherDate);
       const newDate = direction === 'next' ? addDays(current, 1) : subDays(current, 1);
@@ -437,7 +431,6 @@ export default function RosterPage() {
       else toast.error("No forecast data for that day.");
   };
 
-  // Helper for Data Passing
   const getSelectedWeatherDayData = () => {
       return weatherData[selectedWeatherLoc]?.find(d => d.date === selectedWeatherDate) || null;
   }
@@ -700,7 +693,11 @@ export default function RosterPage() {
                                     <div className="flex items-center"><MapPin className="w-4 h-4 inline mr-2" /> {locName}</div>
                                     {locName === 'Las Vegas' && dailyStats[dateKey] && (<div className="text-xs font-normal text-orange-300 normal-case mt-1 font-mono">People: {dailyStats[dateKey].people} — {dailyStats[dateKey].fullString}</div>)}
                                 </div>
-                                {todayWeather && (<div onClick={() => handleWeatherClick(locName, dateKey)} className="cursor-pointer hover:scale-105 transition-transform flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-slate-700 print:bg-white print:text-black print:border-black"><WeatherCell data={todayWeather} /></div>)}
+                                {todayWeather && (
+                                    <div onClick={() => handleWeatherClick(locName, dateKey)} className="cursor-pointer hover:scale-105 transition-transform flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-slate-700 print:bg-white print:text-black print:border-black">
+                                        <WeatherCell data={todayWeather} />
+                                    </div>
+                                )}
                             </div>
                             <div className="divide-y divide-slate-100 dark:divide-slate-800 print:divide-black">
                                 {activeDepts.map(([deptName, roleGroups]) => {

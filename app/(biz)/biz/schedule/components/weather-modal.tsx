@@ -40,15 +40,12 @@ export function WeatherModal({
   
   const hourlyScrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to current hour when modal opens
+  // Auto-scroll to current hour
   useEffect(() => {
     if (isOpen && hourlyScrollRef.current) {
         const currentHour = new Date().getHours();
-        // Hours start at 6am. Each card is ~88px.
-        // If current hour < 6, scroll to 0. 
         const hourIndex = Math.max(0, currentHour - 6);
         const scrollPos = Math.max(0, (hourIndex * 88) - 40); 
-        
         setTimeout(() => {
             if(hourlyScrollRef.current) {
                 hourlyScrollRef.current.scrollTo({ left: scrollPos, behavior: 'smooth' });
@@ -110,18 +107,18 @@ export function WeatherModal({
                       </div>
                       <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg flex flex-col items-center justify-center border border-blue-100 dark:border-blue-900">
                           <Wind className="w-5 h-5 text-blue-500 mb-1" />
-                          <span className="font-mono font-bold text-sm">-- mph</span>
-                          <span className="text-[10px] text-muted-foreground uppercase">Wind (Avg)</span>
+                          <span className="font-mono font-bold text-sm">{data.avg_wind ?? '--'} mph</span>
+                          <span className="text-[10px] text-muted-foreground uppercase">Avg Wind</span>
                       </div>
                       <div className="bg-purple-50 dark:bg-purple-950/30 p-3 rounded-lg flex flex-col items-center justify-center border border-purple-100 dark:border-purple-900">
-                          <Droplets className="w-5 h-5 text-purple-500 mb-1" />
-                          <span className="font-mono font-bold text-sm">-- %</span>
-                          <span className="text-[10px] text-muted-foreground uppercase">Humidity</span>
+                          <CloudRain className="w-5 h-5 text-purple-500 mb-1" />
+                          <span className="font-mono font-bold text-sm">{data.precip_chance ?? 0}%</span>
+                          <span className="text-[10px] text-muted-foreground uppercase">Chance Rain</span>
                       </div>
                       <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg flex flex-col items-center justify-center border border-amber-100 dark:border-amber-900">
                           <Sun className="w-5 h-5 text-amber-500 mb-1" />
-                          <span className="font-mono font-bold text-sm">{data.condition}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase">Condition</span>
+                          <span className="font-mono font-bold text-sm">{data.uv_index ?? '-'}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase">UV Index</span>
                       </div>
                   </div>
 
