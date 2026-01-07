@@ -1,8 +1,8 @@
 /**
  * @file app/(biz)/biz/admin/developer/docs/page.tsx
  * @description LIVING DOCUMENTATION.
- * Updated: Added "Timeclock & Payroll" Architecture.
- * Updated: Fixed "lib/" pathing (removed src).
+ * Updated: Integrated Schedule Roster (v12.0) Documentation.
+ * Updated: Refined Moment.js Tech Debt reasoning.
  * ACCESS: Level 950+ (Developers) Only.
  */
 import React from 'react';
@@ -16,8 +16,14 @@ import {
   CircleDashed,
   CalendarClock,
   KeyRound,
-  FileSpreadsheet, // Added for Payroll
-  Clock // Added for Timeclock
+  FileSpreadsheet,
+  Clock,
+  Printer,
+  MousePointerClick,
+  Palmtree,
+  CloudSun,
+  Database,
+  LayoutTemplate
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +34,7 @@ export default function DeveloperDocsPage() {
   // SHARED STYLES
   // The "Frosted Glass" Effect: Semi-transparent white + Blur for Light Mode.
   // Dark Mode stays deep zinc but with a slight transparency for consistency.
+  // High contrast text ensures readability in bright sunlight (field conditions).
   const glassCardStyles = "bg-white/60 dark:bg-zinc-950/80 backdrop-blur-md border-white/40 dark:border-zinc-800 shadow-xl transition-all hover:shadow-2xl hover:bg-white/70 dark:hover:bg-zinc-950/90";
   const glassHeaderStyles = "text-zinc-800 dark:text-zinc-100";
   const glassTextStyles = "text-zinc-600 dark:text-zinc-400";
@@ -48,7 +55,7 @@ export default function DeveloperDocsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* LEFT COLUMN: CORE STRUCTURE */}
+        {/* LEFT COLUMN: CORE STRUCTURE (Span 2) */}
         <div className="lg:col-span-2 space-y-8">
           
           {/* 1. USER LEVELS & SECURITY */}
@@ -127,65 +134,135 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 2. AUTH & ROUTING ARCHITECTURE */}
+          {/* 2. SCHEDULE ROSTER V12.0 (NEW SECTION) */}
           <Card className={glassCardStyles}>
-            <CardHeader>
-              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-500">
-                <KeyRound size={24} />
-                <CardTitle className="uppercase tracking-widest">Auth & Smart Routing</CardTitle>
+            <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
+              <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
+                <CalendarClock size={24} />
+                <CardTitle className="uppercase tracking-widest">Schedule Roster System (v12.0)</CardTitle>
               </div>
               <CardDescription className={glassTextStyles}>
-                How we determine "Where to go" after sign-in.
+                Central command for Vegas, Pismo, and Michigan. Status: Production Ready.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm">
+            <CardContent className="space-y-6 pt-6">
               
-              <div className="bg-purple-50/50 dark:bg-purple-900/10 p-3 rounded-lg border border-purple-100 dark:border-purple-800">
-                <p className="font-bold text-purple-700 dark:text-purple-400 mb-2">The Decision Hierarchy</p>
-                <ol className="list-decimal list-inside space-y-1 text-zinc-700 dark:text-zinc-300">
-                  <li>
-                    <strong>User Preference:</strong> Checks <code>users.homepage</code> (Managed in <code>/account</code>).
-                  </li>
-                  <li>
-                    <strong>Role Check:</strong> If Level ≥ 300 (Staff), target <strong>Location Dashboard</strong>.
-                  </li>
-                  <li>
-                    <strong>Location Resolve:</strong> Maps <code>primary_work_location</code> (e.g., "Las Vegas") to URL slug (<code>/biz/vegas</code>).
-                  </li>
-                  <li>
-                    <strong>Fallback:</strong> Customers & Guests default to <strong>Root</strong> (<code>/</code>).
-                  </li>
-                </ol>
+              {/* OVERVIEW */}
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">1. Overview</h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  The Roster page (<code>app/(biz)/biz/schedule/page.tsx</code>) handles staff logistics across all locations.
+                  It has evolved to support <strong>drag-and-drop scheduling</strong>, an <strong>integrated Time Off workflow</strong>, 
+                  and <strong>forecast-based planning</strong>.
+                </p>
               </div>
 
+              {/* CORE FEATURES GRID */}
               <div>
-                <h4 className="font-bold text-zinc-800 dark:text-white mb-2">Key Files</h4>
-                <ul className="space-y-2 pl-2">
-                  <li className="flex gap-2">
-                    <code className="text-xs bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded h-fit">lib/utils/auth-routing.ts</code>
-                    <span className="text-xs text-zinc-500">
-                      <strong>"The Brain"</strong>. Pure function that calculates destination paths.
-                    </span>
-                  </li>
-                  <li className="flex gap-2">
-                    <code className="text-xs bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded h-fit">app/auth/callback/route.ts</code>
-                    <span className="text-xs text-zinc-500">
-                      Handles Magic Link/OAuth redirects. Queries profile <em>before</em> redirecting.
-                    </span>
-                  </li>
-                  <li className="flex gap-2">
-                    <code className="text-xs bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded h-fit">app/page.tsx</code>
-                    <span className="text-xs text-zinc-500">
-                      <strong>"The Gatekeeper"</strong>. Redirects logged-in staff; renders Welcome UI for guests.
-                    </span>
-                  </li>
-                </ul>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-3">2. Core Features & UX</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Viewport */}
+                  <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
+                    <div className="flex items-center gap-2 mb-1">
+                      <LayoutTemplate size={14} className="text-blue-500"/>
+                      <span className="font-bold text-xs text-zinc-800 dark:text-zinc-200">Locked Viewport</span>
+                    </div>
+                    <p className="text-xs text-zinc-500">
+                      Body fixed to <code>h-[calc(100vh-65px)]</code>. Header pins to top. Managers never lose tools while scrolling long lists.
+                    </p>
+                  </div>
+                  {/* Command Center */}
+                  <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
+                    <div className="flex items-center gap-2 mb-1">
+                      <MousePointerClick size={14} className="text-purple-500"/>
+                      <span className="font-bold text-xs text-zinc-800 dark:text-zinc-200">Time Command Center</span>
+                    </div>
+                    <p className="text-xs text-zinc-500">
+                      Unified nav widget. "Now" button resets view. Mini-calendar popover jumps dates without DB fetches.
+                    </p>
+                  </div>
+                  {/* Print Engine */}
+                  <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Printer size={14} className="text-zinc-500"/>
+                      <span className="font-bold text-xs text-zinc-800 dark:text-zinc-200">Print Engine (v10.18)</span>
+                    </div>
+                    <p className="text-xs text-zinc-500">
+                      <code>@media print</code> transformation. Avatars shrink to 20px. Depts move side-by-side. Smart pagination for Pismo/Michigan.
+                    </p>
+                  </div>
+                  {/* Time Off */}
+                  <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Palmtree size={14} className="text-orange-500"/>
+                      <span className="font-bold text-xs text-zinc-800 dark:text-zinc-200">Time Off Logic</span>
+                    </div>
+                    <p className="text-xs text-zinc-500">
+                      <strong>Yellow:</strong> Approved (Blocks Cell). <strong>Orange:</strong> Pending (Review Modal). <strong>Red:</strong> Conflict Warning (!).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="bg-zinc-200 dark:bg-zinc-800" />
+
+              {/* DATA ARCHITECTURE */}
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-3 flex items-center gap-2">
+                  <Database size={16} /> 3. Data Architecture (Server Actions)
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="text-zinc-500 dark:text-zinc-400 font-bold border-b border-zinc-200 dark:border-zinc-700">
+                      <tr>
+                        <th className="pb-2">Action / Source</th>
+                        <th className="pb-2">File Path</th>
+                        <th className="pb-2">Purpose</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-600 dark:text-zinc-400">
+                      <tr>
+                        <td className="py-2 font-mono text-purple-600 dark:text-purple-400">approveTimeOffRequest</td>
+                        <td className="py-2 opacity-70">app/actions/approve-time-off.ts</td>
+                        <td className="py-2">Updates status (APPROVED/DENIED) & logs manager note.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 font-mono text-blue-600 dark:text-blue-400">getLocationWeather</td>
+                        <td className="py-2 opacity-70">app/actions/weather.ts</td>
+                        <td className="py-2">Fetches 7-day forecast. Fallback to historical norms if {'>'}10 days.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 font-mono text-zinc-800 dark:text-zinc-300">getStaffRoster</td>
+                        <td className="py-2 opacity-70">Supabase Query</td>
+                        <td className="py-2">Fetches active employees filtered by location.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 font-mono text-zinc-800 dark:text-zinc-300">fetch_from_old_db</td>
+                        <td className="py-2 opacity-70">Legacy MySQL</td>
+                        <td className="py-2">Retrieves "Reservation Counts" for legacy dashboard stats.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* VISUAL LEGEND */}
+              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-4 rounded-lg">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Visual Legend & Badges</h3>
+                <div className="flex flex-wrap gap-3">
+                  <Badge className="bg-green-600 hover:bg-green-700">SM (Site Manager)</Badge>
+                  <Badge className="bg-red-600 hover:bg-red-700">T (Torch/Dispatch)</Badge>
+                  <Badge className="bg-blue-600 hover:bg-blue-700">S (SST/Mechanic)</Badge>
+                  <div className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded border border-yellow-200">Yellow Row: Header</div>
+                  <div className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs font-bold rounded border border-orange-200">Orange Box: Pending Off</div>
+                  <div className="px-2 py-0.5 bg-zinc-200 text-zinc-500 text-xs font-bold rounded border border-zinc-300 bg-[linear-gradient(45deg,transparent_25%,rgba(0,0,0,.05)_50%,transparent_75%,transparent_100%)] bg-[length:4px_4px]">Hatched: Unavailable</div>
+                </div>
               </div>
 
             </CardContent>
           </Card>
 
-          {/* 3. TIMECLOCK & PAYROLL ENGINE (NEW) */}
+          {/* 3. TIMECLOCK & PAYROLL ENGINE */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-500">
@@ -249,9 +326,9 @@ export default function DeveloperDocsPage() {
                     <span>
                       <code>generate-payroll-report.ts</code> handles the heavy math. It differentiates rules based on Location/Company:
                       <br/>
-                      <span className="text-xs ml-1">• <strong>CA:</strong> Daily OT ({'>'}8h), Double Time ({'>'}12h), Weekly OT ({'>'}40h accumulated).</span>
+                      <span className="text-xs ml-1">â€¢ <strong>CA:</strong> Daily OT ({'>'}8h), Double Time ({'>'}12h), Weekly OT ({'>'}40h accumulated).</span>
                       <br/>
-                      <span className="text-xs ml-1">• <strong>NV/MI:</strong> Standard Weekly OT ({'>'}40h total).</span>
+                      <span className="text-xs ml-1">â€¢ <strong>NV/MI:</strong> Standard Weekly OT ({'>'}40h total).</span>
                     </span>
                   </li>
                 </ul>
@@ -260,18 +337,39 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 4. FILE STRUCTURE MAP */}
+           {/* 4. AUTH & ROUTING ARCHITECTURE */}
+           <Card className={glassCardStyles}>
+            <CardHeader>
+              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-500">
+                <KeyRound size={24} />
+                <CardTitle className="uppercase tracking-widest">Auth & Smart Routing</CardTitle>
+              </div>
+              <CardDescription className={glassTextStyles}>
+                How we determine "Where to go" after sign-in.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div className="bg-purple-50/50 dark:bg-purple-900/10 p-3 rounded-lg border border-purple-100 dark:border-purple-800">
+                <p className="font-bold text-purple-700 dark:text-purple-400 mb-2">The Decision Hierarchy</p>
+                <ol className="list-decimal list-inside space-y-1 text-zinc-700 dark:text-zinc-300">
+                  <li><strong>User Preference:</strong> Checks <code>users.homepage</code> (Managed in <code>/account</code>).</li>
+                  <li><strong>Role Check:</strong> If Level â‰¥ 300 (Staff), target <strong>Location Dashboard</strong>.</li>
+                  <li><strong>Location Resolve:</strong> Maps <code>primary_work_location</code> (e.g., "Las Vegas") to URL slug (<code>/biz/vegas</code>).</li>
+                  <li><strong>Fallback:</strong> Customers & Guests default to <strong>Root</strong> (<code>/</code>).</li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* 5. FILE STRUCTURE MAP */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
                 <FolderTree size={24} />
                 <CardTitle className="uppercase tracking-widest">Directory Map</CardTitle>
               </div>
-              <CardDescription className={glassTextStyles}>Where we chose to place files and why.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-6">
-              
-              {/* LIB */}
               <div>
                 <h3 className={`text-sm font-bold mb-2 flex items-center gap-2 ${glassHeaderStyles}`}>
                   <span className="text-blue-600 dark:text-blue-500">lib/</span> (The Brain)
@@ -287,52 +385,24 @@ export default function DeveloperDocsPage() {
                   </li>
                 </ul>
               </div>
-
-              {/* APP ACTIONS */}
               <div>
                 <h3 className={`text-sm font-bold mb-2 flex items-center gap-2 ${glassHeaderStyles}`}>
                   <span className="text-orange-600 dark:text-orange-500">app/actions/</span> (The Muscle)
                 </h3>
                 <ul className={`text-sm space-y-2 pl-4 border-l border-zinc-300 dark:border-zinc-800 ${glassTextStyles}`}>
-                  <li>
-                    All <strong>"Use Server"</strong> mutations live here.
-                  </li>
-                  <li>
-                    <strong>Pattern:</strong> Validate Input (Zod) → Check Permissions (Auth) → Execute DB Query → Revalidate Path.
-                  </li>
-                  <li>
-                    <em>Example:</em> <code>admin-payroll.ts</code> contains the sensitive logic for editing time cards and bypassing RLS.
-                  </li>
+                  <li>All <strong>"Use Server"</strong> mutations live here.</li>
+                  <li><strong>Pattern:</strong> Validate (Zod) â†’ Auth Check â†’ DB Query â†’ Revalidate Path.</li>
                 </ul>
               </div>
-
-              {/* BIZ ROUTING */}
-              <div>
-                <h3 className={`text-sm font-bold mb-2 flex items-center gap-2 ${glassHeaderStyles}`}>
-                  <span className="text-yellow-600 dark:text-yellow-500">app/(biz)/</span> (The Protected Core)
-                </h3>
-                <ul className={`text-sm space-y-2 pl-4 border-l border-zinc-300 dark:border-zinc-800 ${glassTextStyles}`}>
-                  <li>
-                    Everything inside <code>(biz)</code> requires authentication.
-                  </li>
-                  <li>
-                    <strong>Dashboard:</strong> <code>/biz/[location]/page.tsx</code>.
-                  </li>
-                  <li>
-                    <strong>Admin Tools:</strong> <code>/biz/payroll/...</code> and <code>/biz/admin/...</code>.
-                  </li>
-                </ul>
-              </div>
-
             </CardContent>
           </Card>
 
         </div>
 
-        {/* RIGHT COLUMN: TECH STACK & DEBT */}
+        {/* RIGHT COLUMN: TECH STACK & DEBT (Span 1) */}
         <div className="space-y-8">
           
-          {/* 5. TECH STACK */}
+          {/* 6. TECH STACK */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-green-600 dark:text-green-500">
@@ -356,29 +426,6 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 6. SCHEDULE LOGIC */}
-          <Card className={glassCardStyles}>
-            <CardHeader>
-              <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
-                <CalendarClock size={24} />
-                <CardTitle className="uppercase tracking-widest">Schedule Logic</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
-              <p>The <strong>Roster Grid</strong> uses a strict hierarchy to determine what to display in a cell:</p>
-              <ol className="list-decimal list-inside space-y-1 ml-1">
-                <li><strong className="text-green-600">Shift Card:</strong> (Top Priority) Shows if shift exists.</li>
-                <li><strong className="text-yellow-600">Approved Off:</strong> Blocks cell (Yellow).</li>
-                <li><strong className="text-orange-600">Pending Request:</strong> Clickable Review Modal.</li>
-                <li><strong className="text-blue-500">Preferred Off:</strong> Informational badge.</li>
-              </ol>
-              <Separator className="my-2"/>
-              <p className="text-xs">
-                <strong>CRITICAL:</strong> All date comparisons use <code>.substring(0,10)</code> to match "YYYY-MM-DD" strings strictly. This prevents UTC/Local timezone mismatch bugs.
-              </p>
-            </CardContent>
-          </Card>
-
           {/* 7. CURRENT DEBT / TODO */}
           <Card className={`${glassCardStyles} border-dashed`}>
             <CardHeader>
@@ -399,16 +446,17 @@ export default function DeveloperDocsPage() {
                   <Badge className="ml-auto bg-green-600 text-[10px] h-5">DONE</Badge>
                 </li>
 
-                {/* PARTIAL */}
+                {/* PARTIAL / URGENT REFACTOR */}
                 <li className="flex items-start gap-2 text-sm text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 p-2 rounded-lg">
                   <CircleDashed className="w-4 h-4 shrink-0 mt-0.5" />
                   <div className="flex flex-col gap-1 w-full">
                     <div className="flex justify-between items-center w-full">
                       <span className="font-bold">Moment.js Migration</span>
-                      <Badge className="bg-blue-600 text-[10px] h-5">PARTIAL</Badge>
+                      <Badge className="bg-blue-600 text-[10px] h-5">URGENT</Badge>
                     </div>
                     <span className="text-xs opacity-90">
-                      Roster & Time Off modules now use <code>date-fns</code>. Legacy charts still use Moment.
+                      <strong>Reason:</strong> Legacy library with large bundle size affecting Load Time & SEO.
+                      <br/><strong>Plan:</strong> Refactor to <code>date-fns</code> or Native <code>Intl</code> API.
                     </span>
                   </div>
                 </li>

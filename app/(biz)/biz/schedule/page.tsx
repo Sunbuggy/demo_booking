@@ -9,6 +9,7 @@
 // 2. Review Modal: Click "Pending" or "Approved" to manage requests/notes.
 // 3. Server Actions: Uses 'approveTimeOffRequest' for DB updates.
 // 4. Safety: 'getHistoricalWeather' fallback for dates >10 days out.
+// 5. UX FIXES: 8-Hour Auto-fill and Per-Employee Schedule Persistence.
 
 import { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import Link from 'next/link'; 
@@ -38,7 +39,8 @@ import {
   isSameMonth, 
   isSameDay, 
   isToday, 
-  differenceInDays 
+  differenceInDays,
+  addHours // [DEV NOTE] Added for 8-hour auto-calculation
 } from 'date-fns';
 
 import UserStatusAvatar from '@/components/UserStatusAvatar';
@@ -189,7 +191,7 @@ const getHistoricalWeather = (location: string, date: Date): DailyWeather => {
     const month = date.getMonth(); 
     const norms: Record<string, number[]> = {
         'Las Vegas': [58, 61, 70, 78, 88, 99, 105, 103, 95, 82, 67, 57],
-        'Pismo':     [62, 62, 64, 66, 67, 69, 70, 71, 72, 71, 68, 62],
+        'Pismo':      [62, 62, 64, 66, 67, 69, 70, 71, 72, 71, 68, 62],
         'Michigan':  [30, 34, 45, 58, 69, 79, 83, 81, 74, 61, 47, 35]
     };
     const locKey = Object.keys(norms).find(k => location.includes(k)) || 'Las Vegas';
@@ -345,6 +347,9 @@ export default function RosterPage() {
   const [loading, setLoading] = useState(true);
   const [copying, setCopying] = useState(false);
   const [visibleLocs, setVisibleLocs] = useState<Record<string, boolean>>({ 'Las Vegas': true, 'Pismo': true, 'Michigan': true });
+  
+  // [DEV NOTE] This state holds the "last used" settings per employee to enable sticky defaults.
+  // When a shift is saved for an employee, we update this map.
   const [lastShiftParams, setLastShiftParams] = useState<Record<string, ShiftDefaults>>({});
 
   // -- MODALS STATE --
@@ -549,7 +554,9 @@ export default function RosterPage() {
   const handleCellClick = (emp: Employee, dateStr: string, existingShift?: Shift) => {
     if (!isManager) return;
     setSelectedEmpId(emp.id); setSelectedEmpName(emp.full_name); setSelectedDate(dateStr);
+    
     if (existingShift) {
+      // EDITING EXISTING SHIFT
       setSelectedShiftId(existingShift.id); 
       setFormRole(existingShift.role); 
       setFormTask(existingShift.task || 'NONE'); 
@@ -557,9 +564,25 @@ export default function RosterPage() {
       setFormStart(format(parseISO(existingShift.start_time), 'HH:mm')); 
       setFormEnd(format(parseISO(existingShift.end_time), 'HH:mm'));
     } else {
-      setSelectedShiftId(null); const defaults = lastShiftParams[emp.id];
-      if (defaults) { setFormRole(defaults.role); setFormTask(defaults.task || 'NONE'); setFormStart(defaults.start); setFormEnd(defaults.end); setFormLocation(defaults.location); }
-      else { setFormRole('Guide'); setFormTask('NONE'); setFormLocation(emp.location); setFormStart('09:00'); setFormEnd('17:00'); }
+      // CREATING NEW SHIFT - [DEV NOTE] Persistence Logic
+      // Check if we have saved params for this employee in this session.
+      setSelectedShiftId(null); 
+      const defaults = lastShiftParams[emp.id];
+      if (defaults) { 
+          // Use sticky defaults
+          setFormRole(defaults.role); 
+          setFormTask(defaults.task || 'NONE'); 
+          setFormStart(defaults.start); 
+          setFormEnd(defaults.end); 
+          setFormLocation(defaults.location); 
+      } else { 
+          // Fallback defaults
+          setFormRole('Guide'); 
+          setFormTask('NONE'); 
+          setFormLocation(emp.location); 
+          setFormStart('09:00'); 
+          setFormEnd('17:00'); 
+      }
     }
     setIsShiftModalOpen(true);
   };
@@ -584,7 +607,20 @@ export default function RosterPage() {
             if (data) await logChange('Created Shift', 'employee_schedules', data.id);
         }
         
-        setLastShiftParams(p => ({ ...p, [selectedEmpId]: { role: formRole, task: formTask === 'NONE' ? undefined : formTask, start: formStart, end: formEnd, location: formLocation }}));
+        // [DEV NOTE] Save Sticky Defaults
+        // Store the values used in this save to the state map, keyed by Employee ID.
+        // Next time we click an empty cell for this employee, these values will be used.
+        setLastShiftParams(p => ({ 
+            ...p, 
+            [selectedEmpId]: { 
+                role: formRole, 
+                task: formTask === 'NONE' ? undefined : formTask, 
+                start: formStart, 
+                end: formEnd, 
+                location: formLocation 
+            }
+        }));
+
         toast.success("Shift Saved");
         setIsShiftModalOpen(false);
         fetchData();
@@ -852,21 +888,21 @@ export default function RosterPage() {
                                                                     />
                                                                 </div>
                                                                 <div className="hidden print:block flex-shrink-0 ml-1 h-5 w-5 rounded-full border border-black/20 overflow-hidden">
-                                                                    {emp.avatar_url ? (<img src={emp.avatar_url} alt="" className="w-full h-full object-cover" />) : (<div className="w-full h-full bg-gray-100 flex items-center justify-center"><User className="w-3 h-3 text-gray-400" /></div>)}
+                                                                        {emp.avatar_url ? (<img src={emp.avatar_url} alt="" className="w-full h-full object-cover" />) : (<div className="w-full h-full bg-gray-100 flex items-center justify-center"><User className="w-3 h-3 text-gray-400" /></div>)}
                                                                 </div>
                                                                 <div className="flex flex-col items-start justify-center min-w-0 overflow-hidden print:justify-start">
-                                                                    <div className="font-bold text-xs truncate w-full text-left" title={emp.full_name}>
-                                                                        {emp.stage_name}
-                                                                        {emp.timeclock_blocked && <Ban className="w-3 h-3 text-red-500 inline ml-1" />}
-                                                                    </div>
-                                                                    <div className="mt-0.5 print:hidden">
-                                                                        {sumWeeklyHours(empShifts) > 0 && (
-                                                                            <span className="text-[10px] bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-200 px-1.5 py-0.5 rounded-sm font-mono inline-block">
-                                                                                {sumWeeklyHours(empShifts).toFixed(1)}h
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="hidden print:block text-[8px] font-mono leading-none opacity-80 -mt-0.5">{emp.phone || 'No Phone'}</div>
+                                                                        <div className="font-bold text-xs truncate w-full text-left" title={emp.full_name}>
+                                                                            {emp.stage_name}
+                                                                            {emp.timeclock_blocked && <Ban className="w-3 h-3 text-red-500 inline ml-1" />}
+                                                                        </div>
+                                                                        <div className="mt-0.5 print:hidden">
+                                                                            {sumWeeklyHours(empShifts) > 0 && (
+                                                                                <span className="text-[10px] bg-blue-50 dark:bg-blue-900 text-blue-600 dark:text-blue-200 px-1.5 py-0.5 rounded-sm font-mono inline-block">
+                                                                                    {sumWeeklyHours(empShifts).toFixed(1)}h
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="hidden print:block text-[8px] font-mono leading-none opacity-80 -mt-0.5">{emp.phone || 'No Phone'}</div>
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -888,72 +924,72 @@ export default function RosterPage() {
 
                                                             return (
                                                                 <td key={dateStr} className={`p-1 border-l relative h-14 print:h-auto print:border-black ${isManager ? 'cursor-pointer group' : ''}`} onClick={() => isManager && handleCellClick(emp, dateStr, shift)}>
-                                                                    
-                                                                    {/* PRIORITY 1: SHIFT EXISTS (Overlay Mode) */}
-                                                                    {shift ? (
-                                                                        <div className={`h-full w-full border-l-2 rounded-r p-1 flex flex-col justify-center relative print:bg-white print:border print:border-black print:p-0.5 print:rounded-none ${isAway ? 'bg-amber-50 border-l-amber-500' : 'bg-blue-100 border-l-blue-500 dark:bg-blue-900'}`}>
-                                                                            
-                                                                            {/* ALERT 1: Approved Off + Shift = Red Conflict (v11.4: z-50 to force top) */}
-                                                                            {reqStatus === 'APPROVED' && (
-                                                                                <div className="absolute -top-1 -left-1 z-50 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold shadow-sm" title="Conflict: Scheduled during Time Off">!</div>
-                                                                            )}
+                                                                        
+                                                                        {/* PRIORITY 1: SHIFT EXISTS (Overlay Mode) */}
+                                                                        {shift ? (
+                                                                            <div className={`h-full w-full border-l-2 rounded-r p-1 flex flex-col justify-center relative print:bg-white print:border print:border-black print:p-0.5 print:rounded-none ${isAway ? 'bg-amber-50 border-l-amber-500' : 'bg-blue-100 border-l-blue-500 dark:bg-blue-900'}`}>
+                                                                                    
+                                                                                    {/* ALERT 1: Approved Off + Shift = Red Conflict (v11.4: z-50 to force top) */}
+                                                                                    {reqStatus === 'APPROVED' && (
+                                                                                        <div className="absolute -top-1 -left-1 z-50 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold shadow-sm" title="Conflict: Scheduled during Time Off">!</div>
+                                                                                    )}
 
-                                                                            {/* ALERT 2: Pending Request + Shift = Orange Action Needed (v11.4: z-50) */}
-                                                                            {reqStatus === 'PENDING' && (
-                                                                                 <div className="absolute inset-x-0 -top-2 z-50 flex justify-center cursor-pointer" onClick={(e) => openReviewModal(request!, e)}>
-                                                                                     <div className="bg-orange-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-sm border border-orange-600 flex items-center gap-1 hover:bg-orange-600">
-                                                                                         <AlertCircle className="w-2 h-2" /> Pending
-                                                                                     </div>
-                                                                                 </div>
-                                                                            )}
+                                                                                    {/* ALERT 2: Pending Request + Shift = Orange Action Needed (v11.4: z-50) */}
+                                                                                    {reqStatus === 'PENDING' && (
+                                                                                         <div className="absolute inset-x-0 -top-2 z-50 flex justify-center cursor-pointer" onClick={(e) => openReviewModal(request!, e)}>
+                                                                                             <div className="bg-orange-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-sm border border-orange-600 flex items-center gap-1 hover:bg-orange-600">
+                                                                                                 <AlertCircle className="w-2 h-2" /> Pending
+                                                                                             </div>
+                                                                                         </div>
+                                                                                    )}
 
-                                                                            {shift.task && <div className="absolute top-0 right-0 p-0.5 print:p-0 print:top-0 print:right-0"><TaskBadge taskKey={shift.task} /></div>}
-                                                                            <span className="font-bold text-foreground text-xs leading-none mb-0.5 print:text-black print:mb-0 print:text-[10px]">{format(parseISO(shift.start_time), 'h:mma')}</span>
-                                                                            <span className="text-[10px] text-muted-foreground leading-none print:text-black print:text-[9px]">- {format(parseISO(shift.end_time), 'h:mma')}</span>
-                                                                            {isAway && <div className="text-[9px] font-bold text-amber-700 mt-1 uppercase print:text-black print:mt-0 print:text-[8px]"><Plane className="w-2 h-2 inline" /> {shift.location}</div>}
-                                                                        </div>
-                                                                    ) : (
-                                                                    /* PRIORITY 2: APPROVED TIME OFF (YELLOW) */
-                                                                    /* v11.8 FIX: Truncate to avoid table blowout */
-                                                                    reqStatus === 'APPROVED' ? (
-                                                                         <div className="h-full w-full bg-yellow-400 dark:bg-yellow-600 flex flex-col items-center justify-center p-1 border-l-4 border-yellow-600 dark:border-yellow-400 print-yellow">
-                                                                            <span className="text-[10px] font-black uppercase text-black">OFF</span>
-                                                                            <span className="text-[8px] leading-none text-black/70 font-bold truncate max-w-[60px] mx-auto">{request!.reason || 'Approved'}</span>
-                                                                         </div>
-                                                                    ) : 
-                                                                    /* PRIORITY 3: PENDING REQUEST (ORANGE + BUTTONS) */
-                                                                    /* v11.8 FIX: Removed dynamic text, just says REVIEW */
-                                                                    reqStatus === 'PENDING' ? (
-                                                                        <div className="h-full w-full bg-orange-100 dark:bg-orange-900/40 border border-orange-300 dark:border-orange-700 p-0.5 flex flex-col justify-center items-center animate-in fade-in cursor-pointer hover:bg-orange-200 dark:hover:bg-orange-900/60 transition-colors group/pending" 
-                                                                             onClick={(e) => openReviewModal(request!, e)}>
-                                                                            <AlertCircle className="w-4 h-4 text-orange-600 mb-1" />
-                                                                            <span className="text-[8px] font-bold text-orange-800 dark:text-orange-200 leading-tight text-center uppercase tracking-wide">REVIEW</span>
-                                                                        </div>
-                                                                    ) :
-                                                                    /* PRIORITY 4: UNAVAILABLE (GRAY HATCH) */
-                                                                    availRule?.preference_level === 'unavailable' ? (
-                                                                        <div className="h-full w-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center opacity-70 cursor-not-allowed">
-                                                                            <div className="flex flex-col items-center text-slate-400">
-                                                                                <Ban className="w-3 h-3 mb-0.5" />
-                                                                                <span className="text-[9px] font-bold uppercase">N/A</span>
+                                                                                    {shift.task && <div className="absolute top-0 right-0 p-0.5 print:p-0 print:top-0 print:right-0"><TaskBadge taskKey={shift.task} /></div>}
+                                                                                    <span className="font-bold text-foreground text-xs leading-none mb-0.5 print:text-black print:mb-0 print:text-[10px]">{format(parseISO(shift.start_time), 'h:mma')}</span>
+                                                                                    <span className="text-[10px] text-muted-foreground leading-none print:text-black print:text-[9px]">- {format(parseISO(shift.end_time), 'h:mma')}</span>
+                                                                                    {isAway && <div className="text-[9px] font-bold text-amber-700 mt-1 uppercase print:text-black print:mt-0 print:text-[8px]"><Plane className="w-2 h-2 inline" /> {shift.location}</div>}
                                                                             </div>
-                                                                        </div>
-                                                                    ) :
-                                                                    /* PRIORITY 5: PREFERRED OFF (BLUE BADGE) */
-                                                                    availRule?.preference_level === 'preferred_off' ? (
-                                                                        <div className="h-full w-full relative group">
-                                                                            <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800/20 opacity-30" />
-                                                                            <div className="absolute top-1 right-1">
-                                                                               <Badge variant="secondary" className="text-[8px] h-4 px-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 flex items-center gap-0.5">
-                                                                                 <ThumbsDown className="w-2 h-2" /> Pref Off
-                                                                               </Badge>
+                                                                        ) : (
+                                                                        /* PRIORITY 2: APPROVED TIME OFF (YELLOW) */
+                                                                        /* v11.8 FIX: Truncate to avoid table blowout */
+                                                                        reqStatus === 'APPROVED' ? (
+                                                                             <div className="h-full w-full bg-yellow-400 dark:bg-yellow-600 flex flex-col items-center justify-center p-1 border-l-4 border-yellow-600 dark:border-yellow-400 print-yellow">
+                                                                                <span className="text-[10px] font-black uppercase text-black">OFF</span>
+                                                                                <span className="text-[8px] leading-none text-black/70 font-bold truncate max-w-[60px] mx-auto">{request!.reason || 'Approved'}</span>
+                                                                             </div>
+                                                                        ) : 
+                                                                        /* PRIORITY 3: PENDING REQUEST (ORANGE + BUTTONS) */
+                                                                        /* v11.8 FIX: Removed dynamic text, just says REVIEW */
+                                                                        reqStatus === 'PENDING' ? (
+                                                                            <div className="h-full w-full bg-orange-100 dark:bg-orange-900/40 border border-orange-300 dark:border-orange-700 p-0.5 flex flex-col justify-center items-center animate-in fade-in cursor-pointer hover:bg-orange-200 dark:hover:bg-orange-900/60 transition-colors group/pending" 
+                                                                                 onClick={(e) => openReviewModal(request!, e)}>
+                                                                                <AlertCircle className="w-4 h-4 text-orange-600 mb-1" />
+                                                                                <span className="text-[8px] font-bold text-orange-800 dark:text-orange-200 leading-tight text-center uppercase tracking-wide">REVIEW</span>
                                                                             </div>
-                                                                            {isManager && <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100"><Plus className="w-4 h-4 text-muted-foreground/50" /></div>}
-                                                                        </div>
-                                                                    ) :
-                                                                    /* DEFAULT: EMPTY CELL */
-                                                                    (!isVisiting && isManager && <div className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-100 print:hidden"><Plus className="w-4 h-4 text-muted-foreground/30" /></div>)
-                                                                    )}
+                                                                        ) :
+                                                                        /* PRIORITY 4: UNAVAILABLE (GRAY HATCH) */
+                                                                        availRule?.preference_level === 'unavailable' ? (
+                                                                            <div className="h-full w-full bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center opacity-70 cursor-not-allowed">
+                                                                                <div className="flex flex-col items-center text-slate-400">
+                                                                                    <Ban className="w-3 h-3 mb-0.5" />
+                                                                                    <span className="text-[9px] font-bold uppercase">N/A</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        ) :
+                                                                        /* PRIORITY 5: PREFERRED OFF (BLUE BADGE) */
+                                                                        availRule?.preference_level === 'preferred_off' ? (
+                                                                            <div className="h-full w-full relative group">
+                                                                                <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800/20 opacity-30" />
+                                                                                <div className="absolute top-1 right-1">
+                                                                                   <Badge variant="secondary" className="text-[8px] h-4 px-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 flex items-center gap-0.5">
+                                                                                     <ThumbsDown className="w-2 h-2" /> Pref Off
+                                                                                   </Badge>
+                                                                                </div>
+                                                                                {isManager && <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100"><Plus className="w-4 h-4 text-muted-foreground/50" /></div>}
+                                                                            </div>
+                                                                        ) :
+                                                                        /* DEFAULT: EMPTY CELL */
+                                                                        (!isVisiting && isManager && <div className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-100 print:hidden"><Plus className="w-4 h-4 text-muted-foreground/30" /></div>)
+                                                                        )}
                                                                 </td>
                                                             );
                                                         })}
@@ -1111,7 +1147,26 @@ export default function RosterPage() {
                 <div className="grid gap-4 py-2">
                     <div className="text-sm font-semibold">{selectedEmpName} <span className="font-normal text-muted-foreground">- {selectedDate ? format(parseISO(selectedDate), 'MMM do') : ''}</span></div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs">Start</label><Input type="time" disabled={!isManager} value={formStart} onChange={(e) => {setFormStart(e.target.value); if(e.target.value) setFormEnd(format(addDays(parseISO(`${selectedDate}T${e.target.value}`), 0), 'HH:mm'));}} /></div>
+                        <div>
+                            <label className="text-xs">Start</label>
+                            <Input 
+                                type="time" 
+                                disabled={!isManager} 
+                                value={formStart} 
+                                onChange={(e) => {
+                                    const newStart = e.target.value;
+                                    setFormStart(newStart);
+                                    
+                                    // [DEV NOTE] AUTO-FILL LOGIC: 
+                                    // When start time changes, automatically set end time to 8 hours later.
+                                    if (newStart && selectedDate) {
+                                        const startDateTime = parseISO(`${selectedDate}T${newStart}`);
+                                        const endDateTime = addHours(startDateTime, 8);
+                                        setFormEnd(format(endDateTime, 'HH:mm'));
+                                    }
+                                }} 
+                            />
+                        </div>
                         <div><label className="text-xs">End</label><Input type="time" disabled={!isManager} value={formEnd} onChange={e => setFormEnd(e.target.value)} /></div>
                     </div>
                     <div><label className="text-xs">Role</label><Select value={formRole} onValueChange={setFormRole} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['Guide','Desk','Driver','Mechanic','Manager'].map(r=><SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div>
