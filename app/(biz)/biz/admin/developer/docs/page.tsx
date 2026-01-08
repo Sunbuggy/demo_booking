@@ -1,8 +1,8 @@
 /**
  * @file app/(biz)/biz/admin/developer/docs/page.tsx
  * @description LIVING DOCUMENTATION.
- * Updated: Integrated Schedule Roster (v12.0) Documentation.
- * Updated: Refined Moment.js Tech Debt reasoning.
+ * Updated: FIXED Dark Mode "White-on-White" contrast issues in Badges.
+ * Updated: Fixed JSX syntax error in Pismo flow description.
  * ACCESS: Level 950+ (Developers) Only.
  */
 import React from 'react';
@@ -21,9 +21,12 @@ import {
   Printer,
   MousePointerClick,
   Palmtree,
-  CloudSun,
   Database,
-  LayoutTemplate
+  LayoutTemplate,
+  Ticket,
+  ArrowRight,
+  RefreshCcw,
+  Lock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,9 +35,6 @@ import { Separator } from '@/components/ui/separator';
 export default function DeveloperDocsPage() {
   
   // SHARED STYLES
-  // The "Frosted Glass" Effect: Semi-transparent white + Blur for Light Mode.
-  // Dark Mode stays deep zinc but with a slight transparency for consistency.
-  // High contrast text ensures readability in bright sunlight (field conditions).
   const glassCardStyles = "bg-white/60 dark:bg-zinc-950/80 backdrop-blur-md border-white/40 dark:border-zinc-800 shadow-xl transition-all hover:shadow-2xl hover:bg-white/70 dark:hover:bg-zinc-950/90";
   const glassHeaderStyles = "text-zinc-800 dark:text-zinc-100";
   const glassTextStyles = "text-zinc-600 dark:text-zinc-400";
@@ -134,7 +134,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 2. SCHEDULE ROSTER V12.0 (NEW SECTION) */}
+          {/* 2. SCHEDULE ROSTER V12.0 */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
@@ -262,7 +262,97 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 3. TIMECLOCK & PAYROLL ENGINE */}
+          {/* 3. PISMO BOOKING ENGINE (NEW) */}
+          <Card className={glassCardStyles}>
+            <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
+              <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400">
+                <Ticket size={24} />
+                <CardTitle className="uppercase tracking-widest">Pismo Booking Engine (v1.0)</CardTitle>
+              </div>
+              <CardDescription className={glassTextStyles}>
+                The "Golden Path" linear flow architecture. Location: <code>app/pismo/book/page.tsx</code>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              
+              {/* ARCHITECTURE PATTERN */}
+              <div className="bg-cyan-50/30 dark:bg-cyan-900/10 p-4 rounded-lg border border-cyan-100 dark:border-cyan-800">
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">The Container Pattern</h3>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  The primary <code>page.tsx</code> acts as the <strong>Orchestrator</strong>. It holds no complex business logic regarding calculation rules, 
+                  but maintains the <strong>results</strong> (Total, Selections, Holder Info).
+                  <br /><br />
+                  <span className="font-bold">Key Dependency:</span> The <code>useEffect</code> hook is responsible for recalculating the total price 
+                  whenever any dependency (Selections, Goggles, Bandannas, PricingCategories) changes.
+                </p>
+              </div>
+
+              {/* THE GOLDEN PATH FLOW */}
+              <div>
+                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-3">The "Golden Path" Logic Chain</h3>
+                 <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-xs">
+                       {/* FIX: Force Dark Background in Dark Mode to contrast with light text */}
+                       <Badge variant="outline" className="bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-300 w-24 justify-center shrink-0">1. Availability</Badge>
+                       <ArrowRight size={14} className="text-zinc-400" />
+                       <div className="bg-zinc-50 dark:bg-zinc-900 px-2 py-1 rounded text-zinc-500 w-full">
+                          <strong>Date Selection</strong> triggers <code>GET /api/pismo/times</code>. Start time triggers local end-time calc.
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                       <Badge variant="outline" className="bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-300 w-24 justify-center shrink-0">2. Pricing</Badge>
+                       <ArrowRight size={14} className="text-zinc-400" />
+                       <div className="bg-zinc-50 dark:bg-zinc-900 px-2 py-1 rounded text-zinc-500 w-full">
+                          <strong>Duration Set</strong> triggers <code>GET /api/pismo/pricing</code>. This ensures dynamic pricing (1hr vs 2hr rates).
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                       <Badge variant="outline" className="bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-300 w-24 justify-center shrink-0">3. Identity</Badge>
+                       <ArrowRight size={14} className="text-zinc-400" />
+                       <div className="bg-zinc-50 dark:bg-zinc-900 px-2 py-1 rounded text-zinc-500 w-full">
+                          <strong>Role Check:</strong> If Level &gt; 100, detects "Staff" mode. Sets <code>booked_by</code> to staff name, leaves contact empty.
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                       <Badge variant="outline" className="bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-300 w-24 justify-center shrink-0">4. Transact</Badge>
+                       <ArrowRight size={14} className="text-zinc-400" />
+                       <div className="bg-zinc-50 dark:bg-zinc-900 px-2 py-1 rounded text-zinc-500 w-full">
+                          <strong>Checkout:</strong> Triggers NMI Tokenization &rarr; Saves to DB via <code>/api/pismo/save</code>.
+                       </div>
+                    </div>
+                 </div>
+              </div>
+
+              {/* SAFETY RAILS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-900/10 p-3 rounded-lg">
+                    <h4 className="text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-2 mb-2">
+                       <Lock size={14} /> NMI Integration (Critical)
+                    </h4>
+                    <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-normal">
+                       We use a <strong>"Hidden Button" Strategy</strong> to bypass a specific <code>Collect.js</code> initialization bug. 
+                       <br/>
+                       <strong>DO NOT REFACTOR:</strong> <code>document.getElementById('nmi-hidden-btn').click()</code>. 
+                       This programmatic click is load-bearing logic.
+                    </p>
+                 </div>
+                 <div className="border border-orange-200 dark:border-orange-900 bg-orange-50/50 dark:bg-orange-900/10 p-3 rounded-lg">
+                    <h4 className="text-xs font-bold text-orange-600 dark:text-orange-400 flex items-center gap-2 mb-2">
+                       <RefreshCcw size={14} /> Date Parsing Fragility
+                    </h4>
+                    <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-normal">
+                       <code>DateTimeSelector</code> uses regex <code>match(/(\d+):(\d+) (\w+)/)</code> to parse time strings. 
+                       This is currently fragile. 
+                       <br/><strong>Future:</strong> Standardize to <code>date-fns</code> once stable.
+                    </p>
+                 </div>
+              </div>
+
+            </CardContent>
+          </Card>
+
+
+          {/* 4. TIMECLOCK & PAYROLL ENGINE */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-500">
@@ -326,9 +416,9 @@ export default function DeveloperDocsPage() {
                     <span>
                       <code>generate-payroll-report.ts</code> handles the heavy math. It differentiates rules based on Location/Company:
                       <br/>
-                      <span className="text-xs ml-1">â€¢ <strong>CA:</strong> Daily OT ({'>'}8h), Double Time ({'>'}12h), Weekly OT ({'>'}40h accumulated).</span>
+                      <span className="text-xs ml-1">Ã¢â‚¬Â¢ <strong>CA:</strong> Daily OT ({'>'}8h), Double Time ({'>'}12h), Weekly OT ({'>'}40h accumulated).</span>
                       <br/>
-                      <span className="text-xs ml-1">â€¢ <strong>NV/MI:</strong> Standard Weekly OT ({'>'}40h total).</span>
+                      <span className="text-xs ml-1">Ã¢â‚¬Â¢ <strong>NV/MI:</strong> Standard Weekly OT ({'>'}40h total).</span>
                     </span>
                   </li>
                 </ul>
@@ -337,7 +427,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-           {/* 4. AUTH & ROUTING ARCHITECTURE */}
+           {/* 5. AUTH & ROUTING ARCHITECTURE */}
            <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-purple-600 dark:text-purple-500">
@@ -353,7 +443,7 @@ export default function DeveloperDocsPage() {
                 <p className="font-bold text-purple-700 dark:text-purple-400 mb-2">The Decision Hierarchy</p>
                 <ol className="list-decimal list-inside space-y-1 text-zinc-700 dark:text-zinc-300">
                   <li><strong>User Preference:</strong> Checks <code>users.homepage</code> (Managed in <code>/account</code>).</li>
-                  <li><strong>Role Check:</strong> If Level â‰¥ 300 (Staff), target <strong>Location Dashboard</strong>.</li>
+                  <li><strong>Role Check:</strong> If Level &ge; 300 (Staff), target <strong>Location Dashboard</strong>.</li>
                   <li><strong>Location Resolve:</strong> Maps <code>primary_work_location</code> (e.g., "Las Vegas") to URL slug (<code>/biz/vegas</code>).</li>
                   <li><strong>Fallback:</strong> Customers & Guests default to <strong>Root</strong> (<code>/</code>).</li>
                 </ol>
@@ -361,7 +451,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
           
-          {/* 5. FILE STRUCTURE MAP */}
+          {/* 6. FILE STRUCTURE MAP */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
@@ -391,7 +481,7 @@ export default function DeveloperDocsPage() {
                 </h3>
                 <ul className={`text-sm space-y-2 pl-4 border-l border-zinc-300 dark:border-zinc-800 ${glassTextStyles}`}>
                   <li>All <strong>"Use Server"</strong> mutations live here.</li>
-                  <li><strong>Pattern:</strong> Validate (Zod) â†’ Auth Check â†’ DB Query â†’ Revalidate Path.</li>
+                  <li><strong>Pattern:</strong> Validate (Zod) &rarr; Auth Check &rarr; DB Query &rarr; Revalidate Path.</li>
                 </ul>
               </div>
             </CardContent>
@@ -402,7 +492,7 @@ export default function DeveloperDocsPage() {
         {/* RIGHT COLUMN: TECH STACK & DEBT (Span 1) */}
         <div className="space-y-8">
           
-          {/* 6. TECH STACK */}
+          {/* 7. TECH STACK */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-green-600 dark:text-green-500">
@@ -412,7 +502,8 @@ export default function DeveloperDocsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-zinc-400 dark:border-white/20 text-zinc-800 dark:text-zinc-200 bg-white/50">Next.js 16.1</Badge>
+                {/* FIX: Ensure badges don't use white background in dark mode */}
+                <Badge variant="outline" className="border-zinc-400 dark:border-white/20 text-zinc-800 dark:text-zinc-200 bg-white/50 dark:bg-white/5">Next.js 16.1</Badge>
                 <Badge variant="outline" className="border-blue-500/50 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20">TypeScript</Badge>
                 <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 bg-green-50/50 dark:bg-green-900/20">Supabase</Badge>
                 <Badge variant="outline" className="border-cyan-500/50 text-cyan-600 dark:text-cyan-400 bg-cyan-50/50 dark:bg-cyan-900/20">Tailwind</Badge>
@@ -426,7 +517,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 7. CURRENT DEBT / TODO */}
+          {/* 8. CURRENT DEBT / TODO */}
           <Card className={`${glassCardStyles} border-dashed`}>
             <CardHeader>
               <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
@@ -476,7 +567,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-           {/* 8. QUICK LINKS */}
+           {/* 9. QUICK LINKS */}
            <Card className={glassCardStyles}>
             <CardHeader>
               <CardTitle className="text-sm uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Quick Links</CardTitle>
