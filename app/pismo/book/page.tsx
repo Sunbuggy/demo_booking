@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { createClient } from '@/utils/supabase/client';
+// Import your utility (Ensure this path is correct for your project)
+import { getUserDetails } from '@/utils/supabase/queries'; 
+
 import BookingProgress from './components/bookingProgress';
 import ReservationHolderForm from './components/reservationForm';
 import DateTimeSelector from './components/dateTimeSelector';
@@ -30,10 +34,29 @@ export default function PismoBookingPage() {
   
   const [isCheckoutExpanded, setIsCheckoutExpanded] = useState(false);
 
-  const handleHolderUpdate = (newInfo: any) => {
-     setHolderInfo(prev => ({ ...prev, ...newInfo, booked_by: newInfo.booked_by || prev.booked_by }));
-  };
+  // === STAFF STATE ===
+  const [userLevel, setUserLevel] = useState(0);
+  // Default to 'payment' (Sale) for new bookings because deposits are hidden
+  const [paymentType, setPaymentType] = useState<'deposit' | 'payment'>('payment'); 
+  const [useCustomAmount, setUseCustomAmount] = useState(false);
+  const [customAmount, setCustomAmount] = useState(0);
 
+  // === FETCH USER LEVEL (Using your util) ===
+  useEffect(() => {
+    const fetchUser = async () => {
+        const supabase = createClient();
+        // getUserDetails returns an array based on your definition: Promise<any[] | null>
+        const details = await getUserDetails(supabase);
+        
+        if (details && details.length > 0) {
+            // Safe access to the first user record
+            setUserLevel(details[0].user_level || 0);
+        }
+    };
+    fetchUser();
+  }, []);
+
+  // === CALCULATE TOTAL ===
   useEffect(() => {
     let calc = goggles * 4 + bandannas * 5;
     pricingCategories.forEach(cat => {
@@ -44,9 +67,13 @@ export default function PismoBookingPage() {
       if (sel.waiver) calc += sel.qty * (cat.damage_waiver || 0);
     });
     setTotal(calc);
-  }, [selections, goggles, bandannas, pricingCategories, durationHours]);
+    
+    // If staff hasn't manually overridden yet, sync custom amount with total
+    if (!useCustomAmount) setCustomAmount(calc);
+  }, [selections, goggles, bandannas, pricingCategories, durationHours, useCustomAmount]);
 
-const handleBooking = useCallback(async (paymentToken?: string | null) => { // <--- Accept Token
+  // === HANDLE BOOKING ===
+  const handleBooking = useCallback(async (paymentToken?: string | null) => {
     setLoading(true);
     setMessage(paymentToken ? 'Processing Payment...' : 'Saving reservation...');
 
@@ -64,14 +91,21 @@ const handleBooking = useCallback(async (paymentToken?: string | null) => { // <
         }
     });
 
+    // If Staff overrides price, use customAmount; otherwise use calculated total
+    const finalAmount = useCustomAmount ? customAmount : total;
+
     try {
       const res = await fetch('/api/pismo/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          total_amount: total, 
+          total_amount: total, // The "Real" value of the booking
+          
+          // Payment Specifics
+          payment_amount: finalAmount, // The amount we are actually charging
+          payment_token: paymentToken,
+          
           holder: holderInfo, 
-          payment_token: paymentToken, 
           booking: { 
             date: selectedDate?.toISOString().split('T')[0], 
             startTime, endTime, duration: durationHours, 
@@ -92,14 +126,13 @@ const handleBooking = useCallback(async (paymentToken?: string | null) => { // <
     } finally {
       setLoading(false);
     }
-  }, [total, holderInfo, selectedDate, startTime, endTime, durationHours, selections, pricingCategories, goggles, bandannas]);
+  }, [total, holderInfo, selectedDate, startTime, endTime, durationHours, selections, pricingCategories, goggles, bandannas, useCustomAmount, customAmount]);
 
-  // --- HELPER: Build Selected Items List for Summary ---
+  // Helper for Order Summary List
   const selectedItemsList = pricingCategories
     .filter(cat => (selections[cat.id]?.qty || 0) > 0)
     .map(cat => {
         const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
-        // Use logic to find price, default to 0 if time not selected yet
         const basePrice = cat[priceKey] !== undefined ? cat[priceKey] : (cat.price_1hr || 0);
         const waiverPrice = selections[cat.id].waiver ? (cat.damage_waiver || 0) : 0;
         
@@ -118,7 +151,7 @@ const handleBooking = useCallback(async (paymentToken?: string | null) => { // <
         <h1 className="text-4xl md:text-5xl font-bold text-center mb-8 text-orange-500">Pismo Beach Rentals</h1>
         
         <BookingProgress isStep1={!!endTime && !!durationHours} isStep2={total > 0} isStep3={isCheckoutExpanded} />
-        <ReservationHolderForm onUpdate={handleHolderUpdate} />
+        <ReservationHolderForm onUpdate={(newInfo: any) => setHolderInfo(prev => ({ ...prev, ...newInfo }))} />
         <DateTimeSelector 
           selectedDate={selectedDate} setSelectedDate={setSelectedDate}
           startTime={startTime} setStartTime={setStartTime}
@@ -126,8 +159,6 @@ const handleBooking = useCallback(async (paymentToken?: string | null) => { // <
           setDurationHours={setDurationHours} setPricingCategories={setPricingCategories}
           setLoading={setLoading} setMessage={setMessage}
         />
-
-        {loading && !isCheckoutExpanded && <p className="text-center text-2xl text-orange-400 mb-12 animate-pulse">{message || "Updating information..."}</p>}
 
         {pricingCategories.length > 0 && (
           <VehicleGrid categories={pricingCategories} selections={selections} setSelections={setSelections} durationHours={durationHours} />
@@ -151,14 +182,27 @@ const handleBooking = useCallback(async (paymentToken?: string | null) => { // <
       <CheckoutForm 
         total={total}
         holderInfo={holderInfo}
-        selectedItems={selectedItemsList} // <--- Pass Calculated List
-        goggles={goggles}                 // <--- Pass Goggles
-        bandannas={bandannas}             // <--- Pass Bandannas
+        selectedItems={selectedItemsList}
+        goggles={goggles}
+        bandannas={bandannas}
         isExpanded={isCheckoutExpanded}
         setIsExpanded={setIsCheckoutExpanded}
         onPayment={handleBooking} 
         message={message}
         loading={loading}
+        
+        // --- STAFF PROPS ---
+        userLevel={userLevel} 
+        
+        // isEditing={false} ensures the Deposit toggle is HIDDEN for new bookings
+        isEditing={false} 
+        
+        paymentType={paymentType}
+        setPaymentType={setPaymentType}
+        customAmount={customAmount}
+        setCustomAmount={setCustomAmount}
+        useCustomAmount={useCustomAmount}
+        setUseCustomAmount={setUseCustomAmount}
       />
     </div>
   );

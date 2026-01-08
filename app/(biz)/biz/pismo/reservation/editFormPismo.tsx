@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { createClient } from '@/utils/supabase/client'; // Import Client
+import { getUserDetails } from '@/utils/supabase/queries'; // Import Query
 
 import DateTimeSelector from '@/app/pismo/book/components/dateTimeSelector';
 import ReservationHolderForm from '@/app/pismo/book/components/reservationForm';
@@ -16,7 +18,7 @@ export default function PismoReservationEditForm({
   pricingRules: any[] 
 }) {
   
-  // --- State Initialization ---
+  // --- Core State ---
   const [selectedDate, setSelectedDate] = useState<Date | null>(
     initialData.booking_date ? new Date(initialData.booking_date + 'T00:00:00') : null
   );
@@ -64,6 +66,25 @@ export default function PismoReservationEditForm({
   const [message, setMessage] = useState('');
   const [isCheckoutExpanded, setIsCheckoutExpanded] = useState(false);
 
+  // --- NEW: Staff / Payment State ---
+  const [userLevel, setUserLevel] = useState(0); // <--- Add this state
+  const [paymentType, setPaymentType] = useState<'deposit' | 'payment'>('deposit');
+  const [useCustomAmount, setUseCustomAmount] = useState(false);
+  const [customAmount, setCustomAmount] = useState(0);
+
+  // --- NEW: Fetch User Level ---
+  useEffect(() => {
+    const fetchUser = async () => {
+        const supabase = createClient();
+        const details = await getUserDetails(supabase);
+        
+        if (details && details.length > 0) {
+            setUserLevel(details[0].user_level || 0);
+        }
+    };
+    fetchUser();
+  }, []);
+
   // --- Live Total Calculation ---
   useEffect(() => {
     if (!pricingCategories || pricingCategories.length === 0) return;
@@ -76,12 +97,17 @@ export default function PismoReservationEditForm({
       if (sel.waiver) calc += sel.qty * (cat.damage_waiver || 0);
     });
     setTotal(calc);
-  }, [selections, goggles, bandannas, pricingCategories, durationHours]);
+    
+    // Auto-update custom amount default if user hasn't typed yet
+    if (!useCustomAmount) {
+        setCustomAmount(calc);
+    }
+  }, [selections, goggles, bandannas, pricingCategories, durationHours, useCustomAmount]);
 
   // --- Update Handler ---
-  const handleUpdate = async () => {
+  const handleUpdate = async (paymentToken: string | null) => {
     setLoading(true);
-    setMessage('Updating Reservation...');
+    setMessage(paymentToken ? (paymentType === 'deposit' ? 'Authorizing Deposit...' : 'Processing Payment...') : 'Updating Reservation...');
 
     const vehiclesPayload: Record<string, any> = {};
     pricingCategories.forEach(cat => {
@@ -97,6 +123,11 @@ export default function PismoReservationEditForm({
         }
     });
 
+    const transactionAmount = useCustomAmount ? customAmount : total;
+    const orderIdOverride = paymentType === 'deposit' 
+        ? `deposit_${initialData.reservation_id}` 
+        : String(initialData.reservation_id);
+
     try {
         const res = await fetch('/api/pismo/update', {
             method: 'POST',
@@ -104,7 +135,13 @@ export default function PismoReservationEditForm({
             body: JSON.stringify({
                 reservation_id: initialData.reservation_id, 
                 booking_id: initialData.id,
-                total_amount: total,
+                total_amount: total, 
+                
+                payment_token: paymentToken,
+                payment_amount: transactionAmount,
+                transaction_type: paymentType === 'deposit' ? 'auth' : 'sale',
+                order_id_override: orderIdOverride,
+
                 holder: holderInfo,
                 note: newNote, 
                 booking: { 
@@ -117,10 +154,13 @@ export default function PismoReservationEditForm({
 
         const result = await res.json();
         if (result.success) {
-            setMessage('Reservation Updated Successfully');
+            setMessage(paymentToken 
+                ? (paymentType === 'deposit' ? 'Deposit Authorized!' : 'Payment Charged!')
+                : 'Reservation Updated'
+            );
             setTimeout(() => window.location.reload(), 800);
         } else {
-            setMessage(`Update Failed: ${result.error}`);
+            setMessage(`Failed: ${result.error}`);
         }
     } catch (err) {
         console.error(err);
@@ -130,12 +170,10 @@ export default function PismoReservationEditForm({
     }
   };
 
-  // --- HELPER: Build Selected Items List for Summary (Edit Mode) ---
   const selectedItemsList = pricingCategories
     .filter(cat => (selections[cat.id]?.qty || 0) > 0)
     .map(cat => {
         const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
-        // Use logic to find price, default to 0 if time not selected yet
         const basePrice = cat[priceKey] !== undefined ? cat[priceKey] : (cat.price_1hr || 0);
         const waiverPrice = selections[cat.id].waiver ? (cat.damage_waiver || 0) : 0;
         
@@ -151,7 +189,7 @@ export default function PismoReservationEditForm({
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto text-white pb-32 flex flex-col lg:flex-row gap-8">
       
-      {/* LEFT COLUMN: Main Editing Form */}
+      {/* LEFT COLUMN */}
       <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-700">
             <div>
@@ -201,30 +239,38 @@ export default function PismoReservationEditForm({
 
           <CheckoutForm 
             total={total} holderInfo={holderInfo} isExpanded={isCheckoutExpanded} setIsExpanded={setIsCheckoutExpanded}
-            onPayment={handleUpdate} message={message} loading={loading} isEditing={true}
-            // --- PASS SUMMARY DATA HERE ---
+            onPayment={handleUpdate} message={message} loading={loading} 
             selectedItems={selectedItemsList}
             goggles={goggles}
             bandannas={bandannas}
+            
+            // --- UPDATED STAFF PROPS ---
+            userLevel={userLevel} // Pass the fetched level
+            isEditing={true}      // Shows deposit toggle
+            
+            paymentType={paymentType}
+            setPaymentType={setPaymentType}
+            customAmount={customAmount}
+            setCustomAmount={setCustomAmount}
+            useCustomAmount={useCustomAmount}
+            setUseCustomAmount={setUseCustomAmount}
           />
       </div>
 
-      {/* RIGHT COLUMN: Notes & History */}
+      {/* RIGHT COLUMN */}
       <div className="w-full lg:w-96 space-y-8 flex-shrink-0">
-          {/* Notes Section */}
           <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
               <h3 className="text-xl font-bold text-orange-400 mb-4 flex items-center gap-2">📝 Notes</h3>
               <div className="mb-4">
                   <textarea 
                       value={newNote}
                       onChange={e => setNewNote(e.target.value)}
-                      placeholder="Type a new note here... (Saved on Update)"
+                      placeholder="Type a new note here..."
                       className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500 min-h-[80px]"
                   />
-                  <p className="text-xs text-gray-500 mt-1 text-right">Click "Update Reservation" to save this note.</p>
+                  <p className="text-xs text-gray-500 mt-1 text-right">Click "Update Reservation" to save.</p>
               </div>
               <div className="max-h-64 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                  {existingNotes.length === 0 && <p className="text-gray-500 text-sm italic">No past notes.</p>}
                   {existingNotes.map((note: any) => (
                       <div key={note.id} className="bg-gray-900/50 p-3 rounded border border-gray-700 text-sm">
                           <p className="text-gray-200 whitespace-pre-wrap">{note.note_text}</p>
@@ -237,7 +283,6 @@ export default function PismoReservationEditForm({
               </div>
           </div>
 
-          {/* History/Log Section */}
           <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
               <h3 className="text-xl font-bold text-blue-400 mb-4 flex items-center gap-2">🕒 Edit History</h3>
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
