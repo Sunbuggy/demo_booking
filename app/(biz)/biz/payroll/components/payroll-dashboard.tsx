@@ -1,7 +1,7 @@
 /**
  * PAYROLL DASHBOARD (Client Container)
  * Path: app/(biz)/biz/payroll/components/payroll-dashboard.tsx
- * Update: Added Tabs for "Timesheets" vs "Correction Queue".
+ * Update: Fixed 406 Error by using .maybeSingle() for lock check.
  */
 
 'use client';
@@ -31,7 +31,7 @@ export default function PayrollDashboard({ initialStaff }: { initialStaff: any[]
     const [filterLoc, setFilterLoc] = useState('ALL'); 
 
     const [timesheets, setTimesheets] = useState<any[]>([]);
-    const [requests, setRequests] = useState<any[]>([]); // <--- NEW: Queue Data
+    const [requests, setRequests] = useState<any[]>([]); 
     const [isLocked, setIsLocked] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -44,17 +44,17 @@ export default function PayrollDashboard({ initialStaff }: { initialStaff: any[]
         setIsLoading(true);
         const supabase = createClient();
 
-        // 1. Lock Check
+        // 1. Lock Check (FIX: Use maybeSingle to avoid 406 error on empty)
         const { data: lockReport } = await supabase
             .from('payroll_reports')
             .select('id')
             .eq('period_start', start)
             .eq('period_end', end)
-            .single();
+            .maybeSingle(); // <--- CHANGED FROM .single()
+            
         setIsLocked(!!lockReport);
 
-        // 2. Fetch Pending Requests (Global, not just for selected week)
-        // We want to see ALL pending requests regardless of the week viewed
+        // 2. Fetch Pending Requests
         const { data: pendingReqs } = await supabase
             .from('time_sheet_requests')
             .select(`
@@ -66,7 +66,7 @@ export default function PayrollDashboard({ initialStaff }: { initialStaff: any[]
         
         setRequests(pendingReqs || []);
 
-        // 3. Timesheets (Filtered by Selection)
+        // 3. Timesheets (Filtered)
         if (selectedIds.size > 0) {
             const data = await getTimesheets(Array.from(selectedIds), start, end);
             setTimesheets(data);
