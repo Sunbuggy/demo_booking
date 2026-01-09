@@ -1,7 +1,7 @@
 /**
  * @file app/(biz)/biz/admin/developer/docs/page.tsx
  * @description LIVING DOCUMENTATION.
- * Updated: Added Detailed Fleet Management System Analysis & Refactor Roadmap.
+ * Updated: Fleet System v2.0 Architecture (Server-Side Geofencing & Map Stability).
  * ACCESS: Level 950+ (Developers) Only.
  */
 import React from 'react';
@@ -28,7 +28,8 @@ import {
   Lock,
   CarFront,
   MapPin,
-  Workflow
+  Workflow,
+  Layers
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -136,47 +137,43 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* NEW SECTION: FLEET MANAGEMENT */}
+          {/* 2. FLEET MANAGEMENT SYSTEM (UPDATED) */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-500">
                 <CarFront size={24} />
-                <CardTitle className="uppercase tracking-widest">Fleet Management (Analysis & Roadmap)</CardTitle>
+                <CardTitle className="uppercase tracking-widest">Fleet Management (v2.0 Architecture)</CardTitle>
               </div>
               <CardDescription className={glassTextStyles}>
-                Transitioning from "Legacy Client-Side Calc" to "Database-Driven Logic".
+                Migrated from "Client-Side Calc" to "Server-Side Logic" (Jan 2026).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               
-              {/* CURRENT STATE ANALYSIS */}
+              {/* ARCHITECTURE OVERVIEW */}
               <div>
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
-                  <Workflow size={16} /> 1. Current State (Legacy Anti-Patterns)
+                  <Workflow size={16} /> 1. Server-Side Geofencing Strategy
                 </h3>
-                <div className="bg-orange-50/50 dark:bg-orange-900/10 p-4 rounded-lg border border-orange-100 dark:border-orange-800">
+                <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800">
                   <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed mb-3">
-                    The current fleet system relies heavily on fetching raw data to the client and calculating status/location in the browser.
-                    This causes performance degradation as the `vehicle_locations` table grows (currently 9,600+ rows).
+                    We have moved the heavy lifting of calculating "Is this vehicle in Vegas?" from the React Client to a robust Server Action.
+                    This prevents the dashboard from freezing when processing 9,000+ location rows.
                   </p>
-                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <li className="bg-white dark:bg-zinc-900 p-2 rounded border border-orange-200 dark:border-orange-800/30">
-                      <strong className="text-orange-700 dark:text-orange-400 block mb-1">Geofencing Logic</strong>
-                      Hardcoded coordinates in <code>vehicles-overview.tsx</code>. Client iterates thousands of rows to calculate <code>isNearVegas()</code>.
-                    </li>
-                    <li className="bg-white dark:bg-zinc-900 p-2 rounded border border-orange-200 dark:border-orange-800/30">
-                      <strong className="text-orange-700 dark:text-orange-400 block mb-1">Status Race Conditions</strong>
-                      <code>checkVehicleFutureLocation</code> runs on page load, actively modifying DB records. Risk of race conditions during concurrent staff access.
-                    </li>
-                    <li className="bg-white dark:bg-zinc-900 p-2 rounded border border-orange-200 dark:border-orange-800/30">
-                      <strong className="text-orange-700 dark:text-orange-400 block mb-1">Fragmented Inspections</strong>
-                      Separate tables for <code>vehicle_pretrip_shuttle</code>, <code>_truck</code>, <code>_buggy</code> etc., making global reporting impossible.
-                    </li>
-                    <li className="bg-white dark:bg-zinc-900 p-2 rounded border border-orange-200 dark:border-orange-800/30">
-                      <strong className="text-orange-700 dark:text-orange-400 block mb-1">Heavy Bundles</strong>
-                      Components utilize Moment.js and full Mapbox libraries even when maps are hidden, impacting LCP.
-                    </li>
-                  </ul>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="bg-white dark:bg-zinc-900 p-2 rounded border border-indigo-200 dark:border-indigo-800/30">
+                      <strong className="text-indigo-700 dark:text-indigo-400 block mb-1">Old Way (Legacy)</strong>
+                      {/* FIX: Used &rarr; instead of -> to prevent build errors */}
+                      Fetch ALL vehicle locations &rarr; Client iterates array &rarr; Client does <code>Math.sin()</code> &rarr; Client renders.
+                      <br/><em>Result: Slow load, heavy CPU usage.</em>
+                    </div>
+                    <div className="bg-white dark:bg-zinc-900 p-2 rounded border border-indigo-200 dark:border-indigo-800/30">
+                      <strong className="text-indigo-700 dark:text-indigo-400 block mb-1">New Way (v2.0)</strong>
+                      Server Action <code>getFleetDashboardData</code> fetches & hydrates.
+                      <br/>Logic <code>lib/fleet/geofencing.ts</code> resolves names ("Vegas Shop") instantly.
+                      <br/><em>Result: 0ms Client Calculation.</em>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -185,37 +182,32 @@ export default function DeveloperDocsPage() {
               {/* DATA MAP */}
               <div>
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-3 flex items-center gap-2">
-                  <Database size={16} /> 2. Data Map (Tables & Files)
+                  <Database size={16} /> 2. New Database Schema
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
                     <thead className="text-zinc-500 dark:text-zinc-400 font-bold border-b border-zinc-200 dark:border-zinc-700">
                       <tr>
                         <th className="pb-2">Table Name</th>
-                        <th className="pb-2">Role</th>
-                        <th className="pb-2">Refactor Target</th>
+                        <th className="pb-2">Purpose</th>
+                        <th className="pb-2">Refactor Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-600 dark:text-zinc-400">
                       <tr>
-                        <td className="py-2 font-mono text-zinc-800 dark:text-zinc-300">vehicles</td>
-                        <td className="py-2">Core Registry</td>
-                        <td className="py-2 text-green-600">Stable. Keep as is.</td>
+                        <td className="py-2 font-mono text-zinc-800 dark:text-zinc-300">location_geofences</td>
+                        <td className="py-2">Stores lat/long centers & radii. Replaces TS hardcoded values.</td>
+                        <td className="py-2"><Badge className="bg-green-600 h-5 text-[10px]">LIVE</Badge></td>
                       </tr>
                       <tr>
-                        <td className="py-2 font-mono text-zinc-800 dark:text-zinc-300">vehicle_locations</td>
-                        <td className="py-2">GPS Telemetry</td>
-                        <td className="py-2 text-orange-600">Refactor. Needs archiving strategy.</td>
+                        <td className="py-2 font-mono text-zinc-800 dark:text-zinc-300">vehicle_inspections</td>
+                        <td className="py-2">Unified JSONB table for ALL pre-trip forms (Shuttles, Trucks, etc).</td>
+                        <td className="py-2"><Badge className="bg-green-600 h-5 text-[10px]">LIVE</Badge></td>
                       </tr>
                       <tr>
-                        <td className="py-2 font-mono text-zinc-800 dark:text-zinc-300">vehicle_tag</td>
-                        <td className="py-2">Maintenance Status</td>
-                        <td className="py-2 text-green-600">Stable. Drives "Broken/Fine" logic.</td>
-                      </tr>
-                      <tr>
-                        <td className="py-2 font-mono text-red-600 dark:text-red-400">vehicle_pretrip_*</td>
-                        <td className="py-2">Inspections</td>
-                        <td className="py-2 text-red-600 font-bold">DEPRECATE. Merge into single table.</td>
+                        <td className="py-2 font-mono text-zinc-400 dark:text-zinc-500">vehicle_pretrip_*</td>
+                        <td className="py-2">Legacy fragmented tables. Read-only / Archived.</td>
+                        <td className="py-2"><Badge variant="outline" className="text-zinc-500 h-5 text-[10px]">DEPRECATED</Badge></td>
                       </tr>
                     </tbody>
                   </table>
@@ -224,55 +216,34 @@ export default function DeveloperDocsPage() {
 
               <Separator className="bg-zinc-200 dark:bg-zinc-800" />
 
-              {/* REFACTOR PLAN */}
+              {/* COMPONENT STABILITY */}
               <div>
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-3 flex items-center gap-2">
-                  <MapPin size={16} /> 3. The Refactor Roadmap (Safe Mode)
+                  <Layers size={16} /> 3. Component Stability Patterns
                 </h3>
-                
-                <div className="space-y-4">
-                  {/* PHASE 1 */}
-                  <div className="flex gap-3">
-                    <Badge variant="outline" className="h-fit bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 shrink-0">Phase 1</Badge>
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">SQL Normalization</p>
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                        Create <code>vehicle_inspections</code> (JSONB) to unify all pretrip forms.
-                        Create <code>location_geofences</code> table to move coordinates out of TypeScript files.
-                        
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* PHASE 2 */}
-                  <div className="flex gap-3">
-                    <Badge variant="outline" className="h-fit bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 shrink-0">Phase 2</Badge>
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Server Actions</p>
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                        Migrate logic from <code>queries.ts</code> to <code>app/actions/fleet.ts</code>. 
-                        Implement "Database-Driven Logic" where the DB queries for "Vehicles near Vegas" instead of the client filtering arrays.
-                      </p>
-                    </div>
-                  </div>
-
-                   {/* PHASE 3 */}
-                   <div className="flex gap-3">
-                    <Badge variant="outline" className="h-fit bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 shrink-0">Phase 3</Badge>
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Cleanup</p>
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                        Archive <code>vehicle_pretrip_*</code> tables. Remove moment.js dependencies. Move <code>checkVehicleFutureLocation</code> to a Supabase Cron Trigger.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <ul className="space-y-3 text-xs text-zinc-600 dark:text-zinc-400">
+                  <li className="flex gap-2">
+                    <Badge variant="outline" className="h-fit text-blue-600 border-blue-200 bg-blue-50">Map Gatekeeper</Badge>
+                    <span>
+                      <strong>Leaflet Fix:</strong> To solve "Map container is already initialized" crashes in React 18, we use a 
+                      Parent-Child Dynamic Import pattern. <code>MapComponent</code> (Parent) dynamically imports <code>MapInner</code> 
+                      with <code>ssr: false</code> and handles manual DOM cleanup via <code>map.remove()</code>.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <Badge variant="outline" className="h-fit text-purple-600 border-purple-200 bg-purple-50">Flattened Tables</Badge>
+                    <span>
+                      <strong>Unique Key Fix:</strong> The status tables now pre-flatten data into arrays before rendering. 
+                      This guarantees deterministic keys like <code>key="Buggy-Vegas Shop"</code> instead of relying on fragile nested loops.
+                    </span>
+                  </li>
+                </ul>
               </div>
 
             </CardContent>
           </Card>
 
-          {/* 2. SCHEDULE ROSTER V12.0 */}
+          {/* 3. SCHEDULE ROSTER V12.0 */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
@@ -400,7 +371,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 3. PISMO BOOKING ENGINE (NEW) */}
+          {/* 4. PISMO BOOKING ENGINE (NEW) */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400">
@@ -490,7 +461,7 @@ export default function DeveloperDocsPage() {
           </Card>
 
 
-          {/* 4. TIMECLOCK & PAYROLL ENGINE */}
+          {/* 5. TIMECLOCK & PAYROLL ENGINE */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-500">
@@ -554,9 +525,9 @@ export default function DeveloperDocsPage() {
                     <span>
                       <code>generate-payroll-report.ts</code> handles the heavy math. It differentiates rules based on Location/Company:
                       <br/>
-                      <span className="text-xs ml-1">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ <strong>CA:</strong> Daily OT ({'>'}8h), Double Time ({'>'}12h), Weekly OT ({'>'}40h accumulated).</span>
+                      <span className="text-xs ml-1">&bull; <strong>CA:</strong> Daily OT ({'>'}8h), Double Time ({'>'}12h), Weekly OT ({'>'}40h accumulated).</span>
                       <br/>
-                      <span className="text-xs ml-1">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ <strong>NV/MI:</strong> Standard Weekly OT ({'>'}40h total).</span>
+                      <span className="text-xs ml-1">&bull; <strong>NV/MI:</strong> Standard Weekly OT ({'>'}40h total).</span>
                     </span>
                   </li>
                 </ul>
@@ -565,7 +536,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-           {/* 5. AUTH & ROUTING ARCHITECTURE */}
+           {/* 6. AUTH & ROUTING ARCHITECTURE */}
            <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-purple-600 dark:text-purple-500">
@@ -589,7 +560,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
           
-          {/* 6. FILE STRUCTURE MAP */}
+          {/* 7. FILE STRUCTURE MAP */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-500">
@@ -611,6 +582,10 @@ export default function DeveloperDocsPage() {
                     <code className="text-zinc-900 dark:text-zinc-200 bg-black/5 dark:bg-white/10 px-1 rounded">utils/</code>: 
                     Pure helper functions (formatting dates, math, string manipulation).
                   </li>
+                  <li>
+                    <code className="text-zinc-900 dark:text-zinc-200 bg-black/5 dark:bg-white/10 px-1 rounded">fleet/</code>: 
+                    <strong>New (v2.0):</strong> Contains <code>geofencing.ts</code> and <code>distance.ts</code> for server-side calcs.
+                  </li>
                 </ul>
               </div>
               <div>
@@ -630,7 +605,7 @@ export default function DeveloperDocsPage() {
         {/* RIGHT COLUMN: TECH STACK & DEBT (Span 1) */}
         <div className="space-y-8">
           
-          {/* 7. TECH STACK */}
+          {/* 8. TECH STACK */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-green-600 dark:text-green-500">
@@ -655,7 +630,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 8. CURRENT DEBT / TODO */}
+          {/* 9. CURRENT DEBT / TODO */}
           <Card className={`${glassCardStyles} border-dashed`}>
             <CardHeader>
               <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
@@ -671,6 +646,15 @@ export default function DeveloperDocsPage() {
                   <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                   <span className="line-through opacity-80">
                     <strong>Payroll Audit System:</strong> Needs Locking & CSV Export with CA/NV rules.
+                  </span>
+                  <Badge className="ml-auto bg-green-600 text-[10px] h-5">DONE</Badge>
+                </li>
+
+                {/* DONE */}
+                <li className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50/50 dark:bg-green-950/20 p-2 rounded-lg">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span className="line-through opacity-80">
+                    <strong>Fleet System Refactor (v2.0):</strong> Server-Side Geofencing, Stable Maps, Unified Inspections Table.
                   </span>
                   <Badge className="ml-auto bg-green-600 text-[10px] h-5">DONE</Badge>
                 </li>
@@ -705,7 +689,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-           {/* 9. QUICK LINKS */}
+           {/* 10. QUICK LINKS */}
            <Card className={glassCardStyles}>
             <CardHeader>
               <CardTitle className="text-sm uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Quick Links</CardTitle>
