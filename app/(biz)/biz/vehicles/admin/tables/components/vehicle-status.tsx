@@ -1,177 +1,126 @@
-import React from 'react';
-import { VehicleType } from '../../page';
+'use client';
+
+import React, { useState, useMemo } from 'react';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion';
-import { fetchAllVehicleLocations } from '@/utils/supabase/queries';
-import { createClient } from '@/utils/supabase/server';
-import { VehicleLocation } from '../../../types';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import {
   BuggyBreakdownTable,
   GeneralTable,
   VehicleLocationByType,
   VehicleLocationOverview
 } from './status-tables';
+import { DashboardVehicle } from '@/app/actions/fleet'; 
 
-export type VehicleWithLocation = VehicleType & { location?: string };
+type VehicleWithLocation = DashboardVehicle & { location: string };
 
-const VehicleStatus = async ({
-  vehicles
-}: {
-  vehicles: VehicleWithLocation[];
-}) => {
-  //   Look at vehicle_status of each vehicle then inside my groupsAndCounts object add another key value pair where the key is the vehicle_status and the value is the count of vehicles with that status
-  const supabase = await createClient();
-  const vehicleLocations = (await fetchAllVehicleLocations(supabase)
-    .then((data) => data)
-    .catch((error) => {
-      console.error('Error fetching vehicle locations:', error);
-      return [];
-    })) as VehicleLocation[];
+const VehicleStatus = ({ vehicles }: { vehicles: DashboardVehicle[] }) => {
+  const [filter, setFilter] = useState('all');
 
-  function isNearVegasShop(lat: number, lon: number): boolean {
-    const shopCoordinates = [{ lat: 36.278439, lon: -115.020068 }];
+  // 1. FILTER LOGIC
+  const filteredVehicles = useMemo(() => {
+    let result = vehicles;
 
-    return shopCoordinates.some((coord) => {
-      const distance = getDistanceFromLatLonInMiles(
-        lat,
-        lon,
-        coord.lat,
-        coord.lon
+    // Filter by Location
+    if (filter !== 'all') {
+      const term = filter.toLowerCase();
+      result = result.filter(v => 
+        (v.location_name || '').toLowerCase().includes(term)
       );
-      return distance <= 2;
-    });
-  }
-
-  function isNearNellis(lat: number, lon: number): boolean {
-    const nellisCoordinates = [
-      { lat: 36.288471, lon: -114.970005 },
-      { lat: 36.316064, lon: -114.944085 }
-    ];
-
-    return nellisCoordinates.some((coord) => {
-      const distance = getDistanceFromLatLonInMiles(
-        lat,
-        lon,
-        coord.lat,
-        coord.lon
-      );
-      return distance <= 2;
-    });
-  }
-
-  function getDistanceFromLatLonInMiles(
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number
-  ): number {
-    const R = 3958.8; // Radius of the Earth in miles
-    const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(deg2rad(lat1)) *
-        Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; // Distance in miles
-    return distance;
-  }
-
-  function deg2rad(deg: number): number {
-    return deg * (Math.PI / 180);
-  }
-
-  // In vehicleLocations Change location.city to 'Vegas Shop' if isNearVegasShop is true and location.city to 'Nellis' if isNearNellis is true
-
-  vehicleLocations.forEach((location) => {
-    if (location.latitude !== null && location.longitude !== null) {
-      if (isNearVegasShop(location.latitude, location.longitude)) {
-        location.city = 'Vegas Shop';
-      } else if (isNearNellis(location.latitude, location.longitude)) {
-        location.city = 'Nellis';
-      }
     }
-  });
 
-  // remove all values where longitude or latitude or city are null or zero or undefined,
-  const filteredVehicleLocations = vehicleLocations.filter(
-    (location) =>
-      location.longitude &&
-      location.latitude &&
-      location.city &&
-      location.city !== '0' &&
-      location.city !== null
-  );
-
-  // sort the filteredVehicleLocations by created_at in descending order and get only unique values by vehicle_id
-  const latestVehicleLocations = filteredVehicleLocations
-    .sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    )
-    .filter(
-      (location, index, self) =>
-        index === self.findIndex((t) => t.vehicle_id === location.vehicle_id)
-    );
-  // in the vehicles array add a new key called location and assign the value of the location object from latestVehicleLocations where vehicle_id matches the vehicle_id of the vehicle but if no match assign unknown
-  vehicles.forEach((vehicle) => {
-    const location = latestVehicleLocations.find(
-      (location) => location.vehicle_id === vehicle.id
-    );
-    vehicle.location = location?.city || 'Unknown';
-  });
+    // Map to legacy structure for tables
+    return result.map(v => ({
+      ...v,
+      location: v.location_name || 'Unknown' 
+    }));
+  }, [vehicles, filter]);
 
   return (
-    <div className="overflow-x-auto">
-      <GeneralTable vehicles={vehicles} />
-      {/* Buggy Breakdown accordion*/}
-      <Accordion type="single" collapsible>
-        <AccordionItem value="Buggy_breakdown">
-          <AccordionTrigger>
-            {/* Get total, count and broken and running just like above */}
-            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 gap-3 w-full">
-              <h2 className="text-lg font-semibold">Buggy Breakdown</h2>
-            </div>
+    <div className="space-y-4">
+      {/* --- FILTER HEADER --- */}
+      <div className="flex items-center justify-between bg-slate-100 dark:bg-zinc-900 p-2 rounded-md border dark:border-zinc-800">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-500 pl-2">
+          Fleet Status Report
+        </h2>
+        <Select onValueChange={setFilter} defaultValue="all">
+          <SelectTrigger className="w-[250px] bg-white dark:bg-zinc-950">
+            <SelectValue placeholder="Filter Location" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">🌍 Global View (All)</SelectItem>
+            <SelectGroup>
+              <SelectLabel>Las Vegas</SelectLabel>
+              <SelectItem value="vegas">All Vegas</SelectItem>
+              <SelectItem value="vegas shop">Shop Only</SelectItem>
+              <SelectItem value="nellis">Nellis Dunes</SelectItem>
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>Pismo Beach</SelectLabel>
+              <SelectItem value="pismo">All Pismo</SelectItem>
+              <SelectItem value="pismo shop">Shop Only</SelectItem>
+              <SelectItem value="pismo beach">Beach Stand</SelectItem>
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>Michigan</SelectLabel>
+              <SelectItem value="silver lake">All Silver Lake</SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* --- TABLES --- */}
+      <div className="p-1">
+        <GeneralTable vehicles={filteredVehicles} />
+      </div>
+
+      <Accordion type="single" collapsible className="bg-white dark:bg-zinc-950 border rounded-md">
+        <AccordionItem value="Buggy_breakdown" className="border-b-0">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+              Buggy Configuration Breakdown
+            </h2>
           </AccordionTrigger>
-          <AccordionContent>
-            <BuggyBreakdownTable vehicles={vehicles} />
+          <AccordionContent className="p-0 border-t">
+            <BuggyBreakdownTable vehicles={filteredVehicles} />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
 
-      {/* Same accordion but broken down with vehicle.type */}
-      <Accordion type="single" collapsible>
-        <AccordionItem value="Vehicle_Location_Type">
-          <AccordionTrigger>
-            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 gap-3 w-full">
-              <h2 className="text-lg font-semibold">
-                Vehicle Location by Type
-              </h2>
-            </div>
+      <Accordion type="single" collapsible className="bg-white dark:bg-zinc-950 border rounded-md">
+        <AccordionItem value="Vehicle_Location_Type" className="border-b-0">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+              Vehicle Location by Type
+            </h2>
           </AccordionTrigger>
-          <AccordionContent>
-            <VehicleLocationByType vehicles={vehicles} />
+          <AccordionContent className="p-0 border-t">
+            <VehicleLocationByType vehicles={filteredVehicles} />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-      {/* Accordion that shows VehicleType Location, Count. */}
-      <Accordion type="single" collapsible>
-        <AccordionItem value="Vehicle_Location">
-          <AccordionTrigger>
-            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 gap-3 w-full">
-              <h2 className="text-lg font-semibold">
-                Vehicle Location Overview
-              </h2>
-            </div>
+
+      <Accordion type="single" collapsible className="bg-white dark:bg-zinc-950 border rounded-md">
+        <AccordionItem value="Vehicle_Location" className="border-b-0">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+              Location Summary
+            </h2>
           </AccordionTrigger>
-          <AccordionContent>
-            <VehicleLocationOverview vehicles={vehicles} />
+          <AccordionContent className="p-0 border-t">
+            <VehicleLocationOverview vehicles={filteredVehicles} />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
