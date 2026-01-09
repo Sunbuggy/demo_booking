@@ -1,8 +1,7 @@
 /**
  * @file app/(biz)/biz/admin/developer/docs/page.tsx
  * @description LIVING DOCUMENTATION.
- * Updated: FIXED Dark Mode "White-on-White" contrast issues in Badges.
- * Updated: Fixed JSX syntax error in Pismo flow description.
+ * Updated: Added Detailed Fleet Management System Analysis & Refactor Roadmap.
  * ACCESS: Level 950+ (Developers) Only.
  */
 import React from 'react';
@@ -26,7 +25,10 @@ import {
   Ticket,
   ArrowRight,
   RefreshCcw,
-  Lock
+  Lock,
+  CarFront,
+  MapPin,
+  Workflow
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -131,6 +133,142 @@ export default function DeveloperDocsPage() {
                   to perform necessary lookups (e.g., fetching names) that regular users are blocked from seeing.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* NEW SECTION: FLEET MANAGEMENT */}
+          <Card className={glassCardStyles}>
+            <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-500">
+                <CarFront size={24} />
+                <CardTitle className="uppercase tracking-widest">Fleet Management (Analysis & Roadmap)</CardTitle>
+              </div>
+              <CardDescription className={glassTextStyles}>
+                Transitioning from "Legacy Client-Side Calc" to "Database-Driven Logic".
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              
+              {/* CURRENT STATE ANALYSIS */}
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2">
+                  <Workflow size={16} /> 1. Current State (Legacy Anti-Patterns)
+                </h3>
+                <div className="bg-orange-50/50 dark:bg-orange-900/10 p-4 rounded-lg border border-orange-100 dark:border-orange-800">
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed mb-3">
+                    The current fleet system relies heavily on fetching raw data to the client and calculating status/location in the browser.
+                    This causes performance degradation as the `vehicle_locations` table grows (currently 9,600+ rows).
+                  </p>
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <li className="bg-white dark:bg-zinc-900 p-2 rounded border border-orange-200 dark:border-orange-800/30">
+                      <strong className="text-orange-700 dark:text-orange-400 block mb-1">Geofencing Logic</strong>
+                      Hardcoded coordinates in <code>vehicles-overview.tsx</code>. Client iterates thousands of rows to calculate <code>isNearVegas()</code>.
+                    </li>
+                    <li className="bg-white dark:bg-zinc-900 p-2 rounded border border-orange-200 dark:border-orange-800/30">
+                      <strong className="text-orange-700 dark:text-orange-400 block mb-1">Status Race Conditions</strong>
+                      <code>checkVehicleFutureLocation</code> runs on page load, actively modifying DB records. Risk of race conditions during concurrent staff access.
+                    </li>
+                    <li className="bg-white dark:bg-zinc-900 p-2 rounded border border-orange-200 dark:border-orange-800/30">
+                      <strong className="text-orange-700 dark:text-orange-400 block mb-1">Fragmented Inspections</strong>
+                      Separate tables for <code>vehicle_pretrip_shuttle</code>, <code>_truck</code>, <code>_buggy</code> etc., making global reporting impossible.
+                    </li>
+                    <li className="bg-white dark:bg-zinc-900 p-2 rounded border border-orange-200 dark:border-orange-800/30">
+                      <strong className="text-orange-700 dark:text-orange-400 block mb-1">Heavy Bundles</strong>
+                      Components utilize Moment.js and full Mapbox libraries even when maps are hidden, impacting LCP.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <Separator className="bg-zinc-200 dark:bg-zinc-800" />
+
+              {/* DATA MAP */}
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-3 flex items-center gap-2">
+                  <Database size={16} /> 2. Data Map (Tables & Files)
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="text-zinc-500 dark:text-zinc-400 font-bold border-b border-zinc-200 dark:border-zinc-700">
+                      <tr>
+                        <th className="pb-2">Table Name</th>
+                        <th className="pb-2">Role</th>
+                        <th className="pb-2">Refactor Target</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-600 dark:text-zinc-400">
+                      <tr>
+                        <td className="py-2 font-mono text-zinc-800 dark:text-zinc-300">vehicles</td>
+                        <td className="py-2">Core Registry</td>
+                        <td className="py-2 text-green-600">Stable. Keep as is.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 font-mono text-zinc-800 dark:text-zinc-300">vehicle_locations</td>
+                        <td className="py-2">GPS Telemetry</td>
+                        <td className="py-2 text-orange-600">Refactor. Needs archiving strategy.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 font-mono text-zinc-800 dark:text-zinc-300">vehicle_tag</td>
+                        <td className="py-2">Maintenance Status</td>
+                        <td className="py-2 text-green-600">Stable. Drives "Broken/Fine" logic.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 font-mono text-red-600 dark:text-red-400">vehicle_pretrip_*</td>
+                        <td className="py-2">Inspections</td>
+                        <td className="py-2 text-red-600 font-bold">DEPRECATE. Merge into single table.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <Separator className="bg-zinc-200 dark:bg-zinc-800" />
+
+              {/* REFACTOR PLAN */}
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-3 flex items-center gap-2">
+                  <MapPin size={16} /> 3. The Refactor Roadmap (Safe Mode)
+                </h3>
+                
+                <div className="space-y-4">
+                  {/* PHASE 1 */}
+                  <div className="flex gap-3">
+                    <Badge variant="outline" className="h-fit bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 shrink-0">Phase 1</Badge>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">SQL Normalization</p>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                        Create <code>vehicle_inspections</code> (JSONB) to unify all pretrip forms.
+                        Create <code>location_geofences</code> table to move coordinates out of TypeScript files.
+                        
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* PHASE 2 */}
+                  <div className="flex gap-3">
+                    <Badge variant="outline" className="h-fit bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 shrink-0">Phase 2</Badge>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Server Actions</p>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                        Migrate logic from <code>queries.ts</code> to <code>app/actions/fleet.ts</code>. 
+                        Implement "Database-Driven Logic" where the DB queries for "Vehicles near Vegas" instead of the client filtering arrays.
+                      </p>
+                    </div>
+                  </div>
+
+                   {/* PHASE 3 */}
+                   <div className="flex gap-3">
+                    <Badge variant="outline" className="h-fit bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 shrink-0">Phase 3</Badge>
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">Cleanup</p>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                        Archive <code>vehicle_pretrip_*</code> tables. Remove moment.js dependencies. Move <code>checkVehicleFutureLocation</code> to a Supabase Cron Trigger.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </CardContent>
           </Card>
 
@@ -416,9 +554,9 @@ export default function DeveloperDocsPage() {
                     <span>
                       <code>generate-payroll-report.ts</code> handles the heavy math. It differentiates rules based on Location/Company:
                       <br/>
-                      <span className="text-xs ml-1">Ã¢â‚¬Â¢ <strong>CA:</strong> Daily OT ({'>'}8h), Double Time ({'>'}12h), Weekly OT ({'>'}40h accumulated).</span>
+                      <span className="text-xs ml-1">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ <strong>CA:</strong> Daily OT ({'>'}8h), Double Time ({'>'}12h), Weekly OT ({'>'}40h accumulated).</span>
                       <br/>
-                      <span className="text-xs ml-1">Ã¢â‚¬Â¢ <strong>NV/MI:</strong> Standard Weekly OT ({'>'}40h total).</span>
+                      <span className="text-xs ml-1">ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ <strong>NV/MI:</strong> Standard Weekly OT ({'>'}40h total).</span>
                     </span>
                   </li>
                 </ul>
