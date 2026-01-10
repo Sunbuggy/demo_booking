@@ -1,54 +1,50 @@
-/**
- * @file app/actions/fleet.ts
- * @description Server Actions for Fleet Management.
- * Replaces client-side Supabase calls in vehicles-overview.tsx
- */
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
 import { resolveVehicleLocation } from '@/lib/fleet/geofencing';
-import { VehicleType } from '@/app/(biz)/biz/vehicles/admin/page'; // Reuse your type or define new one
+import { Database } from '@/types_db';
 
-// Extended type for the UI
+export type VehicleType = Database['public']['Tables']['vehicles']['Row'];
+
 export type DashboardVehicle = VehicleType & {
   location_name: string;
   last_active: string | null;
-  fuel_level?: string;
+  updated_by_name?: string; // New Field
 };
 
 export async function getFleetDashboardData(): Promise<DashboardVehicle[]> {
   const supabase = await createClient();
 
-  // 1. Fetch Vehicles (Active Only - filtered by status if needed)
-  const { data: vehicles, error: vError } = await supabase
+  // 1. Fetch Vehicles
+  const { data: vehicles } = await supabase
     .from('vehicles')
     .select('*')
-    .neq('vehicle_status', 'former') // Filter out sold vehicles immediately
+    .neq('vehicle_status', 'former')
     .order('name', { ascending: true });
 
-  if (vError || !vehicles) {
-    console.error('Fleet fetch error:', vError);
-    return [];
-  }
+  if (!vehicles) return [];
 
-  // 2. Fetch Latest Locations (Optimized: One query for all active vehicles)
-  // We use a distinct on vehicle_id to get only the newest ping per vehicle
-  const { data: locations, error: lError } = await supabase
-    .from('vehicle_locations')
-    .select('vehicle_id, latitude, longitude, created_at')
-    .order('vehicle_id')
-    .order('created_at', { ascending: false })
-    .limit(1, { foreignTable: 'vehicle_locations' }); // This approach varies by Supabase version, so we'll use a manual JS Map for safety if distinct fails
-
-  // Alternative safe fetching strategy: Fetch all recent locations (e.g., last 24h) or use a raw query if performance drags.
-  // For now, let's fetch all locations and reduce in memory (standard approach for <10k rows)
-  // OPTIMIZATION: If row count > 50k, we must switch to a .rpc() function.
+  // 2. Fetch Locations (with User ID if available)
+  // We try to fetch 'created_by' which is standard in Supabase. 
+  // If your schema uses 'user_id', we'll adjust.
   const { data: rawLocations } = await supabase
     .from('vehicle_locations')
-    .select('vehicle_id, latitude, longitude, created_at')
+    .select('vehicle_id, latitude, longitude, created_at, created_by')
     .order('created_at', { ascending: false });
 
-  // 3. Create a Location Map (Vehicle ID -> Location Data)
+  // 3. Fetch User Profiles (for names)
+  // We assume a public 'profiles' table exists mapping id -> full_name
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name');
+
+  // Create User Map
+  const userMap = new Map<string, string>();
+  profiles?.forEach(p => {
+    if (p.id && p.full_name) userMap.set(p.id, p.full_name);
+  });
+
+  // 4. Map Data
   const locMap = new Map();
   if (rawLocations) {
     for (const loc of rawLocations) {
@@ -58,24 +54,37 @@ export async function getFleetDashboardData(): Promise<DashboardVehicle[]> {
     }
   }
 
-  // 4. Hydrate the Vehicles (Parallel processing for speed)
+  // 5. Hydrate
   const hydratedVehicles = await Promise.all(
     vehicles.map(async (v) => {
       const loc = locMap.get(v.id);
       
-      // Resolve "Vegas Shop" vs "In Transit" using our new Lib
-      const locationName = loc 
-        ? await resolveVehicleLocation(loc.latitude, loc.longitude) 
-        : 'Unknown';
+      let locationName = 'Unknown';
+      let userName = 'System';
+
+      if (loc) {
+        // Resolve Location
+        if (loc.latitude && loc.longitude) {
+          locationName = await resolveVehicleLocation(Number(loc.latitude), Number(loc.longitude));
+        }
+        // Resolve User
+        if (loc.created_by && userMap.has(loc.created_by)) {
+          userName = userMap.get(loc.created_by) || 'Staff';
+        } else if (loc.created_by) {
+          userName = 'Guest User'; // Fallback if ID exists but no profile
+        }
+      } else {
+        locationName = 'No Signal';
+      }
 
       return {
         ...v,
         location_name: locationName,
         last_active: loc?.created_at || null,
-        // Future: Fuel level from vehicle_inspections join
+        updated_by_name: userName,
       };
     })
   );
 
-  return hydratedVehicles;
+  return JSON.parse(JSON.stringify(hydratedVehicles));
 }

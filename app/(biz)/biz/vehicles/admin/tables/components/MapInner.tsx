@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix Icons
+// Fix Default Icons
 const icon = new L.Icon({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   iconSize: [25, 41],
@@ -19,66 +19,70 @@ interface MapInnerProps {
 }
 
 const MapInner = ({ vehicles }: MapInnerProps) => {
-  // We use a ref to hold the DOM element
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  // We use a ref to hold the Leaflet Instance so we can destroy it later
   const mapInstanceRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
     // 1. Safety Check
     if (!mapContainerRef.current) return;
 
-    // 2. CLEANUP: If a map already exists, destroy it immediately.
-    // This is the line that fixes your error.
+    // 2. NUCLEAR CLEANUP (The Fix for "Already Initialized")
+    // We manually strip the internal Leaflet ID from the DOM element.
+    // This tricks Leaflet into thinking it's a fresh <div>.
+    // @ts-ignore
+    if (mapContainerRef.current._leaflet_id) {
+      // @ts-ignore
+      mapContainerRef.current._leaflet_id = null;
+    }
+
+    // 3. Destroy previous instance if React kept it in memory
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
       mapInstanceRef.current = null;
     }
 
-    // 3. INITIALIZE: Create the map
-    const map = L.map(mapContainerRef.current).setView([36.278439, -115.020068], 5);
-    
-    // Add Tile Layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    // 4. Initialize Map
+    try {
+      const map = L.map(mapContainerRef.current).setView([36.278439, -115.020068], 5);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
 
-    // 4. Add Markers
-    vehicles.forEach((vehicle) => {
-      if (vehicle.latitude && vehicle.longitude) {
-        const marker = L.marker([vehicle.latitude, vehicle.longitude], { icon })
-          .addTo(map);
-        
-        // Add Popup
-        const popupContent = `
-          <div style="text-align:center;">
-            <strong>${vehicle.pet_name || vehicle.name}</strong><br/>
-            <span style="color:#666; font-size:12px;">${vehicle.type}</span><br/>
-            <a href="/biz/vehicles/${vehicle.id}" style="color:#3b82f6; text-decoration:underline;">View Details</a>
-          </div>
-        `;
-        marker.bindPopup(popupContent);
-      }
-    });
+      // 5. Add Markers
+      vehicles.forEach((vehicle) => {
+        if (vehicle.latitude && vehicle.longitude) {
+          const marker = L.marker([vehicle.latitude, vehicle.longitude], { icon }).addTo(map);
+          // Safety check for popup content
+          const name = vehicle.pet_name || vehicle.name || 'Vehicle';
+          const loc = vehicle.location_name || vehicle.type || 'Unknown';
+          
+          marker.bindPopup(`
+            <div style="text-align:center; font-family: sans-serif;">
+              <strong>${name}</strong><br/>
+              <span style="font-size:12px; color:#666;">${loc}</span><br/>
+              <a href="/biz/vehicles/${vehicle.id}" style="color:#2563eb;">View</a>
+            </div>
+          `);
+        }
+      });
 
-    // Save instance to ref
-    mapInstanceRef.current = map;
+      mapInstanceRef.current = map;
 
-    // 5. UNMOUNT HANDLER
+    } catch (err) {
+      console.warn("Map Re-init warning:", err);
+    }
+
+    // 6. Cleanup on Unmount
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, [vehicles]); // Re-run if vehicles change
+  }, [vehicles]);
 
-  return (
-    <div 
-      ref={mapContainerRef} 
-      style={{ height: '400px', width: '100%', zIndex: 0 }} 
-    />
-  );
+  return <div ref={mapContainerRef} style={{ height: '100%', width: '100%', zIndex: 0 }} />;
 };
 
 export default MapInner;
