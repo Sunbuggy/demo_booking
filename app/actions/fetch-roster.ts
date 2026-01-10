@@ -31,7 +31,6 @@ export async function fetchFullRosterData(date: string) {
   }
 
   // 2. PREPARE DATES
-  // We fetch a buffer around the selected week to ensure we have all data
   const targetDate = new Date(date);
   const startRange = format(subDays(targetDate, 10), 'yyyy-MM-dd');
   const endRange = format(addDays(targetDate, 10), 'yyyy-MM-dd');
@@ -47,11 +46,14 @@ export async function fetchFullRosterData(date: string) {
           employee_details (
             primary_work_location,
             department,
+            primary_position,  
             job_title,
             hire_date,
             timeclock_blocked
           )
         `)
+        // ^^^ FIXED: Added 'primary_position' above. 
+        // Previously it was missing, causing role matching to fail.
         .gte('user_level', 300)
         .order('full_name'),
 
@@ -87,6 +89,7 @@ export async function fetchFullRosterData(date: string) {
             stage_name: u.stage_name || u.full_name.split(' ')[0], 
             location: details.primary_work_location || u.location || 'Las Vegas',
             department: details.department || u.department || 'General',
+            // Fix: Now details.primary_position will actually exist
             job_title: details.primary_position || details.job_title || 'STAFF',
             hire_date: details.hire_date || u.hire_date || null,
             user_level: u.user_level,
