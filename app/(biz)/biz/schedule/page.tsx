@@ -1,18 +1,17 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (v13.5 - SERVER-SIDE FETCH FIX)
+// SUNBUGGY ROSTER PAGE (v14.0 - DYNAMIC HR CONFIGURATION)
 // ============================================================================
-// CHANGELOG v13.5:
-// 1. FIX: Switched main roster data fetching to Server Action (fetchFullRosterData).
-//    - This bypasses Client-side RLS, allowing Managers to view all staff.
-// 2. PRESERVED: Day View Weather, Old DB Stats, UI Logic, and Audit Logs.
+// CHANGELOG v14.0:
+// 1. FEATURE: Removed hardcoded constants. Now pulls Locations/Depts/Positions from DB.
+// 2. FIX: Matches employees based on 'primary_position' using DB configuration.
+// 3. UI: Department colors now load from the DB 'style_class' column (with fallbacks).
 
 import { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
-// import { getStaffRoster } from '@/utils/supabase/queries'; // REMOVED: Replaced by Server Action
-import { fetchFullRosterData } from '@/app/actions/fetch-roster'; // NEW: Server Action
+import { fetchFullRosterData } from '@/app/actions/fetch-roster';
 import { getLocationWeather, DailyWeather } from '@/app/actions/weather';
 import { approveTimeOffRequest } from '@/app/actions/approve-time-off';
 
@@ -56,31 +55,10 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from '@/components/ui/separator';
 
-// --- CONSTANTS ---
-const LOCATIONS: Record<string, string[]> = {
-  'Las Vegas': ['ADMIN', 'OFFICE', 'DUNES', 'SHUTTLES', 'SHOP'],
-  'Pismo': ['ADMIN', 'CLUBHOUSE', 'BEACH', 'SHOP'],
-  'Michigan': ['ADMIN', 'SHOP', 'GUIDES', 'OFFICE']
-};
+// --- FALLBACK STYLES (If DB is empty) ---
+const DEFAULT_DEPT_STYLE = 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 text-slate-700';
 
-const DEPT_STYLES: Record<string, string> = {
-  'OFFICE': 'bg-orange-100 dark:bg-orange-950/30 border-orange-200 text-orange-900 dark:text-orange-100',
-  'SHOP': 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 text-zinc-900 dark:text-zinc-100',
-  'SHUTTLES': 'bg-blue-100 dark:bg-blue-950/30 border-blue-200 text-blue-900 dark:text-blue-100',
-  'DEFAULT': 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 text-slate-700'
-};
-
-const ROLE_GROUPS: Record<string, string[]> = {
-  'OFFICE': ['ADMIN', 'OPPS', 'CSR', 'PROD DEV'],
-  'SHOP': ['BUGGIES', 'OHVS', 'FLEET', 'FAB', 'HELPER'],
-  'SHUTTLES': ['DRIVER', 'DISPATCH'],
-  'DUNES': ['GUIDE', 'LEAD', 'SWEEP'],
-  'BEACH': ['RENTAL', 'GUIDE'],
-  'ADMIN': ['MANAGER', 'HR', 'OWNER'],
-  'CSR': ['RECEPTION', 'PHONES'],
-  'GUIDES': ['GUIDE', 'LEAD']
-};
-
+// --- CONSTANT: TASKS (Still Hardcoded as these are Shift Tasks, not HR Roles) ---
 const TASKS: Record<string, { label: string, color: string, code: string, icon: LucideIcon }> = {
   'TORCH': { label: 'TORCH (Dispatch)', color: 'bg-red-600', code: 'T', icon: Clock },
   'SST': { label: 'SST (Support)', color: 'bg-blue-600', code: 'S', icon: Users },
@@ -98,6 +76,11 @@ interface AuditLog { id: string; created_at: string; action: string; user_id: st
 interface ShiftDefaults { role: string; start: string; end: string; location: string; task?: string; }
 interface ReservationStat { sch_date: string | Date; ppl_count: string | number; [key: string]: string | number | boolean | Date | null | undefined; }
 
+// HR Config Interfaces
+interface HRLocation { id: string; name: string; sort_order: number; departments: HRDepartment[]; }
+interface HRDepartment { id: string; name: string; sort_order: number; style_class?: string; positions: HRPosition[]; }
+interface HRPosition { id: string; title: string; keyword?: string; sort_order: number; }
+
 // --- HELPER FUNCTIONS ---
 const getDashboardLink = (locationName: string, dateStr: string) => {
   if (locationName === 'Las Vegas') return `/biz/${dateStr}`;
@@ -110,7 +93,6 @@ const getDurationHours = (start: string, end: string): number => {
   return diffMinutes / 60;
 };
 
-// [DEV NOTE] Weather Icon Logic for main grid usage
 const getWeatherIcon = (code: number): LucideIcon => {
   if (code >= 95) return CloudLightning;
   if (code >= 71) return Snowflake;
@@ -176,12 +158,11 @@ const ChangeLogViewer = ({ tableName, rowId }: { tableName: string, rowId: strin
   );
 };
 
-// --- WEATHER CELL (Main Grid Display) ---
+// --- WEATHER CELL ---
 const WeatherCell = ({ data }: { data: DailyWeather | undefined }) => {
   if (!data) return <div className="text-[10px] text-muted-foreground h-full flex items-center justify-center">-</div>;
   const Icon = getWeatherIcon(data.code);
   const color = data.code > 50 ? "text-blue-500" : "text-yellow-500";
-
   return (
     <div className="flex flex-row items-center justify-center h-full w-full gap-1" title="Click for detailed forecast">
       <Icon className={`w-3.5 h-3.5 ${color} print:text-black`} />
@@ -214,13 +195,17 @@ export default function RosterPage() {
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
+  
+  // Data State
+  const [hrConfig, setHrConfig] = useState<HRLocation[]>([]); // New Dynamic Config
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
 
-  // METADATA
+  // Metadata
   const [rosterMetadata, setRosterMetadata] = useState<Record<string, { requests: TimeOffRequest[], availability: AvailabilityRule[] }>>({});
   const [weatherData, setWeatherData] = useState<Record<string, DailyWeather[]>>({});
   const [dailyStats, setDailyStats] = useState<Record<string, { people: number, fullString: string }>>({});
+  
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [currentUserLevel, setCurrentUserLevel] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -235,17 +220,14 @@ export default function RosterPage() {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
 
-  // REVIEW MODAL
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<TimeOffRequest | null>(null);
   const [managerNote, setManagerNote] = useState('');
 
-  // WEATHER MODAL
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
   const [selectedWeatherLoc, setSelectedWeatherLoc] = useState('');
   const [selectedWeatherDate, setSelectedWeatherDate] = useState<string>('');
 
-  // Shift Edit State
   const [formRole, setFormRole] = useState('Guide');
   const [formTask, setFormTask] = useState<string>('NONE');
   const [formStart, setFormStart] = useState('09:00');
@@ -272,30 +254,69 @@ export default function RosterPage() {
 
   useEffect(() => { if (isMounted) fetchData(); }, [currentDate, isMounted]);
 
-  // --- CRITICAL: GROUPED EMPLOYEES SCOPE FIX ---
+  // --- 1. NEW DYNAMIC GROUPING LOGIC ---
   const groupedEmployees = useMemo(() => {
-    const groups: Record<string, any> = {};
-    Object.keys(LOCATIONS).forEach(loc => {
-      groups[loc] = {};
-      LOCATIONS[loc].forEach(dept => {
-        groups[loc][dept] = { 'General': [] };
-        (ROLE_GROUPS[dept] || []).forEach(role => groups[loc][dept][role] = []);
+    // Structure: Groups[Location][Department][Role] = Employee[]
+    const groups: Record<string, Record<string, Record<string, Employee[]>>> = {};
+
+    // Initialize structure from loaded DB config
+    hrConfig.forEach(loc => {
+      groups[loc.name] = {};
+      loc.departments.forEach(dept => {
+        groups[loc.name][dept.name] = { 'General': [] }; // Default bin
+        dept.positions.forEach(pos => {
+          groups[loc.name][dept.name][pos.title] = [];
+        });
       });
-      groups[loc]['Visiting Staff'] = { 'General': [] };
+      // Fallback for traveling staff
+      groups[loc.name]['Visiting Staff'] = { 'General': [] };
     });
+
+    // Distribute Employees
     employees.forEach(emp => {
-      const loc = LOCATIONS[emp.location] ? emp.location : 'Las Vegas';
-      let dept = emp.department;
-      if (!groups[loc][dept]) dept = Object.keys(groups[loc])[0] || 'ADMIN';
-      let role = 'General';
-      const match = (ROLE_GROUPS[dept] || []).find(r => emp.job_title.toUpperCase().includes(r));
-      if (match) role = match;
-      if (groups[loc][dept] && groups[loc][dept][role]) {
-        groups[loc][dept][role].push(emp);
-      }
+        // Find Location (or default)
+        const locName = hrConfig.find(l => l.name === emp.location)?.name || 'Las Vegas';
+        if (!groups[locName]) groups[locName] = {};
+
+        // Find Department (or default)
+        const activeLocConfig = hrConfig.find(l => l.name === locName);
+        let deptName = emp.department;
+        
+        // Validation: Does dept exist in this location?
+        if (!groups[locName][deptName]) {
+            // Try to find a sensible default or put in first available
+            deptName = activeLocConfig?.departments[0]?.name || 'OFFICE';
+            if(!groups[locName][deptName]) groups[locName][deptName] = {'General': []};
+        }
+
+        // Find Position (Role)
+        let role = 'General';
+        const activeDeptConfig = activeLocConfig?.departments.find(d => d.name === deptName);
+        
+        if (activeDeptConfig) {
+            // MATCHING LOGIC: Exact Title -> Keyword Match -> Default
+            const empTitleUpper = (emp.job_title || '').toUpperCase();
+            
+            const matchedPos = activeDeptConfig.positions.find(p => {
+               // 1. Exact Match
+               if (p.title.toUpperCase() === empTitleUpper) return true;
+               // 2. Keyword Partial Match (if keyword exists)
+               if (p.keyword && empTitleUpper.includes(p.keyword.toUpperCase())) return true;
+               return false;
+            });
+
+            if (matchedPos) role = matchedPos.title;
+        }
+
+        // Initialize if missing (safety)
+        if (!groups[locName][deptName][role]) groups[locName][deptName][role] = [];
+        
+        // Push employee
+        groups[locName][deptName][role].push(emp);
     });
+
     return groups;
-  }, [employees]);
+  }, [employees, hrConfig]);
 
   const calculateDailyStats = (reservations: ReservationStat[]) => {
     const totalPeople = reservations.reduce((acc, r) => acc + (Number(r.ppl_count) || 0), 0);
@@ -306,11 +327,11 @@ export default function RosterPage() {
     return { people: totalPeople, vehicles: '', fullString: breakdown };
   };
 
-  // --- NEW: FETCH DATA USING SERVER ACTION ---
+  // --- FETCH DATA ---
   const fetchData = async () => {
     setLoading(true);
 
-    // 1. Get Current User (Client Side for Context)
+    // 1. Get Current User Info
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setCurrentUserId(user.id);
@@ -318,8 +339,42 @@ export default function RosterPage() {
       if (userData) setCurrentUserLevel(userData.user_level || 0);
     }
 
-    // 2. FETCH ROSTER DATA FROM SERVER (Bypasses RLS)
-    // We pass the start of the week so the server knows what range to fetch
+    // 2. FETCH HR CONFIGURATION (Locations/Depts/Positions)
+    // This replaces hardcoded constants.
+    const { data: hrData } = await supabase
+      .from('locations')
+      .select(`
+        *,
+        departments (
+          *,
+          positions (*)
+        )
+      `)
+      .order('sort_order', { ascending: true });
+
+    if (hrData) {
+        // Sort sub-arrays manually (Supabase deep sort is limited)
+        const sortedConfig = hrData.map((loc: any) => ({
+            ...loc,
+            departments: (loc.departments || [])
+                .sort((a: any, b: any) => a.sort_order - b.sort_order)
+                .map((dept: any) => ({
+                    ...dept,
+                    positions: (dept.positions || [])
+                        .sort((a: any, b: any) => a.sort_order - b.sort_order)
+                }))
+        }));
+        setHrConfig(sortedConfig);
+        
+        // Initialize visibility if empty
+        if (Object.keys(visibleLocs).length === 0) {
+            const initialVis: any = {};
+            sortedConfig.forEach((l: any) => initialVis[l.name] = true);
+            setVisibleLocs(initialVis);
+        }
+    }
+
+    // 3. FETCH ROSTER DATA (Using Server Action)
     const dateStr = format(startOfWeekDate, 'yyyy-MM-dd');
     const result = await fetchFullRosterData(dateStr);
 
@@ -329,35 +384,27 @@ export default function RosterPage() {
       return;
     }
 
-    // 3. SET STATE WITH RETURNED DATA
+    // 4. SET STATE
     const uniqueStaff = (result.employees || []).sort((a: any, b: any) => {
       if (b.user_level !== a.user_level) return b.user_level - a.user_level;
       if (!a.hire_date) return 1; if (!b.hire_date) return -1;
       return new Date(a.hire_date).getTime() - new Date(b.hire_date).getTime();
     });
     setEmployees(uniqueStaff);
-    
-    // Set Shifts
     if (result.shifts) setShifts(result.shifts);
 
-    // Process Metadata (Requests & Availability)
+    // Metadata
     const metaMap: Record<string, { requests: TimeOffRequest[], availability: AvailabilityRule[] }> = {};
     uniqueStaff.forEach((u: any) => { metaMap[u.id] = { requests: [], availability: [] }; });
-
     (result.requests || []).forEach((r: TimeOffRequest) => {
-      const normStatus = r.status.trim().toUpperCase();
-      if ((normStatus === 'APPROVED' || normStatus === 'PENDING') && metaMap[r.user_id]) {
-        const user = uniqueStaff.find((u: any) => u.id === r.user_id);
-        metaMap[r.user_id].requests.push({ ...r, user_name: user?.full_name || 'Unknown' });
-      }
+      if (metaMap[r.user_id]) metaMap[r.user_id].requests.push(r);
     });
-
     (result.availability || []).forEach((a: AvailabilityRule) => {
       if (metaMap[a.user_id]) metaMap[a.user_id].availability.push(a);
     });
     setRosterMetadata(metaMap);
 
-    // 4. EXTRA DATA (Old DB + Weather) - Unchanged Logic
+    // 5. FETCH OLD DB & WEATHER (Unchanged)
     if (visibleLocs['Las Vegas']) {
       const query = `SELECT * FROM reservations_modified WHERE sch_date >= '${format(startOfWeekDate, 'yyyy-MM-dd')}' AND sch_date <= '${format(endOfWeekDate, 'yyyy-MM-dd')}'`;
       try {
@@ -374,12 +421,15 @@ export default function RosterPage() {
       } catch (e) { console.error(e); }
     }
 
-    // Weather Fetch (REAL DATA)
+    // Weather
     const weatherUpdates: Record<string, DailyWeather[]> = {};
     const daysUntilStart = differenceInDays(startOfWeekDate, new Date());
     const useHistorical = daysUntilStart > 10;
+    
+    // Use dynamic location list
+    const locList = hrData ? hrData.map((l:any) => l.name) : Object.keys(LOCATIONS);
 
-    await Promise.all(Object.keys(LOCATIONS).map(async (loc) => {
+    await Promise.all(locList.map(async (loc: string) => {
       if (!visibleLocs[loc]) return;
       if (useHistorical) {
         const dummyData = weekDays.map(day => ({
@@ -465,10 +515,9 @@ export default function RosterPage() {
 
   return (
     <div id="roster-container" className="p-2 h-[calc(100vh-65px)] flex flex-col bg-background text-foreground overflow-hidden print:p-0 print:bg-white print:h-auto print:block print:w-full print:m-0 print:overflow-visible">
-      {/* GLOBAL PRINT STYLES */}
       <style jsx global>{`@media print { @page { size: landscape; margin: 5mm; } html, body, #roster-container, .bg-background, .bg-card, .dark { background-color: white !important; color: black !important; margin: 0 !important; padding: 0 !important; } * { box-shadow: none !important; border-radius: 0 !important; } nav, header, aside, .print-hide { display: none !important; } #roster-container { position: static !important; height: auto !important; overflow: visible !important; display: block !important; margin: 0 !important; padding: 0 !important; } .sticky { position: static !important; } .location-break { break-before: page; page-break-before: always; } tbody.dept-block { break-inside: avoid; page-break-inside: avoid; } .print-yellow { background-color: #fde047 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } tr { height: auto !important; } td, th { padding: 0.5px 2px !important; font-size: 10px !important; vertical-align: middle !important; border-color: #000 !important; border-width: 1px !important; } .print-no-avatar { display: none !important; } }`}</style>
 
-      {/* COMPACT HEADER */}
+      {/* HEADER */}
       <div className="flex flex-col gap-2 print-hide z-[60] sticky top-0 bg-background/95 backdrop-blur pb-2 pt-1">
         <div className="min-h-[3.5rem] h-auto flex flex-col md:flex-row items-center justify-between gap-y-3 p-2 border rounded-lg bg-card shadow-sm relative">
           <div className="w-full md:w-auto order-2 md:order-1 flex items-center gap-3">
@@ -476,7 +525,14 @@ export default function RosterPage() {
             <Separator orientation="vertical" className="h-6 hidden lg:block" />
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full md:w-auto">
               <Filter className="w-3.5 h-3.5 text-muted-foreground mr-1 flex-shrink-0" />
-              {Object.keys(LOCATIONS).map(loc => (<Badge key={loc} variant={visibleLocs[loc] ? 'default' : 'outline'} className={`cursor-pointer select-none px-2 py-0.5 text-[10px] whitespace-nowrap ${visibleLocs[loc] ? 'bg-primary hover:bg-primary/90' : 'bg-transparent text-muted-foreground hover:bg-accent'}`} onClick={() => { setVisibleLocs({ ...visibleLocs, [loc]: !visibleLocs[loc] }); }}>{loc}</Badge>))}
+              {/* Dynamic Location Filter */}
+              {hrConfig.map(loc => (
+                  <Badge key={loc.id} variant={visibleLocs[loc.name] ? 'default' : 'outline'} 
+                         className={`cursor-pointer select-none px-2 py-0.5 text-[10px] whitespace-nowrap ${visibleLocs[loc.name] ? 'bg-primary hover:bg-primary/90' : 'bg-transparent text-muted-foreground hover:bg-accent'}`} 
+                         onClick={() => { setVisibleLocs({ ...visibleLocs, [loc.name]: !visibleLocs[loc.name] }); }}>
+                    {loc.name}
+                  </Badge>
+              ))}
             </div>
           </div>
           <div className="w-full md:w-auto order-1 md:order-2 flex justify-center md:absolute md:left-1/2 md:-translate-x-1/2 z-10">
@@ -575,9 +631,14 @@ export default function RosterPage() {
                     const deptEmps = Object.values(roleGroups as Record<string, Employee[]>).flat();
                     const deptShifts = locShifts.filter(s => deptEmps.some(e => e.id === s.user_id));
                     const isVisiting = deptName === 'Visiting Staff';
+                    
+                    // Lookup style from config or use default
+                    const deptConfig = hrConfig.find(l => l.name === locName)?.departments.find(d => d.name === deptName);
+                    const deptStyle = deptConfig?.style_class || DEFAULT_DEPT_STYLE;
+
                     return (
                       <tbody key={`${locName}-${deptName}`} className="dept-block">
-                        <tr className={`${isVisiting ? 'bg-amber-50 dark:bg-amber-950/30' : DEPT_STYLES[deptName] || DEPT_STYLES['DEFAULT']} print-color-exact border-t-2 border-slate-200 print:border-black`}>
+                        <tr className={`${isVisiting ? 'bg-amber-50 dark:bg-amber-950/30' : deptStyle} print-color-exact border-t-2 border-slate-200 print:border-black`}>
                           <td className={`p-1 font-bold text-xs uppercase border-b sticky left-0 z-30 w-32 ${isVisiting ? 'text-amber-600' : ''} print:static print:text-black print:border-black`}>
                             <div className="flex flex-row justify-between items-center w-full px-1">
                               <span>{isVisiting && <Plane className="w-3 h-3 inline mr-1 mb-0.5" />} {deptName}</span>
@@ -612,7 +673,6 @@ export default function RosterPage() {
                                       const dateStr = format(day, 'yyyy-MM-dd');
                                       const shift = shifts.find(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateStr);
                                       const isAway = shift && shift.location !== emp.location && !isVisiting;
-                                      // STRICT DATE MATCHING (v12.2)
                                       const request = empReqs.find(r => {
                                         const start = r.start_date.slice(0, 10);
                                         const end = r.end_date.slice(0, 10);
@@ -694,9 +754,14 @@ export default function RosterPage() {
                   <div className="divide-y divide-slate-100 dark:divide-slate-800 print:divide-black">
                     {activeDepts.map(([deptName, roleGroups]) => {
                       const allDeptEmps = Object.values(roleGroups as Record<string, Employee[]>).flat();
+                      
+                      // Lookup style from config or use default
+                      const deptConfig = hrConfig.find(l => l.name === locName)?.departments.find(d => d.name === deptName);
+                      const deptStyle = deptConfig?.style_class || 'bg-muted';
+
                       return (
                         <div key={deptName} className="p-0 print:break-before">
-                          <div className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-b ${DEPT_STYLES[deptName] || 'bg-muted'} print:bg-gray-100 print:text-black print:border-black`}>{deptName === 'Visiting Staff' && <Plane className="w-3 h-3 inline mr-1" />} {deptName}</div>
+                          <div className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-b ${deptStyle} print:bg-gray-100 print:text-black print:border-black`}>{deptName === 'Visiting Staff' && <Plane className="w-3 h-3 inline mr-1" />} {deptName}</div>
                           <div className="divide-y divide-slate-100 dark:divide-slate-800 print:divide-black">
                             {allDeptEmps.map((emp: any) => {
                               const shift = shifts.find(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateKey);
@@ -725,7 +790,6 @@ export default function RosterPage() {
 
       {/* MODALS */}
       <div className="print-hide">
-        {/* WEATHER MODAL */}
         <WeatherModal
           isOpen={isWeatherModalOpen}
           onOpenChange={setIsWeatherModalOpen}
@@ -734,7 +798,6 @@ export default function RosterPage() {
           onNavigate={handleNavWeatherDay}
         />
 
-        {/* REVIEW REQUEST MODAL */}
         <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle className={`flex items-center gap-2 ${selectedRequest?.status.toUpperCase() === 'APPROVED' ? 'text-zinc-600' : 'text-orange-600'}`}><CalendarClock className="w-5 h-5" /> {selectedRequest?.status.toUpperCase() === 'APPROVED' ? 'Manage Approved Time Off' : 'Review Request'}</DialogTitle><DialogDescription>Request for {selectedRequest?.user_name}</DialogDescription></DialogHeader>
@@ -742,20 +805,18 @@ export default function RosterPage() {
           </DialogContent>
         </Dialog>
 
-        {/* SHIFT MODAL */}
         <Dialog open={isShiftModalOpen} onOpenChange={setIsShiftModalOpen}>
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle className="flex items-center justify-between w-full"><span>Shift Details</span>{selectedShiftId && <ChangeLogViewer tableName="employee_schedules" rowId={selectedShiftId} />}</DialogTitle></DialogHeader>
-            <div className="grid gap-4 py-2"><div className="text-sm font-semibold">{selectedEmpName} <span className="font-normal text-muted-foreground">- {selectedDate ? format(parseISO(selectedDate), 'MMM do') : ''}</span></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs">Start</label><Input type="time" disabled={!isManager} value={formStart} onChange={(e) => { const newStart = e.target.value; setFormStart(newStart); if (newStart && selectedDate) { const startDateTime = parseISO(`${selectedDate}T${newStart}`); const endDateTime = addHours(startDateTime, 8); setFormEnd(format(endDateTime, 'HH:mm')); } }} /></div><div><label className="text-xs">End</label><Input type="time" disabled={!isManager} value={formEnd} onChange={e => setFormEnd(e.target.value)} /></div></div><div><label className="text-xs">Role</label><Select value={formRole} onValueChange={setFormRole} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['Guide', 'Desk', 'Driver', 'Mechanic', 'Manager'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div><div><label className="text-xs">Special Task</label><Select value={formTask} onValueChange={setFormTask} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">None</SelectItem>{Object.entries(TASKS).map(([key, task]) => (<SelectItem key={key} value={key}><div className="flex items-center gap-2"><div className={`w-3 h-3 ${task.color} rounded-sm`}></div>{task.label}</div></SelectItem>))}</SelectContent></Select></div><div><label className="text-xs">Location</label><Select value={formLocation} onValueChange={setFormLocation} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.keys(LOCATIONS).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent></Select></div></div>
+            <div className="grid gap-4 py-2"><div className="text-sm font-semibold">{selectedEmpName} <span className="font-normal text-muted-foreground">- {selectedDate ? format(parseISO(selectedDate), 'MMM do') : ''}</span></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs">Start</label><Input type="time" disabled={!isManager} value={formStart} onChange={(e) => { const newStart = e.target.value; setFormStart(newStart); if (newStart && selectedDate) { const startDateTime = parseISO(`${selectedDate}T${newStart}`); const endDateTime = addHours(startDateTime, 8); setFormEnd(format(endDateTime, 'HH:mm')); } }} /></div><div><label className="text-xs">End</label><Input type="time" disabled={!isManager} value={formEnd} onChange={e => setFormEnd(e.target.value)} /></div></div><div><label className="text-xs">Role</label><Select value={formRole} onValueChange={setFormRole} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['Guide', 'Desk', 'Driver', 'Mechanic', 'Manager'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div><div><label className="text-xs">Special Task</label><Select value={formTask} onValueChange={setFormTask} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">None</SelectItem>{Object.entries(TASKS).map(([key, task]) => (<SelectItem key={key} value={key}><div className="flex items-center gap-2"><div className={`w-3 h-3 ${task.color} rounded-sm`}></div>{task.label}</div></SelectItem>))}</SelectContent></Select></div><div><label className="text-xs">Location</label><Select value={formLocation} onValueChange={setFormLocation} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hrConfig.map(l => <SelectItem key={l.name} value={l.name}>{l.name}</SelectItem>)}</SelectContent></Select></div></div>
             <DialogFooter className="flex justify-between w-full">{selectedShiftId && isManager ? (<Button variant="destructive" size="sm" onClick={handleDeleteShift}><Trash2 className="w-4 h-4 mr-2" /> Delete</Button>) : <div />}{isManager && <Button size="sm" onClick={handleSaveShift}>Save</Button>}</DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* PROFILE MODAL */}
         <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle className="flex items-center justify-between w-full"><span>Edit Employee</span>{profileEmp && <ChangeLogViewer tableName="users" rowId={profileEmp.id} />}</DialogTitle></DialogHeader>
-            {profileEmp && (<div className="grid gap-4 py-2"><div className="flex items-center gap-4 border-b pb-4 mb-2"><UserStatusAvatar user={profileEmp} currentUserLevel={currentUserLevel} size="lg" /><div><div className="text-lg font-bold">{profileEmp.full_name}</div><div className="text-xs text-muted-foreground">{profileEmp.email}</div></div></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs">Location</label><Select value={profileEmp.location} onValueChange={(v) => setProfileEmp({ ...profileEmp, location: v })} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.keys(LOCATIONS).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent></Select></div><div><label className="text-xs">Department</label><Select value={profileEmp.department} onValueChange={(v) => setProfileEmp({ ...profileEmp, department: v })} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(LOCATIONS[profileEmp.location as keyof typeof LOCATIONS] || []).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div></div><div><label className="text-xs">Job Title / Role</label><Select value={profileEmp.job_title} onValueChange={(v) => setProfileEmp({ ...profileEmp, job_title: v })} disabled={!isManager}><SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger><SelectContent>{(ROLE_GROUPS[profileEmp.department] || ['STAFF']).map(role => (<SelectItem key={role} value={role}>{role}</SelectItem>))}</SelectContent></Select></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs">Hire Date</label><Input type="date" disabled={!isManager} value={profileEmp.hire_date || ''} onChange={(e) => setProfileEmp({ ...profileEmp, hire_date: e.target.value })} /></div><div><label className="text-xs">Phone Number</label><Input type="tel" disabled={!isManager} value={profileEmp.phone || ''} onChange={(e) => setProfileEmp({ ...profileEmp, phone: e.target.value })} /></div></div><div><label className="text-xs">Avatar URL</label><Input type="text" disabled={!isManager} value={profileEmp.avatar_url || ''} onChange={(e) => setProfileEmp({ ...profileEmp, avatar_url: e.target.value })} /></div>{isManager && (<div className="flex items-center justify-between border p-3 rounded bg-slate-50 dark:bg-slate-900/50"><div><h4 className="text-sm font-bold flex items-center gap-2"><Ban className="w-4 h-4 text-red-500" /> Block Timeclock</h4></div><Switch checked={profileEmp.timeclock_blocked} onCheckedChange={(c) => setProfileEmp({ ...profileEmp, timeclock_blocked: c })} disabled={!isManager} /></div>)}{isAdmin && (<div className="bg-red-50 p-3 rounded-md border border-red-100 mt-2"><Button variant="destructive" size="sm" className="w-full" onClick={handleArchiveEmployee}>Archive Employee</Button></div>)}</div>)}
+            {profileEmp && (<div className="grid gap-4 py-2"><div className="flex items-center gap-4 border-b pb-4 mb-2"><UserStatusAvatar user={profileEmp} currentUserLevel={currentUserLevel} size="lg" /><div><div className="text-lg font-bold">{profileEmp.full_name}</div><div className="text-xs text-muted-foreground">{profileEmp.email}</div></div></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs">Location</label><Select value={profileEmp.location} onValueChange={(v) => setProfileEmp({ ...profileEmp, location: v })} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hrConfig.map(l => <SelectItem key={l.name} value={l.name}>{l.name}</SelectItem>)}</SelectContent></Select></div><div><label className="text-xs">Department</label><Select value={profileEmp.department} onValueChange={(v) => setProfileEmp({ ...profileEmp, department: v })} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(hrConfig.find(l => l.name === profileEmp.location)?.departments || []).map(d => <SelectItem key={d.name} value={d.name}>{d.name}</SelectItem>)}</SelectContent></Select></div></div><div><label className="text-xs">Job Title / Role</label><Select value={profileEmp.job_title} onValueChange={(v) => setProfileEmp({ ...profileEmp, job_title: v })} disabled={!isManager}><SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger><SelectContent>{(hrConfig.find(l => l.name === profileEmp.location)?.departments.find(d => d.name === profileEmp.department)?.positions || []).map(p => (<SelectItem key={p.title} value={p.title}>{p.title}</SelectItem>))}</SelectContent></Select></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs">Hire Date</label><Input type="date" disabled={!isManager} value={profileEmp.hire_date || ''} onChange={(e) => setProfileEmp({ ...profileEmp, hire_date: e.target.value })} /></div><div><label className="text-xs">Phone Number</label><Input type="tel" disabled={!isManager} value={profileEmp.phone || ''} onChange={(e) => setProfileEmp({ ...profileEmp, phone: e.target.value })} /></div></div><div><label className="text-xs">Avatar URL</label><Input type="text" disabled={!isManager} value={profileEmp.avatar_url || ''} onChange={(e) => setProfileEmp({ ...profileEmp, avatar_url: e.target.value })} /></div>{isManager && (<div className="flex items-center justify-between border p-3 rounded bg-slate-50 dark:bg-slate-900/50"><div><h4 className="text-sm font-bold flex items-center gap-2"><Ban className="w-4 h-4 text-red-500" /> Block Timeclock</h4></div><Switch checked={profileEmp.timeclock_blocked} onCheckedChange={(c) => setProfileEmp({ ...profileEmp, timeclock_blocked: c })} disabled={!isManager} /></div>)}{isAdmin && (<div className="bg-red-50 p-3 rounded-md border border-red-100 mt-2"><Button variant="destructive" size="sm" className="w-full" onClick={handleArchiveEmployee}>Archive Employee</Button></div>)}</div>)}
             <DialogFooter><Button variant="outline" onClick={() => setIsProfileModalOpen(false)}>Cancel</Button>{isManager && <Button onClick={handleSaveProfile}>Save</Button>}</DialogFooter>
           </DialogContent>
         </Dialog>

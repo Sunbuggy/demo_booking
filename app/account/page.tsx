@@ -1,7 +1,8 @@
 /**
  * @file /app/account/page.tsx
  * @description THE UNIVERSAL USER HUB.
- * Updated: Handles strict Guest/Customer/Staff visibility rules and Homepage Preference.
+ * Updated: Fetches dynamic HR Configuration (Locations/Depts/Positions) from DB
+ * and passes it to UserForm for editing consistency.
  */
 
 import React from 'react';
@@ -16,13 +17,14 @@ import {
   getEmployeeDetails,
   fetchEmployeeTimeClockEntryData 
 } from '@/utils/supabase/queries';
+import { fetchHRConfiguration } from '@/app/actions/fetch-hr-config'; // <--- NEW IMPORT
 
 // --- FEATURE COMPONENTS ---
 import UserTimeSheet from '@/components/UserTimeSheet'; 
 import AdminAvailability from '@/app/(biz)/biz/users/[id]/components/admin-availability'; 
 import AdminTimeOff from '@/app/(biz)/biz/users/[id]/components/admin-time-off'; 
 import ScanHistory from '@/app/(biz)/biz/users/[id]/components/scan-history';
-import HomepageSelect from '@/components/account/HomepageSelect'; // <--- NEW COMPONENT
+import HomepageSelect from '@/components/account/HomepageSelect';
 
 // --- UI COMPONENTS ---
 import BackgroundPicker from './components/background-picker';
@@ -76,11 +78,13 @@ export default async function AccountPage(props: AccountPageProps) {
 
   let targetUserId = currentUser.id;
   let isViewingOther = false;
+  let viewerLevel = 0;
+
+  // Fetch Viewer Profile first to establish permissions
+  const viewerProfileRes = await getUserById(supabase, currentUser.id);
+  viewerLevel = viewerProfileRes?.[0]?.user_level ?? 0;
   
   if (requestedUserId && requestedUserId !== currentUser.id) {
-    const viewerProfileRes = await getUserById(supabase, currentUser.id);
-    const viewerLevel = viewerProfileRes?.[0]?.user_level ?? 0;
-
     // Only Managers (650+) or Admins (900+) can view others
     if (viewerLevel >= 650) {
       targetUserId = requestedUserId;
@@ -100,14 +104,16 @@ export default async function AccountPage(props: AccountPageProps) {
     weeklyTimeEntries,
     qrDataRes,
     availabilityRes,
-    timeOffRes
+    timeOffRes,
+    hrConfig // <--- NEW: Fetch HR Data
   ] = await Promise.all([
     getUserById(supabase, targetUserId),
     getEmployeeDetails(supabase, targetUserId),
     fetchEmployeeTimeClockEntryData(supabase, targetUserId, startOfWeek, endOfWeek),
     supabase.from('qr_history').select(`*, vehicle:vehicles (*)`).eq('user', targetUserId).order('scanned_at', { ascending: false }),
     supabase.from('employee_availability_patterns').select('*').eq('user_id', targetUserId),
-    supabase.from('time_off_requests').select('*').eq('user_id', targetUserId).order('start_date', { ascending: false })
+    supabase.from('time_off_requests').select('*').eq('user_id', targetUserId).order('start_date', { ascending: false }),
+    fetchHRConfiguration() // <--- NEW Call
   ]);
 
   // 4. Normalize Data
@@ -212,7 +218,13 @@ export default async function AccountPage(props: AccountPageProps) {
                         Profile Settings: <span className="text-orange-500">{userProfile.full_name}</span>
                       </DialogTitle>
                     </DialogHeader>
-                    <UserForm user={userProfile as any} empDetails={employeeDetails} />
+                    {/* UPDATED: Passing hrConfig and viewerLevel to UserForm */}
+                    <UserForm 
+                      user={userProfile as any} 
+                      empDetails={employeeDetails} 
+                      hrConfig={hrConfig || []} 
+                      currentUserLevel={viewerLevel}
+                    />
                  </DialogContent>
                </Dialog>
                

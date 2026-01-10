@@ -2,9 +2,9 @@
  * @file user-form.tsx
  * @description Hierarchical form for Location > Department > Position.
  *
- * UPDATED: Uses centralized USER_LEVELS for permission logic.
- * SECURITY NOTE: This form includes a "User Level" selector. 
- * The Server Action must validate that a user cannot escalate their own privileges.
+ * UPDATED: Uses dynamic HR Config from DB instead of hardcoded constants.
+ * SECURITY: Hides/Disables sensitive fields (User Level) for non-admins.
+ * FIX: Deduplicates positions to prevent key errors.
  */
 'use client';
 
@@ -21,37 +21,29 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, Save, Info, Briefcase, MapPin, Layout, Mail, DollarSign } from 'lucide-react';
+import { Loader2, Save, Info, Briefcase, MapPin, Layout, Mail, DollarSign, ShieldAlert } from 'lucide-react';
 
 // --- IMPORT: Single Source of Truth for Roles ---
-// Ensures this form stays in sync with database policies and admin tables
 import { USER_LEVELS, ROLE_LABELS } from '@/lib/constants/user-levels';
 
-// Configuration for Departments available at each Location
-const LOCATIONS_CONFIG: Record<string, string[]> = {
-  'Las Vegas': ['ADMIN', 'OFFICE', 'DUNES', 'SHUTTLES', 'SHOP'],
-  'Pismo': ['ADMIN', 'CSR', 'BEACH', 'SHOP'],
-  'Michigan': ['ADMIN', 'SHOP', 'GUIDES', 'OFFICE']
-};
-
-// Configuration for Specific Positions within each Department
-const POSITIONS_CONFIG: Record<string, string[]> = {
-  'ADMIN': ['MANAGER', 'HR', 'OWNER', 'IT'],
-  'OFFICE': ['OPPS', 'CSR', 'PROD DEV', 'PHONES'],
-  'CSR': ['RECEPTION', 'DISPATCH'],
-  'SHOP': ['ATV TECH', 'BUGGY TECH', 'FLEET', 'FABRICATOR', 'HELPER'],
-  'DUNES': ['GUIDE', 'LEAD GUIDE', 'SWEEP'],
-  'SHUTTLES': ['DRIVER', 'DISPATCH'],
-  'BEACH': ['RENTAL AGENT', 'GUIDE'],
-  'GUIDES': ['GUIDE', 'LEAD']
-};
+interface HRConfig {
+  id: string;
+  name: string;
+  departments: {
+    id: string;
+    name: string;
+    positions: { id: string; title: string }[];
+  }[];
+}
 
 interface UserFormProps {
   user: any;        // Identity data from 'users' table
   empDetails: any;  // Operational data from 'employee_details' table
+  hrConfig: HRConfig[]; // <--- Dynamic Data from DB
+  currentUserLevel: number; // <--- Viewer's permission level
 }
 
-export default function UserForm({ user, empDetails }: UserFormProps) {
+export default function UserForm({ user, empDetails, hrConfig, currentUserLevel }: UserFormProps) {
   const { toast } = useToast();
   
   // Connect to the Server Action
@@ -60,12 +52,44 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
   // Extract details (handles array or single object)
   const details = Array.isArray(empDetails) ? empDetails[0] : empDetails;
 
-  // --- LOCAL STATE FOR UI BRANCHING ---
-  // Default to CUSTOMER level if undefined, utilizing the constant
+  // --- LOCAL STATE ---
   const [userLevel, setUserLevel] = useState<number>(user?.user_level || USER_LEVELS.CUSTOMER);
   
-  const [selectedLoc, setSelectedLoc] = useState<string>(details?.primary_work_location || 'Las Vegas');
-  const [selectedDept, setSelectedDept] = useState<string>(details?.department || 'ADMIN');
+  // Initialize with existing data, fallback to first available or safe defaults
+  const [selectedLoc, setSelectedLoc] = useState<string>(details?.primary_work_location || (hrConfig[0]?.name || 'Las Vegas'));
+  const [selectedDept, setSelectedDept] = useState<string>(details?.department || 'OFFICE');
+
+  // --- DYNAMIC LOGIC ---
+  // 1. Get Departments for Selected Location
+  const availableDepartments = useMemo(() => {
+    const activeLoc = hrConfig.find(l => l.name === selectedLoc);
+    return activeLoc ? activeLoc.departments : [];
+  }, [selectedLoc, hrConfig]);
+
+  // 2. Get Positions for Selected Department - WITH DEDUPLICATION FIX
+  const availablePositions = useMemo(() => {
+    const activeDept = availableDepartments.find(d => d.name === selectedDept);
+    if (!activeDept) return [];
+
+    // Deduplicate based on position title
+    const uniquePositions = new Map();
+    activeDept.positions.forEach(p => {
+        if (!uniquePositions.has(p.title)) {
+            uniquePositions.set(p.title, p);
+        }
+    });
+    
+    return Array.from(uniquePositions.values());
+  }, [selectedDept, availableDepartments]);
+
+  // Reset downstream selections when upstream changes
+  useEffect(() => {
+    // If current dept isn't valid for new location, pick first valid
+    const isValidDept = availableDepartments.some(d => d.name === selectedDept);
+    if (!isValidDept && availableDepartments.length > 0) {
+        setSelectedDept(availableDepartments[0].name);
+    }
+  }, [selectedLoc, availableDepartments, selectedDept]);
 
   // Handle Server Action Response
   useEffect(() => {
@@ -76,13 +100,11 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
     }
   }, [state, toast]);
 
-  // Derived lists based on selection
-  const availableDepartments = useMemo(() => LOCATIONS_CONFIG[selectedLoc] || [], [selectedLoc]);
-  const availablePositions = useMemo(() => POSITIONS_CONFIG[selectedDept] || ['STAFF'], [selectedDept]);
-
-  // Helper boolean to determine if the Operational Section should be shown
-  // Users must be at least STAFF (300) level to have fleet metadata
-  const hasStaffPrivileges = userLevel >= USER_LEVELS.STAFF;
+  // Helper boolean: Does this user (the one being edited) have staff privileges?
+  const isStaffProfile = userLevel >= USER_LEVELS.STAFF;
+  
+  // Security Check: Is the VIEWER allowed to change permissions?
+  const canEditPermissions = currentUserLevel >= 900; 
 
   return (
     <form action={formAction} className="space-y-6">
@@ -137,32 +159,47 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
             <Input name="phone" defaultValue={user?.phone} className="bg-zinc-900 border-zinc-800" />
           </div>
 
-          {/* ACCESS LEVEL SELECTOR */}
+          {/* ACCESS LEVEL SELECTOR - SECURED */}
           <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase text-zinc-500">Access Level</Label>
-            <Select 
-                name="user_level" 
-                defaultValue={userLevel.toString()} 
-                onValueChange={(v) => setUserLevel(parseInt(v))}
-            >
-              <SelectTrigger className="bg-zinc-900 border-zinc-800">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
-                {/* Dynamically render options from the Single Source of Truth */}
-                {Object.entries(ROLE_LABELS).map(([level, label]) => (
-                   <SelectItem key={level} value={level}>
-                      {label}
-                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs font-bold uppercase text-zinc-500 flex items-center justify-between">
+                <span>Access Level</span>
+                {!canEditPermissions && <ShieldAlert className="w-3 h-3 text-red-500" />}
+            </Label>
+            
+            {canEditPermissions ? (
+                // ADMIN VIEW: Full Select
+                <Select 
+                    name="user_level" 
+                    defaultValue={userLevel.toString()} 
+                    onValueChange={(v) => setUserLevel(parseInt(v))}
+                >
+                <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
+                    {Object.entries(ROLE_LABELS).map(([level, label]) => (
+                    <SelectItem key={level} value={level}>
+                        {label} ({level})
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            ) : (
+                // NON-ADMIN VIEW: Read Only Display + Hidden Input
+                <>
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-400 cursor-not-allowed">
+                        {ROLE_LABELS[userLevel] || 'Unknown'} (Lvl {userLevel})
+                    </div>
+                    {/* Hidden input to ensure value persists on submit */}
+                    <input type="hidden" name="user_level" value={userLevel} />
+                </>
+            )}
           </div>
         </div>
       </div>
 
       {/* 3. OPERATIONAL SECTION (Only visible for active staff 300+) */}
-      {hasStaffPrivileges ? (
+      {isStaffProfile ? (
         <div className="p-4 rounded-xl border border-orange-500/20 bg-orange-500/5 space-y-4 animate-in fade-in slide-in-from-top-4">
           <h3 className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] flex items-center gap-2">
             <Info size={14} /> Fleet Operational Metadata
@@ -178,15 +215,15 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
-                {Object.keys(LOCATIONS_CONFIG).map(loc => (
-                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                {hrConfig.map(loc => (
+                  <SelectItem key={loc.id} value={loc.name}>{loc.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Department (The Roster Sorting Bucket) */}
+            {/* Department */}
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase text-zinc-500 flex items-center gap-1">
                 <Layout size={10} /> Department (Sort Group)
@@ -197,13 +234,13 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
                 </SelectTrigger>
                 <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
                   {availableDepartments.map(dept => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Position (The Specific Job Title) */}
+            {/* Position */}
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase text-zinc-500 flex items-center gap-1">
                 <Briefcase size={10} /> Primary Position
@@ -214,7 +251,8 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
                 </SelectTrigger>
                 <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
                   {availablePositions.map(pos => (
-                    <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                    // Using pos.title as the key because we deduplicated based on title
+                    <SelectItem key={pos.title} value={pos.title}>{pos.title}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -249,7 +287,7 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
                   />
                 </div>
 
-                {/* Payroll Company (New Feature) */}
+                {/* Payroll Company */}
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase text-zinc-500">Payroll Company</Label>
                   <Select name="payroll_company" defaultValue={details?.payroll_company || ''}>
@@ -289,7 +327,7 @@ export default function UserForm({ user, empDetails }: UserFormProps) {
         type="submit" 
         disabled={isPending}
         className={`w-full font-black italic uppercase tracking-widest transition-all ${
-          hasStaffPrivileges ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'
+          isStaffProfile ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'
         }`}
       >
         {isPending ? (
