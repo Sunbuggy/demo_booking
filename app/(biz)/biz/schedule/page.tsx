@@ -1,12 +1,15 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (v14.0 - DYNAMIC HR CONFIGURATION)
+// SUNBUGGY ROSTER PAGE (v14.5 - CONFLICT DETECTOR & RESOLVER)
 // ============================================================================
-// CHANGELOG v14.0:
-// 1. FEATURE: Removed hardcoded constants. Now pulls Locations/Depts/Positions from DB.
-// 2. FIX: Matches employees based on 'primary_position' using DB configuration.
-// 3. UI: Department colors now load from the DB 'style_class' column (with fallbacks).
+// CHANGELOG v14.5:
+// 1. FEATURE: Added 'Conflict Detector' to the grid. 
+//    - Cells with >1 shift on the same day now show a pulsing 'xN' badge.
+// 2. FEATURE: Added 'Conflict Resolution Panel' to the Shift Modal.
+//    - Allows deleting specific duplicate shifts ("Ghost Data") individually.
+// 3. REFACTOR: Updated grid logic from .find() (single) to .filter() (multi) to detect these issues.
+// 4. PRESERVED: Smart Copy (v14.4) and Strict Hours Calc (v14.3).
 
 import { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import Link from 'next/link';
@@ -29,7 +32,7 @@ import {
   startOfISOWeek, differenceInMinutes, parseISO,
   startOfMonth, endOfMonth, startOfWeek as startOfLocalWeek,
   endOfWeek as endOfLocalWeek, eachDayOfInterval,
-  isSameMonth, isSameDay, isToday, differenceInDays, addHours
+  isSameMonth, isSameDay, isToday, differenceInDays, addHours, isWithinInterval, startOfDay, endOfDay
 } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -48,7 +51,8 @@ import {
   Clock, Shield, CheckSquare, Mountain, LucideIcon,
   Sun, Cloud, CloudRain, Snowflake, CloudLightning, Wind, Printer,
   Info, Settings, User, Plane,
-  AlertCircle, Check, X, ThumbsDown, CalendarClock
+  AlertCircle, Check, X, ThumbsDown, CalendarClock, Copy, Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -58,7 +62,7 @@ import { Separator } from '@/components/ui/separator';
 // --- FALLBACK STYLES (If DB is empty) ---
 const DEFAULT_DEPT_STYLE = 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 text-slate-700';
 
-// --- CONSTANT: TASKS (Still Hardcoded as these are Shift Tasks, not HR Roles) ---
+// --- CONSTANT: TASKS ---
 const TASKS: Record<string, { label: string, color: string, code: string, icon: LucideIcon }> = {
   'TORCH': { label: 'TORCH (Dispatch)', color: 'bg-red-600', code: 'T', icon: Clock },
   'SST': { label: 'SST (Support)', color: 'bg-blue-600', code: 'S', icon: Users },
@@ -76,7 +80,6 @@ interface AuditLog { id: string; created_at: string; action: string; user_id: st
 interface ShiftDefaults { role: string; start: string; end: string; location: string; task?: string; }
 interface ReservationStat { sch_date: string | Date; ppl_count: string | number; [key: string]: string | number | boolean | Date | null | undefined; }
 
-// HR Config Interfaces
 interface HRLocation { id: string; name: string; sort_order: number; departments: HRDepartment[]; }
 interface HRDepartment { id: string; name: string; sort_order: number; style_class?: string; positions: HRPosition[]; }
 interface HRPosition { id: string; title: string; keyword?: string; sort_order: number; }
@@ -196,8 +199,8 @@ export default function RosterPage() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
   
-  // Data State
-  const [hrConfig, setHrConfig] = useState<HRLocation[]>([]); // New Dynamic Config
+  // Data
+  const [hrConfig, setHrConfig] = useState<HRLocation[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
 
@@ -213,12 +216,15 @@ export default function RosterPage() {
   const [visibleLocs, setVisibleLocs] = useState<Record<string, boolean>>({ 'Las Vegas': true, 'Pismo': true, 'Michigan': true });
   const [lastShiftParams, setLastShiftParams] = useState<Record<string, ShiftDefaults>>({});
 
-  // -- MODALS STATE --
+  // -- MODALS --
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [selectedEmpId, setSelectedEmpId] = useState<string>('');
   const [selectedEmpName, setSelectedEmpName] = useState('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
+  
+  // --- CONFLICT RESOLUTION STATE (v14.5) ---
+  const [conflictShifts, setConflictShifts] = useState<Shift[]>([]);
 
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<TimeOffRequest | null>(null);
@@ -254,67 +260,46 @@ export default function RosterPage() {
 
   useEffect(() => { if (isMounted) fetchData(); }, [currentDate, isMounted]);
 
-  // --- 1. NEW DYNAMIC GROUPING LOGIC ---
+  // --- DYNAMIC GROUPING ---
   const groupedEmployees = useMemo(() => {
-    // Structure: Groups[Location][Department][Role] = Employee[]
     const groups: Record<string, Record<string, Record<string, Employee[]>>> = {};
-
-    // Initialize structure from loaded DB config
     hrConfig.forEach(loc => {
       groups[loc.name] = {};
       loc.departments.forEach(dept => {
-        groups[loc.name][dept.name] = { 'General': [] }; // Default bin
+        groups[loc.name][dept.name] = { 'General': [] };
         dept.positions.forEach(pos => {
           groups[loc.name][dept.name][pos.title] = [];
         });
       });
-      // Fallback for traveling staff
       groups[loc.name]['Visiting Staff'] = { 'General': [] };
     });
 
-    // Distribute Employees
     employees.forEach(emp => {
-        // Find Location (or default)
         const locName = hrConfig.find(l => l.name === emp.location)?.name || 'Las Vegas';
         if (!groups[locName]) groups[locName] = {};
 
-        // Find Department (or default)
         const activeLocConfig = hrConfig.find(l => l.name === locName);
         let deptName = emp.department;
-        
-        // Validation: Does dept exist in this location?
         if (!groups[locName][deptName]) {
-            // Try to find a sensible default or put in first available
             deptName = activeLocConfig?.departments[0]?.name || 'OFFICE';
             if(!groups[locName][deptName]) groups[locName][deptName] = {'General': []};
         }
 
-        // Find Position (Role)
         let role = 'General';
         const activeDeptConfig = activeLocConfig?.departments.find(d => d.name === deptName);
-        
         if (activeDeptConfig) {
-            // MATCHING LOGIC: Exact Title -> Keyword Match -> Default
             const empTitleUpper = (emp.job_title || '').toUpperCase();
-            
             const matchedPos = activeDeptConfig.positions.find(p => {
-               // 1. Exact Match
                if (p.title.toUpperCase() === empTitleUpper) return true;
-               // 2. Keyword Partial Match (if keyword exists)
                if (p.keyword && empTitleUpper.includes(p.keyword.toUpperCase())) return true;
                return false;
             });
-
             if (matchedPos) role = matchedPos.title;
         }
 
-        // Initialize if missing (safety)
         if (!groups[locName][deptName][role]) groups[locName][deptName][role] = [];
-        
-        // Push employee
         groups[locName][deptName][role].push(emp);
     });
-
     return groups;
   }, [employees, hrConfig]);
 
@@ -330,8 +315,6 @@ export default function RosterPage() {
   // --- FETCH DATA ---
   const fetchData = async () => {
     setLoading(true);
-
-    // 1. Get Current User Info
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setCurrentUserId(user.id);
@@ -339,21 +322,12 @@ export default function RosterPage() {
       if (userData) setCurrentUserLevel(userData.user_level || 0);
     }
 
-    // 2. FETCH HR CONFIGURATION (Locations/Depts/Positions)
-    // This replaces hardcoded constants.
     const { data: hrData } = await supabase
       .from('locations')
-      .select(`
-        *,
-        departments (
-          *,
-          positions (*)
-        )
-      `)
+      .select(`*, departments (*, positions (*))`)
       .order('sort_order', { ascending: true });
 
     if (hrData) {
-        // Sort sub-arrays manually (Supabase deep sort is limited)
         const sortedConfig = hrData.map((loc: any) => ({
             ...loc,
             departments: (loc.departments || [])
@@ -365,8 +339,6 @@ export default function RosterPage() {
                 }))
         }));
         setHrConfig(sortedConfig);
-        
-        // Initialize visibility if empty
         if (Object.keys(visibleLocs).length === 0) {
             const initialVis: any = {};
             sortedConfig.forEach((l: any) => initialVis[l.name] = true);
@@ -374,7 +346,6 @@ export default function RosterPage() {
         }
     }
 
-    // 3. FETCH ROSTER DATA (Using Server Action)
     const dateStr = format(startOfWeekDate, 'yyyy-MM-dd');
     const result = await fetchFullRosterData(dateStr);
 
@@ -384,7 +355,6 @@ export default function RosterPage() {
       return;
     }
 
-    // 4. SET STATE
     const uniqueStaff = (result.employees || []).sort((a: any, b: any) => {
       if (b.user_level !== a.user_level) return b.user_level - a.user_level;
       if (!a.hire_date) return 1; if (!b.hire_date) return -1;
@@ -393,7 +363,6 @@ export default function RosterPage() {
     setEmployees(uniqueStaff);
     if (result.shifts) setShifts(result.shifts);
 
-    // Metadata
     const metaMap: Record<string, { requests: TimeOffRequest[], availability: AvailabilityRule[] }> = {};
     uniqueStaff.forEach((u: any) => { metaMap[u.id] = { requests: [], availability: [] }; });
     (result.requests || []).forEach((r: TimeOffRequest) => {
@@ -404,7 +373,6 @@ export default function RosterPage() {
     });
     setRosterMetadata(metaMap);
 
-    // 5. FETCH OLD DB & WEATHER (Unchanged)
     if (visibleLocs['Las Vegas']) {
       const query = `SELECT * FROM reservations_modified WHERE sch_date >= '${format(startOfWeekDate, 'yyyy-MM-dd')}' AND sch_date <= '${format(endOfWeekDate, 'yyyy-MM-dd')}'`;
       try {
@@ -421,13 +389,10 @@ export default function RosterPage() {
       } catch (e) { console.error(e); }
     }
 
-    // Weather
     const weatherUpdates: Record<string, DailyWeather[]> = {};
     const daysUntilStart = differenceInDays(startOfWeekDate, new Date());
     const useHistorical = daysUntilStart > 10;
-    
-    // Use dynamic location list
-    const locList = hrData ? hrData.map((l:any) => l.name) : Object.keys(LOCATIONS);
+    const locList = hrData ? hrData.map((l:any) => l.name) : Object.keys(visibleLocs);
 
     await Promise.all(locList.map(async (loc: string) => {
       if (!visibleLocs[loc]) return;
@@ -447,47 +412,90 @@ export default function RosterPage() {
     setLoading(false);
   };
 
-  const sumDailyHours = (list: Shift[], date: string) => list.filter(s => format(parseISO(s.start_time), 'yyyy-MM-dd') === date).reduce((acc, s) => acc + getDurationHours(s.start_time, s.end_time), 0);
-  const sumWeeklyHours = (list: Shift[]) => list.reduce((acc, s) => acc + getDurationHours(s.start_time, s.end_time), 0);
+  const sumDailyHours = (list: Shift[], date: string) => 
+    list.filter(s => format(parseISO(s.start_time), 'yyyy-MM-dd') === date)
+    .reduce((acc, s) => acc + getDurationHours(s.start_time, s.end_time), 0);
+
+  // --- UPDATED: STRICTLY FILTER FOR CURRENT WEEK ---
+  const sumWeeklyHours = (list: Shift[]) => {
+    // We only sum shifts that START within the currently displayed week
+    const rangeStart = startOfWeekDate; // Monday 00:00
+    const rangeEnd = endOfWeekDate;     // Sunday 00:00 (actually endOfDay Sunday 23:59)
+    const rangeEndFixed = endOfDay(endOfWeekDate);
+
+    return list
+      .filter(s => {
+        const sDate = parseISO(s.start_time);
+        return isWithinInterval(sDate, { start: rangeStart, end: rangeEndFixed });
+      })
+      .reduce((acc, s) => acc + getDurationHours(s.start_time, s.end_time), 0);
+  };
+
   const handlePrint = () => { window.print(); };
   const logChange = async (action: string, table: string, rowId: string) => { if (!currentUserId) return; await supabase.from('audit_logs').insert({ action, table_name: table, row: rowId, user_id: currentUserId }); };
 
-  // --- REVIEW ACTIONS ---
   const openReviewModal = (request: TimeOffRequest, e: React.MouseEvent) => { e.stopPropagation(); if (!isManager) return; setSelectedRequest(request); setManagerNote(''); setIsReviewModalOpen(true); };
   const submitReview = async (status: 'approved' | 'denied') => { if (!selectedRequest) return; const result = await approveTimeOffRequest(selectedRequest.id, status, managerNote); if (result.error) { toast.error(`Failed: ${result.error}`); } else { toast.success(`Request ${status}`); setIsReviewModalOpen(false); fetchData(); } };
   const handleRevokeTimeOff = async () => { if (!selectedRequest || !isManager) return; const { error } = await supabase.from('time_off_requests').delete().eq('id', selectedRequest.id); if (error) { toast.error("Failed to revoke request"); } else { await logChange(`Revoked/Deleted Time Off Request`, 'time_off_requests', selectedRequest.id); toast.success("Time Off Removed from Schedule"); setIsReviewModalOpen(false); fetchData(); } };
 
-  // --- WEATHER MODAL HANDLERS ---
-  const handleWeatherClick = (loc: string, dateStr: string) => {
-    setSelectedWeatherLoc(loc);
-    setSelectedWeatherDate(dateStr);
-    setIsWeatherModalOpen(true);
-  };
-
+  const handleWeatherClick = (loc: string, dateStr: string) => { setSelectedWeatherLoc(loc); setSelectedWeatherDate(dateStr); setIsWeatherModalOpen(true); };
   const handleNavWeatherDay = (direction: 'prev' | 'next') => {
     const current = parseISO(selectedWeatherDate);
     const newDate = direction === 'next' ? addDays(current, 1) : subDays(current, 1);
     const newDateStr = format(newDate, 'yyyy-MM-dd');
     const hasData = weatherData[selectedWeatherLoc]?.some(d => d.date === newDateStr);
-    if (hasData) setSelectedWeatherDate(newDateStr);
-    else toast.error("No forecast data for that day.");
+    if (hasData) setSelectedWeatherDate(newDateStr); else toast.error("No forecast data for that day.");
+  };
+  const getSelectedWeatherDayData = () => weatherData[selectedWeatherLoc]?.find(d => d.date === selectedWeatherDate) || null;
+
+  // --- HELPER TO LOAD SHIFT INTO FORM ---
+  const loadShiftIntoForm = (s: Shift) => {
+    setSelectedShiftId(s.id); 
+    setFormRole(s.role); 
+    setFormTask(s.task || 'NONE'); 
+    setFormLocation(s.location || 'Las Vegas'); // Default fallback
+    setFormStart(format(parseISO(s.start_time), 'HH:mm')); 
+    setFormEnd(format(parseISO(s.end_time), 'HH:mm'));
   };
 
-  const getSelectedWeatherDayData = () => {
-    return weatherData[selectedWeatherLoc]?.find(d => d.date === selectedWeatherDate) || null;
-  }
-
-  // --- GRID INTERACTIONS ---
-  const handleCellClick = (emp: Employee, dateStr: string, existingShift?: Shift) => {
+  // --- UPDATED HANDLER: ACCEPTS ARRAY OF SHIFTS (CONFLICT DETECTOR) ---
+  const handleCellClick = (emp: Employee, dateStr: string, dailyShifts: Shift[]) => {
     if (!isManager) return;
-    setSelectedEmpId(emp.id); setSelectedEmpName(emp.full_name); setSelectedDate(dateStr);
-    if (existingShift) {
-      setSelectedShiftId(existingShift.id); setFormRole(existingShift.role); setFormTask(existingShift.task || 'NONE'); setFormLocation(existingShift.location || emp.location); setFormStart(format(parseISO(existingShift.start_time), 'HH:mm')); setFormEnd(format(parseISO(existingShift.end_time), 'HH:mm'));
-    } else {
-      setSelectedShiftId(null); const defaults = lastShiftParams[emp.id];
+    
+    setSelectedEmpId(emp.id); 
+    setSelectedEmpName(emp.full_name); 
+    setSelectedDate(dateStr);
+    
+    // Reset defaults
+    setFormRole('Guide'); 
+    setFormTask('NONE'); 
+    setFormLocation(emp.location); 
+    setFormStart('09:00'); 
+    setFormEnd('17:00');
+
+    // CONFLICT LOGIC:
+    if (dailyShifts.length === 0) {
+      // Create New
+      setSelectedShiftId(null);
+      setConflictShifts([]);
+      // Load user defaults if any
+      const defaults = lastShiftParams[emp.id];
       if (defaults) { setFormRole(defaults.role); setFormTask(defaults.task || 'NONE'); setFormStart(defaults.start); setFormEnd(defaults.end); setFormLocation(defaults.location); }
-      else { setFormRole('Guide'); setFormTask('NONE'); setFormLocation(emp.location); setFormStart('09:00'); setFormEnd('17:00'); }
+
+    } else if (dailyShifts.length === 1) {
+      // Edit Single (Normal Mode)
+      loadShiftIntoForm(dailyShifts[0]);
+      setConflictShifts([]);
+
+    } else {
+      // CONFLICT MODE: Multiple shifts found
+      setConflictShifts(dailyShifts);
+      // Load the FIRST one into the form so it's not empty, but user will likely use the resolver list
+      loadShiftIntoForm(dailyShifts[0]);
+      // We set selectedShiftId to null initially to force user to choose or delete from list? 
+      // Actually, keeping the first one selected allows for quick editing of one of them.
     }
+
     setIsShiftModalOpen(true);
   };
 
@@ -507,7 +515,92 @@ export default function RosterPage() {
   };
 
   const handleDeleteShift = async () => { if (!isManager || !selectedShiftId) return; await logChange(`Deleted shift`, 'employee_schedules', selectedShiftId); await supabase.from('employee_schedules').delete().eq('id', selectedShiftId); setShifts((prev) => prev.filter(s => s.id !== selectedShiftId)); setIsShiftModalOpen(false); toast.success("Shift Deleted"); };
-  const handleCopyWeek = async () => { if (!isManager || shifts.length === 0) return; if (!confirm(`Copy current shifts to next week?`)) return; setCopying(true); try { const newShifts = shifts.map(s => ({ user_id: s.user_id, role: s.role, task: s.task, start_time: addWeeks(parseISO(s.start_time), 1).toISOString(), end_time: addWeeks(parseISO(s.end_time), 1).toISOString(), location: s.location || 'Las Vegas' })); await supabase.from('employee_schedules').insert(newShifts); toast.success("Week Copied"); setCurrentDate(addWeeks(currentDate, 1)); } catch (e: any) { toast.error(`Copy Failed: ${e.message}`); } finally { setCopying(false); } };
+  
+  // --- CONFLICT RESOLVER: DELETE SPECIFIC GHOST SHIFT ---
+  const handleResolveConflict = async (idToDelete: string) => {
+    if (!isManager) return;
+    
+    // Optimistic Update
+    const updatedConflicts = conflictShifts.filter(s => s.id !== idToDelete);
+    setConflictShifts(updatedConflicts);
+    setShifts(prev => prev.filter(s => s.id !== idToDelete)); // Update main grid immediately
+
+    // DB Call
+    const { error } = await supabase.from('employee_schedules').delete().eq('id', idToDelete);
+    if (error) {
+       toast.error("Failed to delete duplicate");
+       fetchData(); // Revert on error
+    } else {
+       toast.success("Duplicate shift removed");
+       await logChange('Resolved Duplicate', 'employee_schedules', idToDelete);
+       
+       // If only 1 remains, switch to normal edit mode
+       if (updatedConflicts.length === 1) {
+          loadShiftIntoForm(updatedConflicts[0]);
+          setConflictShifts([]); // Exit conflict mode
+       }
+    }
+  };
+
+  const handleCopyWeek = async () => { 
+    if (!isManager || shifts.length === 0) return;
+    const sourceStart = startOfWeekDate; 
+    const targetStart = addWeeks(sourceStart, 1); 
+    const targetEnd = addWeeks(targetStart, 1); 
+
+    if (!confirm(`Copy displayed shifts to the week of ${format(targetStart, 'MMM d')}?`)) return;
+
+    setCopying(true);
+    try {
+      const { count, error: checkError } = await supabase
+        .from('employee_schedules')
+        .select('id', { count: 'exact', head: true })
+        .gte('start_time', targetStart.toISOString())
+        .lt('start_time', targetEnd.toISOString());
+
+      if (checkError) throw checkError;
+
+      if (count && count > 0) {
+        toast.error("Copy Aborted: Target week already has shifts.", { description: `Found ${count} existing shifts. Please clear the target week first.` });
+        setCopying(false);
+        return;
+      }
+
+      const sourceEnd = addWeeks(sourceStart, 1);
+      const shiftsToCopy = shifts.filter(s => {
+        const sTime = parseISO(s.start_time);
+        return sTime >= sourceStart && sTime < sourceEnd;
+      });
+
+      if (shiftsToCopy.length === 0) {
+        toast.error("No shifts found in the current week view to copy.");
+        setCopying(false);
+        return;
+      }
+
+      const newShifts = shiftsToCopy.map(s => {
+        const originalStart = parseISO(s.start_time);
+        const originalEnd = parseISO(s.end_time);
+        return {
+          user_id: s.user_id, role: s.role, task: s.task,
+          start_time: addWeeks(originalStart, 1).toISOString(),
+          end_time: addWeeks(originalEnd, 1).toISOString(),
+          location: s.location || 'Las Vegas'
+        };
+      });
+
+      const { error: insertError } = await supabase.from('employee_schedules').insert(newShifts);
+      if (insertError) throw insertError;
+      toast.success("Schedule Copied Successfully");
+      
+    } catch (e: any) {
+      console.error("Copy Error:", e);
+      toast.error(`Failed to copy: ${e.message}`);
+    } finally {
+      setCopying(false);
+    }
+  };
+
   const handleArchiveEmployee = async () => { if (!isAdmin || !profileEmp) return; if (!confirm(`Archive ${profileEmp.full_name}?`)) return; await supabase.from('users').update({ user_level: 100 }).eq('id', profileEmp.id); fetchData(); setIsProfileModalOpen(false); toast.success("Archived"); };
   const handleSaveProfile = async () => { if (!isManager || !profileEmp) return; const { error: userError } = await supabase.from('users').update({ phone: profileEmp.phone, avatar_url: profileEmp.avatar_url }).eq('id', profileEmp.id); if (userError) { toast.error("Error updating user profile"); return; } const { error: empError } = await supabase.from('employee_details').upsert({ user_id: profileEmp.id, hire_date: profileEmp.hire_date || null, department: profileEmp.department, primary_position: profileEmp.job_title, primary_work_location: profileEmp.location, timeclock_blocked: profileEmp.timeclock_blocked }, { onConflict: 'user_id' }); if (empError) { toast.error("Error updating details"); return; } fetchData(); setIsProfileModalOpen(false); toast.success("Saved"); };
 
@@ -525,7 +618,6 @@ export default function RosterPage() {
             <Separator orientation="vertical" className="h-6 hidden lg:block" />
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar w-full md:w-auto">
               <Filter className="w-3.5 h-3.5 text-muted-foreground mr-1 flex-shrink-0" />
-              {/* Dynamic Location Filter */}
               {hrConfig.map(loc => (
                   <Badge key={loc.id} variant={visibleLocs[loc.name] ? 'default' : 'outline'} 
                          className={`cursor-pointer select-none px-2 py-0.5 text-[10px] whitespace-nowrap ${visibleLocs[loc.name] ? 'bg-primary hover:bg-primary/90' : 'bg-transparent text-muted-foreground hover:bg-accent'}`} 
@@ -561,7 +653,19 @@ export default function RosterPage() {
               </Popover>
               <Popover>
                 <PopoverTrigger asChild><Button variant="outline" size="sm" className="h-8 gap-1 px-2 text-xs"><Settings className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Manage</span></Button></PopoverTrigger>
-                <PopoverContent className="w-48 p-2" align="end"><div className="flex flex-col gap-1"><Button variant="ghost" size="sm" onClick={handlePrint} className="justify-start h-8 text-xs w-full"><Printer className="w-3.5 h-3.5 mr-2" /> Print Schedule</Button>{isManager && (<PublishButton weekStart={format(startOfWeekDate, 'yyyy-MM-dd')} />)}</div></PopoverContent>
+                <PopoverContent className="w-48 p-2" align="end">
+                    <div className="flex flex-col gap-1">
+                        <Button variant="ghost" size="sm" onClick={handlePrint} className="justify-start h-8 text-xs w-full"><Printer className="w-3.5 h-3.5 mr-2" /> Print Schedule</Button>
+                        {isManager && (
+                            <Button variant="ghost" size="sm" disabled={copying || shifts.length === 0} onClick={handleCopyWeek} className="justify-start h-8 text-xs w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                                {copying ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Copy className="w-3.5 h-3.5 mr-2" />}
+                                Copy to Next Week
+                            </Button>
+                        )}
+                        <Separator className="my-1"/>
+                        {isManager && (<PublishButton weekStart={format(startOfWeekDate, 'yyyy-MM-dd')} />)}
+                    </div>
+                </PopoverContent>
               </Popover>
             </div>
           </div>
@@ -631,8 +735,6 @@ export default function RosterPage() {
                     const deptEmps = Object.values(roleGroups as Record<string, Employee[]>).flat();
                     const deptShifts = locShifts.filter(s => deptEmps.some(e => e.id === s.user_id));
                     const isVisiting = deptName === 'Visiting Staff';
-                    
-                    // Lookup style from config or use default
                     const deptConfig = hrConfig.find(l => l.name === locName)?.departments.find(d => d.name === deptName);
                     const deptStyle = deptConfig?.style_class || DEFAULT_DEPT_STYLE;
 
@@ -671,7 +773,13 @@ export default function RosterPage() {
                                     </td>
                                     {weekDays.map(day => {
                                       const dateStr = format(day, 'yyyy-MM-dd');
-                                      const shift = shifts.find(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateStr);
+                                      
+                                      // --- NEW: CONFLICT DETECTION LOGIC (v14.5) ---
+                                      // Find ALL shifts for this day, not just the first one.
+                                      const dailyShifts = shifts.filter(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateStr);
+                                      const shift = dailyShifts[0]; // Primary shift to render
+                                      const hasConflict = dailyShifts.length > 1;
+
                                       const isAway = shift && shift.location !== emp.location && !isVisiting;
                                       const request = empReqs.find(r => {
                                         const start = r.start_date.slice(0, 10);
@@ -680,10 +788,18 @@ export default function RosterPage() {
                                       });
                                       const availRule = empAvail.find(a => a.day_of_week === day.getDay());
                                       const reqStatus = request?.status.trim().toUpperCase();
+                                      
                                       return (
-                                        <td key={dateStr} className={`p-1 border-l relative h-14 print:h-auto print:border-black ${isManager ? 'cursor-pointer group' : ''}`} onClick={() => isManager && handleCellClick(emp, dateStr, shift)}>
+                                        <td key={dateStr} className={`p-1 border-l relative h-14 print:h-auto print:border-black ${isManager ? 'cursor-pointer group' : ''}`} onClick={() => isManager && handleCellClick(emp, dateStr, dailyShifts)}>
                                           {shift ? (
                                             <div className={`h-full w-full border-l-2 rounded-r p-1 flex flex-col justify-center relative print:bg-white print:border print:border-black print:p-0.5 print:rounded-none ${isAway ? 'bg-amber-50 border-l-amber-500' : 'bg-blue-100 border-l-blue-500 dark:bg-blue-900'}`}>
+                                              {/* CONFLICT INDICATOR BADGE */}
+                                              {hasConflict && (
+                                                 <div className="absolute -top-2 -right-1 z-50 bg-purple-600 text-white border-2 border-white dark:border-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[9px] font-bold shadow-md animate-pulse print:hidden" title="Multiple shifts found! Click to resolve.">
+                                                   x{dailyShifts.length}
+                                                 </div>
+                                              )}
+                                              
                                               {reqStatus === 'APPROVED' && (<div className="absolute -top-1 -left-1 z-50 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold shadow-sm" title="Conflict: Scheduled during Time Off">!</div>)}
                                               {reqStatus === 'PENDING' && (<div className="absolute inset-x-0 -top-2 z-50 flex justify-center cursor-pointer" onClick={(e) => openReviewModal(request!, e)}><div className="bg-orange-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-sm border border-orange-600 flex items-center gap-1 hover:bg-orange-600"><AlertCircle className="w-2 h-2" /> Pending</div></div>)}
                                               {shift.task && <div className="absolute top-0 right-0 p-0.5 print:p-0 print:top-0 print:right-0"><TaskBadge taskKey={shift.task} /></div>}
@@ -754,8 +870,6 @@ export default function RosterPage() {
                   <div className="divide-y divide-slate-100 dark:divide-slate-800 print:divide-black">
                     {activeDepts.map(([deptName, roleGroups]) => {
                       const allDeptEmps = Object.values(roleGroups as Record<string, Employee[]>).flat();
-                      
-                      // Lookup style from config or use default
                       const deptConfig = hrConfig.find(l => l.name === locName)?.departments.find(d => d.name === deptName);
                       const deptStyle = deptConfig?.style_class || 'bg-muted';
 
@@ -808,7 +922,39 @@ export default function RosterPage() {
         <Dialog open={isShiftModalOpen} onOpenChange={setIsShiftModalOpen}>
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle className="flex items-center justify-between w-full"><span>Shift Details</span>{selectedShiftId && <ChangeLogViewer tableName="employee_schedules" rowId={selectedShiftId} />}</DialogTitle></DialogHeader>
-            <div className="grid gap-4 py-2"><div className="text-sm font-semibold">{selectedEmpName} <span className="font-normal text-muted-foreground">- {selectedDate ? format(parseISO(selectedDate), 'MMM do') : ''}</span></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs">Start</label><Input type="time" disabled={!isManager} value={formStart} onChange={(e) => { const newStart = e.target.value; setFormStart(newStart); if (newStart && selectedDate) { const startDateTime = parseISO(`${selectedDate}T${newStart}`); const endDateTime = addHours(startDateTime, 8); setFormEnd(format(endDateTime, 'HH:mm')); } }} /></div><div><label className="text-xs">End</label><Input type="time" disabled={!isManager} value={formEnd} onChange={e => setFormEnd(e.target.value)} /></div></div><div><label className="text-xs">Role</label><Select value={formRole} onValueChange={setFormRole} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['Guide', 'Desk', 'Driver', 'Mechanic', 'Manager'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div><div><label className="text-xs">Special Task</label><Select value={formTask} onValueChange={setFormTask} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">None</SelectItem>{Object.entries(TASKS).map(([key, task]) => (<SelectItem key={key} value={key}><div className="flex items-center gap-2"><div className={`w-3 h-3 ${task.color} rounded-sm`}></div>{task.label}</div></SelectItem>))}</SelectContent></Select></div><div><label className="text-xs">Location</label><Select value={formLocation} onValueChange={setFormLocation} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hrConfig.map(l => <SelectItem key={l.name} value={l.name}>{l.name}</SelectItem>)}</SelectContent></Select></div></div>
+            <div className="grid gap-4 py-2">
+               {/* --- CONFLICT RESOLUTION PANEL (v14.5) --- */}
+               {conflictShifts.length > 1 && (
+                  <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-3 animate-in fade-in slide-in-from-top-2">
+                     <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-bold text-xs mb-2">
+                        <AlertTriangle className="w-4 h-4" /> 
+                        <span>Resolve Conflicts ({conflictShifts.length})</span>
+                     </div>
+                     <p className="text-[10px] text-muted-foreground mb-2">Multiple shifts exist for this day. This causes incorrect hour totals. Delete the duplicates below:</p>
+                     <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                        {conflictShifts.map(s => (
+                           <div key={s.id} className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 text-xs shadow-sm">
+                              <div>
+                                 <span className="font-bold block">{format(parseISO(s.start_time), 'h:mm a')} - {format(parseISO(s.end_time), 'h:mm a')}</span>
+                                 <span className="text-[10px] text-muted-foreground">{s.role} {s.task ? `(${s.task})` : ''}</span>
+                              </div>
+                              <Button 
+                                 size="sm" 
+                                 variant="destructive" 
+                                 className="h-6 w-6 p-0" 
+                                 onClick={() => handleResolveConflict(s.id)}
+                                 title="Delete this specific shift"
+                              >
+                                 <Trash2 className="w-3 h-3" />
+                              </Button>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+               )}
+
+              <div className="text-sm font-semibold">{selectedEmpName} <span className="font-normal text-muted-foreground">- {selectedDate ? format(parseISO(selectedDate), 'MMM do') : ''}</span></div>
+              <div className="grid grid-cols-2 gap-4"><div><label className="text-xs">Start</label><Input type="time" disabled={!isManager} value={formStart} onChange={(e) => { const newStart = e.target.value; setFormStart(newStart); if (newStart && selectedDate) { const startDateTime = parseISO(`${selectedDate}T${newStart}`); const endDateTime = addHours(startDateTime, 8); setFormEnd(format(endDateTime, 'HH:mm')); } }} /></div><div><label className="text-xs">End</label><Input type="time" disabled={!isManager} value={formEnd} onChange={e => setFormEnd(e.target.value)} /></div></div><div><label className="text-xs">Role</label><Select value={formRole} onValueChange={setFormRole} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['Guide', 'Desk', 'Driver', 'Mechanic', 'Manager'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div><div><label className="text-xs">Special Task</label><Select value={formTask} onValueChange={setFormTask} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">None</SelectItem>{Object.entries(TASKS).map(([key, task]) => (<SelectItem key={key} value={key}><div className="flex items-center gap-2"><div className={`w-3 h-3 ${task.color} rounded-sm`}></div>{task.label}</div></SelectItem>))}</SelectContent></Select></div><div><label className="text-xs">Location</label><Select value={formLocation} onValueChange={setFormLocation} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hrConfig.map(l => <SelectItem key={l.name} value={l.name}>{l.name}</SelectItem>)}</SelectContent></Select></div></div>
             <DialogFooter className="flex justify-between w-full">{selectedShiftId && isManager ? (<Button variant="destructive" size="sm" onClick={handleDeleteShift}><Trash2 className="w-4 h-4 mr-2" /> Delete</Button>) : <div />}{isManager && <Button size="sm" onClick={handleSaveShift}>Save</Button>}</DialogFooter>
           </DialogContent>
         </Dialog>
