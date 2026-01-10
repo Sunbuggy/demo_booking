@@ -52,8 +52,7 @@ export async function fetchFullRosterData(date: string) {
             timeclock_blocked
           )
         `)
-        // ^^^ FIXED: Added 'primary_position' above. 
-        // Previously it was missing, causing role matching to fail.
+        // Ensuring we get only active/relevant staff
         .gte('user_level', 300)
         .order('full_name'),
 
@@ -82,15 +81,26 @@ export async function fetchFullRosterData(date: string) {
 
     // 4. TRANSFORM STAFF DATA (Flatten the join)
     const employees = (staffRes.data || []).map((u: any) => {
-        const details = u.employee_details?.[0] || {};
+        // ROBUST FIX: Handle both Array (1:Many) and Object (1:1) responses from Supabase
+        const rawDetails = u.employee_details;
+        const details = Array.isArray(rawDetails) ? rawDetails[0] : (rawDetails || {});
+
         return {
             id: u.id,
             full_name: u.full_name,
             stage_name: u.stage_name || u.full_name.split(' ')[0], 
+            
+            // Location Mapping
             location: details.primary_work_location || u.location || 'Las Vegas',
+            
+            // Department Mapping
             department: details.department || u.department || 'General',
-            // Fix: Now details.primary_position will actually exist
+            
+            // Job Title / Position Mapping (CRITICAL FOR SORTING)
+            // We prioritize 'primary_position' so that specific roles (e.g. "OPPS")
+            // are correctly caught by the ROLE_GROUPS logic in page.tsx
             job_title: details.primary_position || details.job_title || 'STAFF',
+            
             hire_date: details.hire_date || u.hire_date || null,
             user_level: u.user_level,
             timeclock_blocked: !!details.timeclock_blocked,
