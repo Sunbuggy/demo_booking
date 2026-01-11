@@ -1,13 +1,12 @@
 /**
  * @file app/(biz)/biz/admin/developer/docs/page.tsx
  * @description LIVING DOCUMENTATION.
- * Updated: Roster v14.5 (Conflict Resolution), HR Command (LOCDEPJOB), Fleet v2.0.
+ * Updated: Jan 11, 2026 - Added S3 Architecture, Fleet Geofencing UI, and Icon Management.
  * ACCESS: Level 950+ (Developers) Only.
  */
 import React from 'react';
 import { 
   ShieldAlert, 
-  FolderTree, 
   Server, 
   FileCode,
   AlertTriangle,
@@ -16,22 +15,19 @@ import {
   CalendarClock,
   KeyRound,
   FileSpreadsheet,
-  Clock,
-  Printer,
-  MousePointerClick,
-  Palmtree,
-  Database,
-  LayoutTemplate,
   Ticket,
   ArrowRight,
   RefreshCcw,
-  Lock,
   Car,   // Fleet
   Map,   // Fleet
   Radio, // Fleet
   Briefcase, // HR
   Network,   // HR
-  Layers     // HR
+  Layers,     // HR
+  HardDrive, // Storage
+  Cloud,     // Storage
+  Image as ImageIcon, // Storage
+  Move       // Storage
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -139,7 +135,61 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 2. FLEET COMMAND V2.0 */}
+          {/* 2. FILE & MEDIA STORAGE (NEW) */}
+          <Card className={glassCardStyles}>
+            <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
+              <div className="flex items-center gap-2 text-pink-600 dark:text-pink-500">
+                <HardDrive size={24} />
+                <CardTitle className="uppercase tracking-widest">File Storage & Media</CardTitle>
+              </div>
+              <CardDescription className={glassTextStyles}>
+                Contabo S3 via AWS SDK v3. Endpoints: <code>/api/s3/*</code>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              
+              {/* DIAGRAM PLACEHOLDER */}
+              <div className="w-full bg-zinc-50 dark:bg-zinc-900 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg p-6 flex flex-col items-center justify-center text-center">
+                 <Cloud className="h-10 w-10 text-zinc-400 mb-2" />
+                 <span className="text-xs font-mono text-zinc-500"></span>
+              </div>
+
+              {/* ARCHITECTURE DETAILS */}
+              <div className="bg-pink-50/30 dark:bg-pink-900/10 p-4 rounded-lg border border-pink-100 dark:border-pink-800">
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">The Proxy Pattern</h3>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  Direct client-to-S3 communication is <strong>blocked</strong>. All file operations must pass through our Next.js middleware to enforce:
+                  <br/>1. <strong>Naming Conventions:</strong> Files are auto-renamed to prevent collisions (e.g., <code>2026-01-05(1).pdf</code>).
+                  <br/>2. <strong>Security:</strong> Credentials exist only on the server.
+                  <br/>3. <strong>Compatibility:</strong> Client is initialized with <code>forcePathStyle: true</code> for Contabo support.
+                </p>
+              </div>
+
+              {/* API ENDPOINTS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
+                    <div className="flex items-center gap-2 mb-1 text-zinc-800 dark:text-zinc-200">
+                      <ImageIcon size={14} /> <span className="font-bold text-xs">Upload & Fetch</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500">
+                       <code>POST /api/s3/upload</code>: Handles form data. 50MB limit.<br/>
+                       <code>GET /api/s3/upload</code>: Returns <strong>Presigned URLs</strong> (1hr expiry). Never expose raw paths.
+                    </p>
+                 </div>
+                 <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
+                    <div className="flex items-center gap-2 mb-1 text-zinc-800 dark:text-zinc-200">
+                      <Move size={14} /> <span className="font-bold text-xs">Move & Rename</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500">
+                       S3 cannot "rename". We simulate it via <strong>Copy + Delete</strong> transactions.<br/>
+                       Endpoints: <code>/api/s3/move</code> and <code>/api/s3/rename</code>.
+                    </p>
+                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 3. FLEET COMMAND V2.0 */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
@@ -147,138 +197,112 @@ export default function DeveloperDocsPage() {
                 <CardTitle className="uppercase tracking-widest">Fleet Command (v2.0)</CardTitle>
               </div>
               <CardDescription className={glassTextStyles}>
-                The "Identity" based fleet management system. Location: <code>/biz/vehicles/admin</code>
+                Identity-based tracking, Geofencing, and Iconography. Location: <code>/biz/vehicles/admin</code>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               
-              {/* ARCHITECTURE */}
+              {/* SERVER SIDE GEOFENCING */}
               <div className="bg-yellow-50/30 dark:bg-yellow-900/10 p-4 rounded-lg border border-yellow-100 dark:border-yellow-800">
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">Architecture: Server-Side Geofencing</h3>
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                   <strong>Goal:</strong> Prevent client-side lag when processing 100+ GPS points.
-                  <br/><br/>
-                  1. <strong>Fetch:</strong> <code>actions/fleet.ts</code> gets raw GPS (Lat/Lng) from Supabase.
                   <br/>
-                  2. <strong>Calculate:</strong> Calls <code>lib/fleet/geofencing.ts</code> which uses <strong>Haversine Math</strong> and <strong>Ray Casting</strong> (Point-in-Polygon) to map coordinates to named zones (e.g., "Vegas Shop", "Pismo Dunes").
+                  1. <strong>Fetch:</strong> <code>actions/fleet.ts</code> gets raw GPS from Supabase.
                   <br/>
-                  3. <strong>Sanitize:</strong> Uses <code>JSON.parse(JSON.stringify(data))</code> to strip non-serializable prototypes before passing to Client Components.
+                  2. <strong>Calculate:</strong> Calls <code>lib/fleet/geofencing.ts</code> which uses <strong>Ray Casting</strong> (Point-in-Polygon) to map coordinates to zones.
+                  <br/>
+                  3. <strong>Sanitize:</strong> Strips non-serializable prototypes before passing to Client.
                 </p>
               </div>
 
-              {/* CRITICAL FIXES */}
+              {/* NEW FEATURES */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div className="border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-900/10 p-3 rounded-lg">
-                    <h4 className="text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-2 mb-2">
-                       <Map size={14} /> The "Nuclear" Map Fix
+                 <div className="border border-yellow-200 dark:border-yellow-900 bg-yellow-50/50 dark:bg-yellow-900/10 p-3 rounded-lg">
+                    <h4 className="text-xs font-bold text-yellow-700 dark:text-yellow-400 flex items-center gap-2 mb-2">
+                       <Map size={14} /> Geofence UI Management
                     </h4>
                     <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-normal">
-                       React 18 & Leaflet conflict causes "Map already initialized" crashes. 
-                       <br/><strong>Solution:</strong> <code>MapInner.tsx</code> manually strips the <code>_leaflet_id</code> from the DOM node before render. 
+                       Managers (Lvl 500+) can now draw zones visually via Mapbox/Leaflet at <code>/biz/admin/fleet/geofencing</code>. Polygons are stored as GeoJSON in the <code>locations</code> table.
                     </p>
                  </div>
-                 <div className="border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg">
-                    <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-2 mb-2">
-                       <Radio size={14} /> VehicleStatusAvatar
+                 <div className="border border-yellow-200 dark:border-yellow-900 bg-yellow-50/50 dark:bg-yellow-900/10 p-3 rounded-lg">
+                    <h4 className="text-xs font-bold text-yellow-700 dark:text-yellow-400 flex items-center gap-2 mb-2">
+                       <Radio size={14} /> Icon Management
                     </h4>
                     <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-normal">
-                       Uses <code>VehicleStatusAvatar.tsx</code> to standardize the look (Green/Red dots) across the entire app.
+                       Custom SVGs for Buggies vs UTVs can be uploaded at <code>/biz/admin/fleet/icons</code>. Updates push to the <code>vehicle_types</code> table.
                     </p>
                  </div>
+              </div>
+
+              {/* MAP FIX */}
+              <div className="bg-red-50/50 dark:bg-red-900/10 p-3 rounded-lg border border-red-100 dark:border-red-900">
+                  <h4 className="text-xs font-bold text-red-600 dark:text-red-400 mb-1">Critical Map Fix</h4>
+                  <p className="text-[10px] text-zinc-600 dark:text-zinc-400">
+                      React 18 & Leaflet conflict causes "Map already initialized" crashes. 
+                      <strong> Solution:</strong> <code>MapInner.tsx</code> manually strips the <code>_leaflet_id</code> from the DOM node before render.
+                  </p>
               </div>
             </CardContent>
           </Card>
 
-          {/* 3. SCHEDULE ROSTER V14.5 (UPDATED) */}
+          {/* 4. SCHEDULE ROSTER V14.5 */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
                 <CalendarClock size={24} />
-                <CardTitle className="uppercase tracking-widest">Schedule Roster System (v14.5)</CardTitle>
+                <CardTitle className="uppercase tracking-widest">Schedule Roster (v14.5)</CardTitle>
               </div>
               <CardDescription className={glassTextStyles}>
                 Central command. Updated with Conflict Detection & Ghost Shift Prevention.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
-              
-              {/* NEW FEATURES GRID */}
-              <div>
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-3">Core Features & Safety Rails</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Smart Copy */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
                     <div className="flex items-center gap-2 mb-1">
                       <RefreshCcw size={14} className="text-blue-500"/>
                       <span className="font-bold text-xs text-zinc-800 dark:text-zinc-200">Smart Copy (Idempotency)</span>
                     </div>
                     <p className="text-xs text-zinc-500">
-                      The "Copy Week" function now pre-flights the target week. If <strong>any</strong> shifts exist, it aborts. Prevents duplicate data layers caused by double-clicks.
+                      The "Copy Week" function pre-flights the target week. If <strong>any</strong> shifts exist, it aborts. Prevents duplicate data layers.
                     </p>
                   </div>
-                  {/* Conflict Detector */}
                   <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
                     <div className="flex items-center gap-2 mb-1">
                       <AlertTriangle size={14} className="text-purple-500"/>
                       <span className="font-bold text-xs text-zinc-800 dark:text-zinc-200">Visual Conflict Detector</span>
                     </div>
                     <p className="text-xs text-zinc-500">
-                      Grid cells scan for {'>'}1 shift/day. If found, a pulsing <strong>Purple Badge (x2)</strong> appears. Clicking opens the <strong>Resolver Modal</strong> to delete specific ghost shifts.
+                      Grid cells scan for {'>'}1 shift/day. If found, a pulsing <strong>Purple Badge (x2)</strong> appears.
                     </p>
                   </div>
-                  {/* Viewport */}
-                  <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
-                    <div className="flex items-center gap-2 mb-1">
-                      <LayoutTemplate size={14} className="text-green-500"/>
-                      <span className="font-bold text-xs text-zinc-800 dark:text-zinc-200">Locked Viewport</span>
-                    </div>
-                    <p className="text-xs text-zinc-500">
-                      Body fixed to <code>h-[calc(100vh-65px)]</code>. Header pins to top. Managers never lose tools while scrolling long lists.
-                    </p>
-                  </div>
-                  {/* Ghost Data Handling */}
-                  <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
-                    <div className="flex items-center gap-2 mb-1">
-                      <ShieldAlert size={14} className="text-red-500"/>
-                      <span className="font-bold text-xs text-zinc-800 dark:text-zinc-200">Safe Deletion Logic</span>
-                    </div>
-                    <p className="text-xs text-zinc-500">
-                      SQL Cleanups use <code>PARTITION BY user_id</code> and <code>WHERE level &ge; 300</code>. This protects archived <strong>Level 100</strong> accounts from accidental deletion.
-                    </p>
-                  </div>
-                </div>
               </div>
-
             </CardContent>
           </Card>
 
-          {/* 4. HR COMMAND (NEW: LOCDEPJOB) */}
+          {/* 5. HR COMMAND (LOCDEPJOB) */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
                 <Briefcase size={24} />
-                <CardTitle className="uppercase tracking-widest">HR Command: Structure & Roles</CardTitle>
+                <CardTitle className="uppercase tracking-widest">HR Command: Structure</CardTitle>
               </div>
               <CardDescription className={glassTextStyles}>
                 The "LOCDEPJOB" Dynamic Hierarchy System. Location: <code>/biz/admin/hr/structure</code>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
-              
-              {/* ARCHITECTURE */}
               <div className="bg-indigo-50/30 dark:bg-indigo-900/10 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800">
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">Dynamic Hierarchy Pattern</h3>
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  We have moved away from hardcoded roles. The Roster and User profiles now fetch configuration from three relational tables:
-                  <br/><br/>
-                  1. <strong className="text-indigo-600">Locations:</strong> (e.g., Las Vegas, Pismo). Sort Order determines tab position.
-                  <br/>
-                  2. <strong className="text-indigo-600">Departments:</strong> (e.g., Guides, Front Desk). Defined <em>per location</em>. Controls row grouping color/style.
-                  <br/>
-                  3. <strong className="text-indigo-600">Positions:</strong> (e.g., Lead Guide, Junior Guide). The specific job titles selectable in user profiles.
+                  Roles are no longer hardcoded. Configuration fetches from three relational tables:
+                  <br/>1. <strong className="text-indigo-600">Locations:</strong> Sort Order determines tab position.
+                  <br/>2. <strong className="text-indigo-600">Departments:</strong> Defined <em>per location</em>. Controls row grouping.
+                  <br/>3. <strong className="text-indigo-600">Positions:</strong> Job titles selectable in user profiles.
                 </p>
               </div>
-
               <div className="flex items-center justify-between gap-4 text-xs text-zinc-500">
                  <div className="flex items-center gap-2 border p-2 rounded w-full justify-center">
                     <Network size={16} /> <span>Dynamic <code>hrConfig</code> Injection</span>
@@ -288,13 +312,11 @@ export default function DeveloperDocsPage() {
                     <Layers size={16} /> <span>Roster Grouping Logic</span>
                  </div>
               </div>
-
             </CardContent>
           </Card>
 
-          {/* 5. PISMO BOOKING & PAYROLL */}
+          {/* 6. PISMO BOOKING & PAYROLL */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             {/* PISMO */}
              <Card className={glassCardStyles}>
                 <CardHeader>
                   <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400">
@@ -304,14 +326,12 @@ export default function DeveloperDocsPage() {
                 </CardHeader>
                 <CardContent>
                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                      The "Golden Path" flow. 
-                      <br/><strong>Critical:</strong> We use a <strong>"Hidden Button" Strategy</strong> to bypass a specific NMI <code>Collect.js</code> initialization bug. 
-                      <br/><code>document.getElementById('nmi-hidden-btn').click()</code> is load-bearing logic.
+                      <strong>Critical:</strong> We use a <strong>"Hidden Button" Strategy</strong> to bypass NMI <code>Collect.js</code> bugs. 
+                      <code>document.getElementById('nmi-hidden-btn').click()</code> is load-bearing logic.
                    </p>
                 </CardContent>
              </Card>
 
-             {/* PAYROLL */}
              <Card className={glassCardStyles}>
                 <CardHeader>
                   <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-500">
@@ -327,25 +347,22 @@ export default function DeveloperDocsPage() {
              </Card>
           </div>
 
-           {/* 6. AUTH & ROUTING ARCHITECTURE */}
+           {/* 7. AUTH & ROUTING ARCHITECTURE */}
            <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-purple-600 dark:text-purple-500">
                 <KeyRound size={24} />
                 <CardTitle className="uppercase tracking-widest">Auth & Smart Routing</CardTitle>
               </div>
-              <CardDescription className={glassTextStyles}>
-                How we determine "Where to go" after sign-in.
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <div className="bg-purple-50/50 dark:bg-purple-900/10 p-3 rounded-lg border border-purple-100 dark:border-purple-800">
                 <p className="font-bold text-purple-700 dark:text-purple-400 mb-2">The Decision Hierarchy</p>
                 <ol className="list-decimal list-inside space-y-1 text-zinc-700 dark:text-zinc-300">
-                  <li><strong>User Preference:</strong> Checks <code>users.homepage</code> (Managed in <code>/account</code>).</li>
-                  <li><strong>Role Check:</strong> If Level &ge; 300 (Staff), target <strong>Location Dashboard</strong>.</li>
-                  <li><strong>Location Resolve:</strong> Maps <code>primary_work_location</code> (e.g., "Las Vegas") to URL slug (<code>/biz/vegas</code>).</li>
-                  <li><strong>Fallback:</strong> Customers & Guests default to <strong>Root</strong> (<code>/</code>).</li>
+                  <li><strong>User Preference:</strong> Checks <code>users.homepage</code>.</li>
+                  <li><strong>Role Check:</strong> If Level &ge; 300, target <strong>Location Dashboard</strong>.</li>
+                  <li><strong>Location Resolve:</strong> Maps <code>primary_work_location</code> to URL slug.</li>
+                  <li><strong>Fallback:</strong> Customers default to <strong>Root</strong> (<code>/</code>).</li>
                 </ol>
               </div>
             </CardContent>
@@ -356,7 +373,7 @@ export default function DeveloperDocsPage() {
         {/* RIGHT COLUMN: TECH STACK & DEBT (Span 1) */}
         <div className="space-y-8">
           
-          {/* 7. TECH STACK */}
+          {/* 8. TECH STACK */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-green-600 dark:text-green-500">
@@ -370,7 +387,7 @@ export default function DeveloperDocsPage() {
                 <Badge variant="outline" className="border-blue-500/50 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20">TypeScript</Badge>
                 <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 bg-green-50/50 dark:bg-green-900/20">Supabase</Badge>
                 <Badge variant="outline" className="border-cyan-500/50 text-cyan-600 dark:text-cyan-400 bg-cyan-50/50 dark:bg-cyan-900/20">Tailwind</Badge>
-                <Badge variant="outline" className="border-purple-500/50 text-purple-600 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/20">Date-FNS</Badge>
+                <Badge variant="outline" className="border-pink-500/50 text-pink-600 dark:text-pink-400 bg-pink-50/50 dark:bg-pink-900/20">AWS SDK v3</Badge>
               </div>
               <Separator className="bg-zinc-200 dark:bg-zinc-800" />
               <div className={`space-y-2 text-sm ${glassTextStyles}`}>
@@ -380,7 +397,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 8. CURRENT DEBT / TODO */}
+          {/* 9. TECH DEBT & TODOS */}
           <Card className={`${glassCardStyles} border-dashed`}>
             <CardHeader>
               <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
@@ -391,12 +408,49 @@ export default function DeveloperDocsPage() {
             <CardContent className="space-y-4">
               <ul className="space-y-3">
                 
+                {/* HIGH PRIORITY: S3 */}
+                <li className="flex items-start gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 p-2 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-1 w-full">
+                     <span className="font-bold">S3 Timezone Bug</span>
+                     <span className="text-[10px] opacity-90">
+                       Server upload logic uses UTC (<code>toISOString</code>). Late night Vegas uploads are dated tomorrow. 
+                       <strong>Fix:</strong> Use <code>Intl</code> API with <code>en-CA</code> locale.
+                     </span>
+                  </div>
+                </li>
+
+                {/* S3 REFACTOR */}
+                 <li className="flex items-start gap-2 text-sm text-yellow-700 dark:text-yellow-400 bg-yellow-50/50 dark:bg-yellow-950/20 p-2 rounded-lg">
+                  <CircleDashed className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-1 w-full">
+                     <span className="font-bold">Refactor S3 Logic</span>
+                     <span className="text-[10px] opacity-90">
+                       <code>PUT</code>/<code>POST</code> logic in <code>upload/route.ts</code> is redundant. Extract to shared utility.
+                     </span>
+                  </div>
+                </li>
+
+                {/* MOMENT JS */}
+                <li className="flex items-start gap-2 text-sm text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 p-2 rounded-lg">
+                  <RefreshCcw className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-1 w-full">
+                    <div className="flex justify-between items-center w-full">
+                      <span className="font-bold">Moment.js Removal</span>
+                      <Badge className="bg-blue-600 text-[10px] h-5">50%</Badge>
+                    </div>
+                    <span className="text-xs opacity-90">
+                      Roster Module converted to <code>date-fns</code>. Admin/Booking pending.
+                    </span>
+                  </div>
+                </li>
+
                 {/* DONE */}
                 <li className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50/50 dark:bg-green-950/20 p-2 rounded-lg">
                   <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                   <div className="w-full">
-                    <span className="line-through opacity-80">
-                      <strong>Roster Integrity:</strong> Prevent duplicates.
+                    <span className="line-through opacity-80 font-bold">
+                      Roster Integrity
                     </span>
                     <div className="text-[10px] opacity-70 mt-1">
                       Fixed v14.5 (Conflict Detector & Safe Deletion).
@@ -405,36 +459,11 @@ export default function DeveloperDocsPage() {
                   <Badge className="ml-auto bg-green-600 text-[10px] h-5">DONE</Badge>
                 </li>
 
-                {/* IN PROGRESS */}
-                <li className="flex items-start gap-2 text-sm text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 p-2 rounded-lg">
-                  <RefreshCcw className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div className="flex flex-col gap-1 w-full">
-                    <div className="flex justify-between items-center w-full">
-                      <span className="font-bold">Moment.js Migration</span>
-                      <Badge className="bg-blue-600 text-[10px] h-5">50%</Badge>
-                    </div>
-                    <span className="text-xs opacity-90">
-                      <strong>Status:</strong> Roster Module converted to <code>date-fns</code>. Need to finish Admin & Booking modules.
-                    </span>
-                  </div>
-                </li>
-
-                {/* FLEET TODO */}
-                <li className="flex items-start gap-2 text-sm text-yellow-700 dark:text-yellow-400 bg-yellow-50/50 dark:bg-yellow-950/20 p-2 rounded-lg">
-                  <CircleDashed className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div className="flex flex-col gap-1 w-full">
-                     <span className="font-bold">Unified Inspections</span>
-                     <span className="text-xs opacity-90">
-                       Required to populate live fuel levels and real "Broken" status updates.
-                     </span>
-                  </div>
-                </li>
-
               </ul>
             </CardContent>
           </Card>
 
-           {/* 9. QUICK LINKS */}
+           {/* 10. QUICK LINKS */}
            <Card className={glassCardStyles}>
             <CardHeader>
               <CardTitle className="text-sm uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Quick Links</CardTitle>
@@ -443,7 +472,7 @@ export default function DeveloperDocsPage() {
                 <a href="/biz/admin/health" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">System Health</a>
                 <a href="/biz/users/admin" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">User Admin</a>
                 <a href="/biz/vehicles/admin" className="text-xs text-yellow-600 dark:text-yellow-400 hover:underline">Fleet Command</a>
-                <a href="/biz/schedule" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Live Roster</a>
+                <a href="/biz/admin/fleet/geofencing" className="text-xs text-yellow-600 dark:text-yellow-400 hover:underline">Geofencing</a>
                 <a href="/biz/admin/hr/structure" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">HR Structure</a>
             </CardContent>
           </Card>

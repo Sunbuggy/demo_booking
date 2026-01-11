@@ -6,9 +6,11 @@ import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '../components/column-header';
 import VehicleStatusAvatar from '@/components/fleet/vehicle-status-avatar';
 import { DashboardVehicle } from '@/app/actions/fleet'; 
+import { LocationCell } from '@/components/fleet/LocationCell'; // The Pill
+import { FleetIcon } from '@/components/fleet/FleetIconProvider';
 
 export const columns: ColumnDef<DashboardVehicle, any>[] = [
-  // 1. IDENTITY COLUMN (Avatar + Name)
+  // 1. IDENTITY
   {
     accessorKey: 'name',
     header: ({ column }) => (
@@ -18,14 +20,7 @@ export const columns: ColumnDef<DashboardVehicle, any>[] = [
       const vehicle = row.original;
       return (
         <div className="flex items-center gap-3 py-1">
-          {/* The Status Avatar */}
-          <VehicleStatusAvatar 
-            vehicle={vehicle} 
-            size="md" 
-            showStatusDot={true} 
-          />
-          
-          {/* Text Details (Clickable) */}
+          <VehicleStatusAvatar vehicle={vehicle} size="md" showStatusDot={true} />
           <div className="flex flex-col">
             <Link
               href={`/biz/vehicles/${vehicle.id}`}
@@ -43,10 +38,9 @@ export const columns: ColumnDef<DashboardVehicle, any>[] = [
       );
     },
     enableSorting: true,
-    enableHiding: false
   },
 
-  // 2. LOCATION COLUMN (New! Uses Server-Side Geofencing)
+  // 2. LOCATION (Uses LocationCell Pill)
   {
     id: 'location',
     accessorFn: (row) => row.location_name,
@@ -54,17 +48,20 @@ export const columns: ColumnDef<DashboardVehicle, any>[] = [
       <DataTableColumnHeader column={column} title="Location" />
     ),
     cell: ({ row }) => {
-      const loc = row.original.location_name || 'Unknown';
       return (
-        <div className="w-[100px] text-xs font-medium text-slate-600 dark:text-slate-400 truncate">
-          {loc}
+        <div className="w-[160px]"> 
+          <LocationCell 
+            name={row.original.location_name || 'Unknown'}
+            lat={row.original.latitude}
+            lng={row.original.longitude}
+          />
         </div>
       );
     },
     enableSorting: true,
   },
 
-  // 3. TYPE COLUMN
+  // 3. TYPE
   {
     accessorKey: 'type',
     header: ({ column }) => (
@@ -73,19 +70,19 @@ export const columns: ColumnDef<DashboardVehicle, any>[] = [
     cell: ({ row }) => {
       const type = row.getValue('type') as string;
       return (
-        <div className="capitalize w-[80px] text-xs font-medium bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-center">
-          {type}
+        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded w-fit border border-slate-200 dark:border-slate-700">
+          <FleetIcon type={type} className="w-3.5 h-3.5 text-slate-500" />
+          <span className="capitalize text-xs font-medium text-slate-700 dark:text-slate-300">
+            {type}
+          </span>
         </div>
       );
     },
     enableSorting: true,
-    enableHiding: false,
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
-    }
+    filterFn: (row, id, value) => value.includes(row.getValue(id))
   },
 
-  // 4. MODEL COLUMN
+  // 4. MODEL
   {
     accessorKey: 'model',
     header: ({ column }) => (
@@ -93,12 +90,12 @@ export const columns: ColumnDef<DashboardVehicle, any>[] = [
     ),
     cell: ({ row }) => {
       const model = row.getValue('model') as string;
-      return <div className="w-[140px] text-xs truncate" title={model}>{model}</div>;
+      return <div className="w-[140px] text-xs truncate text-muted-foreground" title={model}>{model}</div>;
     },
     enableSorting: true
   },
 
-  // 5. YEAR COLUMN
+  // 5. YEAR
   {
     accessorKey: 'year',
     header: ({ column }) => (
@@ -111,7 +108,7 @@ export const columns: ColumnDef<DashboardVehicle, any>[] = [
     enableSorting: true
   },
 
-  // 6. LICENSE PLATE
+  // 6. PLATE
   {
     accessorKey: 'licenseplate',
     header: ({ column }) => (
@@ -120,7 +117,7 @@ export const columns: ColumnDef<DashboardVehicle, any>[] = [
     cell: ({ row }) => {
       const licensePlate = row.getValue('licenseplate') as string;
       if (!licensePlate) return <span className="text-xs text-slate-300">-</span>;
-      return <div className="w-[80px] text-xs font-mono bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-500 px-1 rounded border border-yellow-100 dark:border-yellow-900">{licensePlate}</div>;
+      return <div className="w-[80px] text-xs font-mono bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-500 px-1 rounded border border-yellow-100 dark:border-yellow-900 text-center">{licensePlate}</div>;
     },
     enableSorting: true
   }

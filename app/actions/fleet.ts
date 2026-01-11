@@ -9,7 +9,11 @@ export type VehicleType = Database['public']['Tables']['vehicles']['Row'];
 export type DashboardVehicle = VehicleType & {
   location_name: string;
   last_active: string | null;
-  updated_by_name?: string; // New Field
+  updated_by_name?: string;
+  // ✅ ADDED THESE MISSING FIELDS
+  latitude?: number | null;
+  longitude?: number | null;
+  updated_by?: string | null; 
 };
 
 export async function getFleetDashboardData(): Promise<DashboardVehicle[]> {
@@ -24,16 +28,13 @@ export async function getFleetDashboardData(): Promise<DashboardVehicle[]> {
 
   if (!vehicles) return [];
 
-  // 2. Fetch Locations (with User ID if available)
-  // We try to fetch 'created_by' which is standard in Supabase. 
-  // If your schema uses 'user_id', we'll adjust.
+  // 2. Fetch Locations
   const { data: rawLocations } = await supabase
     .from('vehicle_locations')
     .select('vehicle_id, latitude, longitude, created_at, created_by')
     .order('created_at', { ascending: false });
 
-  // 3. Fetch User Profiles (for names)
-  // We assume a public 'profiles' table exists mapping id -> full_name
+  // 3. Fetch User Profiles
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, full_name');
@@ -60,18 +61,23 @@ export async function getFleetDashboardData(): Promise<DashboardVehicle[]> {
       const loc = locMap.get(v.id);
       
       let locationName = 'Unknown';
-      let userName = 'System';
+      let userName = 'System'; // Default
 
       if (loc) {
-        // Resolve Location
+        // Resolve Location Name
         if (loc.latitude && loc.longitude) {
           locationName = await resolveVehicleLocation(Number(loc.latitude), Number(loc.longitude));
+        } else {
+            // Fallback if coords are 0/null but record exists
+            locationName = 'No GPS Data';
         }
-        // Resolve User
+
+        // Resolve User Name
         if (loc.created_by && userMap.has(loc.created_by)) {
           userName = userMap.get(loc.created_by) || 'Staff';
         } else if (loc.created_by) {
-          userName = 'Guest User'; // Fallback if ID exists but no profile
+           // If we have an ID but no profile, it might be a guest or system scan
+           userName = 'Guest / Scanner'; 
         }
       } else {
         locationName = 'No Signal';
@@ -82,6 +88,10 @@ export async function getFleetDashboardData(): Promise<DashboardVehicle[]> {
         location_name: locationName,
         last_active: loc?.created_at || null,
         updated_by_name: userName,
+        // ✅ PASSING THE RAW DATA NOW
+        latitude: loc?.latitude || null,
+        longitude: loc?.longitude || null,
+        updated_by: loc?.created_by || null
       };
     })
   );

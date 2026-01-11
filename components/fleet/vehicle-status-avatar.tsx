@@ -1,226 +1,241 @@
 /**
  * @file components/fleet/vehicle-status-avatar.tsx
  * @description The "Identity" component for vehicles.
- * Shows photo/icon, status dot, and quick actions popover.
- * Modeled after UserStatusAvatar.
+ * FEATURES:
+ * - Uses Popover (Click interaction)
+ * - Uses LocationCell (Interactive Map Pill)
+ * - Uses FleetIcon (Dynamic System)
+ * - Displays S3 Profile Pictures
  */
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { cn } from '@/lib/utils';
-import { 
-  Popover, PopoverContent, PopoverTrigger 
-} from "@/components/ui/popover";
+import React, { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { 
-  CarFront, Tractor, Truck, Zap, 
-  AlertTriangle, Wrench, CheckCircle2, 
-  MapPin, Fuel, History, FileText, 
-  MoreHorizontal,
-  Ghost
+  FileText, 
+  History, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Wrench, 
+  XCircle,
+  Ghost, 
+  Fuel   
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { DashboardVehicle } from '@/app/actions/fleet'; 
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import { FleetIcon } from './FleetIconProvider'; 
+import { LocationCell } from './LocationCell';     
 
 // -----------------------------------------------------------------------------
-// TYPES & HELPERS
+// HELPERS
 // -----------------------------------------------------------------------------
 
-// Loose type definition to allow reuse in different contexts
-interface VehicleAvatarProps {
-  vehicle: DashboardVehicle | any; // Fallback to any for legacy queries
+const getStatusConfig = (status?: string) => {
+  switch (status?.toLowerCase()) {
+    case 'fine':
+      return { 
+        color: 'bg-green-500', 
+        icon: CheckCircle2, 
+        label: 'Operational', 
+        border: 'border-green-500/20', 
+        bg: 'bg-green-500/10', 
+        text: 'text-green-600 dark:text-green-400' 
+      };
+    case 'broken':
+      return { 
+        color: 'bg-red-500', 
+        icon: XCircle, 
+        label: 'Out Of Service', 
+        border: 'border-red-500/20', 
+        bg: 'bg-red-500/10', 
+        text: 'text-red-600 dark:text-red-400' 
+      };
+    case 'maintenance':
+      return { 
+        color: 'bg-amber-500', 
+        icon: Wrench, 
+        label: 'Maintenance', 
+        border: 'border-amber-500/20', 
+        bg: 'bg-amber-500/10', 
+        text: 'text-amber-600 dark:text-amber-400' 
+      };
+    case 'former':
+      return { 
+        color: 'bg-slate-400', 
+        icon: Ghost, 
+        label: 'Decommissioned', 
+        border: 'border-slate-500/20', 
+        bg: 'bg-slate-500/10', 
+        text: 'text-slate-500' 
+      };
+    default:
+      return { 
+        color: 'bg-slate-300', 
+        icon: History, 
+        label: 'Unknown', 
+        border: 'border-slate-500/20', 
+        bg: 'bg-slate-500/10', 
+        text: 'text-slate-500' 
+      };
+  }
+};
+
+interface VehicleStatusAvatarProps {
+  vehicle: {
+    id: string;
+    name: string;
+    pet_name?: string | null;
+    type?: string;
+    vehicle_status?: string;
+    profile_pic_url?: string | null; 
+    location_name?: string;          
+    latitude?: number | null;        
+    longitude?: number | null;       
+    fuel_level?: string | number;    
+  };
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showStatusDot?: boolean;
   className?: string;
 }
 
-const getVehicleIcon = (type: string, className?: string) => {
-  const cls = className || "w-3/5 h-3/5";
-  switch (type?.toLowerCase()) {
-    case 'buggy': return <CarFront className={cls} />;
-    case 'atv': return <Tractor className={cls} />;
-    case 'truck': return <Truck className={cls} />;
-    case 'shuttle': return <Truck className={cls} />; // Or Bus icon if available
-    case 'tram': return <Zap className={cls} />;
-    default: return <CarFront className={cls} />;
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'fine': return 'bg-green-500 border-green-600';
-    case 'broken': return 'bg-red-500 border-red-600';
-    case 'maintenance': return 'bg-amber-500 border-amber-600';
-    case 'former': return 'bg-slate-400 border-slate-500';
-    default: return 'bg-slate-300 border-slate-400';
-  }
-};
-
-const getStatusLabel = (status: string) => {
-  switch (status) {
-    case 'fine': return 'Operational';
-    case 'broken': return 'Out of Service';
-    case 'maintenance': return 'In Maintenance';
-    case 'former': return 'Decommissioned';
-    default: return status;
-  }
-};
-
-// -----------------------------------------------------------------------------
-// COMPONENT
-// -----------------------------------------------------------------------------
-
-export default function VehicleStatusAvatar({ 
-  vehicle, 
+export default function VehicleStatusAvatar({
+  vehicle,
   size = 'md',
   showStatusDot = true,
   className
-}: VehicleAvatarProps) {
+}: VehicleStatusAvatarProps) {
   
   const [isOpen, setIsOpen] = useState(false);
+  const statusConfig = getStatusConfig(vehicle.vehicle_status);
+  const StatusIcon = statusConfig.icon;
 
-  // Dimensions logic
+  // Dimensions
   const sizeClasses = {
-    sm: 'w-8 h-8',
-    md: 'w-10 h-10',
-    lg: 'w-14 h-14',
-    xl: 'w-24 h-24 text-4xl' 
+    sm: 'h-8 w-8',
+    md: 'h-10 w-10',
+    lg: 'h-16 w-16',
+    xl: 'h-24 w-24'
   };
-  
-  const dotSize = size === 'sm' ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5';
 
-  // "Personality" Logic: If it has a pet name, that's the primary identity.
-  const displayName = vehicle.pet_name || vehicle.name;
-  const subName = vehicle.pet_name ? `#${vehicle.name}` : vehicle.type;
-  const status = vehicle.vehicle_status || 'fine';
+  const iconSizes = {
+    sm: 'w-4 h-4',
+    md: 'w-5 h-5',
+    lg: 'w-8 h-8',
+    xl: 'w-10 h-10'
+  };
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div 
-          className={cn(
-            "relative inline-block cursor-pointer hover:scale-105 transition-transform", 
-            className
-          )}
-          onClick={(e) => e.stopPropagation()} 
+          className={cn("relative group cursor-pointer inline-block", className)}
+          onClick={(e) => e.stopPropagation()} // Prevent row clicks
         >
-          <div className={cn(
-            "rounded-full overflow-hidden border-2 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-400 select-none shadow-sm relative",
-            sizeClasses[size],
-            // Dynamic border color based on status for extra visibility
-            status === 'broken' ? 'border-red-200 dark:border-red-900' : 
-            status === 'maintenance' ? 'border-amber-200 dark:border-amber-900' :
-            'border-slate-200 dark:border-slate-700'
+          <Avatar className={cn(
+            "border-2 transition-all bg-slate-100 dark:bg-zinc-800",
+            // Dynamic Border Color
+            vehicle.vehicle_status === 'broken' ? 'border-red-200 dark:border-red-900/50' : 
+            vehicle.vehicle_status === 'maintenance' ? 'border-amber-200 dark:border-amber-900/50' : 
+            'border-transparent group-hover:border-slate-300 dark:group-hover:border-slate-600',
+            sizeClasses[size]
           )}>
             {vehicle.profile_pic_url ? (
-              <Image 
+              <AvatarImage 
                 src={vehicle.profile_pic_url} 
-                alt={displayName} 
-                fill 
+                alt={vehicle.name} 
                 className="object-cover" 
-                sizes="(max-width: 768px) 100vw, 33vw"
               />
             ) : (
-              getVehicleIcon(vehicle.type)
+              <AvatarFallback className="bg-slate-100 dark:bg-zinc-800 flex items-center justify-center">
+                 <FleetIcon type={vehicle.type} className={cn("text-slate-400", iconSizes[size])} />
+              </AvatarFallback>
             )}
-          </div>
-
-          {/* Realtime Status Dot */}
+          </Avatar>
+          
           {showStatusDot && (
             <span className={cn(
-              "absolute bottom-0 right-0 rounded-full ring-2 ring-white dark:ring-slate-950 shadow-sm",
-              dotSize,
-              getStatusColor(status)
+              "absolute bottom-0 right-0 block rounded-full ring-2 ring-white dark:ring-zinc-950", 
+              statusConfig.color,
+              (size === 'lg' || size === 'xl') ? 'w-5 h-5' : 'w-2.5 h-2.5'
             )} />
           )}
         </div>
       </PopoverTrigger>
 
-      <PopoverContent className="w-80 p-0 shadow-xl border-slate-200 dark:border-slate-800" align="start" sideOffset={8}>
+      <PopoverContent className="w-80 p-0 overflow-hidden border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xl" align="start">
         
-        {/* HEADER */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800 flex gap-4">
-          <div className={cn(
-            "relative w-16 h-16 rounded-full overflow-hidden border bg-white dark:bg-slate-800 flex items-center justify-center text-slate-300 shadow-inner shrink-0",
-            status === 'broken' ? 'border-red-400' : 'border-slate-200'
-          )}>
-             {vehicle.profile_pic_url ? (
-               <Image src={vehicle.profile_pic_url} alt={displayName} fill className="object-cover" />
-             ) : (
-               getVehicleIcon(vehicle.type, "w-8 h-8")
-             )}
-          </div>
-          <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <h4 className="font-bold text-lg leading-tight text-slate-900 dark:text-slate-100 truncate">
-              {displayName}
-            </h4>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider px-1.5 h-5 bg-white dark:bg-slate-800">
-                {subName}
-              </Badge>
-              {vehicle.location_name && (
-                <span className="text-xs text-slate-500 flex items-center gap-0.5 truncate">
-                  <MapPin className="w-3 h-3" /> {vehicle.location_name}
+        {/* HEADER SECTION */}
+        <div className="p-4 flex gap-4 items-start bg-slate-50 dark:bg-zinc-900/50">
+           <Avatar className="h-16 w-16 border-2 border-white dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
+            {vehicle.profile_pic_url ? (
+               <AvatarImage src={vehicle.profile_pic_url} className="object-cover" />
+            ) : (
+               <AvatarFallback className="bg-slate-100 dark:bg-zinc-800">
+                  <FleetIcon type={vehicle.type} className="w-8 h-8 text-slate-400" />
+               </AvatarFallback>
+            )}
+           </Avatar>
+           <div className="space-y-1.5 min-w-0 flex-1">
+              <h4 className="text-lg font-bold text-slate-900 dark:text-white leading-none truncate">
+                {vehicle.pet_name || vehicle.name}
+              </h4>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 border border-slate-300 dark:border-zinc-700">
+                  #{vehicle.name}
                 </span>
-              )}
-            </div>
-          </div>
+                
+                {/* --- LOCATION PILL --- */}
+                <LocationCell 
+                  name={vehicle.location_name || 'Unknown'}
+                  lat={vehicle.latitude}
+                  lng={vehicle.longitude}
+                  className="text-[10px] py-0.5 px-2 bg-white dark:bg-zinc-900"
+                />
+              </div>
+           </div>
         </div>
 
-        {/* STATUS BAR */}
-        <div className={cn(
-          "px-4 py-3 flex items-center justify-between text-sm font-medium border-b dark:border-slate-800",
-          status === 'fine' ? "bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300" :
-          status === 'broken' ? "bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300" :
-          status === 'maintenance' ? "bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300" :
-          "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-        )}>
-          <span className="flex items-center gap-2 capitalize">
-            {status === 'fine' && <CheckCircle2 className="w-4 h-4" />}
-            {status === 'broken' && <AlertTriangle className="w-4 h-4" />}
-            {status === 'maintenance' && <Wrench className="w-4 h-4" />}
-            {status === 'former' && <Ghost className="w-4 h-4" />}
-            {getStatusLabel(status)}
-          </span>
-          {/* Placeholder for fuel level - Will work once Unified Inspections are live */}
-          {vehicle.fuel_level && (
-             <span className="flex items-center gap-1 text-xs opacity-80 font-mono">
-               <Fuel className="w-3 h-3" /> {vehicle.fuel_level}
+        {/* STATUS BANNER */}
+        <div className={cn("px-4 py-2 flex items-center justify-between border-y dark:border-zinc-800", statusConfig.bg, statusConfig.border)}>
+           <div className="flex items-center gap-2">
+             <StatusIcon className={cn("w-4 h-4", statusConfig.text)} />
+             <span className={cn("text-xs font-bold uppercase tracking-wider", statusConfig.text)}>
+               {statusConfig.label}
              </span>
-          )}
+           </div>
+           
+           {vehicle.fuel_level && (
+             <span className="flex items-center gap-1.5 text-xs font-mono font-medium opacity-80 text-slate-700 dark:text-slate-300">
+               <Fuel className="w-3.5 h-3.5" />
+               {vehicle.fuel_level}%
+             </span>
+           )}
         </div>
 
-        {/* ACTIONS GRID */}
-        <div className="p-2 grid grid-cols-2 gap-2">
-          
-          <Button variant="ghost" className="justify-start h-10 px-2 gap-2 text-xs" asChild onClick={() => setIsOpen(false)}>
-            <Link href={`/biz/vehicles/${vehicle.id}`}>
-              <FileText className="w-4 h-4 text-blue-500" />
-              Vehicle Details
-            </Link>
-          </Button>
-
-          <Button variant="ghost" className="justify-start h-10 px-2 gap-2 text-xs" asChild onClick={() => setIsOpen(false)}>
-            <Link href={`/biz/vehicles/${vehicle.id}?tab=history`}>
-              <History className="w-4 h-4 text-slate-500" />
-              Service History
-            </Link>
-          </Button>
-
-          <Button 
-            variant="ghost" 
-            className="justify-start h-10 px-2 gap-2 text-xs col-span-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20"
-            onClick={() => {
-              // Future: Wire this up to a "Quick Tag" modal
-              setIsOpen(false);
-            }}
-          >
-            <AlertTriangle className="w-4 h-4" />
-            Report Issue / Open Tag
-          </Button>
-
+        {/* ACTION LINKS */}
+        <div className="p-2 grid grid-cols-2 gap-2 bg-white dark:bg-zinc-950">
+           <Link href={`/biz/vehicles/${vehicle.id}`} className="w-full">
+             <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-900/20">
+               <FileText size={14} />
+               Vehicle Details
+             </Button>
+           </Link>
+           <Link href={`/biz/vehicles/${vehicle.id}?tab=history`} className="w-full">
+             <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-900/20">
+               <History size={14} />
+               Service History
+             </Button>
+           </Link>
+           <Button variant="ghost" size="sm" className="w-full col-span-2 justify-start gap-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-500 dark:hover:text-amber-400 dark:hover:bg-amber-900/20">
+               <AlertTriangle size={14} />
+               Report Issue / Open Tag
+           </Button>
         </div>
       </PopoverContent>
     </Popover>

@@ -1,7 +1,7 @@
 /**
  * @file /components/UI/Navbar/NavSideBar.tsx
  * @description Main Sidebar Navigation.
- * Updated: Added "LOCDEPJOB SETUP" to HR Section for dynamic configuration.
+ * Updated: Added "Geofence Manager" and "Fleet Icons" to Developer Tools.
  */
 'use client';
 
@@ -18,7 +18,9 @@ import {
   Car,
   BookOpen,
   Palette,
-  Settings // <-- ADDED for Setup
+  Settings,
+  Map,   // <-- Added for Geofence
+  Image  // <-- Added for Fleet Icons
 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -85,7 +87,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   const hrLinks: NavLink[] = [
      { href: '/biz/admin/hr/audit', label: 'Staff Audit', minLevel: USER_LEVELS.HR, icon: <HeartPulse size={16} className="text-red-600 dark:text-red-400" /> },
      { href: '/biz/admin/hr/user-cleanup', label: 'User Merge', minLevel: USER_LEVELS.HR, icon: <Trash2 size={16} className="text-red-600 dark:text-red-400" /> },
-     // NEW CONFIGURATION TOOL LINK
      { href: '/biz/admin/hr/hr-settings', label: 'LOCDEPJOB', minLevel: USER_LEVELS.HR, icon: <Settings size={16} /> },
      { href: '/biz/payroll', label: 'Payroll', minLevel: USER_LEVELS.HR },
      { href: '/biz/users/admin', label: 'User Admin', minLevel: USER_LEVELS.HR, icon: <Users size={16} /> },
@@ -94,6 +95,10 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   // --- 6. DEVELOPER (Level 950+) ---
   const devLinks: NavLink[] = [
     { href: '/biz/admin/health', label: 'System Health', minLevel: USER_LEVELS.DEV, icon: <Activity size={16} className="text-green-600 dark:text-green-400" /> },
+    // NEW TOOLS ADDED HERE
+    { href: '/biz/admin/developer/geofence', label: 'Geofence Manager', minLevel: USER_LEVELS.DEV, icon: <Map size={16} className="text-orange-500 dark:text-orange-400" /> },
+    { href: '/biz/admin/developer/fleet-icons', label: 'Fleet Icons', minLevel: USER_LEVELS.DEV, icon: <Image size={16} className="text-pink-500 dark:text-pink-400" /> },
+    
     { href: '/biz/admin/developer/docs', label: 'System Architecture', minLevel: USER_LEVELS.DEV, icon: <BookOpen size={16} className="text-blue-500 dark:text-blue-400" /> },
     { href: '/biz/admin/developer/look-and-feel', label: 'Look & Feel', minLevel: USER_LEVELS.DEV, icon: <Palette size={16} className="text-purple-500 dark:text-purple-400" /> },
   ];

@@ -1,7 +1,8 @@
 /**
  * @file lib/fleet/geofencing.ts
  * @description Pure logic for mapping GPS coordinates to Named Locations.
- * Uses Turntable Math (Haversine) and Point-in-Polygon checks.
+ * FETCHES LIVE FROM DATABASE - NO HARDCODED OVERRIDES.
+ * * FIX APPLIED: Added 'safeParsePolygon' to prevent crashes when DB returns JSON strings.
  */
 import { createClient } from '@/utils/supabase/server';
 import { cache } from 'react';
@@ -15,12 +16,49 @@ export type Coordinates = {
 };
 
 export type Geofence = {
+  id?: string;
   name: string;
   type: 'point' | 'polygon';
   center?: Coordinates;
   radius_miles?: number;
   polygon?: Coordinates[];
 };
+
+// -----------------------------------------------------------------------------
+// DATA INTEGRITY HELPER (THE FIX)
+// -----------------------------------------------------------------------------
+/**
+ * Safely parses polygon data from the database.
+ * Handles:
+ * 1. JSON Strings (e.g. "[{lat:...}]") -> Parses them
+ * 2. Raw Arrays (e.g. [{lat:...}]) -> Validates them
+ * 3. Null/Undefined -> Returns undefined
+ */
+function safeParsePolygon(data: any): Coordinates[] | undefined {
+  if (!data) return undefined;
+
+  let parsed = data;
+
+  // 1. If it's a string, we MUST parse it before mapping
+  if (typeof data === 'string') {
+    try {
+      parsed = JSON.parse(data);
+    } catch (err) {
+      console.error("❌ [Geofencing] JSON Parse Error on row:", err);
+      return undefined;
+    }
+  }
+
+  // 2. Ensure we have an array before mapping
+  if (Array.isArray(parsed) && parsed.length > 0) {
+    return parsed.map((p: any) => ({
+      lat: Number(p.lat || p.latitude), // Handle generic variations
+      lng: Number(p.lng || p.lon || p.longitude)
+    }));
+  }
+
+  return undefined;
+}
 
 // -----------------------------------------------------------------------------
 // MATH HELPER: HAVERSINE DISTANCE (Miles)
@@ -60,6 +98,8 @@ function isPointInPolygon(pt: Coordinates, polygon: Coordinates[]): boolean {
 // -----------------------------------------------------------------------------
 export const getGeofences = cache(async (): Promise<Geofence[]> => {
   const supabase = await createClient();
+  
+  // Ensure we select * to get the polygon_coords column
   const { data, error } = await supabase.from('location_geofences').select('*');
 
   if (error || !data) {
@@ -67,13 +107,18 @@ export const getGeofences = cache(async (): Promise<Geofence[]> => {
     return [];
   }
 
-  // Transform DB shape to Type shape
+  // Transform DB shape to Type shape using the Safe Parser
   return data.map((row) => ({
+    id: row.id,
     name: row.name,
     type: row.type as 'point' | 'polygon',
-    center: row.center_lat && row.center_lng ? { lat: row.center_lat, lng: row.center_lng } : undefined,
+    center: row.center_lat && row.center_lng 
+      ? { lat: row.center_lat, lng: row.center_lng } 
+      : undefined,
     radius_miles: row.radius_miles,
-    polygon: row.polygon_coords ? (row.polygon_coords as any[]).map((p: any) => ({ lat: p.lat, lng: p.lon || p.lng })) : undefined
+    
+    // 👇 THIS LINE WAS CRASHING - NOW PROTECTED
+    polygon: safeParsePolygon(row.polygon_coords) 
   }));
 });
 
@@ -83,15 +128,19 @@ export const getGeofences = cache(async (): Promise<Geofence[]> => {
 export async function resolveVehicleLocation(lat: number | null, lng: number | null): Promise<string> {
   if (!lat || !lng) return 'Unknown';
 
-  // 1. Get definitions (This is cached by React, so it's fast)
+  // 1. Get definitions (Cached)
   const geofences = await getGeofences();
   const pt = { lat, lng };
 
-  // 2. Check strict Polygons first (e.g., Pismo Dunes boundary)
-  const polygonMatch = geofences.find(g => g.type === 'polygon' && g.polygon && isPointInPolygon(pt, g.polygon));
+  // 2. Check strict Polygons first (Priority)
+  const polygonMatch = geofences.find(g => 
+    g.type === 'polygon' && 
+    g.polygon && 
+    isPointInPolygon(pt, g.polygon)
+  );
   if (polygonMatch) return polygonMatch.name;
 
-  // 3. Check Radius Points (e.g., Vegas Shop 2-mile radius)
+  // 3. Check Radius Points second
   const pointMatch = geofences.find(g => 
     g.type === 'point' && 
     g.center && 
