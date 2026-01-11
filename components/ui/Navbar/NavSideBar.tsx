@@ -1,7 +1,8 @@
 /**
  * @file /components/UI/Navbar/NavSideBar.tsx
  * @description Main Sidebar Navigation.
- * Updated: Added "Geofence Manager" and "Fleet Icons" to Developer Tools.
+ * Updated: 'WELCOME' link now points to '/welcome' (internal route) 
+ * to bypass middleware redirects for staff.
  */
 'use client';
 
@@ -14,13 +15,13 @@ import {
   Users, 
   HeartPulse, 
   FileText, 
-  Trash2,
-  Car,
-  BookOpen,
-  Palette,
-  Settings,
-  Map,   // <-- Added for Geofence
-  Image  // <-- Added for Fleet Icons
+  Trash2, 
+  Car, 
+  BookOpen, 
+  Palette, 
+  Settings, 
+  Map, 
+  Image 
 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -95,10 +96,8 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   // --- 6. DEVELOPER (Level 950+) ---
   const devLinks: NavLink[] = [
     { href: '/biz/admin/health', label: 'System Health', minLevel: USER_LEVELS.DEV, icon: <Activity size={16} className="text-green-600 dark:text-green-400" /> },
-    // NEW TOOLS ADDED HERE
     { href: '/biz/admin/developer/geofence', label: 'Geofence Manager', minLevel: USER_LEVELS.DEV, icon: <Map size={16} className="text-orange-500 dark:text-orange-400" /> },
     { href: '/biz/admin/developer/fleet-icons', label: 'Fleet Icons', minLevel: USER_LEVELS.DEV, icon: <Image size={16} className="text-pink-500 dark:text-pink-400" /> },
-    
     { href: '/biz/admin/developer/docs', label: 'System Architecture', minLevel: USER_LEVELS.DEV, icon: <BookOpen size={16} className="text-blue-500 dark:text-blue-400" /> },
     { href: '/biz/admin/developer/look-and-feel', label: 'Look & Feel', minLevel: USER_LEVELS.DEV, icon: <Palette size={16} className="text-purple-500 dark:text-purple-400" /> },
   ];
@@ -110,7 +109,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     const isActive = pathname === link.href;
 
     // --- STYLING LOGIC ---
-    // 1. PUBLIC LINKS (Primary Blue)
     const publicActive = 
       'bg-blue-100 text-blue-900 border-blue-500 shadow-sm font-bold ' + 
       'dark:bg-blue-600 dark:text-white dark:border-blue-400 dark:shadow-md'; 
@@ -119,7 +117,6 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       'text-blue-700 border-transparent hover:bg-blue-50 hover:text-blue-900 ' + 
       'dark:text-blue-400 dark:hover:bg-blue-900/40 dark:hover:text-blue-200'; 
 
-    // 2. STAFF LINKS (Orange/Zinc)
     const staffActive = 
       'bg-orange-600 text-white border-orange-500 shadow-md translate-x-1 font-bold'; 
 
@@ -150,14 +147,11 @@ export default function NavSideBar({ user }: NavSideBarProps) {
    * Renders a group of links with a section header.
    */
   const renderLinkGroup = (links: NavLink[], title: string, minLevelRequired: number, isPublicGroup = false) => {
-    // Basic Access Check
     if (minLevelRequired > USER_LEVELS.GUEST && userLevel < minLevelRequired) return null;
     
-    // Detailed Filter (e.g. if a specific link inside a group requires higher access)
     const filtered = links.filter(l => l.minLevel <= userLevel);
     if (filtered.length === 0) return null;
 
-    // Header Color Logic
     let headerClass = "text-orange-600 dark:text-orange-500/80";
     
     if (isPublicGroup) {
@@ -174,7 +168,11 @@ export default function NavSideBar({ user }: NavSideBarProps) {
       <div className="mb-6">
         {isPublicGroup ? (
            <SheetClose asChild>
-             <Link href="/">
+             {/* UPDATED: Points to internal '/welcome' route.
+                 This bypasses middleware redirects that normally force staff to Dashboards,
+                 allowing them to see the landing page content.
+             */}
+             <Link href="/welcome">
                <h3 className={cn("text-[13px] font-black uppercase tracking-[0.1em] mb-2 px-1 flex items-center gap-2", headerClass)}>
                  {title} 
                </h3>
@@ -193,32 +191,8 @@ export default function NavSideBar({ user }: NavSideBarProps) {
   return (
     <nav className="flex flex-col p-4 h-full overflow-y-auto custom-scrollbar border-r 
       bg-white border-zinc-200 
-      dark:bg-zinc-950 dark:border-zinc-900">
+      dark:bg-zinc-950 dark:border-zinc-900 pt-6"> 
       
-      {/* BRANDING */}
-      <div className="mb-8 px-2">
-        <div 
-          className="text-3xl tracking-wider select-none text-yellow-500"
-          style={{ 
-            fontFamily: "'Banco', 'Arial Black', sans-serif",
-            fontWeight: 'bold',
-          }}
-        >
-          <span className="light-mode-stroke">SUNBUGGY</span>
-        </div>
-        
-        <style jsx>{`
-          .light-mode-stroke {
-             color: #FACC15; 
-          }
-          :global(.light) .light-mode-stroke, 
-          :global(html:not(.dark)) .light-mode-stroke {
-             -webkit-text-stroke: 0.5px black;
-             color: #FACC15;
-          }
-        `}</style>
-      </div>
-
       {/* 1. WELCOME (Public Group) */}
       {renderLinkGroup(publicLinks, 'WELCOME', USER_LEVELS.GUEST, true)}
 

@@ -1,9 +1,9 @@
 import { Metadata } from 'next';
 import { PropsWithChildren, Suspense } from 'react';
+import localFont from 'next/font/local';
 import { getURL } from '@/utils/helpers';
 import '@/app/globals.css';
 import { createClient } from '@/utils/supabase/server';
-import { getUserDetails } from '@/utils/supabase/queries'; // Import the query
 
 // Components
 import Footer from '@/components/ui/Footer';
@@ -13,10 +13,23 @@ import { Toster } from '@/components/ui/toaster';
 import Providers from './providers';
 import GlobalBackgroundManager from '@/components/global-background-manager';
 import BackgroundLayer from '@/components/ui/BackgroundLayer';
-import NavigationButtons from '@/components/NavigationButtons'; // Import the buttons
+import NavigationButtons from '@/components/NavigationButtons'; 
 
 const title = 'Sunbuggy Fun Rentals';
 const description = 'Sunbuggy Fun Rentals is the ultimate off-road adventure experience.';
+
+// === Configure Banco Font ===
+const banco = localFont({
+  src: [
+    {
+      path: '../public/fonts/banco.ttf', 
+      weight: '400',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-banco', 
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(getURL()),
@@ -29,31 +42,15 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: PropsWithChildren) {
-  // 1. Initialize Supabase
   const supabase = await createClient();
-  
-  // 2. Get Authenticated User
   const { data: { user } } = await supabase.auth.getUser();
-
-  // 3. Check User Level (Logic for 300+)
-  let showNavButtons = false;
-  if (user) {
-    // We pass the supabase client to your existing query function
-    const userDetails = await getUserDetails(supabase);
-    
-    // Check if details exist and user_level is >= 300
-    if (userDetails && userDetails.length > 0) {
-      const level = userDetails[0].user_level;
-      if (typeof level === 'number' && level >= 300) {
-        showNavButtons = true;
-      }
-    }
-  }
 
   return (
     <html lang="en" suppressHydrationWarning>
-      {/* BODY CONFIG:*/}
-      <body className="bg-transparent min-h-screen font-sans antialiased overflow-x-hidden relative" suppressHydrationWarning={true}>
+      <body 
+        className={`bg-transparent min-h-screen font-sans antialiased overflow-x-hidden relative ${banco.variable}`} 
+        suppressHydrationWarning={true}
+      >
         
         {/* === LAYER 1: Background === */}
         {user ? (
@@ -63,24 +60,22 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         )}
 
         <Providers>
-          {/* === LAYER 2: Navbar (FIXED & FLUID) ===  */}
-          <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40 px-4">
-             <div className="w-full">
-               <Navbar />
-             </div>
-          </header>
+          
+          {/* === LAYER 2: Navbar ===  */}
+          {/* FIX: Removed the <header> wrapper entirely. 
+              The Navbar handles its own fixed positioning. */}
+          <Navbar />
 
-          {/* === LAYER 2.5: Admin Navigation Buttons === */}
-          {/* Rendered only if user_level >= 300 */}
-          {showNavButtons && <NavigationButtons />}
-
-          {/* === LAYER 3: Main Content (CONSTRAINED) ===  */}
+          {/* === LAYER 3: Main Content ===  */}
           <div className="flex flex-col min-h-screen pt-20 relative z-0 w-full min-w-0">
-            <main className="p-2 flex flex-col flex-grow w-full max-w-7xl mx-auto">
+            <main className="p-2 flex flex-col flex-grow w-full max-w-7xl mx-auto pb-28 md:pb-12">
               {children}
             </main>
             <Footer />
           </div>
+
+          {/* === LAYER 4: Navigation Buttons === */}
+          <NavigationButtons />
 
           <Suspense>
             <Toaster />
