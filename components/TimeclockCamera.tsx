@@ -1,11 +1,7 @@
-/**
- * SunBuggy Timeclock Camera - "Manager Proxy" Ready
- * Location: components/TimeclockCamera.tsx
- * Update: Added facingMode prop to support rear camera for manager punches.
- */
 'use client';
 
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import { cn } from '@/lib/utils'; // Make sure to import your cn utility
 
 export interface TimeclockCameraHandle {
   capture: () => string | null;
@@ -14,17 +10,15 @@ export interface TimeclockCameraHandle {
 interface TimeclockCameraProps {
   onReady?: (isReady: boolean) => void;
   onError?: (error: string) => void;
-  // NEW: Allow switching between front ('user') and rear ('environment')
   facingMode?: 'user' | 'environment';
+  className?: string; // <--- NEW PROP
 }
 
 const TimeclockCamera = forwardRef<TimeclockCameraHandle, TimeclockCameraProps>(
-  ({ onReady, onError, facingMode = 'user' }, ref) => {
+  ({ onReady, onError, facingMode = 'user', className }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isStreaming, setIsStreaming] = useState(false);
-    
-    // Track active stream for cleanup
     const activeStreamRef = useRef<MediaStream | null>(null);
 
     useImperativeHandle(ref, () => ({
@@ -34,6 +28,7 @@ const TimeclockCamera = forwardRef<TimeclockCameraHandle, TimeclockCameraProps>(
         const video = videoRef.current;
         const canvas = canvasRef.current;
         
+        // Ensure canvas matches video dimensions for high-res capture
         if (canvas.width !== video.videoWidth) {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
@@ -42,7 +37,6 @@ const TimeclockCamera = forwardRef<TimeclockCameraHandle, TimeclockCameraProps>(
         const ctx = canvas.getContext('2d');
         if (!ctx) return null;
 
-        // FLIP LOGIC: Only mirror the image if using the front camera ('user')
         if (facingMode === 'user') {
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
@@ -57,20 +51,19 @@ const TimeclockCamera = forwardRef<TimeclockCameraHandle, TimeclockCameraProps>(
       let isMounted = true;
 
       const initCamera = async () => {
-        setIsStreaming(false); // Reset state while switching
+        setIsStreaming(false); 
         if (onReady) onReady(false);
 
         try {
-          // Stop existing stream first
           if (activeStreamRef.current) {
             activeStreamRef.current.getTracks().forEach(t => t.stop());
           }
 
           const stream = await navigator.mediaDevices.getUserMedia({
             video: { 
-              facingMode: facingMode, // Dynamic facing mode
+              facingMode: facingMode,
               width: { ideal: 640 }, 
-              height: { ideal: 480 } 
+              height: { ideal: 640 } // Changed to 640 to prefer square-ish if possible
             },
             audio: false
           });
@@ -112,23 +105,27 @@ const TimeclockCamera = forwardRef<TimeclockCameraHandle, TimeclockCameraProps>(
         }
         setIsStreaming(false);
       };
-    }, [facingMode]); // Re-run when facingMode changes
+    }, [facingMode]); 
 
     return (
-      <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden border border-slate-700 shadow-inner group">
+      <div className={cn(
+          "relative w-full bg-black rounded-lg overflow-hidden border border-slate-700 shadow-inner group",
+          // Default to aspect-video (16:9) ONLY if the user didn't pass a custom class overriding it
+          !className?.includes('h-') && "aspect-video", 
+          className // Merge custom classes (like 'h-full')
+      )}>
         <video
           ref={videoRef}
           autoPlay
           playsInline 
           muted
-          // Only mirror CSS if front camera
           className={`w-full h-full object-cover transition-opacity duration-500 ${isStreaming ? 'opacity-100' : 'opacity-0'} ${facingMode === 'user' ? 'transform scale-x-[-1]' : ''}`}
         />
         <canvas ref={canvasRef} className="hidden" />
 
         {!isStreaming && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-900 z-10">
-            <span className="animate-pulse font-medium">Initializing Camera...</span>
+            <span className="animate-pulse font-medium">Initializing...</span>
           </div>
         )}
       </div>
