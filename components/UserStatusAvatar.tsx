@@ -14,7 +14,8 @@ import { Button } from '@/components/ui/button';
 import { 
   Phone, Mail, MessageSquare, Pencil, 
   Clock, Coffee, Timer, AlertCircle, 
-  LogOut, Sun, Moon, User, Play, Square, Calendar 
+  LogOut, Sun, Moon, User, Play, Square, Calendar,
+  ShieldCheck, FileWarning // <-- NEW ICONS
 } from 'lucide-react';
 import moment from 'moment';
 import Link from 'next/link';
@@ -24,25 +25,30 @@ import { useToast } from '@/components/ui/use-toast';
 
 import SmartTimeClock from '@/app/(biz)/biz/users/admin/tables/employee/time-clock/clock-in';
 
-type Status = 'online' | 'break' | 'offline' | 'late';
+// Define the License Status Types
+export type FunLicenseStatus = 'active' | 'pending' | 'missing'; 
+
+type TimeStatus = 'online' | 'break' | 'offline' | 'late';
 
 export default function UserStatusAvatar({ 
   user, 
   currentUserLevel = 0,
   isCurrentUser = false,
-  size = 'md' 
+  size = 'md',
+  funLicenseStatus = 'missing' // <-- NEW PROP (Default Red)
 }: { 
   user: any; 
   currentUserLevel?: number;
   isCurrentUser?: boolean;
-  size?: 'sm' | 'md' | 'lg' 
+  size?: 'sm' | 'md' | 'lg';
+  funLicenseStatus?: FunLicenseStatus;
 }) {
   const supabase = createClient();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   
-  const [status, setStatus] = useState<Status>('offline');
+  const [status, setStatus] = useState<TimeStatus>('offline');
   const [activeEntry, setActiveEntry] = useState<any>(null);
   const [todayShift, setTodayShift] = useState<any>(null);
   const [now, setNow] = useState(moment());
@@ -51,15 +57,13 @@ export default function UserStatusAvatar({
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
   
   const [clockKey, setClockKey] = useState(0);
-  
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Permission Checks
-  // Employees are Level 300+. Customers are typically 0 or 100.
   const isEmployee = (user?.user_level || 0) >= 300;
-  const canEdit = currentUserLevel >= 650; // Managers (650) and up can edit users
+  const canEdit = currentUserLevel >= 650; 
 
-  // --- 1. DATA FETCHING (Employees Only) ---
+  // --- 1. DATA FETCHING (Employees Only - Time Clock) ---
   const fetchData = useCallback(async () => {
     if (!user?.id || !isEmployee) return;
 
@@ -86,7 +90,7 @@ export default function UserStatusAvatar({
     setTodayShift(shiftData);
     setActiveEntry(timeData);
 
-    // C. Determine Status
+    // C. Determine Time Status
     if (timeData) {
       if (timeData.is_on_break) {
          setStatus('break');
@@ -108,7 +112,7 @@ export default function UserStatusAvatar({
     }
   }, [user?.id, supabase, isEmployee]);
 
-  // --- 2. REALTIME SUBSCRIPTION (Employees Only) ---
+  // --- 2. REALTIME SUBSCRIPTION ---
   useEffect(() => {
     if (!isEmployee) return;
     fetchData();
@@ -142,7 +146,6 @@ export default function UserStatusAvatar({
   }, [status, todayShift, activeEntry, isEmployee]);
 
   // --- 4. ACTIONS ---
-
   const closePopover = () => setIsPopoverOpen(false);
 
   const handleSignOut = async () => {
@@ -160,7 +163,6 @@ export default function UserStatusAvatar({
   const handleBreakToggle = async (action: 'start' | 'end') => {
     if (!activeEntry) return;
     setIsProcessing(true);
-
     try {
         const timestamp = moment().toISOString();
         const updateData = action === 'start' 
@@ -210,13 +212,23 @@ export default function UserStatusAvatar({
   }, [activeEntry, status, now]);
 
   const dims = size === 'sm' ? 'w-8 h-8' : size === 'lg' ? 'w-16 h-16' : 'w-10 h-10';
-  const dotSize = size === 'sm' ? 'h-2.5 w-2.5' : 'h-3.5 w-3.5';
   
-  const statusColors = {
+  // --- FUN LICENSE COLOR LOGIC ---
+  const getLicenseColorClass = (status: FunLicenseStatus) => {
+    switch (status) {
+      case 'active': return 'ring-2 ring-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]';
+      case 'pending': return 'ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]';
+      case 'missing': return 'ring-2 ring-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]';
+      default: return 'ring-1 ring-slate-300';
+    }
+  };
+
+  // --- TIME CLOCK DOT COLORS (Employees Only) ---
+  const timeStatusColors = {
       online: 'bg-green-500',
       break: 'bg-orange-500',
       late: 'bg-red-600',
-      offline: 'bg-slate-300'
+      offline: 'bg-slate-300' // Usually hidden or grey
   };
 
   if (!user) return null;
@@ -227,19 +239,12 @@ export default function UserStatusAvatar({
     {isCurrentUser && isEmployee && (
         <Dialog open={isTimeClockOpen} onOpenChange={setIsTimeClockOpen}>
             <DialogContent className="max-w-md p-0 border-none bg-transparent shadow-none">
-                
                 <DialogTitle className="sr-only">Time Clock</DialogTitle>
-                <DialogDescription className="sr-only">
-                    Interface for verifying time entry with camera.
-                </DialogDescription>
-
+                <DialogDescription className="sr-only">Interface for verifying time entry.</DialogDescription>
                 <SmartTimeClock 
                     key={clockKey} 
                     employeeId={user.id} 
-                    onClose={() => {
-                        setIsTimeClockOpen(false);
-                        fetchData(); 
-                    }} 
+                    onClose={() => { setIsTimeClockOpen(false); fetchData(); }} 
                 />
             </DialogContent>
         </Dialog>
@@ -248,24 +253,41 @@ export default function UserStatusAvatar({
     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
         <div className="relative cursor-pointer hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()}>
-          <div className={cn(dims, "rounded-full overflow-hidden bg-slate-200 border border-slate-300 flex items-center justify-center relative")}>
+          
+          {/* AVATAR CONTAINER */}
+          {/* We apply the Fun License Ring here */}
+          <div className={cn(
+              dims, 
+              "rounded-full overflow-hidden bg-slate-200 relative",
+              getLicenseColorClass(funLicenseStatus)
+            )}>
             {user.avatar_url ? (
               <Image src={user.avatar_url} alt={user.full_name || 'User'} fill className="object-cover" />
             ) : (
-              <span className="font-bold text-slate-500 text-xs">
+              <div className="w-full h-full flex items-center justify-center font-bold text-slate-500 text-xs">
                 {user.full_name?.substring(0, 2).toUpperCase() || '??'}
-              </span>
+              </div>
             )}
           </div>
-          {/* Status Dot: Only show for Employees */}
+
+          {/* TIME CLOCK STATUS DOT (Employees Only) */}
           {isEmployee && (
             <span 
               className={cn(
-                  "absolute bottom-0 right-0 block rounded-full ring-2 ring-white transition-colors duration-300",
-                  dotSize,
-                  statusColors[status]
+                  "absolute bottom-0 right-0 block rounded-full ring-2 ring-white transition-colors duration-300 h-3 w-3",
+                  timeStatusColors[status]
               )} 
             />
+          )}
+
+          {/* FUN LICENSE ICON (Mini Badge for Non-Employees or Overlay) */}
+          {/* If it's active, we show a tiny shield. If missing, a tiny alert. */}
+          {!isEmployee && (
+             <div className="absolute -bottom-1 -right-1 bg-white dark:bg-zinc-900 rounded-full p-[2px]">
+               {funLicenseStatus === 'active' && <ShieldCheck size={12} className="text-green-500 fill-green-500/20" />}
+               {funLicenseStatus === 'missing' && <FileWarning size={12} className="text-red-500 fill-red-500/20" />}
+               {funLicenseStatus === 'pending' && <Clock size={12} className="text-yellow-500 fill-yellow-500/20" />}
+             </div>
           )}
         </div>
       </PopoverTrigger>
@@ -275,7 +297,7 @@ export default function UserStatusAvatar({
         {/* HEADER */}
         <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800 flex justify-between items-start">
           <div className="flex gap-3 items-center">
-             <div className="w-12 h-12 rounded-full overflow-hidden border border-slate-300 relative bg-slate-200">
+             <div className={cn("w-12 h-12 rounded-full overflow-hidden border relative bg-slate-200", getLicenseColorClass(funLicenseStatus))}>
                 {user.avatar_url ? (
                     <Image src={user.avatar_url} alt={user.full_name} fill className="object-cover" />
                 ) : (
@@ -284,15 +306,24 @@ export default function UserStatusAvatar({
                     </div>
                 )}
              </div>
-             <div>
-                <h4 className="font-bold text-lg leading-none text-slate-900 dark:text-slate-100">{user.full_name}</h4>
+             <div className="overflow-hidden">
+                <h4 className="font-bold text-lg leading-none text-slate-900 dark:text-slate-100 truncate w-40">{user.full_name}</h4>
                 <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider font-semibold">
                   {user.job_title || (isEmployee ? 'Staff' : 'Customer')}
                 </p>
+                {/* FUN LICENSE TEXT STATUS */}
+                <div className="flex items-center gap-1 mt-1 text-[10px] uppercase font-bold">
+                    License: 
+                    <span className={cn(
+                        funLicenseStatus === 'active' ? "text-green-600" : 
+                        funLicenseStatus === 'pending' ? "text-yellow-600" : "text-red-600"
+                    )}>
+                        {funLicenseStatus === 'active' ? 'READY' : funLicenseStatus === 'pending' ? 'PENDING' : 'MISSING'}
+                    </span>
+                </div>
              </div>
           </div>
           
-          {/* EDIT BUTTON (Managers) */}
           {(canEdit && !isCurrentUser) && (
             <Link href={`/account?userId=${user.id}`} onClick={closePopover}>
               <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30">
@@ -304,7 +335,7 @@ export default function UserStatusAvatar({
 
         <div className="p-4 space-y-4">
           
-          {/* STATUS BAR (Employees Only) */}
+          {/* TIME CLOCK STATUS BAR (Employees Only) */}
           {isEmployee && (
             <div className={cn("flex items-center justify-between p-3 rounded-lg border shadow-sm select-none transition-colors", 
                 status === 'late' ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-900" : 
@@ -322,7 +353,6 @@ export default function UserStatusAvatar({
                     <span className="text-sm font-bold capitalize leading-none text-slate-900 dark:text-slate-100">
                         {status === 'late' ? 'Absent / Late' : status === 'online' ? 'Clocked In' : status}
                     </span>
-                    {status === 'break' && <span className="text-[10px] text-orange-600 font-medium">Relax & Recharge</span>}
                 </div>
               </div>
               {durationStr && status !== 'offline' && (
@@ -337,45 +367,57 @@ export default function UserStatusAvatar({
           {isCurrentUser ? (
             <div className="space-y-3 pt-1">
                 
-                {/* TIME CLOCK (Employees Only) */}
+                {/* 1. FUN LICENSE BUTTON (Top Priority for Everyone) */}
+                <Button 
+                   variant="ghost" 
+                   className={cn(
+                     "w-full justify-start px-2 gap-3 h-10 font-bold border",
+                     funLicenseStatus === 'active' 
+                        ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100" 
+                        : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100 animate-pulse"
+                   )}
+                   asChild 
+                   onClick={closePopover}
+                >
+                    <Link href="/fun-license">
+                        {funLicenseStatus === 'active' ? <ShieldCheck className="w-4 h-4" /> : <FileWarning className="w-4 h-4" />}
+                        {funLicenseStatus === 'active' ? 'MY FUN LICENSE' : 'GET FUN LICENSE'}
+                    </Link>
+                </Button>
+
+                {/* 2. EMPLOYEE TIME CLOCK CONTROLS */}
                 {isEmployee && (
-                  <div className="grid grid-cols-1 gap-2">
-                      {/* SCENARIO 1: CLOCKED OUT */}
+                  <div className="grid grid-cols-1 gap-2 pt-2 border-t dark:border-slate-800">
                       {(status === 'offline' || status === 'late') && (
                           <Button 
-                              className="w-full h-12 gap-2 bg-green-600 hover:bg-green-700 text-white font-bold shadow-sm"
+                              className="w-full h-10 gap-2 bg-green-600 hover:bg-green-700 text-white font-bold shadow-sm"
                               onClick={openTimeClockModal}
                           >
                               <Play className="w-4 h-4 fill-current" /> CLOCK IN
                           </Button>
                       )}
-
-                      {/* SCENARIO 2: CLOCKED IN */}
                       {status === 'online' && (
                           <div className="grid grid-cols-2 gap-2">
                               <Button 
                                   variant="outline"
-                                  className="h-12 gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800"
+                                  className="h-10 gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
                                   onClick={() => handleBreakToggle('start')}
                                   disabled={isProcessing}
                               >
-                                  <Coffee className="w-4 h-4" /> Start Break
+                                  <Coffee className="w-4 h-4" /> Break
                               </Button>
-                              
                               <Button 
                                   variant="outline"
-                                  className="h-12 gap-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+                                  className="h-10 gap-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
                                   onClick={openTimeClockModal} 
                               >
-                                  <Square className="w-4 h-4 fill-current" /> Clock Out
+                                  <Square className="w-4 h-4 fill-current" /> Out
                               </Button>
                           </div>
                       )}
-
-                      {/* SCENARIO 3: ON BREAK */}
                       {status === 'break' && (
                           <Button 
-                              className="w-full h-12 gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-sm"
+                              className="w-full h-10 gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-sm"
                               onClick={() => handleBreakToggle('end')}
                               disabled={isProcessing}
                           >
@@ -385,7 +427,7 @@ export default function UserStatusAvatar({
                   </div>
                 )}
 
-                {/* MENU LINKS */}
+                {/* 3. STANDARD MENU LINKS */}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t dark:border-slate-800">
                     <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9" asChild onClick={closePopover}>
                         <Link href={`/account`}>
@@ -403,7 +445,6 @@ export default function UserStatusAvatar({
                     </Button>
                 </div>
 
-                {/* NEW: MY SCHEDULE LINK (Employees Only) */}
                 {isEmployee && (
                   <Button variant="ghost" className="w-full justify-start px-2 gap-2 text-xs h-9 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20" asChild onClick={closePopover}>
                       <Link href="/biz/my-schedule">
@@ -418,24 +459,7 @@ export default function UserStatusAvatar({
             </div>
           ) : (
             <>
-              {/* Other User View (Employees looking at Employees) */}
-              {isEmployee && (
-                <div className="space-y-1.5 select-none">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1"><Clock className="w-3 h-3"/> Today's Schedule</p>
-                  {todayShift ? (
-                    <div className="text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 p-2 rounded border border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                      <span className="font-bold font-mono">
-                          {moment(todayShift.start_time).format('h:mm A')} - {moment(todayShift.end_time).format('h:mm A')}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-slate-400 italic bg-slate-50 dark:bg-slate-900 p-2 rounded border border-dashed border-slate-200 dark:border-slate-800">
-                        Not scheduled today
-                    </div>
-                  )}
-                </div>
-              )}
-
+              {/* OTHER USER VIEW */}
               <div className="grid grid-cols-3 gap-2 pt-4 border-t dark:border-slate-800">
                  <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5" onClick={closePopover} asChild><a href={`tel:${user.phone}`}><Phone className="w-4 h-4"/><span className="text-[10px]">Call</span></a></Button>
                  <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5" onClick={closePopover} asChild><a href={`sms:${user.phone}`}><MessageSquare className="w-4 h-4"/><span className="text-[10px]">Text</span></a></Button>

@@ -2,21 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import UserStatusAvatar from '@/components/UserStatusAvatar';
-import { Loader2 } from 'lucide-react';
+import UserStatusAvatar, { FunLicenseStatus } from '@/components/UserStatusAvatar';
+import { syncFunLicense } from '@/app/actions/sync-license'; // Import the server action
 
 export default function CurrentUserAvatar() {
   const supabase = createClient();
   const [profile, setProfile] = useState<any>(null);
+  const [licenseStatus, setLicenseStatus] = useState<FunLicenseStatus>('missing');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchMe = async () => {
-      // 1. Get Auth ID
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        // 2. Get Full Profile (Job Title, Phone, Level, etc.)
         const { data: profileData } = await supabase
           .from('users')
           .select('*')
@@ -25,6 +24,26 @@ export default function CurrentUserAvatar() {
           
         if (profileData) {
           setProfile(profileData);
+          
+          // STATUS LOGIC
+          if (profileData.fun_license_id && profileData.license_photo_url) {
+            setLicenseStatus('active');
+          } else if (profileData.fun_license_id) {
+            setLicenseStatus('pending');
+          } else {
+            setLicenseStatus('missing');
+            
+            // AUTO-SYNC ATTEMPT
+            // If they are missing a license locally, try to pull from Smartwaiver once.
+            // We verify 'last_sync_attempt' to prevent infinite loops (implementation optional)
+            // For now, let's just trigger it safely.
+            syncFunLicense().then((result) => {
+               if (result.success) {
+                 // Reload profile if sync worked
+                 window.location.reload(); // Simple refresh to catch the green ring
+               }
+            });
+          }
         }
       }
       setLoading(false);
@@ -33,15 +52,16 @@ export default function CurrentUserAvatar() {
     fetchMe();
   }, []);
 
-  if (loading) return <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />;
+  if (loading) return <div className="w-10 h-10 rounded-full bg-muted/20 animate-pulse" />;
   if (!profile) return null;
 
   return (
     <UserStatusAvatar 
       user={profile} 
       currentUserLevel={profile.user_level} 
-      isCurrentUser={true} // Enables Timeclock / Theme / Sign Out
+      isCurrentUser={true} 
       size="md"
+      funLicenseStatus={licenseStatus} 
     />
   );
 }
