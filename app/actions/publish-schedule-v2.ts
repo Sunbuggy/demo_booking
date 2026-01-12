@@ -165,7 +165,7 @@ export async function publishScheduleV2(config: SendConfig) {
       `;
 
       return {
-        from: 'SunBuggy Schedule <scheduling@sunbuggy.com>',
+        from: 'SunBuggy Schedule <managers@sunbuggy.com>',
         to: recipient.email!,
         cc: config.cc ? config.cc.split(',').map(e => e.trim()) : undefined,
         bcc: config.bcc ? config.bcc.split(',').map(e => e.trim()) : undefined,
