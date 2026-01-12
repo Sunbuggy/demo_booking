@@ -1,11 +1,12 @@
 /**
  * ACTION: Generate Payroll Report
  * Path: app/actions/generate-payroll-report.ts
- * Description: Generates a CSV export of payroll hours with state-specific overtime logic.
- * * FEATURES:
- * - Location Filtering: Respects the 'filterLoc' passed from the dashboard.
- * - OT Rules: Applies CA (Daily >8, DT >12) vs NV/MI (Weekly >40) rules.
- * - Summary Output: One row per employee with Reg/OT/DT totals.
+ * Description: Generates a "hybrid" CSV export containing:
+ * 1. A summary section at the top (with Reg/OT/DT calculations).
+ * 2. A detailed punch-by-punch section at the bottom.
+ * * UPDATES:
+ * - Re-enabled 'notes' fetching (now that DB column exists).
+ * - Robust error logging.
  */
 
 'use server';
@@ -19,6 +20,7 @@ type PayrollEntry = {
   start_time: string;
   end_time: string | null;
   duration: number; // in hours
+  notes: string | null; // Re-enabled
 };
 
 type EmployeeSummary = {
@@ -40,9 +42,10 @@ const round = (num: number) => Math.round(num * 100) / 100;
 export async function generatePayrollReport(startDate: string, endDate: string, filterLoc: string) {
   const supabase = await createClient();
 
-  // 1. Fetch Users & Details
-  // We grab the location and company info to determine rules + filtering
-  const { data: employees } = await supabase
+  // ---------------------------------------------------------------------------
+  // 1. FETCH USERS & DETAILS
+  // ---------------------------------------------------------------------------
+  const { data: employees, error: empError } = await supabase
     .from('users')
     .select(`
       id, 
@@ -55,50 +58,75 @@ export async function generatePayrollReport(startDate: string, endDate: string, 
     `)
     .order('full_name');
 
+  if (empError) {
+    console.error("GENERATE_REPORT_ERROR [Fetching Users]:", empError.message);
+    throw new Error(`Failed to load staff list: ${empError.message}`);
+  }
+
   if (!employees) throw new Error('Failed to fetch employee roster');
 
-  // --- FILTERING LOGIC ---
-  // If a location filter is active (VEGAS, PISMO, etc), remove non-matching users
+  // ---------------------------------------------------------------------------
+  // 2. FILTER EMPLOYEES
+  // ---------------------------------------------------------------------------
   const filteredEmployees = employees.filter((u: any) => {
     if (filterLoc === 'ALL') return true;
     
-    const loc = u.employee_details?.primary_work_location?.toUpperCase() || '';
-    // Check if user's location matches the filter code (VEGAS, PISMO, SILVER)
+    // Safety check: handle if employee_details is missing or array
+    const details = Array.isArray(u.employee_details) ? u.employee_details[0] : u.employee_details;
+    const loc = details?.primary_work_location?.toUpperCase() || '';
+    
+    // Fuzzy match for locations
+    if (filterLoc === 'VEGAS') return loc.includes('VEGAS');
+    if (filterLoc === 'PISMO') return loc.includes('PISMO');
+    if (filterLoc === 'SILVER') return loc.includes('SILVER');
     return loc.includes(filterLoc);
   });
 
   const validUserIds = filteredEmployees.map(u => u.id);
-  if (validUserIds.length === 0) return 'No employees found for this selection.';
+  
+  if (validUserIds.length === 0) {
+    return 'Error: No employees found matching the selected location filters.';
+  }
 
-  // 2. Fetch Time Entries
-  // We extend the endDate by 1 day to ensure we capture the full 24h of the last day
-  const queryEnd = format(addDays(new Date(endDate), 1), 'yyyy-MM-dd');
+  // ---------------------------------------------------------------------------
+  // 3. FETCH TIME ENTRIES
+  // ---------------------------------------------------------------------------
+  const queryEnd = format(addDays(parseISO(endDate), 1), 'yyyy-MM-dd');
 
-  const { data: entries } = await supabase
+  // UPDATED: 'notes' is now included in the selection
+  const { data: entries, error: entryError } = await supabase
     .from('time_entries')
-    .select('id, user_id, start_time, end_time')
+    .select('id, user_id, start_time, end_time, notes') 
     .in('user_id', validUserIds)
     .gte('start_time', startDate)
-    .lt('start_time', queryEnd) // Use less-than next day logic for safety
-    .not('end_time', 'is', null) // Only completed shifts count for payroll
+    .lt('start_time', queryEnd)
+    .not('end_time', 'is', null) // Only completed shifts
+    .order('user_id', { ascending: true }) 
     .order('start_time', { ascending: true });
 
-  if (!entries) throw new Error('Failed to fetch time records');
+  if (entryError) {
+    console.error("GENERATE_REPORT_ERROR [Fetching Entries]:", entryError);
+    throw new Error(`Database Error: ${entryError.message}`);
+  }
 
-  // 3. Initialize Summaries
+  if (!entries) {
+    throw new Error('No entries returned from database.');
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. PREPARE DATA MAPS
+  // ---------------------------------------------------------------------------
   const summaryMap = new Map<string, EmployeeSummary>();
+  const userMap = new Map<string, any>(); // Quick lookup for detail section
 
   filteredEmployees.forEach((u: any) => {
-    // Flatten the joined object
-    // Note: Supabase returns arrays for joins, usually [0] is correct for 1:1 relations
+    userMap.set(u.id, u);
+
     const details = Array.isArray(u.employee_details) ? u.employee_details[0] : u.employee_details;
-    
-    // Determine Logic State based on Payroll Company or Location
-    // Heuristic: If company starts with "CA-", it's CA. Or if loc is Pismo.
     const company = details?.payroll_company || 'NV-Default';
     const loc = details?.primary_work_location || 'Unknown';
     
-    let stateRule = 'NV'; // Default
+    let stateRule = 'NV'; 
     if (company.toUpperCase().startsWith('CA') || loc.toUpperCase().includes('PISMO')) {
       stateRule = 'CA';
     } else if (company.toUpperCase().startsWith('MI')) {
@@ -109,7 +137,7 @@ export async function generatePayrollReport(startDate: string, endDate: string, 
       userId: u.id,
       fullName: u.full_name,
       empId: details?.emp_id || 'MISSING',
-      company: company,
+      company,
       location: loc,
       state: stateRule,
       regHours: 0,
@@ -119,12 +147,15 @@ export async function generatePayrollReport(startDate: string, endDate: string, 
     });
   });
 
-  // 4. Group Entries by User & Calc Durations
+  // ---------------------------------------------------------------------------
+  // 5. CALCULATE HOURS & OVERTIME
+  // ---------------------------------------------------------------------------
   const entriesByUser = new Map<string, PayrollEntry[]>();
+  
+  // Group entries
   entries.forEach((e: any) => {
     if (!entriesByUser.has(e.user_id)) entriesByUser.set(e.user_id, []);
     
-    // Strict minute calculation converted to hours
     const minutes = differenceInMinutes(parseISO(e.end_time), parseISO(e.start_time));
     const hours = round(minutes / 60);
     
@@ -133,70 +164,55 @@ export async function generatePayrollReport(startDate: string, endDate: string, 
     }
   });
 
-  // 5. Calculate Overtime Logic
+  // Apply Rules
   summaryMap.forEach((summary) => {
     const userEntries = entriesByUser.get(summary.userId) || [];
     if (userEntries.length === 0) return;
 
-    // --- CALIFORNIA LOGIC ---
-    // Daily OT > 8, Daily DT > 12, Weekly OT > 40 (Accumulated Reg)
     if (summary.state === 'CA') {
+      // --- CALIFORNIA LOGIC ---
       let weeklyRegAccumulator = 0;
-
       userEntries.forEach((entry) => {
         let dailyReg = entry.duration;
         let dailyOT = 0;
         let dailyDT = 0;
 
-        // 1. Daily Double Time (> 12h)
+        // Daily DT (>12)
         if (dailyReg > 12) {
           dailyDT = dailyReg - 12;
           dailyReg = 12;
         }
-
-        // 2. Daily Overtime (> 8h)
+        // Daily OT (>8)
         if (dailyReg > 8) {
           dailyOT = dailyReg - 8;
           dailyReg = 8;
         }
-
-        // 3. Weekly Overtime Check (> 40h Accumulated Regular)
-        // Does adding today's regular hours push us over 40 for the week?
+        // Weekly OT (>40 Accum)
         if (weeklyRegAccumulator + dailyReg > 40) {
-          const hoursAllowedBefore40 = Math.max(0, 40 - weeklyRegAccumulator);
-          const shiftOverflow = dailyReg - hoursAllowedBefore40;
-          
-          // Move the overflow from Reg to OT
-          dailyReg = hoursAllowedBefore40;
-          dailyOT += shiftOverflow;
+          const room = Math.max(0, 40 - weeklyRegAccumulator);
+          const overflow = dailyReg - room;
+          dailyReg = room;
+          dailyOT += overflow;
         }
 
-        // Commit to totals
         weeklyRegAccumulator += dailyReg;
-        
         summary.regHours += dailyReg;
         summary.otHours += dailyOT;
         summary.dtHours += dailyDT;
         summary.totalHours += entry.duration;
       });
-    } 
-    
-    // --- STANDARD LOGIC (NV/MI) ---
-    // Simple Weekly Bucket: Total > 40 = OT
-    else {
+    } else {
+      // --- NV/MI LOGIC ---
       let totalWeekHours = 0;
       userEntries.forEach(e => totalWeekHours += e.duration);
-
-      summary.totalHours = totalWeekHours;
       
+      summary.totalHours = totalWeekHours;
       if (totalWeekHours > 40) {
         summary.regHours = 40;
         summary.otHours = totalWeekHours - 40;
       } else {
         summary.regHours = totalWeekHours;
-        summary.otHours = 0;
       }
-      summary.dtHours = 0; 
     }
 
     // Final Rounding
@@ -206,27 +222,34 @@ export async function generatePayrollReport(startDate: string, endDate: string, 
     summary.totalHours = round(summary.totalHours);
   });
 
-  // 6. Build CSV String
-  const header = [
+  // ---------------------------------------------------------------------------
+  // 6. BUILD CSV OUTPUT
+  // ---------------------------------------------------------------------------
+
+  // --- SECTION A: SUMMARY ---
+  const summaryHeader = [
+    '--- WEEKLY SUMMARY ---',
+    '', '', '', '', '', '', ''
+  ].join(',');
+
+  const tableHeader = [
     'Employee Name',
     'Employee ID',
-    'Work Location',
-    'Payroll Company',
+    'Location',
     'State Rule',
-    'Regular Hours',
-    'Overtime Hours',
-    'Double Time Hours',
+    'Regular',
+    'Overtime',
+    'Double Time',
     'Total Hours'
   ].join(',');
 
-  const rows = Array.from(summaryMap.values())
-    .filter(s => s.totalHours > 0) // Only export employees with hours
-    .sort((a, b) => a.fullName.localeCompare(b.fullName)) // Alphabetical
+  const summaryRows = Array.from(summaryMap.values())
+    .filter(s => s.totalHours > 0)
+    .sort((a, b) => a.fullName.localeCompare(b.fullName))
     .map(s => [
       `"${s.fullName}"`,
       `"${s.empId}"`,
       `"${s.location}"`,
-      `"${s.company}"`,
       s.state,
       s.regHours.toFixed(2),
       s.otHours.toFixed(2),
@@ -234,5 +257,58 @@ export async function generatePayrollReport(startDate: string, endDate: string, 
       s.totalHours.toFixed(2)
     ].join(','));
 
-  return [header, ...rows].join('\n');
+  // --- SECTION B: DETAILS ---
+  const spacer = ['', '', '', '', '', '', ''].join(','); 
+  
+  const detailTitle = [
+    '--- INDIVIDUAL PUNCH DETAILS ---',
+    '', '', '', '', '', ''
+  ].join(',');
+
+  const detailHeader = [
+    'Date',
+    'Employee Name',
+    'Start Time',
+    'End Time',
+    'Duration',
+    'Location',
+    'Notes'
+  ].join(',');
+
+  const detailRows = entries.map((entry: any) => {
+    const user = userMap.get(entry.user_id);
+    const startObj = parseISO(entry.start_time);
+    const endObj = parseISO(entry.end_time);
+    const mins = differenceInMinutes(endObj, startObj);
+    const hrs = round(mins / 60);
+
+    // Active Notes Handling: Escapes double quotes
+    const safeNotes = entry.notes ? entry.notes.replace(/"/g, '""') : '';
+    
+    // Use user's primary location
+    const details = Array.isArray(user?.employee_details) ? user.employee_details[0] : user?.employee_details;
+    const loc = details?.primary_work_location || '';
+
+    return [
+      format(startObj, 'yyyy-MM-dd'),
+      `"${user?.full_name || 'Unknown'}"`,
+      format(startObj, 'h:mm a'),
+      format(endObj, 'h:mm a'),
+      hrs.toFixed(2),
+      `"${loc}"`,
+      `"${safeNotes}"`
+    ].join(',');
+  });
+
+  // --- COMBINE ALL ---
+  return [
+    summaryHeader,
+    tableHeader,
+    ...summaryRows,
+    spacer,
+    spacer,
+    detailTitle,
+    detailHeader,
+    ...detailRows
+  ].join('\n');
 }
