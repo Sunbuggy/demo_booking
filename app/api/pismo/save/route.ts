@@ -9,23 +9,65 @@ const NMI_SECURITY_KEY = process.env.NMI_SECURITY_KEY!;
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { total_amount, holder, booking, payment_token } = body;
+    const { total_amount, holder, booking, payment_token, payment_amount } = body;
 
-    // 1. Identify Creator (Staff/Online)
+    // --- 1. USER RESOLUTION LOGIC ---
+    let userId = null;
+    let creatorName = 'Online';
+
     const cookieClient = await createClient();
-    const { data: { user } } = await cookieClient.auth.getUser();
+    const { data: { user: loggedInUser } } = await cookieClient.auth.getUser();
     
-    let creatorName = 'Online'; 
-    if (user) {
-      // ... (Same staff identification logic as before) ...
-    } else {
-        creatorName = holder.booked_by === 'Guest' ? 'Guest' : 'Online';
-    }
-
+    // Initialize Admin Client (Needed to create/search users)
     const adminSupabase = createAdminClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // === 2. DATABASE: INSERT "PENDING" BOOKING FIRST ===
-    // We insert first so we can generate the reservation_id
+    if (loggedInUser) {
+        // A. User is logged in -> Use their ID
+        userId = loggedInUser.id;
+        
+        // Fetch profile name for logs
+        const { data: profile } = await cookieClient
+            .from('users').select('full_name').eq('id', userId).single();
+        creatorName = profile?.full_name || 'Staff/User';
+
+    } else {
+        // B. Guest User -> Check if account exists or create one
+        creatorName = 'Guest (Auto-Account)';
+        const email = holder.email.toLowerCase().trim();
+
+        // 1. Search for existing user by email
+        // Note: listUsers is an admin function
+        const { data: { users } } = await adminSupabase.auth.admin.listUsers();
+        const existingUser = users.find(u => u.email?.toLowerCase() === email);
+
+        if (existingUser) {
+            console.log(`[Booking] Linking to existing user: ${existingUser.id}`);
+            userId = existingUser.id;
+        } else {
+            console.log(`[Booking] Creating new account for: ${email}`);
+            
+            // 2. Create new user & Send Invite
+            // inviteUserByEmail creates the user AND sends them a magic link to set a password
+            const { data: newUser, error: createError } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
+                data: {
+                    first_name: holder.firstName,
+                    last_name: holder.lastName,
+                    user_level: 100 // Default level
+                }
+                // redirectTo: 'https://your-site.com/profile' // Optional: redirect after they set password
+            });
+
+            if (createError) {
+                console.error("Auto-Account Error:", createError);
+                // Fallback: Proceed without linking user (don't block booking)
+                userId = null; 
+            } else {
+                userId = newUser.user?.id;
+            }
+        }
+    }
+
+    // --- 2. INSERT BOOKING (With user_id) ---
     const { data: bookingRec, error: bookingErr } = await adminSupabase
       .from('pismo_bookings')
       .insert({
@@ -33,7 +75,11 @@ export async function POST(request: Request) {
         last_name: holder.lastName,
         email: holder.email,
         phone: holder.phone,
-        adults: holder.adults || 1, 
+        
+        // LINK THE USER HERE
+        user_id: userId, 
+        
+        adults: holder.adults || 1,
         minors: holder.minors || 0,
         booked_by: creatorName,
         booking_date: booking.date,
@@ -43,91 +89,59 @@ export async function POST(request: Request) {
         goggles_qty: booking.goggles || 0,
         bandannas_qty: booking.bandannas || 0,
         total_amount: Math.round(total_amount * 100), 
-        status: 'pending_payment', // <--- Mark as Pending initially
+        status: 'pending_payment', 
       })
       .select()
       .single();
 
     if (bookingErr) throw bookingErr;
 
-    // === 3. PROCESS PAYMENT (Using the new Reservation ID) ===
+    // --- 3. PROCESS PAYMENT ---
     let transactionId = null;
-    let authCode = null;
     let paymentSuccess = false;
 
     if (payment_token) {
-        // --- DATA SENT TO NMI ---
         const nmiParams = {
             security_key: NMI_SECURITY_KEY,
             type: 'sale',
-            amount: Number(total_amount).toFixed(2),
+            amount: Number(payment_amount).toFixed(2),
             payment_token: payment_token,
-            
-            // BILLING INFO (Used for AVS checks)
+            orderid: bookingRec.reservation_id.toString(), 
             first_name: holder.firstName,
             last_name: holder.lastName,
             email: holder.email,
             phone: holder.phone,
-            
-            // ORDER INFO
-            // This sets the Order ID in NMI to your actual Reservation ID (e.g. 100050000)
-            orderid: bookingRec.reservation_id.toString(), 
-            order_description: `Pismo Reservation #${bookingRec.reservation_id} - ${booking.date}`,
-            
-            // OPTIONAL: If you collect address in your form, add it here:
-            // address1: holder.address,
-            // city: holder.city,
-            // state: holder.state, 
-            // zip: holder.zip 
         };
 
         const nmiBody = new URLSearchParams(nmiParams);
-
         console.log(`[Payment] Charging Reservation #${bookingRec.reservation_id}...`);
 
-        const nmiRes = await fetch('https://secure.nmi.com/api/transact.php', {
-            method: 'POST',
-            body: nmiBody
-        });
-
+        const nmiRes = await fetch('https://secure.nmi.com/api/transact.php', { method: 'POST', body: nmiBody });
         const nmiText = await nmiRes.text();
         const params = new URLSearchParams(nmiText);
-        const response = params.get('response'); 
 
-        if (response === '1') {
+        if (params.get('response') === '1') {
             paymentSuccess = true;
             transactionId = params.get('transactionid');
-            authCode = params.get('authcode');
         } else {
-            // === PAYMENT FAILED ===
-            // 1. Delete the pending booking so it doesn't clutter the DB
+            // Payment Failed: Clean up and return error
             await adminSupabase.from('pismo_bookings').delete().eq('id', bookingRec.id);
-            
-            // 2. Return error to user
-            const responseText = params.get('responsetext');
-            return NextResponse.json({ success: false, error: `Payment Declined: ${responseText}` }, { status: 400 });
+            return NextResponse.json({ success: false, error: `Payment Declined: ${params.get('responsetext')}` }, { status: 400 });
         }
     } else {
-        // Pay Later mode
-        paymentSuccess = true; 
+        paymentSuccess = true; // Pay Later
     }
 
-    // === 4. FINALIZE BOOKING (If Payment Success) ===
+    // --- 4. FINALIZE ---
     if (paymentSuccess) {
-        // A. Update Status to Confirmed
         await adminSupabase
             .from('pismo_bookings')
-            .update({ 
-                status: 'confirmed',
-                transaction_id: transactionId,
-                // auth_code: authCode // Uncomment if you add this column
-            })
+            .update({ status: 'confirmed', transaction_id: transactionId })
             .eq('id', bookingRec.id);
 
-        // B. Insert Line Items (Vehicles)
+        // Insert Items
         const itemsToInsert = [];
         const vehicles = booking.vehicles || {};
-
         for (const [catId, itemData] of Object.entries(vehicles)) {
             const item = itemData as any;
             if (item.qty > 0) {
@@ -141,20 +155,15 @@ export async function POST(request: Request) {
                 });
             }
         }
+        if (itemsToInsert.length > 0) await adminSupabase.from('pismo_booking_items').insert(itemsToInsert);
 
-        if (itemsToInsert.length > 0) {
-            await adminSupabase.from('pismo_booking_items').insert(itemsToInsert);
-        }
-
-        // C. Create Log
-        const logAction = payment_token 
-            ? `Created & Paid (TransID: ${transactionId}). Total: $${total_amount.toFixed(2)}`
-            : `Created (Pay Later). Total: $${total_amount.toFixed(2)}`;
-
+        // Log
         await adminSupabase.from('pismo_booking_logs').insert({
             booking_id: bookingRec.id,
             editor_name: creatorName,
-            action_description: logAction
+            action_description: payment_token 
+                ? `Created & Paid (TransID: ${transactionId}). Total: $${total_amount.toFixed(2)}`
+                : `Created (Pay Later). Total: $${total_amount.toFixed(2)}`
         });
 
         return NextResponse.json({ 
@@ -168,8 +177,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("API Error:", error);
-    // Cleanup if crash happens after insert
-    // (Optional: You could delete the bookingRec here if it exists)
     return NextResponse.json({ success: false, error: 'Server Error: ' + error.message }, { status: 500 });
   }
 }
