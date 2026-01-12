@@ -1,9 +1,13 @@
 /**
  * @file app/(biz)/biz/admin/developer/docs/page.tsx
- * @description LIVING DOCUMENTATION.
- * Updated: Jan 11, 2026 - Added S3 Architecture, Fleet Geofencing UI, and Icon Management.
- * ACCESS: Level 950+ (Developers) Only.
+ * @description LIVING DOCUMENTATION for the SunBuggy Digital Ecosystem.
+ * * CHANGE LOG:
+ * - Jan 11, 2026: Added 'Fun License' Architecture (Smartwaiver + Selfie).
+ * - Jan 11, 2026: Added S3 Architecture, Fleet Geofencing UI, and Icon Management.
+ * * ACCESS CONTROL:
+ * - Level 950+ (Developers) Only.
  */
+
 import React from 'react';
 import { 
   ShieldAlert, 
@@ -18,16 +22,19 @@ import {
   Ticket,
   ArrowRight,
   RefreshCcw,
-  Car,   // Fleet
-  Map,   // Fleet
-  Radio, // Fleet
-  Briefcase, // HR
-  Network,   // HR
-  Layers,     // HR
-  HardDrive, // Storage
-  Cloud,     // Storage
+  Car,           // Fleet
+  Map,           // Fleet
+  Radio,         // Fleet
+  Briefcase,     // HR
+  Network,       // HR
+  Layers,        // HR
+  HardDrive,     // Storage
+  Cloud,         // Storage
   Image as ImageIcon, // Storage
-  Move       // Storage
+  Move,          // Storage
+  ShieldCheck,   // Fun License (NEW)
+  FileSignature, // Fun License (NEW)
+  Camera         // Fun License (NEW)
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,7 +42,7 @@ import { Separator } from '@/components/ui/separator';
 
 export default function DeveloperDocsPage() {
   
-  // SHARED STYLES
+  // === SHARED STYLING CONSTANTS ===
   const glassCardStyles = "bg-white/60 dark:bg-zinc-950/80 backdrop-blur-md border-white/40 dark:border-zinc-800 shadow-xl transition-all hover:shadow-2xl hover:bg-white/70 dark:hover:bg-zinc-950/90";
   const glassHeaderStyles = "text-zinc-800 dark:text-zinc-100";
   const glassTextStyles = "text-zinc-600 dark:text-zinc-400";
@@ -43,7 +50,7 @@ export default function DeveloperDocsPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 pb-20">
       
-      {/* HEADER */}
+      {/* === PAGE HEADER === */}
       <div className="space-y-2 mb-10">
         <h1 className="text-4xl font-black uppercase tracking-tighter text-yellow-500 drop-shadow-sm">
           System Architecture <span className="text-zinc-900 dark:text-white">& Standards</span>
@@ -54,12 +61,13 @@ export default function DeveloperDocsPage() {
         </p>
       </div>
 
+      {/* === MAIN GRID LAYOUT === */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* LEFT COLUMN: CORE STRUCTURE (Span 2) */}
+        {/* LEFT COLUMN (Spans 2/3) */}
         <div className="lg:col-span-2 space-y-8">
           
-          {/* 1. USER LEVELS & SECURITY */}
+          {/* --- SECTION 1: SECURITY --- */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-red-600 dark:text-red-500">
@@ -135,7 +143,67 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 2. FILE & MEDIA STORAGE (NEW) */}
+          {/* --- SECTION 2: THE FUN LICENSE (NEW!) --- */}
+          <Card className={glassCardStyles}>
+            <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
+              <div className="flex items-center gap-2 text-green-600 dark:text-green-500">
+                <ShieldCheck size={24} />
+                <CardTitle className="uppercase tracking-widest">Fun License Integration (v1.0)</CardTitle>
+              </div>
+              <CardDescription className={glassTextStyles}>
+                The "Gamified Compliance" Engine. Combines Smartwaiver API v4 with a custom Selfie Station.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              
+              {/* Traffic Light Visual */}
+              <div className="bg-green-50/30 dark:bg-green-900/10 p-4 rounded-lg border border-green-100 dark:border-green-800">
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">The "Traffic Light" Pattern</h3>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed mb-3">
+                  We decouple the visual status (Ring) from the database state to ensure instant UI feedback via <code>UserStatusAvatar</code>.
+                </p>
+                <div className="grid grid-cols-3 gap-2 text-xs text-center font-mono font-bold">
+                    <div className="bg-red-100 dark:bg-red-900/30 text-red-600 p-2 rounded border border-red-200 dark:border-red-800">
+                       MISSING (Red)<br/><span className="font-normal opacity-70">No Waiver</span>
+                    </div>
+                    <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 p-2 rounded border border-yellow-200 dark:border-yellow-800">
+                       PENDING (Yellow)<br/><span className="font-normal opacity-70">Waiver Yes / No Photo</span>
+                    </div>
+                    <div className="bg-green-100 dark:bg-green-900/30 text-green-600 p-2 rounded border border-green-200 dark:border-green-800">
+                       ACTIVE (Green)<br/><span className="font-normal opacity-70">Ready to Ride</span>
+                    </div>
+                </div>
+              </div>
+
+              {/* Technical Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="border border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-900/10 p-3 rounded-lg">
+                    <h4 className="text-xs font-bold text-green-700 dark:text-green-400 flex items-center gap-2 mb-2">
+                       <FileSignature size={14} /> Smartwaiver Sync
+                    </h4>
+                    <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-normal">
+                       <strong>Library:</strong> <code>lib/smartwaiver.ts</code><br/>
+                       {/* FIXED: Replaced -> with &rarr; to fix JSX Syntax Error */}
+                       <strong>Flow:</strong> Search by Email &rarr; Get GUID &rarr; Fetch Results.<br/>
+                       <strong>Handling:</strong> Catches HTTP 402 as "Zero Results".<br/>
+                       <strong>Auto-Sync:</strong> Runs on avatar mount if ID missing.
+                    </p>
+                 </div>
+                 <div className="border border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-900/10 p-3 rounded-lg">
+                    <h4 className="text-xs font-bold text-green-700 dark:text-green-400 flex items-center gap-2 mb-2">
+                       <Camera size={14} /> Selfie Engine
+                    </h4>
+                    <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-normal">
+                       <strong>Component:</strong> <code>LicenseSelfie.tsx</code> wraps <code>TimeclockCamera</code>.<br/>
+                       <strong>Crop:</strong> Forces 1:1 Aspect Ratio via CSS masking.<br/>
+                       <strong>Mobile:</strong> Uses <code>onPlaying</code> event to ensure stream dimensions before enabling snap.
+                    </p>
+                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* --- SECTION 3: FILE & MEDIA STORAGE --- */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-pink-600 dark:text-pink-500">
@@ -148,24 +216,18 @@ export default function DeveloperDocsPage() {
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               
-              {/* DIAGRAM PLACEHOLDER */}
-              <div className="w-full bg-zinc-50 dark:bg-zinc-900 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-lg p-6 flex flex-col items-center justify-center text-center">
-                 <Cloud className="h-10 w-10 text-zinc-400 mb-2" />
-                 <span className="text-xs font-mono text-zinc-500"></span>
-              </div>
-
-              {/* ARCHITECTURE DETAILS */}
+              {/* Architecture Explanation */}
               <div className="bg-pink-50/30 dark:bg-pink-900/10 p-4 rounded-lg border border-pink-100 dark:border-pink-800">
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">The Proxy Pattern</h3>
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                   Direct client-to-S3 communication is <strong>blocked</strong>. All file operations must pass through our Next.js middleware to enforce:
-                  <br/>1. <strong>Naming Conventions:</strong> Files are auto-renamed to prevent collisions (e.g., <code>2026-01-05(1).pdf</code>).
+                  <br/>1. <strong>Naming Conventions:</strong> Files are auto-renamed (e.g., <code>2026-01-05(1).pdf</code>).
                   <br/>2. <strong>Security:</strong> Credentials exist only on the server.
-                  <br/>3. <strong>Compatibility:</strong> Client is initialized with <code>forcePathStyle: true</code> for Contabo support.
+                  <br/>3. <strong>Compatibility:</strong> Client is initialized with <code>forcePathStyle: true</code>.
                 </p>
               </div>
 
-              {/* API ENDPOINTS */}
+              {/* Endpoints */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
                     <div className="flex items-center gap-2 mb-1 text-zinc-800 dark:text-zinc-200">
@@ -173,7 +235,7 @@ export default function DeveloperDocsPage() {
                     </div>
                     <p className="text-[10px] text-zinc-500">
                        <code>POST /api/s3/upload</code>: Handles form data. 50MB limit.<br/>
-                       <code>GET /api/s3/upload</code>: Returns <strong>Presigned URLs</strong> (1hr expiry). Never expose raw paths.
+                       <code>GET /api/s3/upload</code>: Returns <strong>Presigned URLs</strong>.
                     </p>
                  </div>
                  <div className="bg-zinc-50 dark:bg-white/5 p-3 rounded border border-zinc-200 dark:border-zinc-800">
@@ -181,15 +243,14 @@ export default function DeveloperDocsPage() {
                       <Move size={14} /> <span className="font-bold text-xs">Move & Rename</span>
                     </div>
                     <p className="text-[10px] text-zinc-500">
-                       S3 cannot "rename". We simulate it via <strong>Copy + Delete</strong> transactions.<br/>
-                       Endpoints: <code>/api/s3/move</code> and <code>/api/s3/rename</code>.
+                       S3 cannot "rename". We simulate it via <strong>Copy + Delete</strong> transactions.
                     </p>
                  </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* 3. FLEET COMMAND V2.0 */}
+          {/* --- SECTION 4: FLEET COMMAND --- */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
@@ -202,7 +263,7 @@ export default function DeveloperDocsPage() {
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               
-              {/* SERVER SIDE GEOFENCING */}
+              {/* Geofencing Logic */}
               <div className="bg-yellow-50/30 dark:bg-yellow-900/10 p-4 rounded-lg border border-yellow-100 dark:border-yellow-800">
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">Architecture: Server-Side Geofencing</h3>
                 <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
@@ -210,20 +271,20 @@ export default function DeveloperDocsPage() {
                   <br/>
                   1. <strong>Fetch:</strong> <code>actions/fleet.ts</code> gets raw GPS from Supabase.
                   <br/>
-                  2. <strong>Calculate:</strong> Calls <code>lib/fleet/geofencing.ts</code> which uses <strong>Ray Casting</strong> (Point-in-Polygon) to map coordinates to zones.
+                  2. <strong>Calculate:</strong> Calls <code>lib/fleet/geofencing.ts</code> which uses <strong>Ray Casting</strong>.
                   <br/>
                   3. <strong>Sanitize:</strong> Strips non-serializable prototypes before passing to Client.
                 </p>
               </div>
 
-              {/* NEW FEATURES */}
+              {/* Sub-Features */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div className="border border-yellow-200 dark:border-yellow-900 bg-yellow-50/50 dark:bg-yellow-900/10 p-3 rounded-lg">
                     <h4 className="text-xs font-bold text-yellow-700 dark:text-yellow-400 flex items-center gap-2 mb-2">
                        <Map size={14} /> Geofence UI Management
                     </h4>
                     <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-normal">
-                       Managers (Lvl 500+) can now draw zones visually via Mapbox/Leaflet at <code>/biz/admin/fleet/geofencing</code>. Polygons are stored as GeoJSON in the <code>locations</code> table.
+                       Managers (Lvl 500+) can now draw zones visually via Mapbox/Leaflet at <code>/biz/admin/fleet/geofencing</code>.
                     </p>
                  </div>
                  <div className="border border-yellow-200 dark:border-yellow-900 bg-yellow-50/50 dark:bg-yellow-900/10 p-3 rounded-lg">
@@ -231,23 +292,23 @@ export default function DeveloperDocsPage() {
                        <Radio size={14} /> Icon Management
                     </h4>
                     <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-normal">
-                       Custom SVGs for Buggies vs UTVs can be uploaded at <code>/biz/admin/fleet/icons</code>. Updates push to the <code>vehicle_types</code> table.
+                       Custom SVGs for Buggies vs UTVs can be uploaded at <code>/biz/admin/fleet/icons</code>.
                     </p>
                  </div>
               </div>
 
-              {/* MAP FIX */}
+              {/* Leaflet Fix */}
               <div className="bg-red-50/50 dark:bg-red-900/10 p-3 rounded-lg border border-red-100 dark:border-red-900">
                   <h4 className="text-xs font-bold text-red-600 dark:text-red-400 mb-1">Critical Map Fix</h4>
                   <p className="text-[10px] text-zinc-600 dark:text-zinc-400">
-                      React 18 & Leaflet conflict causes "Map already initialized" crashes. 
-                      <strong> Solution:</strong> <code>MapInner.tsx</code> manually strips the <code>_leaflet_id</code> from the DOM node before render.
+                      React 18 & Leaflet conflict causes crashes. 
+                      <strong> Solution:</strong> <code>MapInner.tsx</code> manually strips the <code>_leaflet_id</code> from the DOM node.
                   </p>
               </div>
             </CardContent>
           </Card>
 
-          {/* 4. SCHEDULE ROSTER V14.5 */}
+          {/* --- SECTION 5: SCHEDULE ROSTER --- */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500">
@@ -282,7 +343,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 5. HR COMMAND (LOCDEPJOB) */}
+          {/* --- SECTION 6: HR COMMAND --- */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
@@ -315,7 +376,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 6. PISMO BOOKING & PAYROLL */}
+          {/* --- SECTION 7: PISMO & PAYROLL --- */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <Card className={glassCardStyles}>
                 <CardHeader>
@@ -347,7 +408,7 @@ export default function DeveloperDocsPage() {
              </Card>
           </div>
 
-           {/* 7. AUTH & ROUTING ARCHITECTURE */}
+           {/* --- SECTION 8: AUTH & ROUTING --- */}
            <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-purple-600 dark:text-purple-500">
@@ -370,10 +431,10 @@ export default function DeveloperDocsPage() {
           
         </div>
 
-        {/* RIGHT COLUMN: TECH STACK & DEBT (Span 1) */}
+        {/* RIGHT COLUMN (Spans 1/3) */}
         <div className="space-y-8">
           
-          {/* 8. TECH STACK */}
+          {/* --- SECTION 9: TECH STACK --- */}
           <Card className={glassCardStyles}>
             <CardHeader>
               <div className="flex items-center gap-2 text-green-600 dark:text-green-500">
@@ -397,7 +458,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* 9. TECH DEBT & TODOS */}
+          {/* --- SECTION 10: TECH DEBT & TODOS --- */}
           <Card className={`${glassCardStyles} border-dashed`}>
             <CardHeader>
               <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
@@ -408,7 +469,19 @@ export default function DeveloperDocsPage() {
             <CardContent className="space-y-4">
               <ul className="space-y-3">
                 
-                {/* HIGH PRIORITY: S3 */}
+                {/* NEW TODO: FUN LICENSE STORAGE */}
+                <li className="flex items-start gap-2 text-sm text-purple-700 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-950/20 p-2 rounded-lg">
+                  <HardDrive className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-1 w-full">
+                     <span className="font-bold">Fun License Storage</span>
+                     <span className="text-[10px] opacity-90">
+                       Selfies are currently stored as Base64 strings in the DB (Phase 1). 
+                       <strong>TODO:</strong> Migrate to S3 bucket `license-photos` to reduce DB bloat.
+                     </span>
+                  </div>
+                </li>
+
+                {/* S3 TIMEZONE BUG */}
                 <li className="flex items-start gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50/50 dark:bg-red-950/20 p-2 rounded-lg">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <div className="flex flex-col gap-1 w-full">
@@ -431,7 +504,7 @@ export default function DeveloperDocsPage() {
                   </div>
                 </li>
 
-                {/* MOMENT JS */}
+                {/* MOMENT JS REMOVAL */}
                 <li className="flex items-start gap-2 text-sm text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 p-2 rounded-lg">
                   <RefreshCcw className="w-4 h-4 shrink-0 mt-0.5" />
                   <div className="flex flex-col gap-1 w-full">
@@ -445,15 +518,15 @@ export default function DeveloperDocsPage() {
                   </div>
                 </li>
 
-                {/* DONE */}
+                {/* DONE ITEMS */}
                 <li className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50/50 dark:bg-green-950/20 p-2 rounded-lg">
                   <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                   <div className="w-full">
                     <span className="line-through opacity-80 font-bold">
-                      Roster Integrity
+                      Smartwaiver Sync
                     </span>
                     <div className="text-[10px] opacity-70 mt-1">
-                      Fixed v14.5 (Conflict Detector & Safe Deletion).
+                      Integration Complete (v1.0).
                     </div>
                   </div>
                   <Badge className="ml-auto bg-green-600 text-[10px] h-5">DONE</Badge>
@@ -463,7 +536,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-           {/* 10. QUICK LINKS */}
+           {/* --- SECTION 11: QUICK LINKS --- */}
            <Card className={glassCardStyles}>
             <CardHeader>
               <CardTitle className="text-sm uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Quick Links</CardTitle>
@@ -474,6 +547,8 @@ export default function DeveloperDocsPage() {
                 <a href="/biz/vehicles/admin" className="text-xs text-yellow-600 dark:text-yellow-400 hover:underline">Fleet Command</a>
                 <a href="/biz/admin/fleet/geofencing" className="text-xs text-yellow-600 dark:text-yellow-400 hover:underline">Geofencing</a>
                 <a href="/biz/admin/hr/structure" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">HR Structure</a>
+                {/* NEW LINK */}
+                <a href="/fun-license" className="text-xs text-green-600 dark:text-green-400 hover:underline font-bold">Fun License Test</a>
             </CardContent>
           </Card>
 

@@ -1,157 +1,210 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Camera, RefreshCw, Check, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
-import { updateLicensePhoto } from '@/app/actions/update-license-photo';
-import { useToast } from '@/components/ui/use-toast';
-import TimeclockCamera, { TimeclockCameraHandle } from '@/components/TimeclockCamera';
 
-export default function LicenseSelfie() {
-  const cameraRef = useRef<TimeclockCameraHandle>(null);
-  
-  const [preview, setPreview] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [isCameraReady, setIsCameraReady] = useState(false);
-  
-  const { toast } = useToast();
+// TYPES
+interface LicenseSelfieProps {
+  /** * Callback when the user confirms their photo. 
+   * The Parent component MUST provide this function.
+   */
+  onPhotoConfirmed: (photoDataUrl: string) => void;
+  /** Optional initial image if they are retaking it */
+  initialImage?: string | null;
+}
 
-  // 1. CAPTURE via the Ref
-  const handleSnap = () => {
-    if (cameraRef.current) {
-      const photoData = cameraRef.current.capture();
-      if (photoData) {
-        setPreview(photoData);
+export default function LicenseSelfie({ onPhotoConfirmed, initialImage }: LicenseSelfieProps) {
+  // STATE
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(initialImage || null);
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+
+  // REFS
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // 1. START CAMERA
+  const startCamera = async () => {
+    setError(null);
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      setStream(mediaStream);
+      setIsCameraActive(true);
+    } catch (err) {
+      console.error('Camera Error:', err);
+      setError('Could not access camera. Check permissions.');
+    }
+  };
+
+  // 2. STOP CAMERA
+  const stopCamera = useCallback(() => {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
+      setIsCameraActive(false);
+    }
+  }, [stream]);
+
+  // Effect: Attach stream to video element
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [stream, stopCamera]);
+
+  // 3. CAPTURE PHOTO
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    if (context) {
+      // 1:1 Aspect Ratio Capture (Square for Circle Crop)
+      const size = Math.min(video.videoWidth, video.videoHeight);
+      const startX = (video.videoWidth - size) / 2;
+      const startY = (video.videoHeight - size) / 2;
+
+      canvas.width = size;
+      canvas.height = size;
+
+      // Crop center square
+      context.drawImage(video, startX, startY, size, size, 0, 0, size, size);
+      
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      setCapturedImage(dataUrl);
+      stopCamera();
+      
+      console.log('[DEBUG] 0. Photo Snapped');
+    }
+  };
+
+  // 4. HANDLERS
+  const handleRetake = () => {
+    setCapturedImage(null);
+    startCamera();
+  };
+
+  const handleConfirm = () => {
+    if (capturedImage) {
+      // SAFETY CHECK: Ensure the parent actually passed the function
+      if (typeof onPhotoConfirmed === 'function') {
+        onPhotoConfirmed(capturedImage);
       } else {
-        toast({ title: "Capture Failed", description: "Could not get image from camera.", variant: "destructive" });
+        console.error("CRITICAL ERROR: Parent component did not pass 'onPhotoConfirmed' prop!");
+        alert("System Error: Photo handler missing. Please contact staff.");
       }
     }
   };
 
-  // 2. SAVE via Server Action
-  const handleSave = async () => {
-    if (!preview) return;
-    setLoading(true);
-
-    const res = await updateLicensePhoto(preview);
-    
-    if (res.success) {
-      toast({ title: "Success!", description: "Fun License Photo Updated." });
-      window.location.reload(); 
-    } else {
-      toast({ title: "Error", description: "Could not save photo.", variant: "destructive" });
-      setLoading(false);
-    }
-  };
-
-  // 3. FILE UPLOAD (Fallback)
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
   return (
-    <div className="flex flex-col items-center gap-6 max-w-sm mx-auto w-full">
+    <div className="w-full flex flex-col items-center space-y-6 animate-in fade-in duration-500">
       
-      {/* === VIEWFINDER === */}
-      <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-dashed border-zinc-700 bg-black flex items-center justify-center shadow-xl group">
-        
-        {/* STATE A: PREVIEW (Photo Taken) */}
-        {preview ? (
-          <Image 
-            src={preview} 
-            alt="Selfie Preview" 
-            fill 
-            className="object-cover transform scale-x-[-1]" 
-            unoptimized 
-          /> 
-        ) : (
-          /* STATE B: LIVE CAMERA (Using your component) */
-          <div className="w-full h-full relative">
-            <TimeclockCamera 
-               ref={cameraRef}
-               facingMode="user"
-               onReady={(ready) => setIsCameraReady(ready)}
-               onError={(err) => console.error(err)}
-               // THE FIX: Force height/width to 100% to fill the circle, remove default border/radius
-               className="h-full w-full rounded-none border-none" 
-            />
-            
-            {/* Loading Overlay (While TimeclockCamera initializes) */}
-            {!isCameraReady && (
-               <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900 z-20 text-center p-4">
-                  <Loader2 className="w-8 h-8 text-yellow-500 animate-spin mb-2" />
-                  <p className="text-xs text-zinc-500">Starting Camera...</p>
-               </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* === CONTROLS === */}
-      <div className="w-full space-y-3">
-        
-        {/* SNAP MODE */}
-        {!preview && (
-           <div className="space-y-3">
-             <Button 
-                type="button" 
-                onClick={handleSnap} 
-                disabled={!isCameraReady}
-                className="w-full h-12 bg-white text-black hover:bg-zinc-200 font-bold transition-all"
-             >
-               <Camera className="w-4 h-4 mr-2" /> SNAP PHOTO
-             </Button>
-
-             {/* File Upload Fallback */}
-             <div className="relative">
-                <Button type="button" variant="ghost" className="w-full text-xs text-zinc-500 hover:text-zinc-300">
-                   Or upload a file
-                </Button>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-             </div>
-           </div>
-        )}
-
-        {/* REVIEW MODE */}
-        {preview && (
-           <div className="grid grid-cols-2 gap-3 animate-in slide-in-from-bottom-2 fade-in duration-300">
-             <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setPreview(null)} 
-                disabled={loading} 
-                className="h-12"
-             >
-               <RefreshCw className="w-4 h-4 mr-2" /> Retake
-             </Button>
-             
-             <Button 
-                type="button"
-                onClick={handleSave} 
-                disabled={loading} 
-                className="h-12 bg-green-600 hover:bg-green-700 text-white font-bold"
-             >
-               {loading ? "Saving..." : <><Check className="w-4 h-4 mr-2" /> LOOKS GOOD</>}
-             </Button>
-           </div>
-        )}
-      </div>
-      
-      {!preview && (
-        <p className="text-xs text-center text-zinc-600 max-w-xs">
-          Tip: Ensure good lighting. This photo is your official SunBuggy ID.
+      {/* HEADER */}
+      <div className="text-center space-y-2">
+        <h2 className="text-2xl font-black uppercase tracking-wide text-gray-900 dark:text-white drop-shadow-sm">
+          Fun License Selfie
+        </h2>
+        <p className="text-sm font-medium text-gray-500 uppercase tracking-widest">
+          No Hats • No Sunglasses
         </p>
+      </div>
+
+      {/* ERROR MESSAGE */}
+      {error && (
+        <div className="bg-red-500 text-white p-3 rounded font-bold w-full text-center max-w-sm">
+          {error}
+        </div>
       )}
+
+      {/* CIRCULAR CAMERA FRAME */}
+      <div className="relative group">
+        <div className={`
+          relative overflow-hidden shadow-2xl 
+          w-64 h-64 md:w-80 md:h-80 
+          rounded-full border-[6px] border-yellow-400 
+          bg-gray-800 flex items-center justify-center
+        `}>
+          
+          {capturedImage ? (
+            /* PREVIEW STATE */
+            <div className="relative w-full h-full">
+              <Image 
+                src={capturedImage} 
+                alt="Selfie Preview" 
+                fill
+                sizes="(max-width: 768px) 100vw, 400px"
+                className="object-cover"
+                priority
+              />
+            </div>
+          ) : (
+            /* LIVE CAMERA STATE */
+            <div className="relative w-full h-full bg-black">
+               {!isCameraActive ? (
+                 <button 
+                   onClick={startCamera}
+                   className="absolute inset-0 w-full h-full flex flex-col items-center justify-center space-y-2 hover:bg-gray-900 transition-colors"
+                 >
+                   <span className="text-4xl">📸</span>
+                   <span className="text-white font-bold uppercase">Tap to Start</span>
+                 </button>
+               ) : (
+                 <video 
+                   ref={videoRef} 
+                   autoPlay 
+                   playsInline 
+                   muted 
+                   className="w-full h-full object-cover transform scale-x-[-1]" // Mirror effect
+                 />
+               )}
+            </div>
+          )}
+        </div>
+
+        {/* DECORATIVE: SunBuggy branding ring effect */}
+        <div className="absolute -inset-2 rounded-full border-2 border-dashed border-gray-300 pointer-events-none opacity-50"></div>
+      </div>
+
+      {/* ACTION BUTTONS */}
+      <div className="w-full max-w-md flex flex-col gap-3">
+        {capturedImage ? (
+          <div className="flex gap-4 w-full">
+            <button
+              onClick={handleRetake}
+              className="flex-1 py-4 rounded-xl font-bold uppercase tracking-wider bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors"
+            >
+              Retake
+            </button>
+            <button
+              onClick={handleConfirm}
+              className="flex-1 py-4 rounded-xl font-bold uppercase tracking-wider bg-green-600 text-white hover:bg-green-500 shadow-lg transition-colors"
+            >
+              Looks Good
+            </button>
+          </div>
+        ) : (
+          isCameraActive && (
+            <button
+              onClick={capturePhoto}
+              className="w-full py-5 rounded-xl font-black uppercase text-xl tracking-widest bg-yellow-400 text-black hover:bg-yellow-300 shadow-xl transform active:scale-95 transition-all"
+            >
+              Snap Photo
+            </button>
+          )
+        )}
+      </div>
+
+      {/* Hidden Canvas for Processing */}
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }
