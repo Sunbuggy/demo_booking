@@ -183,7 +183,6 @@ export default function DeveloperDocsPage() {
                     </h4>
                     <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-normal">
                        <strong>Library:</strong> <code>lib/smartwaiver.ts</code><br/>
-                       {/* FIXED: Replaced -> with &rarr; to fix JSX Syntax Error */}
                        <strong>Flow:</strong> Search by Email &rarr; Get GUID &rarr; Fetch Results.<br/>
                        <strong>Handling:</strong> Catches HTTP 402 as "Zero Results".<br/>
                        <strong>Auto-Sync:</strong> Runs on avatar mount if ID missing.
