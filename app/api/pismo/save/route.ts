@@ -33,6 +33,8 @@ export async function POST(request: Request) {
         last_name: holder.lastName,
         email: holder.email,
         phone: holder.phone,
+        adults: holder.adults || 1, 
+        minors: holder.minors || 0,
         booked_by: creatorName,
         booking_date: booking.date,
         start_time: booking.startTime,

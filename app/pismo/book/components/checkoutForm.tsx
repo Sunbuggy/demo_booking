@@ -14,8 +14,10 @@ export default function CheckoutForm({
   selectedItems = [],
   goggles = 0,
   bandannas = 0,
+  // --- IMPORTANT: Ensure holderInfo is passed ---
+  holderInfo, 
   // --- Staff Props ---
-  userLevel = 0, // Passed from parent (0 = Guest)
+  userLevel = 0, 
   paymentType,
   setPaymentType,
   customAmount,
@@ -27,21 +29,15 @@ export default function CheckoutForm({
   const [payNow, setPayNow] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
 
-  // 1. Determine Access
   const isStaff = userLevel >= 300;
-  
-  // 2. Logic: Only show Deposit option if Staff AND Editing
   const showDepositOption = isStaff && isEditing;
 
-  // Auto-check "Pay Now" if using custom amount
   useEffect(() => {
     if (useCustomAmount) setPayNow(true);
   }, [useCustomAmount]);
 
-  // Handle Payment Trigger
   const handleConfirm = () => {
     setCardError(null);
-
     if (payNow) {
         const hiddenBtn = document.getElementById('nmi-hidden-btn');
         if (hiddenBtn && window.CollectJS) {
@@ -63,7 +59,6 @@ export default function CheckoutForm({
       setCardError(err);
   };
 
-  // Determine Display Price
   const finalDisplayPrice = useCustomAmount ? Number(customAmount) : total;
 
   return (
@@ -92,7 +87,6 @@ export default function CheckoutForm({
             
              <div className="bg-gray-800 p-6 rounded-xl mb-8 border border-gray-700 shadow-lg relative overflow-hidden">
                
-               {/* Staff Ribbon */}
                {isStaff && (
                  <div className="absolute top-0 right-0 bg-blue-600 text-xs font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider shadow-lg">
                     Staff Mode
@@ -108,14 +102,13 @@ export default function CheckoutForm({
                   </div>
                </div>
 
-               {/* === STAFF CONTROLS (Only visible to Level 300+) === */}
+               {/* Staff Controls */}
                {isStaff && (
                  <div className="bg-gray-900/50 p-4 rounded-lg mb-6 border border-gray-600">
                     <div className="flex items-center justify-between mb-2">
                         <h4 className="text-xs font-bold text-gray-400 uppercase">Staff Controls</h4>
                     </div>
                     
-                    {/* Toggle: Deposit vs Payment (ONLY if Editing) */}
                     {showDepositOption && (
                         <div className="grid grid-cols-2 gap-2 mb-4">
                             <button 
@@ -143,7 +136,6 @@ export default function CheckoutForm({
                         </div>
                     )}
 
-                    {/* Custom Amount Toggle (Visible to Staff on New & Edit) */}
                     <div className="flex items-center justify-between mt-2">
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input 
@@ -151,7 +143,6 @@ export default function CheckoutForm({
                                 checked={useCustomAmount} 
                                 onChange={e => {
                                     setUseCustomAmount(e.target.checked);
-                                    // If turning on, set default value to current total
                                     if(e.target.checked && (!customAmount || customAmount === 0)) {
                                         setCustomAmount(total);
                                     }
@@ -176,9 +167,18 @@ export default function CheckoutForm({
                  </div>
                )}
 
-               {/* Standard Order Summary */}
+               {/* === ORDER SUMMARY === */}
                <div className="space-y-3 text-sm">
                   <h3 className="font-bold text-gray-400 uppercase text-xs mb-3">Order Summary</h3>
+                  
+                  {/* --- NEW: Guest Count --- */}
+                  <div className="flex justify-between text-gray-300 border-b border-gray-700/50 pb-2 mb-2">
+                    <span>Guests</span>
+                    <span className="font-medium text-white">
+                        {holderInfo?.adults || 1} Adult(s), {holderInfo?.minors || 0} Minor(s)
+                    </span>
+                  </div>
+
                   {selectedItems.map((item: any, idx: number) => (
                     <div key={idx} className="flex justify-between text-white font-medium">
                       <span>{item.qty}x {item.name} {item.waiver ? '(+Waiver)' : ''}</span>
@@ -190,7 +190,6 @@ export default function CheckoutForm({
                </div>
             </div>
 
-            {/* Payment Checkbox */}
             <div className="mb-8">
                 <label className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
                     payNow ? 'bg-gray-700 border-orange-500/50' : 'bg-gray-800 border-gray-600 hover:bg-gray-750'
