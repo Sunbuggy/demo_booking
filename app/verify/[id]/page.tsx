@@ -7,10 +7,11 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { getPrivatePhotoUrl } from '@/lib/s3-server'; // <--- CRITICAL IMPORT FOR PRIVATE BUCKETS
+import { getPrivatePhotoUrl } from '@/lib/s3-server'; // <--- Uses your file
 
 // --- CONFIGURATION ---
 // 1. Service Role Client: Required to read user data publicly without the scanner being logged in.
+// CRITICAL: Ensure SUPABASE_SERVICE_ROLE_KEY is in your .env.local file!
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY! 
@@ -29,6 +30,7 @@ export default async function VerifyLicensePage(props: Props) {
   const userId = params.id;
 
   // --- STEP 1: FETCH DATA (PARALLEL) ---
+  // We use supabaseAdmin to bypass RLS (Row Level Security)
   const [profileRes, waiverRes] = await Promise.all([
     supabaseAdmin
       .from('users')
@@ -46,7 +48,7 @@ export default async function VerifyLicensePage(props: Props) {
   const waivers = waiverRes.data || [];
 
   // --- STEP 2: SIGN THE PHOTO URL ---
-  // If the bucket is private, the raw URL returns 401. We must sign it.
+  // If the bucket is private, the raw URL returns 401. We must sign it using your utility.
   if (profile && profile.photo_url) {
      profile.photo_url = await getPrivatePhotoUrl(profile.photo_url);
   }
@@ -87,7 +89,7 @@ function StatusScreen({
   
   // --- SCENARIO 1: VALID (GREEN SCREEN) ---
   if (status === 'VALID') {
-    const latestWaiver = waivers?.sort((a, b) => new Date(b.signed_at).getTime() - new Date(a.signed_at).getTime())[0];
+    const latestWaiver = waivers?.sort((a: any, b: any) => new Date(b.signed_at).getTime() - new Date(a.signed_at).getTime())[0];
 
     return (
       <div className="min-h-screen bg-green-600 flex flex-col items-center justify-center p-4 text-center animate-in fade-in duration-300">
