@@ -21,7 +21,7 @@ import { approveTimeOffRequest } from '@/app/actions/approve-time-off';
 // --- COMPONENTS ---
 import UserStatusAvatar from '@/components/UserStatusAvatar';
 import { WeatherModal } from './components/weather-modal';
-import PublishButton from './components/publish-button';
+import EmailSchedulerModal from './components/email-scheduler-modal';
 
 import { fetch_from_old_db } from '@/utils/old_db/actions';
 import { vehiclesList } from '@/utils/old_db/helpers';
@@ -663,7 +663,11 @@ export default function RosterPage() {
                             </Button>
                         )}
                         <Separator className="my-1"/>
-                        {isManager && (<PublishButton weekStart={format(startOfWeekDate, 'yyyy-MM-dd')} />)}
+                        {isManager && (<EmailSchedulerModal 
+   weekStart={format(startOfWeekDate, 'yyyy-MM-dd')} 
+   employees={employees} 
+   hrConfig={hrConfig} 
+/>)}
                     </div>
                 </PopoverContent>
               </Popover>
