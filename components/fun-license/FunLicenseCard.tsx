@@ -1,11 +1,28 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import Image from 'next/image';
-import { CheckCircle2, ShieldCheck, Camera, MapPin, X, Loader2 } from 'lucide-react';
+import { 
+  CheckCircle2, 
+  ShieldCheck, 
+  Camera, 
+  MapPin, 
+  X, 
+  Loader2, 
+  AlertCircle, 
+  FileSignature,
+  ExternalLink 
+} from 'lucide-react';
 import LicenseSelfie from './LicenseSelfie'; 
 import { uploadUserPhoto } from '@/app/actions/upload-photo'; 
 import { useRouter } from 'next/navigation';
+
+// --- TYPES ---
+interface Endorsement {
+  id: string;
+  name: string;
+  url: string; // Required for the "Red" step
+  active: boolean;
+}
 
 interface Props {
   user: {
@@ -14,7 +31,7 @@ interface Props {
     photoUrl?: string | null;
     level: number;
   };
-  endorsements: { name: string; active: boolean }[];
+  endorsements: Endorsement[];
   status: { hasPhoto: boolean; hasWaiver: boolean };
 }
 
@@ -25,44 +42,109 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
   // State: The photo to display
   const [currentPhoto, setCurrentPhoto] = useState<string | null>(user.photoUrl || null);
   
-  // State: Mode switching (Camera vs Card)
-  const [isSelfieMode, setIsSelfieMode] = useState(!status.hasPhoto);
+  // State: Allows user to manually retake photo even if they have one (Green -> Yellow)
+  const [isRetaking, setIsRetaking] = useState(false);
 
-  // --- HANDLER: Save Photo to Server ---
+  // --- WORKFLOW LOGIC ---
+  // 1. RED: No Waiver Signed
+  const showWaiverStep = !status.hasWaiver;
+  // 2. YELLOW: Waiver Signed, but No Photo (or user is retaking)
+  const showSelfieStep = status.hasWaiver && (!status.hasPhoto || isRetaking);
+  // 3. GREEN: All Complete (and not retaking)
+  const showLicenseStep = status.hasWaiver && status.hasPhoto && !isRetaking;
+
+  // --- HANDLER: Save Photo ---
   const handlePhotoConfirmed = async (photoDataUrl: string) => {
-    setCurrentPhoto(photoDataUrl); // Optimistic update
+    setCurrentPhoto(photoDataUrl); // Optimistic Update
     
     startTransition(async () => {
       try {
         const result = await uploadUserPhoto(photoDataUrl);
         
         if (result.success) {
-          setIsSelfieMode(false);
-          router.refresh(); 
+          setIsRetaking(false);
+          router.refresh(); // Refresh to update server-side status
         } else {
           alert(`Save failed: ${result.message}`);
-          setIsSelfieMode(true); 
         }
       } catch (e) {
         alert("An unexpected network error occurred.");
-        setIsSelfieMode(true);
       }
     });
   };
 
-  // --- DYNAMIC URL LOGIC ---
-  // Priority: 1. ENV Variable (Production) -> 2. Default to Book (Staging)
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://book.sunbuggy.com';
-  const verifyLink = `${siteUrl}/verify/${user.id}`;
-  
-  // QR Code Generation
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verifyLink)}&color=000000&bgcolor=FFFFFF`;
+  // ===========================================================================
+  // VIEW 1: WAIVER SELECTION (RED RING)
+  // ===========================================================================
+  if (showWaiverStep) {
+    return (
+      <div className="w-full max-w-md animate-in slide-in-from-bottom duration-500">
+        
+        {/* RED STATUS BANNER */}
+        <div className="bg-red-600 text-white text-xs font-black text-center py-3 rounded-t-xl uppercase tracking-widest shadow-[0_0_15px_rgba(220,38,38,0.5)] relative z-10">
+          <span className="flex items-center justify-center gap-2">
+            <AlertCircle size={16} /> Step 1: Validation Required
+          </span>
+        </div>
 
-  // --- MODE 1: SELFIE CAMERA ---
-  if (isSelfieMode) {
+        <div className="bg-zinc-900 border-x border-b border-zinc-800 rounded-b-xl p-6 shadow-2xl">
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 rounded-full border-4 border-red-600 bg-zinc-800 mx-auto flex items-center justify-center mb-3 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
+               <FileSignature size={32} className="text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold text-white uppercase">Select Your Location</h2>
+            <p className="text-zinc-400 text-xs mt-1">
+              Sign a liability waiver to activate your license.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {endorsements.map((item) => (
+              <a 
+                key={item.id}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center justify-between p-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-yellow-500 rounded-lg transition-all"
+              >
+                <div className="flex items-center gap-3">
+                   <div className="bg-zinc-900 p-2 rounded-full text-zinc-400 group-hover:text-yellow-500 transition-colors">
+                     <MapPin size={18} />
+                   </div>
+                   <div className="text-left">
+                     <div className="text-sm font-bold text-white group-hover:text-yellow-400 uppercase tracking-wide">
+                       {item.name}
+                     </div>
+                     <div className="text-[10px] text-zinc-500">Tap to Sign</div>
+                   </div>
+                </div>
+                <ExternalLink size={16} className="text-zinc-500 group-hover:text-white" />
+              </a>
+            ))}
+          </div>
+          
+          <div className="mt-4 text-center">
+            <p className="text-[10px] text-zinc-500 italic">
+              Use the "Refresh" button below after signing.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ===========================================================================
+  // VIEW 2: SELFIE CAMERA (YELLOW RING)
+  // ===========================================================================
+  if (showSelfieStep) {
     return (
       <div className="w-full max-w-md bg-zinc-900 rounded-xl p-4 border border-zinc-800 relative shadow-2xl">
         
+        {/* YELLOW STATUS BANNER */}
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-500 text-black text-[10px] font-bold px-4 py-1 rounded-full uppercase tracking-wider shadow-lg z-20">
+           Step 2: Add Photo
+        </div>
+
         {/* Loading Overlay */}
         {isPending && (
            <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center rounded-xl animate-in fade-in">
@@ -71,10 +153,10 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
            </div>
         )}
 
-        {/* Cancel Button */}
+        {/* Cancel Button (Only if retaking) */}
         {status.hasPhoto && !isPending && (
           <button 
-            onClick={() => setIsSelfieMode(false)}
+            onClick={() => setIsRetaking(false)}
             className="absolute top-4 right-4 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full p-1 z-20 transition-all"
           >
             <X size={24} />
@@ -89,7 +171,14 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
     );
   }
 
-  // --- MODE 2: THE "GOOD TO GO" GREEN CARD ---
+  // ===========================================================================
+  // VIEW 3: THE GREEN CARD (GREEN RING)
+  // ===========================================================================
+  
+  // Dynamic Environment Logic
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://book.sunbuggy.com';
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${siteUrl}/verify/${user.id}`)}&color=000000&bgcolor=FFFFFF`;
+
   return (
     <div className="w-full max-w-sm animate-in fade-in zoom-in duration-500 perspective-1000">
       
@@ -110,7 +199,6 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
           <div className="relative group w-24 h-32 flex-shrink-0">
              <div className="absolute inset-0 border-[3px] border-green-500 rounded-lg overflow-hidden shadow-inner bg-zinc-800">
                {currentPhoto ? (
-                 // Using standard img to handle private bucket redirects if necessary
                  // eslint-disable-next-line @next/next/no-img-element
                  <img 
                     src={currentPhoto} 
@@ -126,7 +214,7 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
              
              {/* RETAKE OVERLAY */}
              <button 
-               onClick={() => setIsSelfieMode(true)}
+               onClick={() => setIsRetaking(true)}
                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold uppercase rounded-lg backdrop-blur-sm"
              >
                <Camera size={20} className="mb-1 text-[#FFEC00]" />
@@ -154,7 +242,7 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
                 </div>
                 
                 <button 
-                  onClick={() => setIsSelfieMode(true)} 
+                  onClick={() => setIsRetaking(true)} 
                   className="sm:hidden text-[10px] text-zinc-500 underline"
                 >
                   Edit Photo
@@ -170,19 +258,23 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
            </p>
            <div className="flex flex-wrap gap-1.5">
              {endorsements.map((end, i) => (
-               <span 
-                 key={i}
+               <a 
+                 key={end.id}
+                 // Only link if NOT active so they can sign missing ones easily
+                 href={!end.active ? end.url : undefined} 
+                 target={!end.active ? "_blank" : undefined}
                  className={`
                    text-[9px] font-bold px-2 py-1 rounded border flex items-center gap-1 uppercase transition-colors
                    ${end.active 
-                     ? 'bg-green-100 text-green-900 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' 
-                     : 'bg-zinc-100 text-zinc-400 border-zinc-200 dark:bg-zinc-800/50 dark:border-zinc-700 opacity-40 grayscale'
+                     ? 'bg-green-100 text-green-900 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 cursor-default' 
+                     : 'bg-zinc-100 text-zinc-400 border-zinc-200 dark:bg-zinc-800/50 dark:border-zinc-700 opacity-60 hover:opacity-100 hover:text-blue-500 cursor-pointer'
                    }
                  `}
+                 title={end.active ? "Signed" : "Click to Sign"}
                >
-                 {end.active && <MapPin size={8} />}
+                 {end.active ? <CheckCircle2 size={8} /> : <ExternalLink size={8} />}
                  {end.name}
-               </span>
+               </a>
              ))}
            </div>
         </div>
@@ -208,10 +300,7 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
         </div>
 
       </div>
-      
-      {/* Decorative Glow underneath */}
       <div className="mx-auto w-[90%] h-6 bg-green-500/20 blur-xl rounded-[100%] mt-[-10px] z-0 pointer-events-none"></div>
-
     </div>
   );
 }

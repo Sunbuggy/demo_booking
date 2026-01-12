@@ -4,7 +4,7 @@ import { syncUserWaivers } from '@/app/actions/smartwaiver-sync';
 import { WAIVER_TEMPLATES } from '@/config/smartwaiver';
 import FunLicenseCard from '@/components/fun-license/FunLicenseCard';
 import SyncButton from '@/components/fun-license/SyncButton';
-import { getPrivatePhotoUrl } from '@/lib/s3-server'; // <--- NEW IMPORT
+import { getPrivatePhotoUrl } from '@/lib/s3-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,17 +22,14 @@ export default async function FunLicensePage() {
     .eq('id', user.id)
     .single();
 
-  // 3. Name Resolution Logic (The Waterfall)
-  let displayName = "VALUED RENTER"; // Absolute worst-case fallback
+  // 3. Name Resolution Logic
+  let displayName = "VALUED RENTER";
   
   if (profile?.first_name && profile?.last_name) {
-    // Best Case: We have their profile data
     displayName = `${profile.first_name} ${profile.last_name}`;
   } else if (user.user_metadata?.full_name) {
-    // Fallback: Use the name from Google/Apple login
     displayName = user.user_metadata.full_name;
   } else if (profile?.email) {
-    // Fallback: Use email handle if we have nothing else
     displayName = profile.email.split('@')[0];
   }
 
@@ -42,18 +39,19 @@ export default async function FunLicensePage() {
     .select('template_id, signed_at')
     .eq('user_id', user.id);
 
-  // 5. SECURE PHOTO HANDLING
-  // The DB url is private (returns 401). We generate a temporary public signature here.
+  // 5. Secure Photo URL
   const signedPhotoUrl = await getPrivatePhotoUrl(profile?.photo_url);
 
   // 6. Determine Status
   const hasPhoto = !!profile?.photo_url;
-  // User has a waiver if the array exists and is not empty
   const hasWaiver = !!(signedWaivers && signedWaivers.length > 0);
   
-  // 7. Map Waivers to Endorsements
+  // 7. Map Endorsements (NOW INCLUDING URLs)
   const endorsements = Object.values(WAIVER_TEMPLATES).map(tpl => ({
+    id: tpl.templateId, 
     name: tpl.locationName,
+    // Construct the direct Smartwaiver URL for the red screen
+    url: `https://waiver.smartwaiver.com/w/${tpl.templateId}/web/`,
     active: signedWaivers?.some(w => w.template_id === tpl.templateId) || false
   }));
 
@@ -73,9 +71,9 @@ export default async function FunLicensePage() {
       {/* THE CARD */}
       <FunLicenseCard 
         user={{
-          name: displayName, // Now guaranteed to be the best available name
+          name: displayName,
           id: user.id.slice(0, 8).toUpperCase(),
-          photoUrl: signedPhotoUrl, // <--- PASS THE SIGNED URL, NOT THE RAW ONE
+          photoUrl: signedPhotoUrl, 
           level: profile?.user_level || 100
         }}
         endorsements={endorsements}
