@@ -97,7 +97,7 @@ export async function mergeAndRemoveUser(sourceId: string, targetId: string) {
   for (const sourceRecord of (sourceManifests || [])) {
     
     // Check if Target User already has a manifest for this EXACT day
-    // (Assuming 'date' or 'schedule_date' is the distinguishing field. Update 'date' below if your column name is different)
+    // (Assuming 'date' or 'schedule_date' is the distinguishing field)
     const matchingTarget = targetManifests?.find(t => t.date === sourceRecord.date);
 
     if (matchingTarget) {
@@ -144,4 +144,61 @@ export async function mergeAndRemoveUser(sourceId: string, targetId: string) {
 
   revalidatePath('/biz/admin/hr/user-cleanup');
   return { success: true };
+}
+
+/**
+ * 4. PERMANENT DELETE (NO MERGE)
+ * Deletes user and cascades to all related tables.
+ */
+export async function permanentlyDeleteUser(userId: string) {
+  // A. AUTHENTICATION CHECK
+  const supabaseAuth = await createClient();
+  const { data: { user } } = await supabaseAuth.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+  
+  const { data: currentUserProfile } = await supabaseAuth.from('users').select('user_level').eq('id', user.id).single();
+  if (!currentUserProfile || currentUserProfile.user_level < 800) {
+    throw new Error("Restricted: Only Admins can delete accounts.");
+  }
+
+  // B. INITIALIZE SUPER ADMIN CLIENT
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!, 
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  );
+
+  try {
+    // 1. Delete Related Data (Manual Cascade to be safe)
+    // We execute these in parallel where possible, but order matters if there are dependencies.
+    await Promise.all([
+      supabaseAdmin.from('employee_schedules').delete().eq('user_id', userId),
+      supabaseAdmin.from('time_entries').delete().eq('user_id', userId),
+      supabaseAdmin.from('time_off_requests').delete().eq('user_id', userId),
+      supabaseAdmin.from('daily_shuttle_manifest').delete().eq('driver_id', userId),
+      supabaseAdmin.from('employee_details').delete().eq('user_id', userId), // Cleanup details if they exist
+    ]);
+
+    // 2. Delete from Auth (If they have a login)
+    // This usually cascades to public.users via DB trigger, but we check both to be sure.
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    
+    // 3. Delete from Public (If Auth delete didn't catch it / Ghost account)
+    const { error: publicError } = await supabaseAdmin
+      .from('users')
+      .delete()
+      .eq('id', userId);
+
+    if (authError && publicError) {
+      // Only throw if BOTH failed (meaning the user still exists somewhere)
+      throw new Error(`Could not delete user. Auth: ${authError.message}, Public: ${publicError.message}`);
+    }
+
+    revalidatePath('/biz/admin/hr/user-cleanup');
+    return { success: true };
+
+  } catch (error: any) {
+    console.error("Delete Failed:", error);
+    throw new Error(error.message || "Unknown error during deletion");
+  }
 }
