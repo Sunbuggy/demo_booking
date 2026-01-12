@@ -46,11 +46,11 @@ export default async function FunLicensePage() {
   const hasPhoto = !!profile?.photo_url;
   const hasWaiver = !!(signedWaivers && signedWaivers.length > 0);
   
-  // 7. Map Endorsements (NOW INCLUDING URLs)
+  // 7. Map Endorsements (Includes URL for the "Red" step)
   const endorsements = Object.values(WAIVER_TEMPLATES).map(tpl => ({
     id: tpl.templateId, 
     name: tpl.locationName,
-    // Construct the direct Smartwaiver URL for the red screen
+    // Direct link to the Smartwaiver page for this location
     url: `https://waiver.smartwaiver.com/w/${tpl.templateId}/web/`,
     active: signedWaivers?.some(w => w.template_id === tpl.templateId) || false
   }));
@@ -72,7 +72,9 @@ export default async function FunLicensePage() {
       <FunLicenseCard 
         user={{
           name: displayName,
-          id: user.id.slice(0, 8).toUpperCase(),
+          // CRITICAL FIX: Pass the FULL ID (UUID) so the QR code works. 
+          // We will slice it for display inside the component.
+          id: user.id, 
           photoUrl: signedPhotoUrl, 
           level: profile?.user_level || 100
         }}

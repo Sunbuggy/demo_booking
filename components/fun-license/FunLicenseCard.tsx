@@ -27,7 +27,7 @@ interface Endorsement {
 interface Props {
   user: {
     name: string;
-    id: string;
+    id: string; // This is now the full UUID
     photoUrl?: string | null;
     level: number;
   };
@@ -50,8 +50,7 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
   const showWaiverStep = !status.hasWaiver;
   // 2. YELLOW: Waiver Signed, but No Photo (or user is retaking)
   const showSelfieStep = status.hasWaiver && (!status.hasPhoto || isRetaking);
-  // 3. GREEN: All Complete (and not retaking)
-  const showLicenseStep = status.hasWaiver && status.hasPhoto && !isRetaking;
+  // 3. GREEN: All Complete (and not retaking) -- Implied if above are false
 
   // --- HANDLER: Save Photo ---
   const handlePhotoConfirmed = async (photoDataUrl: string) => {
@@ -177,6 +176,8 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
   
   // Dynamic Environment Logic
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://book.sunbuggy.com';
+  
+  // CRITICAL FIX: Encode the FULL user.id into the QR code
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${siteUrl}/verify/${user.id}`)}&color=000000&bgcolor=FFFFFF`;
 
   return (
@@ -233,7 +234,10 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
                {user.name}
              </h2>
              
-             <p className="text-xs font-mono text-zinc-500 mb-3 tracking-wide">ID: {user.id}</p>
+             {/* VISUAL FIX: Only display the first 8 chars for aesthetics */}
+             <p className="text-xs font-mono text-zinc-500 mb-3 tracking-wide">
+                ID: {user.id.slice(0, 8).toUpperCase()}
+             </p>
              
              <div className="flex items-center justify-between">
                 <div className="inline-flex items-center gap-1 bg-zinc-800 text-white text-[10px] font-bold px-2 py-1 rounded border border-zinc-700">
