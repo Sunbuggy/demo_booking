@@ -4,7 +4,7 @@ import React, { useState, useTransition } from 'react';
 import Image from 'next/image';
 import { CheckCircle2, ShieldCheck, Camera, MapPin, X, Loader2 } from 'lucide-react';
 import LicenseSelfie from './LicenseSelfie'; 
-import { uploadUserPhoto } from '@/app/actions/upload-photo'; // Ensure this file exists
+import { uploadUserPhoto } from '@/app/actions/upload-photo'; 
 import { useRouter } from 'next/navigation';
 
 interface Props {
@@ -20,31 +20,26 @@ interface Props {
 
 export default function FunLicenseCard({ user, endorsements, status }: Props) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition(); // Handles the server action loading state
+  const [isPending, startTransition] = useTransition(); 
   
-  // State: The photo to display (starts with DB photo or null)
+  // State: The photo to display
   const [currentPhoto, setCurrentPhoto] = useState<string | null>(user.photoUrl || null);
   
   // State: Mode switching (Camera vs Card)
-  // Default to Camera if they have NO photo. Otherwise, show Card.
   const [isSelfieMode, setIsSelfieMode] = useState(!status.hasPhoto);
 
   // --- HANDLER: Save Photo to Server ---
   const handlePhotoConfirmed = async (photoDataUrl: string) => {
-    // 1. Optimistic UI Update: Show the photo immediately before upload finishes
-    setCurrentPhoto(photoDataUrl);
+    setCurrentPhoto(photoDataUrl); // Optimistic update
     
-    // 2. Start Server Upload (wrapped in transition for isPending state)
     startTransition(async () => {
       try {
         const result = await uploadUserPhoto(photoDataUrl);
         
         if (result.success) {
-          // Success: Switch to Green Card view and refresh server data
           setIsSelfieMode(false);
           router.refresh(); 
         } else {
-          // Failure: Alert user and stay in camera mode
           alert(`Save failed: ${result.message}`);
           setIsSelfieMode(true); 
         }
@@ -55,12 +50,20 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
     });
   };
 
+  // --- DYNAMIC URL LOGIC ---
+  // Priority: 1. ENV Variable (Production) -> 2. Default to Book (Staging)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://book.sunbuggy.com';
+  const verifyLink = `${siteUrl}/verify/${user.id}`;
+  
+  // QR Code Generation
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(verifyLink)}&color=000000&bgcolor=FFFFFF`;
+
   // --- MODE 1: SELFIE CAMERA ---
   if (isSelfieMode) {
     return (
       <div className="w-full max-w-md bg-zinc-900 rounded-xl p-4 border border-zinc-800 relative shadow-2xl">
         
-        {/* Loading Overlay (Visible during upload) */}
+        {/* Loading Overlay */}
         {isPending && (
            <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center rounded-xl animate-in fade-in">
              <Loader2 className="animate-spin text-[#FFEC00] mb-3" size={40} />
@@ -68,18 +71,16 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
            </div>
         )}
 
-        {/* Cancel Button (Only allow canceling if they already have a previous photo) */}
+        {/* Cancel Button */}
         {status.hasPhoto && !isPending && (
           <button 
             onClick={() => setIsSelfieMode(false)}
             className="absolute top-4 right-4 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full p-1 z-20 transition-all"
-            title="Cancel Retake"
           >
             <X size={24} />
           </button>
         )}
         
-        {/* The Camera Component */}
         <LicenseSelfie 
           onPhotoConfirmed={handlePhotoConfirmed} 
           initialImage={currentPhoto}
@@ -89,9 +90,6 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
   }
 
   // --- MODE 2: THE "GOOD TO GO" GREEN CARD ---
-  // QR Code Generation (Using external API for reliability without extra npm packages)
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://sunbuggy.com/verify/${user.id}&color=000000&bgcolor=FFFFFF`;
-
   return (
     <div className="w-full max-w-sm animate-in fade-in zoom-in duration-500 perspective-1000">
       
@@ -112,12 +110,12 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
           <div className="relative group w-24 h-32 flex-shrink-0">
              <div className="absolute inset-0 border-[3px] border-green-500 rounded-lg overflow-hidden shadow-inner bg-zinc-800">
                {currentPhoto ? (
-                 <Image 
+                 // Using standard img to handle private bucket redirects if necessary
+                 // eslint-disable-next-line @next/next/no-img-element
+                 <img 
                     src={currentPhoto} 
                     alt="License Photo" 
-                    fill 
-                    className="object-cover" 
-                    sizes="96px"
+                    className="object-cover w-full h-full"
                  />
                ) : (
                  <div className="w-full h-full flex items-center justify-center text-zinc-600">
@@ -126,7 +124,7 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
                )}
              </div>
              
-             {/* RETAKE OVERLAY (Hidden by default, appears on hover) */}
+             {/* RETAKE OVERLAY */}
              <button 
                onClick={() => setIsSelfieMode(true)}
                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-bold uppercase rounded-lg backdrop-blur-sm"
@@ -141,7 +139,6 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
 
           {/* USER DETAILS */}
           <div className="flex-1 min-w-0 flex flex-col justify-center h-32">
-             {/* Name Scaling: Smaller font if name is very long */}
              <h2 className={`font-black text-zinc-900 dark:text-white uppercase leading-none mb-1 break-words
                ${user.name.length > 20 ? 'text-lg' : 'text-2xl'} 
              `}>
@@ -156,7 +153,6 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
                   LEVEL {user.level}
                 </div>
                 
-                {/* Mobile-only "Edit" link since hover doesn't exist on touch */}
                 <button 
                   onClick={() => setIsSelfieMode(true)} 
                   className="sm:hidden text-[10px] text-zinc-500 underline"
@@ -197,11 +193,10 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
               <span className="font-bold text-zinc-900 dark:text-zinc-300 block mb-1">
                 Official Verification
               </span>
-              Scan to validate status and waiver eligibility.
+              Scan to validate status.
            </div>
            
            <div className="bg-white p-1 rounded border border-zinc-200 shrink-0 shadow-sm">
-             {/* Using standard img tag for external QR API to ensure stability */}
              {/* eslint-disable-next-line @next/next/no-img-element */}
              <img 
                src={qrCodeUrl}
