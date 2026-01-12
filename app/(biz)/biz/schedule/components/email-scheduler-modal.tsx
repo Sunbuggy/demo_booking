@@ -15,9 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
-  Mail, Users, MapPin, Globe, User, Eye, Send, FileText, Loader2, Save, Trash2
+  Mail, Users, MapPin, Globe, User, Eye, Send, FileText, Loader2, Save, Trash2, History, CheckCircle2, XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { format, parseISO } from 'date-fns';
 
 interface Props {
   weekStart: string; // YYYY-MM-DD
@@ -28,7 +29,7 @@ interface Props {
 export default function EmailSchedulerModal({ weekStart, employees, hrConfig }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'compose' | 'preview'>('compose');
+  const [step, setStep] = useState<'compose' | 'preview' | 'history'>('compose');
   
   // -- STATE: SCOPE --
   const [scope, setScope] = useState<'individual' | 'department' | 'location' | 'all'>('location');
@@ -46,19 +47,25 @@ export default function EmailSchedulerModal({ weekStart, employees, hrConfig }: 
   const [cc, setCc] = useState('');
   const [bcc, setBcc] = useState('');
 
-  // -- STATE: TEMPLATES --
+  // -- STATE: DATA --
   const [templates, setTemplates] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]); // New History Logs
   
-  // Load templates on open
+  // Load templates & logs on open
   useEffect(() => {
     if (isOpen) {
-       const loadTemplates = async () => {
+       const loadData = async () => {
          const sb = createClient();
-         const { data } = await sb.from('email_templates').select('*').order('created_at', { ascending: false });
-         if (data) setTemplates(data);
+         const [tmplRes, logsRes] = await Promise.all([
+            sb.from('email_templates').select('*').order('created_at', { ascending: false }),
+            sb.from('email_logs').select('*').order('sent_at', { ascending: false }).limit(50)
+         ]);
+         
+         if (tmplRes.data) setTemplates(tmplRes.data);
+         if (logsRes.data) setLogs(logsRes.data);
        };
-       loadTemplates();
-       setSelectedTargets([]); // Reset targets on open
+       loadData();
+       setSelectedTargets([]); 
     }
   }, [isOpen]);
 
@@ -136,8 +143,12 @@ export default function EmailSchedulerModal({ weekStart, employees, hrConfig }: 
 
     setLoading(false);
     if (result.success) {
-      toast.success(`Sent ${result.count} emails successfully.`);
-      setIsOpen(false);
+      toast.success(result.message);
+      // Refresh logs immediately
+      const sb = createClient();
+      const { data } = await sb.from('email_logs').select('*').order('sent_at', { ascending: false }).limit(50);
+      if (data) setLogs(data);
+      setStep('history'); // Switch to history tab to show success
     } else {
       toast.error("Sending failed: " + result.message);
     }
@@ -237,7 +248,7 @@ export default function EmailSchedulerModal({ weekStart, employees, hrConfig }: 
 
             </div>
 
-            {/* RIGHT COLUMN: EDITOR & PREVIEW */}
+            {/* RIGHT COLUMN: EDITOR & PREVIEW & HISTORY */}
             <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-950">
                
                <Tabs value={step} onValueChange={(v: any) => setStep(v)} className="flex-1 flex flex-col min-h-0">
@@ -245,6 +256,7 @@ export default function EmailSchedulerModal({ weekStart, employees, hrConfig }: 
                      <TabsList>
                         <TabsTrigger value="compose" className="gap-2"><FileText className="w-4 h-4"/> Compose</TabsTrigger>
                         <TabsTrigger value="preview" className="gap-2"><Eye className="w-4 h-4"/> Preview</TabsTrigger>
+                        <TabsTrigger value="history" className="gap-2"><History className="w-4 h-4"/> History</TabsTrigger>
                      </TabsList>
                   </div>
 
@@ -257,26 +269,11 @@ export default function EmailSchedulerModal({ weekStart, employees, hrConfig }: 
                      <div className="space-y-2 flex-1 flex flex-col min-h-0">
                         <div className="flex justify-between items-center">
                            <Label>Email Body (HTML Supported)</Label>
-<div className="flex gap-1 flex-wrap"> {/* Added flex-wrap for multiple lines */}
-   {[
-     '{{staff_name}}', 
-     '{{week_start}}', 
-     '{{schedule_summary}}',
-     '{{total_hours}}', // NEW
-     '{{department}}',  // NEW
-     '{{location}}',    // NEW
-     '{{link_roster}}'  // NEW
-   ].map(v => (
-      <Badge 
-        key={v} 
-        variant="outline" 
-        className="cursor-pointer hover:bg-blue-50 text-[10px]" 
-        onClick={() => insertVariable(v)}
-      >
-        {v}
-      </Badge>
-   ))}
-</div>
+                           <div className="flex gap-1 flex-wrap justify-end">
+                              {['{{staff_name}}', '{{total_hours}}', '{{week_start}}', '{{schedule_summary}}', '{{department}}', '{{location}}', '{{link_roster}}'].map(v => (
+                                 <Badge key={v} variant="outline" className="cursor-pointer hover:bg-blue-50 text-[10px]" onClick={() => insertVariable(v)}>{v}</Badge>
+                              ))}
+                           </div>
                         </div>
                         <Textarea 
                            value={body} 
@@ -303,7 +300,11 @@ export default function EmailSchedulerModal({ weekStart, employees, hrConfig }: 
                                  __html: body
                                     .replace(/{{staff_name}}/g, 'Alex')
                                     .replace(/{{full_name}}/g, 'Alex Smith')
+                                    .replace(/{{department}}/g, 'Guides')
+                                    .replace(/{{location}}/g, 'Las Vegas')
                                     .replace(/{{week_start}}/g, weekStart)
+                                    .replace(/{{total_hours}}/g, '38.5')
+                                    .replace(/{{link_roster}}/g, '#')
                                     .replace(/{{schedule_summary}}/g, `
                                        <div style="margin: 15px 0; border-left: 3px solid #d97706; padding-left: 10px;">
                                           <div style="margin-bottom: 5px;"><strong>Monday, Jan 5th</strong>: 9:00 AM - 5:00 PM (Guide)</div>
@@ -317,6 +318,43 @@ export default function EmailSchedulerModal({ weekStart, employees, hrConfig }: 
                         </div>
                      </div>
                   </TabsContent>
+
+                  {/* HISTORY TAB */}
+                  <TabsContent value="history" className="flex-1 p-0 overflow-y-auto data-[state=inactive]:hidden">
+                     <table className="w-full text-xs text-left">
+                        <thead className="bg-zinc-50 dark:bg-zinc-900 border-b sticky top-0">
+                           <tr>
+                              <th className="p-3">Status</th>
+                              <th className="p-3">Recipient</th>
+                              <th className="p-3">Subject</th>
+                              <th className="p-3 text-right">Sent At</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                           {logs.length === 0 ? (
+                              <tr><td colSpan={4} className="p-8 text-center text-zinc-500">No email history found.</td></tr>
+                           ) : logs.map(log => (
+                              <tr key={log.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                                 <td className="p-3">
+                                    {log.status === 'sent' ? (
+                                       <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1"><CheckCircle2 size={10}/> Sent</Badge>
+                                    ) : (
+                                       <Badge variant="destructive" className="gap-1"><XCircle size={10}/> Failed</Badge>
+                                    )}
+                                 </td>
+                                 <td className="p-3 font-medium">
+                                    {log.recipient_name}
+                                    <div className="text-zinc-400 font-normal">{log.recipient_email}</div>
+                                 </td>
+                                 <td className="p-3 text-zinc-600 truncate max-w-[200px]">{log.subject}</td>
+                                 <td className="p-3 text-right text-zinc-500 font-mono">
+                                    {format(parseISO(log.sent_at), 'MMM d, h:mm a')}
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </TabsContent>
                </Tabs>
             </div>
 
@@ -324,11 +362,13 @@ export default function EmailSchedulerModal({ weekStart, employees, hrConfig }: 
 
           {/* FOOTER */}
           <DialogFooter className="p-4 border-t bg-white dark:bg-zinc-950 shrink-0">
-             <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-             <Button onClick={handleSend} disabled={loading} className="gap-2 min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4" />}
-                {loading ? 'Sending...' : `Send to ${getRecipientCount()} People`}
-             </Button>
+             <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
+             {step !== 'history' && (
+                <Button onClick={handleSend} disabled={loading} className="gap-2 min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white">
+                   {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4" />}
+                   {loading ? 'Sending...' : `Send to ${getRecipientCount()} People`}
+                </Button>
+             )}
           </DialogFooter>
 
         </DialogContent>
