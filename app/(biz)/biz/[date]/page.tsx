@@ -146,7 +146,8 @@ function BizContent({
             display_cost={display_cost}
             role={role}
             date={date}
-            full_name={full_name}
+            // HERE IS WHERE THE NAME IS PASSED
+            full_name={full_name} 
             activeFleet={deepSanitize(activeFleet)}
             reservationStatusMap={deepSanitize(reservationStatusMap)}
             hourlyUtilization={deepSanitize(hourlyUtilization)}
@@ -202,22 +203,32 @@ export default async function BizPage({ params, searchParams }: any) {
     );
   }
 
-  // --- PREFERENCE FETCHING ---
-  // We check the DB for the 'show_financials' preference to set the initial toggle state.
+  // --- PREFERENCE & PROFILE FETCHING ---
+  // We check the DB for 'preferences' AND 'stage_name' in one query.
   let showFinancials = role >= 500; 
+  let displayName = user[0].full_name; // Default fallback
   
   try {
-    const { data: userPrefs } = await supabase
+    const { data: userExtraData } = await supabase
       .from('users')
-      .select('preferences')
+      // UPDATED: Added 'stage_name' to the select list
+      .select('preferences, stage_name') 
       .eq('id', user[0].id)
       .single();
       
-    if (userPrefs?.preferences && typeof userPrefs.preferences.show_financials !== 'undefined') {
-      showFinancials = userPrefs.preferences.show_financials;
+    // Handle Preferences
+    if (userExtraData?.preferences && typeof userExtraData.preferences.show_financials !== 'undefined') {
+      showFinancials = userExtraData.preferences.show_financials;
     }
+
+    // Handle Stage Name Logic
+    // If they have a Stage Name, use it. Otherwise keep the Full Name.
+    if (userExtraData?.stage_name) {
+      displayName = userExtraData.stage_name;
+    }
+
   } catch (err) {
-    console.warn('Could not fetch user preferences, using defaults.');
+    console.warn('Could not fetch user extra data, using defaults.');
   }
 
   // Allow URL override (?dcos=true)
@@ -257,7 +268,8 @@ export default async function BizPage({ params, searchParams }: any) {
           date={date}
           display_cost={showFinancials} 
           role={role}
-          full_name={user[0].full_name}
+          // UPDATED: Now passing the resolved 'displayName' (Stage Name)
+          full_name={displayName} 
           reservations={reservations}
           yesterday={yesterday}
           tomorrow={tomorrow}

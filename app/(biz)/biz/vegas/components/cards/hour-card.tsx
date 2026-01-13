@@ -1,16 +1,13 @@
-// app/(biz)/biz/components/cards/hour-card.tsx
-
 import { Card } from '@/components/ui/card';
 import React from 'react';
 import Link from 'next/link'; 
-import { Plus } from 'lucide-react'; 
+import { Plus, Users } from 'lucide-react'; 
 import { Button } from '@/components/ui/button'; 
 
 // Sub-components
 import LocationCard from './location-card';
-import MainGroups from '../groups/main';
-import GroupSheet from '../groups/group-sheet';
-import CreateGroupWizard from '../groups/create-group-wizard';
+import LaunchGroup from '../groups/launch-group';
+import DeleteGroupButton from '../groups/delete-group-button'; 
 
 // Types
 import { Reservation, GroupsType, GroupVehiclesType } from '../../../types';
@@ -33,7 +30,8 @@ const HourCard = ({
   reservationStatusMap,
   hourlyUtilization,
   drivers,
-  groupsData // <--- NEW PROP: Received from Landing
+  groupsData,
+  todaysShifts 
 }: {
   hr: string; 
   data: Record<string, Record<string, Reservation[]>>; 
@@ -44,7 +42,8 @@ const HourCard = ({
   reservationStatusMap: any; 
   hourlyUtilization: any;    
   drivers: any[]; 
-  groupsData: GroupsData; // <--- Typed
+  groupsData: GroupsData; 
+  todaysShifts?: any[]; 
 }) => {
   
   // --- 1. DATA PREPARATION ---
@@ -100,17 +99,63 @@ const HourCard = ({
     return `${d.name}-${d.vehicle}-${d.stops}s-${d.pax}p`;
   });
 
-  // --- 4. RENDER ---
+  // --- 4. GROUP SUMMARY LOGIC ---
+  const currentGroups = groupsData?.groups?.filter(g => {
+    const nameStart = g.group_name?.replace(/\D/g, ''); 
+    const hourNum = parseInt(groupHr, 10);
+    const groupNum = parseInt(nameStart || '0', 10);
+    
+    return groupNum === hourNum;
+  }) || [];
+
+  // Helper to count vehicles per group
+  // UPDATED: Now looks for 'group_vehicles' directly on the group object first
+  const getGroupStats = (group: any) => {
+    // 1. Get Vehicles: Prefer nested array from new fetcher, fallback to filtering global list
+    let vehicles = group.group_vehicles;
+
+    if (!vehicles || !Array.isArray(vehicles)) {
+       vehicles = groupsData.groupVehicles.filter((gv) => {
+        // Fallback filter logic
+        if (!gv.groups) return false;
+        if (Array.isArray(gv.groups)) {
+          return gv.groups.some((g) => g.id === group.id);
+        } else {
+          return (gv.groups as any).id === group.id;
+        }
+      });
+    }
+
+    // 2. Count Types
+    const counts: Record<string, number> = {};
+    vehicles.forEach((v: any) => {
+      const key = v.old_vehicle_name || 'Veh';
+      const qty = Number(v.quantity || 0);
+      counts[key] = (counts[key] || 0) + qty;
+    });
+
+    const vehSummary = Object.entries(counts)
+      .map(([k, v]) => `${v}-${k}`)
+      .join(', ');
+
+    // 3. Resolve Names (Fetcher now returns simple strings like "Maverick")
+    const lead = group.lead || '?';
+    const sweep = group.sweep || '?';
+
+    const timing = groupsData.timings.find(t => t.group_id === group.id);
+
+    return { vehSummary, lead, sweep, timing };
+  };
+
+  // --- 5. RENDER ---
   return (
-    // SEMANTIC: bg-card, border-border.
     <Card key={hr} className="border border-border border-l-4 border-l-yellow-500 bg-card overflow-hidden shadow-sm mb-6 rounded-lg w-full max-w-full">
       
       {/* HEADER SECTION */}
       <div className="flex flex-col border-b border-border bg-muted/30">
          
+         {/* TOP ROW: Time & Main Stats */}
          <div className="flex items-center justify-between px-4 py-3 w-full">
-            
-            {/* Left Side: Time and Totals */}
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 max-w-full">
                 <span className="text-2xl font-black text-foreground tracking-tight shrink-0">
                   {displayTime}
@@ -131,7 +176,6 @@ const HourCard = ({
                 </div>
             </div>
 
-            {/* Right Side: Button */}
             <Button 
               size="icon" 
               className="ml-2 h-8 w-8 shrink-0 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-sm border border-green-600/50"
@@ -144,7 +188,50 @@ const HourCard = ({
             </Button>
          </div>
          
-         {/* Bottom Row: Compact Driver Load List */}
+         {/* MIDDLE ROW: Groups Summary & Launch Timers */}
+         {currentGroups.length > 0 && (
+           <div className="px-4 pb-2 flex flex-wrap gap-2 w-full">
+             {currentGroups.map((group) => {
+               const { vehSummary, lead, sweep, timing } = getGroupStats(group);
+               return (
+                 <div 
+                   key={group.id} 
+                   className="flex items-center gap-2 text-xs bg-background dark:bg-slate-900/50 px-2 py-1 rounded border border-border shadow-sm group"
+                 >
+                   <span className="font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                     GR:{group.group_name}
+                   </span>
+                   
+                   {/* UPDATED: Vehicle Summary Display */}
+                   {vehSummary && (
+                     <span className="font-mono font-semibold text-blue-700 dark:text-blue-300 hidden sm:inline border-r border-border pr-2 mr-0.5">
+                       {vehSummary}
+                     </span>
+                   )}
+                   
+                   <div className="flex items-center gap-1 font-bold text-orange-700 dark:text-orange-400 uppercase mr-1">
+                      <Users className="w-3 h-3" />
+                      <span>{lead}/{sweep}</span>
+                   </div>
+
+                   <LaunchGroup 
+                     groupId={group.id} 
+                     launchedAt={timing?.launched_at} 
+                     landedAt={timing?.landed_at} 
+                     groupName={group.group_name}
+                   />
+
+                   <div className="pl-1 border-l border-gray-200 dark:border-gray-700 ml-1">
+                      <DeleteGroupButton groupId={group.id} />
+                   </div>
+
+                 </div>
+               );
+             })}
+           </div>
+         )}
+
+         {/* BOTTOM ROW: Driver Workload Chips */}
          {driverSummaryStrings.length > 0 && (
            <div className="px-4 pb-3 flex flex-wrap gap-2 w-full">
              {driverSummaryStrings.map((str, idx) => (
@@ -156,45 +243,6 @@ const HourCard = ({
          )}
       </div>
       
-      {/* GROUPS SECTION */}
-      <div className="bg-muted/20 border-b border-border px-4 py-2">
-        
-        <div className="flex items-center justify-between mb-2">
-             <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-               Active Groups
-             </span>
-             
-             <GroupSheet
-                trigger={
-                  <span className="text-[10px] bg-background hover:bg-muted text-muted-foreground hover:text-foreground px-2 py-0.5 rounded border border-border cursor-pointer transition-colors shadow-sm">
-                    + Add Group
-                  </span>
-                }
-                hr={groupHr}
-                CreateGroupWizard={
-                  <CreateGroupWizard
-                    hour={groupHr}
-                    group_date={date}
-                    full_name={full_name}
-                  />
-                }
-              /> 
-        </div>
-
-        <div className="flex flex-col gap-1 w-full">
-          {/* UPDATED: Pass lifted data props to MainGroups */}
-          <MainGroups
-            date={date}
-            groupHr={groupHr}
-            reservationsDataInLocation={Object.values(data[hr])}
-            groups={groupsData.groups}
-            groupVehicles={groupsData.groupVehicles}
-            guides={groupsData.guides}
-            timings={groupsData.timings}
-          />
-        </div>
-      </div>
-
       {/* RESERVATIONS LIST */}
       <div className="p-2 flex flex-col gap-3 bg-muted/10">
         {Object.keys(data[hr]).map((locationKey) => {
@@ -210,6 +258,8 @@ const HourCard = ({
               hourlyUtilization={hourlyUtilization}
               hourContext={groupHr}
               drivers={drivers} 
+              groupsData={groupsData}
+              todaysShifts={todaysShifts}
             /> 
           );
         })}
