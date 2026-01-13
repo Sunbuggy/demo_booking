@@ -30,14 +30,13 @@ export default function NavigationButtons() {
   // === 2. STATE ===
   const [canGoBack, setCanGoBack] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [showPulse, setShowPulse] = useState(true); // New state for pulse control
+  const [showPulse, setShowPulse] = useState(true); 
   const menuRef = useRef<HTMLDivElement>(null);
 
   // === 3. LOGIC ===
   useEffect(() => {
     setCanGoBack(window.history.length > 1);
     
-    // Timer: Stop the pulse animation after 3 seconds
     const timer = setTimeout(() => {
       setShowPulse(false);
     }, 3000);
@@ -45,7 +44,6 @@ export default function NavigationButtons() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -87,7 +85,10 @@ export default function NavigationButtons() {
   const subButtonClass = `
     group flex items-center justify-end gap-3 w-full
     transition-all duration-200 ease-out
-    ${isOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-75 pointer-events-none'}
+    ${isOpen 
+      ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' // [FIX] Enable clicks when open
+      : 'opacity-0 translate-y-4 scale-75 pointer-events-none'    // [FIX] Disable clicks when closed
+    }
   `;
 
   const iconBaseClass = `
@@ -107,7 +108,9 @@ export default function NavigationButtons() {
   return (
     <div 
       ref={menuRef}
-      className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-4 pb-[env(safe-area-inset-bottom)]"
+      // [FIX] Added 'pointer-events-none' to the container.
+      // This ensures the invisible layout box doesn't block clicks on the page below it.
+      className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-4 pb-[env(safe-area-inset-bottom)] pointer-events-none"
     >
       {/* TOOLS LIST */}
       <div className="flex flex-col items-end gap-3 mb-2">
@@ -167,7 +170,9 @@ export default function NavigationButtons() {
       {/* FAB TRIGGER */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        // [FIX] Added 'pointer-events-auto' to re-enable clicking on this specific button
         className={`
+          pointer-events-auto 
           relative group w-14 h-14 rounded-full shadow-2xl 
           border border-white/20 backdrop-blur-xl
           flex items-center justify-center
@@ -180,7 +185,7 @@ export default function NavigationButtons() {
           {isOpen ? <X className="w-7 h-7" /> : <Plus className="w-7 h-7" />}
         </div>
         
-        {/* PULSE EFFECT: Only renders if 'showPulse' is true AND menu is closed */}
+        {/* PULSE EFFECT */}
         {showPulse && !isOpen && (
           <span className="absolute inset-0 rounded-full bg-primary/30 animate-ping opacity-75" />
         )}

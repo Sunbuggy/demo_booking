@@ -6,6 +6,26 @@ import { Reservation } from '../../../types';
 import BookingCard from './booking-card';
 import { vehiclesList } from '@/utils/old_db/helpers';
 
+interface LocationCardProps {
+  id: string;
+  data: Record<string, Record<string, Reservation[]>>;
+  locationKey: string;
+  display_cost: boolean;
+  activeFleet: any[];
+  reservationStatusMap: any;
+  hourlyUtilization: any;
+  hourContext: string;
+  drivers: any[];
+  // NEW PROPS: Required for the Group Assigner to work in children
+  groupsData?: {
+    groups: any[];
+    groupVehicles: any[];
+    guides: any[];
+    timings: any[];
+  };
+  todaysShifts?: any[];
+}
+
 const LocationCard = ({
   id,
   data,
@@ -15,18 +35,11 @@ const LocationCard = ({
   reservationStatusMap,
   hourlyUtilization,
   hourContext,
-  drivers
-}: {
-  id: string;
-  data: Record<string, Record<string, Reservation[]>>;
-  locationKey: string;
-  display_cost: boolean;
-  activeFleet: any[];
-  reservationStatusMap: any;
-  hourlyUtilization: any;
-  hourContext: string;
-  drivers: any[]; 
-}) => {
+  drivers,
+  groupsData, // Destructure new prop
+  todaysShifts // Destructure new prop
+}: LocationCardProps) => {
+
   const getVehicleCount = (reservation: Reservation): number => {
     return vehiclesList.reduce((acc, key) => {
       return acc + Number(reservation[key as keyof Reservation] || 0);
@@ -102,7 +115,10 @@ const LocationCard = ({
             reservationStatusMap={reservationStatusMap}
             hourlyUtilization={hourlyUtilization}
             hourContext={hourContext}
-            drivers={drivers} 
+            drivers={drivers}
+            // PASS DATA DOWN: This enables the Group Button on the child card
+            groupsData={groupsData}
+            todaysShifts={todaysShifts}
           />
         ))}
       </CardContent>

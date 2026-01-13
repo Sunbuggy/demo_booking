@@ -97,16 +97,18 @@ export default function SplitShuttleAssigner({
                className={cn(
                  "text-xs font-bold px-1.5 py-0.5 rounded border whitespace-nowrap flex items-center gap-1 cursor-pointer transition-colors",
                  isFullyAssigned 
-                   ? "bg-green-950/40 text-green-400 border-green-800 hover:bg-green-900" 
-                   : "bg-yellow-950/40 text-yellow-500 border-yellow-800 hover:bg-yellow-900"
+                   // SEMANTIC: Green chip
+                   ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800 hover:bg-green-200 dark:hover:bg-green-900" 
+                   // SEMANTIC: Yellow chip
+                   : "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-500 dark:border-yellow-800 hover:bg-yellow-200 dark:hover:bg-yellow-900"
                )}
-               title={`Assigned to ${assign.vehicleName}`} // Hover still shows vehicle
+               title={`Assigned to ${assign.vehicleName}`}
              >
                {/* 1. Driver Name */}
                {assign.driverName.split(' ')[0]} 
                
-               {/* 2. Pax Count (Always shown now) */}
-               <span className="opacity-80 font-normal">({assign.paxCount})</span>
+               {/* 2. Pax Count */}
+               <span className="opacity-70 font-normal">({assign.paxCount})</span>
              </span>
           ))}
           
@@ -120,7 +122,7 @@ export default function SplitShuttleAssigner({
 
     // B. Default: Unassigned Icon
     return (
-      <div className="text-slate-500 hover:text-white transition-colors p-1">
+      <div className="text-muted-foreground hover:text-foreground transition-colors p-1">
          <FaShuttleVan />
       </div>
     );
@@ -134,10 +136,11 @@ export default function SplitShuttleAssigner({
         </button>
       </DialogTrigger>
 
-      <DialogContent className="bg-slate-900 border-slate-700 text-white sm:max-w-[400px]">
+      {/* SEMANTIC: Using standard Dialog styles */}
+      <DialogContent className="bg-popover border-border text-popover-foreground sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle className="text-yellow-500">Assign Shuttle</DialogTitle>
-          <div className="text-xs text-slate-400 mt-1">
+          <DialogTitle className="text-yellow-600 dark:text-yellow-500">Assign Shuttle</DialogTitle>
+          <div className="text-xs text-muted-foreground mt-1">
             {groupName} • {pickupLocation}
           </div>
         </DialogHeader>
@@ -145,26 +148,30 @@ export default function SplitShuttleAssigner({
         <div className="space-y-4 py-2">
           
           {/* Status Bar */}
-          <div className="flex justify-between text-sm p-2 bg-slate-800 rounded border border-slate-700">
-            <span>Total: <span className="text-white font-bold">{totalGroupSize}</span></span>
-            <span>Assigned: <span className={isFullyAssigned ? "text-green-400 font-bold" : "text-yellow-400 font-bold"}>{assignedPax}</span></span>
-            <span>Rem: <span className="text-red-400 font-bold">{Math.max(0, totalGroupSize - assignedPax)}</span></span>
+          <div className="flex justify-between text-sm p-2 bg-muted rounded border border-border">
+            <span>Total: <span className="text-foreground font-bold">{totalGroupSize}</span></span>
+            <span>
+              Assigned: <span className={isFullyAssigned ? "text-green-600 dark:text-green-400 font-bold" : "text-yellow-600 dark:text-yellow-400 font-bold"}>{assignedPax}</span>
+            </span>
+            <span>
+              Rem: <span className="text-red-600 dark:text-red-400 font-bold">{Math.max(0, totalGroupSize - assignedPax)}</span>
+            </span>
           </div>
 
           {/* Current Assignments List */}
           {assignments.length > 0 && (
             <div className="space-y-1">
-              <label className="text-xs uppercase text-slate-500 font-bold">Current Shuttles</label>
+              <label className="text-xs uppercase text-muted-foreground font-bold">Current Shuttles</label>
               {assignments.map((assign: any, i: number) => (
-                <div key={i} className="flex justify-between items-center p-2 bg-slate-950 border border-slate-800 rounded">
+                <div key={i} className="flex justify-between items-center p-2 bg-card border border-border rounded shadow-sm">
                   <div className="text-sm">
-                    <span className="text-yellow-500 font-bold">{assign.driverName}</span>
-                    <span className="text-slate-500 text-xs ml-2">({assign.paxCount} pax) • {assign.vehicleName}</span>
+                    <span className="text-yellow-600 dark:text-yellow-500 font-bold">{assign.driverName}</span>
+                    <span className="text-muted-foreground text-xs ml-2">({assign.paxCount} pax) • {assign.vehicleName}</span>
                   </div>
                   <button 
                     onClick={() => handleRemove(assign.manifestId)}
                     disabled={isSubmitting}
-                    className="text-slate-600 hover:text-red-500 transition-colors"
+                    className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 transition-colors"
                   >
                     <FaTrash size={12} />
                   </button>
@@ -175,12 +182,12 @@ export default function SplitShuttleAssigner({
 
           {/* ASSIGNMENT FORM */}
           {!isFullyAssigned && (
-            <div className="space-y-3 pt-2 border-t border-slate-800">
-              <label className="text-xs uppercase text-slate-500 font-bold">New Assignment</label>
+            <div className="space-y-3 pt-2 border-t border-border">
+              <label className="text-xs uppercase text-muted-foreground font-bold">New Assignment</label>
               
               <div className="grid gap-2">
                 <select
-                  className="w-full h-10 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
                   value={selectedDriverId}
                   onChange={(e) => setSelectedDriverId(e.target.value)}
                 >
@@ -201,7 +208,7 @@ export default function SplitShuttleAssigner({
                         key={driver.id} 
                         value={driver.id} 
                         disabled={!isScheduled}
-                        className={!isScheduled ? "text-slate-500 bg-slate-900" : "text-white font-bold bg-slate-800"}
+                        className={!isScheduled ? "text-muted-foreground bg-muted" : "text-foreground font-bold bg-background"}
                       >
                         {label}
                       </option>
@@ -210,19 +217,19 @@ export default function SplitShuttleAssigner({
                 </select>
 
                 <div className="flex items-center gap-2">
-                   <span className="text-sm text-slate-400 whitespace-nowrap">Passengers:</span>
+                   <span className="text-sm text-muted-foreground whitespace-nowrap">Passengers:</span>
                    <input 
                      type="number" 
                      min="1" 
                      max={remainingPax} 
                      value={paxToAssign}
                      onChange={(e) => setPaxToAssign(parseInt(e.target.value))}
-                     className="w-20 h-9 rounded border border-slate-700 bg-slate-950 px-2 text-center text-white"
+                     className="w-20 h-9 rounded border border-input bg-background px-2 text-center text-foreground focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
                    />
                    <Button 
                      onClick={handleAssign} 
                      disabled={isSubmitting || !selectedDriverId} 
-                     className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white"
+                     className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-white dark:text-black dark:bg-yellow-500 dark:hover:bg-yellow-400"
                    >
                      Assign
                    </Button>

@@ -46,24 +46,27 @@ export default async function FunLicensePage() {
   const hasPhoto = !!profile?.photo_url;
   const hasWaiver = !!(signedWaivers && signedWaivers.length > 0);
   
-  // 7. Map Endorsements (Includes URL for the "Red" step)
+  // 7. Map Endorsements
   const endorsements = Object.values(WAIVER_TEMPLATES).map(tpl => ({
     id: tpl.templateId, 
     name: tpl.locationName,
-    // Direct link to the Smartwaiver page for this location
     url: `https://waiver.smartwaiver.com/w/${tpl.templateId}/web/`,
     active: signedWaivers?.some(w => w.template_id === tpl.templateId) || false
   }));
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center pt-8 px-4 pb-20">
+    // FIX 1: Use 'min-h-[100dvh]' for mobile browser bar compatibility
+    // FIX 2: Semantic 'bg-background' instead of 'bg-zinc-950'
+    // FIX 3: Increased bottom padding 'pb-24' to lift content above fixed footers
+    <div className="min-h-[100dvh] bg-background flex flex-col items-center pt-8 px-4 pb-24 relative overflow-x-hidden">
       
       {/* HEADER */}
       <div className="text-center mb-6">
-        <h1 className="text-3xl font-black italic text-[#FFEC00] uppercase tracking-tighter transform -skew-x-12">
+        {/* SEMANTIC: Dark/Light Mode Yellow */}
+        <h1 className="text-3xl font-black italic text-yellow-600 dark:text-[#FFEC00] uppercase tracking-tighter transform -skew-x-12">
           SunBuggy
         </h1>
-        <p className="text-white text-xs font-bold tracking-[0.3em] uppercase opacity-80">
+        <p className="text-muted-foreground text-xs font-bold tracking-[0.3em] uppercase opacity-80">
           Official Fun License
         </p>
       </div>
@@ -72,8 +75,6 @@ export default async function FunLicensePage() {
       <FunLicenseCard 
         user={{
           name: displayName,
-          // CRITICAL FIX: Pass the FULL ID (UUID) so the QR code works. 
-          // We will slice it for display inside the component.
           id: user.id, 
           photoUrl: signedPhotoUrl, 
           level: profile?.user_level || 100
@@ -83,8 +84,9 @@ export default async function FunLicensePage() {
       />
 
       {/* SYNC FOOTER */}
-      <div className="mt-8 w-full max-w-sm flex items-center justify-between border-t border-zinc-800 pt-4">
-         <span className="text-[10px] text-zinc-500 uppercase tracking-widest">
+      {/* FIX 4: 'relative z-10' forces this above any background layers causing the click issue */}
+      <div className="mt-8 w-full max-w-sm flex items-center justify-between border-t border-border pt-4 relative z-10">
+         <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
            Last Synced: Just now
          </span>
          <form action={syncUserWaivers}>
