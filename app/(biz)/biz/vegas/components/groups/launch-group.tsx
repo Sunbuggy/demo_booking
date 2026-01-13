@@ -6,15 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { CalendarClock, PlaneLanding, RotateCcw, Trash2, Clock, CheckCircle2 } from 'lucide-react';
-
-// ✅ FIXED IMPORT: This is the line causing the red screen. 
-// It MUST point to 'app/actions/group-launch-actions', NOT 'utils/old_db/actions'.
-import { 
-  launchGroup, 
-  unLaunchGroup, 
-  updateGroupLaunchTime, 
-  landGroup 
-} from '@/app/actions/group-launch-actions'; 
+import { launchGroup, unLaunchGroup, updateGroupLaunchTime, landGroup } from '@/app/actions/group-launch-actions'; 
 
 interface LaunchGroupProps {
   groupId: string;
@@ -35,19 +27,15 @@ export default function LaunchGroup({
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isOverdue, setIsOverdue] = useState(false);
   const [manualTime, setManualTime] = useState('');
-  
   const { toast } = useToast();
 
-  // --- COUNTDOWN TIMER LOGIC ---
   useEffect(() => {
     if (!launchedAt || landedAt) return;
-
     const calculateTime = () => {
       const start = new Date(launchedAt).getTime();
       const now = new Date().getTime();
       const end = start + (durationMinutes * 60 * 1000);
       const diff = end - now;
-
       if (diff < 0) {
         const overdueMins = Math.abs(Math.floor(diff / 60000));
         setTimeLeft(`+${overdueMins}m`);
@@ -58,23 +46,21 @@ export default function LaunchGroup({
         setIsOverdue(false);
       }
     };
-
     calculateTime();
-    const timer = setInterval(calculateTime, 60000); // Update every min
+    const timer = setInterval(calculateTime, 60000);
     return () => clearInterval(timer);
   }, [launchedAt, landedAt, durationMinutes]);
 
-  // --- ACTIONS ---
   const handleLaunchNow = async () => {
     const res = await launchGroup(groupId);
     if (res?.error) toast({ title: 'Error', description: res.error, variant: 'destructive' });
-    else toast({ title: 'Launched!', description: `${groupName} is go.`, variant: 'success' });
+    else toast({ title: 'Launched!', description: `${groupName} is go.`, variant: 'default' });
   };
 
   const handleLandNow = async () => {
     const res = await landGroup(groupId); 
     if (res?.error) toast({ title: 'Error', description: res.error, variant: 'destructive' });
-    else toast({ title: 'Landed', description: 'Welcome back.', variant: 'success' });
+    else toast({ title: 'Landed', description: 'Welcome back.', variant: 'default' });
   };
 
   const handleUpdateLaunchTime = async () => {
@@ -82,23 +68,16 @@ export default function LaunchGroup({
     const [hours, minutes] = manualTime.split(':');
     const newDate = new Date();
     newDate.setHours(parseInt(hours), parseInt(minutes), 0);
-    
     const res = await updateGroupLaunchTime(groupId, newDate.toISOString());
     if (res?.error) toast({ title: 'Error', description: res.error, variant: 'destructive' });
-    else {
-      toast({ title: 'Updated', description: 'Launch time adjusted.', variant: 'success' });
-      setIsOpen(false);
-    }
+    else { toast({ title: 'Updated', description: 'Launch time adjusted.', variant: 'default' }); setIsOpen(false); }
   };
 
   const handleReset = async () => {
     if (!confirm('Are you sure you want to completely reset the launch status?')) return;
     const res = await unLaunchGroup(groupId);
     if (res?.error) toast({ title: 'Error', description: res.error, variant: 'destructive' });
-    else {
-      toast({ title: 'Reset', description: 'Group status cleared.', variant: 'success' });
-      setIsOpen(false);
-    }
+    else { toast({ title: 'Reset', description: 'Group status cleared.', variant: 'default' }); setIsOpen(false); }
   };
 
   const formatTime = (iso: string) => {
@@ -109,11 +88,11 @@ export default function LaunchGroup({
   if (landedAt && launchedAt) {
     const duration = Math.round((new Date(landedAt).getTime() - new Date(launchedAt).getTime()) / 60000);
     return (
-      <div className="flex items-center gap-2 bg-slate-900/50 border border-slate-700 rounded px-2 py-0.5 opacity-70">
-        <CheckCircle2 className="w-3 h-3 text-green-500" />
+      <div className="flex items-center gap-2 bg-muted/50 border border-border rounded px-2 py-0.5 opacity-70">
+        <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-500" />
         <div className="flex flex-col leading-none">
-          <span className="text-[10px] text-slate-400 font-mono">DONE ({duration}m)</span>
-          <span className="text-[9px] text-slate-600">
+          <span className="text-[10px] text-muted-foreground font-mono uppercase">DONE ({duration}m)</span>
+          <span className="text-[9px] text-muted-foreground">
             {formatTime(launchedAt)} - {formatTime(landedAt)}
           </span>
         </div>
@@ -129,8 +108,8 @@ export default function LaunchGroup({
             <button className={`
               flex items-center gap-2 px-2 py-0.5 rounded border transition-all
               ${isOverdue 
-                ? 'bg-red-950/30 border-red-900 text-red-400 animate-pulse' 
-                : 'bg-green-950/30 border-green-900 text-green-400'}
+                ? 'bg-red-100 border-red-200 text-red-700 dark:bg-red-950/30 dark:border-red-900 dark:text-red-400 animate-pulse' 
+                : 'bg-green-100 border-green-200 text-green-700 dark:bg-green-950/30 dark:border-green-900 dark:text-green-400'}
             `}>
               <div className="flex flex-col items-start leading-none">
                 <span className="text-[10px] font-bold uppercase tracking-wider">
@@ -140,13 +119,13 @@ export default function LaunchGroup({
                    {formatTime(launchedAt)}
                 </span>
               </div>
-              <div className={`text-sm font-bold font-mono ${isOverdue ? 'text-red-500' : 'text-slate-200'}`}>
+              <div className={`text-sm font-bold font-mono ${isOverdue ? 'text-red-600 dark:text-red-500' : 'text-foreground'}`}>
                  {timeLeft}
               </div>
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-64 p-3 bg-slate-950 border-slate-800" align="end">
-            <h4 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">
+          <PopoverContent className="w-64 p-3 bg-popover border-border" align="end">
+            <h4 className="text-xs font-bold text-muted-foreground uppercase mb-3 flex items-center gap-2">
               <CalendarClock className="w-3 h-3" /> Adjust Launch
             </h4>
             <div className="space-y-3">
@@ -158,12 +137,12 @@ export default function LaunchGroup({
                   <Trash2 className="w-3 h-3 mr-1" /> Reset
                 </Button>
               </div>
-              <div className="pt-2 border-t border-slate-800">
-                <label className="text-[10px] text-slate-500 mb-1 block">Manual Start Time</label>
+              <div className="pt-2 border-t border-border">
+                <label className="text-[10px] text-muted-foreground mb-1 block">Manual Start Time</label>
                 <div className="flex gap-2">
                   <Input 
                     type="time" 
-                    className="h-8 text-xs" 
+                    className="h-8 text-xs bg-background" 
                     value={manualTime}
                     onChange={(e) => setManualTime(e.target.value)}
                   />
@@ -178,7 +157,7 @@ export default function LaunchGroup({
         <Button 
           size="sm" 
           onClick={handleLandNow}
-          className="h-[34px] px-3 bg-slate-800 border border-slate-600 hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all text-slate-300 font-bold gap-1"
+          className="h-[34px] px-3 bg-card hover:bg-blue-100 text-foreground border border-border hover:border-blue-500 dark:bg-slate-800 dark:hover:bg-blue-600 dark:hover:text-white transition-all font-bold gap-1"
         >
           <PlaneLanding className="w-3 h-3" /> Land
         </Button>
@@ -190,7 +169,8 @@ export default function LaunchGroup({
     <Button 
       size="sm" 
       onClick={handleLaunchNow}
-      className="h-[28px] bg-slate-800 border border-slate-700 text-slate-400 hover:bg-green-600 hover:text-white hover:border-green-500 transition-all gap-2"
+      variant="outline"
+      className="h-[28px] gap-2 border-border hover:bg-green-100 hover:text-green-800 hover:border-green-300 dark:hover:bg-green-900/30 dark:hover:text-green-400"
     >
        <Clock className="w-3 h-3" /> Launch
     </Button>

@@ -92,29 +92,30 @@ const HourCard = async ({
 
   // --- 4. RENDER ---
   return (
-    <Card key={hr} className="border-2 border-yellow-500 bg-slate-950/20 overflow-hidden shadow-sm mb-4 rounded-lg w-full max-w-full">
+    // SEMANTIC: bg-card, border-border.
+    // The 'border-l-4 border-l-yellow-500' keeps the distinct time-block feel in any theme.
+    <Card key={hr} className="border border-border border-l-4 border-l-yellow-500 bg-card overflow-hidden shadow-sm mb-6 rounded-lg w-full max-w-full">
       
       {/* HEADER SECTION */}
-      <div className="flex flex-col border-b border-slate-800 bg-slate-950">
+      <div className="flex flex-col border-b border-border bg-muted/30">
          
-         <div className="flex items-center justify-between px-3 py-2 w-full">
+         <div className="flex items-center justify-between px-4 py-3 w-full">
             
             {/* Left Side: Time and Totals */}
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 max-w-full">
-                <span className="text-2xl font-bold text-white tracking-tight shrink-0">
+                <span className="text-2xl font-black text-foreground tracking-tight shrink-0">
                   {displayTime}
                 </span>
 
-                {/* [FIX] Added flex-wrap here to prevent vehicle string from forcing width */}
                 <div className="flex flex-wrap items-baseline gap-2 text-sm max-w-full">
-                   <span className="font-bold text-orange-500 whitespace-nowrap">
+                   <span className="font-bold text-orange-700 dark:text-orange-500 whitespace-nowrap">
                      {totalPeople} Ppl
                    </span>
-                   <span className="font-bold text-orange-600 whitespace-nowrap">
+                   <span className="font-bold text-orange-700 dark:text-orange-600 whitespace-nowrap">
                      {totalVehicles} Veh
                    </span>
                    {vehicleString && (
-                     <span className="font-mono text-xs text-slate-500 italic break-words hidden sm:inline">
+                     <span className="font-mono text-xs text-muted-foreground italic break-words hidden sm:inline">
                        ({vehicleString})
                      </span>
                    )}
@@ -124,7 +125,7 @@ const HourCard = async ({
             {/* Right Side: Button */}
             <Button 
               size="icon" 
-              className="ml-2 h-8 w-8 shrink-0 rounded-full bg-green-600 hover:bg-green-700 text-white transition-colors shadow-sm border border-green-500 flex items-center justify-center"
+              className="ml-2 h-8 w-8 shrink-0 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-sm border border-green-600/50"
               title={`Create reservation for ${displayTime}`}
               asChild
             >
@@ -136,9 +137,9 @@ const HourCard = async ({
          
          {/* Bottom Row: Compact Driver Load List */}
          {driverSummaryStrings.length > 0 && (
-           <div className="px-3 pb-2 flex flex-wrap gap-2 w-full">
+           <div className="px-4 pb-3 flex flex-wrap gap-2 w-full">
              {driverSummaryStrings.map((str, idx) => (
-               <span key={idx} className="font-mono text-[10px] font-bold text-yellow-600/90 bg-slate-900/50 px-1 rounded whitespace-nowrap">
+               <span key={idx} className="font-mono text-[10px] font-bold text-yellow-700 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded whitespace-nowrap border border-yellow-200 dark:border-yellow-800">
                  {str}
                </span>
              ))}
@@ -147,16 +148,17 @@ const HourCard = async ({
       </div>
       
       {/* GROUPS SECTION */}
-      <div className="bg-slate-900/40 border-b border-slate-800 px-2 py-1">
+      {/* SEMANTIC: Subtle differentiation for the grouping area */}
+      <div className="bg-muted/20 border-b border-border px-4 py-2">
         
-        <div className="flex items-center justify-between mb-1">
-             <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider pl-1">
+        <div className="flex items-center justify-between mb-2">
+             <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                Active Groups
              </span>
              
              <GroupSheet
                 trigger={
-                  <span className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded border border-slate-600 cursor-pointer transition-colors">
+                  <span className="text-[10px] bg-background hover:bg-muted text-muted-foreground hover:text-foreground px-2 py-0.5 rounded border border-border cursor-pointer transition-colors shadow-sm">
                     + Add Group
                   </span>
                 }
@@ -171,7 +173,7 @@ const HourCard = async ({
               /> 
         </div>
 
-        <div className="flex flex-col gap-1 w-full pl-1">
+        <div className="flex flex-col gap-1 w-full">
           <MainGroups
             date={date}
             groupHr={groupHr}
@@ -181,7 +183,8 @@ const HourCard = async ({
       </div>
 
       {/* RESERVATIONS LIST */}
-      <div className="p-1 flex flex-col gap-2 bg-slate-950/30">
+      {/* SEMANTIC: Background container for the cards */}
+      <div className="p-2 flex flex-col gap-3 bg-muted/10">
         {Object.keys(data[hr]).map((locationKey) => {
           return (
             <LocationCard

@@ -38,7 +38,7 @@ const Landing = ({
   realFleet 
 }: LandingProps) => { 
   
-  if (!data) return <div className="p-8 text-center text-gray-500">No data available</div>;
+  if (!data) return <div className="p-8 text-center text-muted-foreground">No data available</div>;
 
   const calculateTotalRevenue = () => {
     return Object.keys(data).reduce((acc, hr) => {
@@ -60,23 +60,24 @@ const Landing = ({
     <div className="flex flex-col gap-5 w-full max-w-full">
       
       {/* --- DASHBOARD HEADER --- */}
-      <div className="flex flex-col gap-3 p-3 bg-slate-900/50 rounded-md border border-slate-800 w-full max-w-full overflow-hidden">
+      {/* SEMANTIC: Card style header */}
+      <div className="flex flex-col gap-3 p-4 bg-card rounded-md border border-border w-full max-w-full overflow-hidden shadow-sm">
         
         {/* ROW 1: STATS SUMMARY */}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm border-b border-slate-800 pb-3 mb-1 w-full">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm border-b border-border pb-3 mb-1 w-full">
           
           {role && role > 899 && display_cost && (
-            <div className="font-semibold text-green-400 whitespace-nowrap">
+            <div className="font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">
               Total: ${calculateTotalRevenue()}
             </div>
           )}
 
-          <div className="font-medium text-slate-200 whitespace-nowrap">
-            Total People: <span className="text-white font-bold">{calculateTotalPax()}</span>
+          <div className="font-medium text-muted-foreground whitespace-nowrap">
+            Total People: <span className="text-foreground font-bold ml-1">{calculateTotalPax()}</span>
           </div>
 
-          {/* C. Vehicle Breakdown (Can wrap) */}
-          <div className="flex-1 text-slate-300 min-w-[200px] text-xs break-words">
+          {/* C. Vehicle Breakdown */}
+          <div className="flex-1 text-muted-foreground min-w-[200px] text-xs break-words">
             {vehiclesList
               .filter((key) => Object.keys(data).some((hr) => Object.keys(data[hr]).some((loc) => data[hr][loc].some((r) => Number(r[key as keyof typeof r]) > 0))))
               .map((key) => {
@@ -90,7 +91,8 @@ const Landing = ({
         <div className="flex flex-wrap items-center gap-2 text-xs w-full">
            
            <div className="flex items-center gap-2 shrink-0">
-             <div className="bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+             {/* SEMANTIC: Secondary badge style */}
+             <div className="bg-secondary text-secondary-foreground border border-border px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
                 Fleet
              </div>
 
@@ -103,9 +105,9 @@ const Landing = ({
                role={role} 
                trigger={
                  <Button 
-                   variant="ghost" 
+                   variant="outline" 
                    size="icon" 
-                   className="h-6 w-6 rounded-full bg-slate-800 border border-slate-700 hover:bg-yellow-500 hover:text-black text-slate-400 transition-colors"
+                   className="h-6 w-6 rounded-full border border-border hover:bg-yellow-500 hover:text-black text-muted-foreground transition-colors"
                    title="Manage Fleet / Roll Call"
                  >
                    <Plus className="w-4 h-4" />
@@ -121,27 +123,29 @@ const Landing = ({
                 const avatarUser = driverUser || { id: fleet.driverId || 'unknown', full_name: fleet.driverName, email: '', phone: '' };
 
                 return (
-                  <div key={fleet.id} className="flex items-center px-2 py-1 rounded border bg-slate-900 border-slate-700 shadow-sm shrink-0 max-w-full">
+                  // SEMANTIC: Driver Chip using muted background
+                  <div key={fleet.id} className="flex items-center px-2 py-1 rounded border bg-muted/50 border-border shadow-sm shrink-0 max-w-full">
                     <div className="w-5 h-5 relative flex items-center justify-center mr-2">
                        <div className="scale-50 origin-center transform"><UserStatusAvatar user={avatarUser} size="sm" /></div>
                     </div>
                     <div className="flex items-center gap-1.5 overflow-hidden">
-                      <span className="font-bold text-yellow-500 whitespace-nowrap text-xs truncate">{fleet.driverName}</span>
-                      <span className="text-slate-600">-</span>
-                      <span className="text-slate-300 font-mono font-medium uppercase text-xs">{shortId}</span>
+                      <span className="font-bold text-yellow-600 dark:text-yellow-500 whitespace-nowrap text-xs truncate">{fleet.driverName}</span>
+                      <span className="text-muted-foreground">-</span>
+                      <span className="text-foreground font-mono font-medium uppercase text-xs">{shortId}</span>
                     </div>
                   </div>
                 );
              })
            ) : (
-             <div className="flex items-center gap-2 text-xs text-slate-500 italic px-1 ml-2">
-                <FaExclamationTriangle className="text-yellow-900" />
+             <div className="flex items-center gap-2 text-xs text-muted-foreground italic px-1 ml-2">
+                <FaExclamationTriangle className="text-yellow-600 dark:text-yellow-500" />
                 <span>No drivers scheduled. Click + to add.</span>
              </div>
            )}
         </div>
       </div>
 
+      {/* CARDS LOOP */}
       {Object.keys(data).map((key, idx) => {
         return (
           <HourCard

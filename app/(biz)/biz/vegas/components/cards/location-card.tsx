@@ -56,18 +56,21 @@ const LocationCard = ({
   const totalCost = data[id][locationKey].reduce((acc, r) => acc + Number(r.total_cost || 0), 0);
 
   return (
-    <Card key={locationKey} className="LocationCardStyle mb-4 overflow-hidden border border-slate-200 dark:border-slate-800 w-full max-w-full">
-      <CardTitle className="px-4 py-2 border-b border-slate-200 dark:border-gray-800 bg-slate-100 dark:bg-gray-900/40">
+    // SEMANTIC: Card container
+    <Card key={locationKey} className="mb-2 overflow-hidden border border-border bg-card shadow-none w-full max-w-full">
+      
+      {/* Header */}
+      <CardTitle className="px-4 py-2 border-b border-border bg-muted/50">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 w-full">
           {/* 1. Tour Name */}
-          <span className="text-lg font-bold text-slate-800 dark:text-white shrink-0">
+          <span className="text-lg font-bold text-foreground shrink-0">
             {locationKey}
           </span>
 
-          {/* 2. Stats Row (Wraps on mobile) */}
+          {/* 2. Stats Row */}
           <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-orange-700 dark:text-orange-500">
             <span className="whitespace-nowrap">{totalPeople} People</span>
-            <span className="hidden sm:inline text-slate-400">â€¢</span>
+            <span className="hidden sm:inline text-muted-foreground">•</span>
             <span className="whitespace-nowrap">{totalVehicles} Vehicles</span>
             
             {/* 3. Vehicle Breakdown */}
@@ -80,14 +83,15 @@ const LocationCard = ({
 
           {/* 4. Cost */}
           {display_cost && (
-            <div className="ml-auto text-green-600 dark:text-green-400 font-bold text-sm">
+            <div className="ml-auto text-green-600 dark:text-green-500 font-bold text-sm">
               ${totalCost.toFixed(2)}
             </div>
           )}
         </div>
       </CardTitle>
 
-      <CardContent className="flex flex-col gap-1 p-1 bg-white dark:bg-transparent">
+      {/* Body: No background color needed here, let BookingCards define their own */}
+      <CardContent className="flex flex-col gap-0 p-0">
         {data[id][locationKey].map((reservation, index) => (
           <BookingCard
             reservation={reservation}
