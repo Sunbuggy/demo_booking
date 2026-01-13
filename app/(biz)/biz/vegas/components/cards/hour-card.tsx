@@ -13,9 +13,17 @@ import GroupSheet from '../groups/group-sheet';
 import CreateGroupWizard from '../groups/create-group-wizard';
 
 // Types
-import { Reservation } from '../../../types';
+import { Reservation, GroupsType, GroupVehiclesType } from '../../../types';
 
-const HourCard = async ({
+// Define the shape of the lifted data
+interface GroupsData {
+  groups: GroupsType[];
+  groupVehicles: GroupVehiclesType[];
+  guides: { id: string; full_name: string }[];
+  timings: any[];
+}
+
+const HourCard = ({
   hr,
   data,
   display_cost,
@@ -24,7 +32,8 @@ const HourCard = async ({
   activeFleet,
   reservationStatusMap,
   hourlyUtilization,
-  drivers 
+  drivers,
+  groupsData // <--- NEW PROP: Received from Landing
 }: {
   hr: string; 
   data: Record<string, Record<string, Reservation[]>>; 
@@ -35,6 +44,7 @@ const HourCard = async ({
   reservationStatusMap: any; 
   hourlyUtilization: any;    
   drivers: any[]; 
+  groupsData: GroupsData; // <--- Typed
 }) => {
   
   // --- 1. DATA PREPARATION ---
@@ -93,7 +103,6 @@ const HourCard = async ({
   // --- 4. RENDER ---
   return (
     // SEMANTIC: bg-card, border-border.
-    // The 'border-l-4 border-l-yellow-500' keeps the distinct time-block feel in any theme.
     <Card key={hr} className="border border-border border-l-4 border-l-yellow-500 bg-card overflow-hidden shadow-sm mb-6 rounded-lg w-full max-w-full">
       
       {/* HEADER SECTION */}
@@ -148,7 +157,6 @@ const HourCard = async ({
       </div>
       
       {/* GROUPS SECTION */}
-      {/* SEMANTIC: Subtle differentiation for the grouping area */}
       <div className="bg-muted/20 border-b border-border px-4 py-2">
         
         <div className="flex items-center justify-between mb-2">
@@ -174,16 +182,20 @@ const HourCard = async ({
         </div>
 
         <div className="flex flex-col gap-1 w-full">
+          {/* UPDATED: Pass lifted data props to MainGroups */}
           <MainGroups
             date={date}
             groupHr={groupHr}
             reservationsDataInLocation={Object.values(data[hr])}
+            groups={groupsData.groups}
+            groupVehicles={groupsData.groupVehicles}
+            guides={groupsData.guides}
+            timings={groupsData.timings}
           />
         </div>
       </div>
 
       {/* RESERVATIONS LIST */}
-      {/* SEMANTIC: Background container for the cards */}
       <div className="p-2 flex flex-col gap-3 bg-muted/10">
         {Object.keys(data[hr]).map((locationKey) => {
           return (

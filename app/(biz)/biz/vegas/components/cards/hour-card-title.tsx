@@ -16,89 +16,66 @@ const HourCardTitle = ({
   data: Record<string, Record<string, Reservation[]>>;
   display_cost: boolean;
 }) => {
+  
+  // --- CALCULATIONS ---
+  // Extracted logic for readability and safety
+  
+  const totalPeople = Object.keys(data[hr]).reduce((acc, locationKey) => {
+    return acc + data[hr][locationKey].reduce((rAcc, res) => rAcc + countPeople(res), 0);
+  }, 0);
+
+  const totalVehicles = Object.keys(data[hr]).reduce((acc, locationKey) => {
+    return acc + data[hr][locationKey].reduce((rAcc, res) => rAcc + getVehicleCount(res), 0);
+  }, 0);
+
+  const totalCost = Object.keys(data[hr]).reduce((acc, locationKey) => {
+    return acc + data[hr][locationKey].reduce((rAcc, res) => rAcc + Number(res.total_cost), 0);
+  }, 0);
+
+  // Generate the comma-separated string of vehicle counts (e.g. "2-ATV, 1-Buggy")
+  const vehicleSummary = vehiclesList
+    .filter((key) => {
+      return Object.keys(data[hr]).some((locationKey) => {
+        return data[hr][locationKey].some((res) => Number(res[key as keyof typeof res]) > 0);
+      });
+    })
+    .map((key) => {
+      const count = Object.keys(data[hr]).reduce((acc, locationKey) => {
+        return acc + data[hr][locationKey].reduce((rAcc, res) => rAcc + Number(res[key as keyof typeof res]), 0);
+      }, 0);
+      return `${count}-${key}`;
+    })
+    .join(', ');
+
+  // --- RENDER ---
   return (
-    <CardTitle className="m-2 flex gap-3 items-start max-w-full">
-      {hr}{' '}
-      <span className="text-base flex gap-3">
-      <span className="text-orange-500">
+    <CardTitle className="m-2 flex flex-wrap gap-3 items-baseline max-w-full">
+      {/* Time Label (e.g. 09:00) */}
+      <span className="text-xl font-bold text-foreground">{hr}</span>
+      
+      <span className="text-base flex flex-wrap gap-3">
+        {/* People Count */}
+        <span className="font-bold text-orange-700 dark:text-orange-500">
+          {totalPeople}-People
+        </span>
         
-          {
-            // map through the data and get the total count of people by  adding up every location found and return the sum
-            Object.keys(data[hr]).reduce((acc, locationKey) => {
-              return (
-                acc +
-                data[hr][locationKey].reduce((acc, reservation) => {
-                  return acc + countPeople(reservation);
-                }, 0)
-              );
-            }, 0)
-          }-People
+        {/* Vehicle Count */}
+        <span className="font-bold text-orange-700 dark:text-orange-500">
+          {totalVehicles}-Vehicles
         </span>
-        <span className="text-orange-500">
-          {
-            // map through the data and get the total count of vehicles by  adding up every location found and return the sum
-            Object.keys(data[hr]).reduce((acc, locationKey) => {
-              return (
-                acc +
-                data[hr][locationKey].reduce((acc, reservation) => {
-                  return acc + getVehicleCount(reservation);
-                }, 0)
-              );
-            }, 0)
-          }-Vehicles
-        </span>
-        {' '}
-        <span className="text-base font-light italic text-orange-500">
-          ({' '}
-          {
-            // Group and count vehicles for the given data. if same vehicle add count and display vehicle with count ignore if count is 0
-            vehiclesList
-              .filter((key) => {
-                return Object.keys(data[hr]).some((locationKey) => {
-                  return data[hr][locationKey].some(
-                    (reservation) =>
-                      Number(reservation[key as keyof typeof reservation]) > 0
-                  );
-                });
-              })
-              .map((key) => {
-                const count = Object.keys(data[hr]).reduce(
-                  (acc, locationKey) => {
-                    return (
-                      acc +
-                      data[hr][locationKey].reduce((acc, reservation) => {
-                        return (
-                          acc +
-                          Number(reservation[key as keyof typeof reservation])
-                        );
-                      }, 0)
-                    );
-                  },
-                  0
-                );
-                return ` ${count}-${key}${count > 1 ? ' ' : ' '}`;
-              })
-             .join(', ')
-          }
-          )
-        </span>
+        
+        {/* Vehicle Breakdown List (e.g. 4-SB1, 2-ATV) */}
+        {vehicleSummary && (
+          <span className="text-base font-medium italic text-muted-foreground">
+            ({vehicleSummary})
+          </span>
+        )}
       </span>
+
+      {/* Cost Display (Controlled by 'Show $$$' Toggle) */}
       {display_cost && (
-        <div className="font-light text-sm text-green-600">
-          $
-          {
-            //  Sum of all reservation.total_cost for the given data
-            Object.keys(data[hr])
-              .reduce((acc, locationKey) => {
-                return (
-                  acc +
-                  data[hr][locationKey].reduce((acc, reservation) => {
-                    return acc + Number(reservation.total_cost);
-                  }, 0)
-                );
-              }, 0)
-              .toFixed(2)
-          }
+        <div className="font-bold text-sm text-green-600 dark:text-green-400 ml-auto">
+          ${totalCost.toFixed(2)}
         </div>
       )}
     </CardTitle>

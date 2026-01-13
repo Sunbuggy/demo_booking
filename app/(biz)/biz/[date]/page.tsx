@@ -17,11 +17,23 @@ import { getDailyOperations } from '@/app/actions/shuttle-operations';
 import { getVegasShuttleDrivers } from '@/app/actions/user-actions'; 
 import RealtimeGroupsListener from '../vegas/components/realtime-groups-listener';
 
+// --- GROUPS DATA FETCHER ---
+import { fetchDailyGroupsData } from '../vegas/lib/fetch-groups-data';
+
 // --- WEATHER INTEGRATION ---
 import { getLocationWeather } from '@/app/actions/weather';
 import DashboardWeatherPill from '../vegas/components/dashboard-weather-pill';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Helper: Deep Sanitize
+ * Removes database prototypes (like RowDataPacket) so data can be passed
+ * to Client Components without the "Only plain objects" error.
+ */
+function deepSanitize<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
 
 /**
  * Server Action: Fetch legacy reservations from MySQL.
@@ -44,9 +56,9 @@ async function fetchReservationsForDate(date: string): Promise<Reservation[]> {
  * Handles the visual rendering of the dashboard.
  */
 function BizContent({
-  date, dcos, role, full_name, reservations, yesterday, tomorrow,
+  date, display_cost, role, full_name, reservations, yesterday, tomorrow,
   activeFleet, reservationStatusMap, hourlyUtilization, drivers,
-  todaysShifts, realFleet, weatherData
+  todaysShifts, realFleet, weatherData, groupsData 
 }: any) {
   const hasReservations = reservations.length > 0;
   let sortedData = hasReservations ? getTimeSortedData(reservations) : null;
@@ -60,33 +72,38 @@ function BizContent({
   } 
 
   return (
-    <div className="min-h-screen w-full flex flex-col gap-5 relative bg-slate-50/50 dark:bg-slate-950">
+    // SEMANTIC: Updated background to use theme variable
+    <div className="min-h-screen w-full flex flex-col gap-5 relative bg-background">
       
       {/* --- GLOBAL REALTIME LISTENER --- */}
       <RealtimeGroupsListener />
 
-      {/* --- FLOATING DATE NAVIGATION & WEATHER (COMPACT VERSION) --- */}
+      {/* --- FLOATING DATE NAVIGATION & WEATHER --- */}
       {role >= 300 && (
         <div className="sticky top-16 z-50 mx-auto w-full max-w-[98vw] flex justify-center pointer-events-none">
-          {/* Pointer events auto allows clicking buttons but lets clicks pass through the empty sides */}
-          <div className="pointer-events-auto flex flex-row items-center justify-center gap-1 sm:gap-4 bg-slate-950/90 backdrop-blur-md border border-slate-700/50 rounded-xl px-2 py-1.5 shadow-xl mt-2">
+          {/* THEME FIX APPLIED HERE:
+             - bg-slate-950/90 -> bg-popover/95 (Adapts to light/dark)
+             - border-slate-700/50 -> border-border
+             - text colors updated to semantic variables
+          */}
+          <div className="pointer-events-auto flex flex-row items-center justify-center gap-1 sm:gap-4 bg-popover/95 backdrop-blur-md border border-border rounded-xl px-2 py-1.5 shadow-xl mt-2 text-popover-foreground">
             
             {/* 1. Date Navigation Group */}
             <div className="flex items-center gap-1 sm:gap-2">
                 {/* Prev Day */}
                 <Link 
-                  href={`/biz/${yesterday}${dcos ? '?dcos=true' : ''}`}
-                  className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-800 rounded-full"
+                  href={`/biz/${yesterday}`}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 hover:bg-accent rounded-full"
                 >
                   <RiArrowLeftWideFill className="text-xl sm:text-2xl" />
                 </Link>
 
-                {/* Calendar Button (Compact Text on Mobile) */}
+                {/* Calendar Button */}
                 <Link href="/biz/calendar">
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="font-mono font-bold h-7 px-2 bg-transparent text-slate-200 hover:bg-slate-800 hover:text-white text-xs sm:text-sm"
+                    className="font-mono font-bold h-7 px-2 bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground text-xs sm:text-sm"
                   >
                     {/* Mobile: "Jan 10" | Desktop: "Sat, Jan 10, 2026" */}
                     <span className="sm:hidden">{dayjs(date).format('MMM D')}</span>
@@ -96,8 +113,8 @@ function BizContent({
 
                 {/* Next Day */}
                 <Link 
-                  href={`/biz/${tomorrow}${dcos ? '?dcos=true' : ''}`}
-                  className="text-slate-400 hover:text-white transition-colors p-1 hover:bg-slate-800 rounded-full"
+                  href={`/biz/${tomorrow}`}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 hover:bg-accent rounded-full"
                 >
                   <RiArrowRightWideFill className="text-xl sm:text-2xl" />
                 </Link>
@@ -107,7 +124,7 @@ function BizContent({
             {weatherData && (
               <>
                 {/* Vertical Divider */}
-                <div className="h-5 w-px bg-slate-700/50 mx-0.5" />
+                <div className="h-5 w-px bg-border mx-0.5" />
                 
                 {/* Weather Pill */}
                 <div className="flex-shrink-0 scale-90 sm:scale-100 origin-left">
@@ -123,26 +140,29 @@ function BizContent({
       {/* --- MAIN CONTENT AREA --- */}
       <div className="w-full">
         {hasReservations && sortedData ? (
+          // [CRITICAL FIX] Sanitize data before passing to Client Component
           <Landing
-            data={sortedData}
-            display_cost={dcos}
+            data={deepSanitize(sortedData)}
+            display_cost={display_cost}
             role={role}
             date={date}
             full_name={full_name}
-            activeFleet={activeFleet}
-            reservationStatusMap={reservationStatusMap}
-            hourlyUtilization={hourlyUtilization}
-            drivers={drivers}
-            todaysShifts={todaysShifts} 
-            realFleet={realFleet}
+            activeFleet={deepSanitize(activeFleet)}
+            reservationStatusMap={deepSanitize(reservationStatusMap)}
+            hourlyUtilization={deepSanitize(hourlyUtilization)}
+            drivers={deepSanitize(drivers)}
+            todaysShifts={deepSanitize(todaysShifts)} 
+            realFleet={deepSanitize(realFleet)}
+            // NEW: Pass sanitized groups data
+            groupsData={deepSanitize(groupsData)}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center px-6 mt-20">
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
-              <h2 className="text-2xl font-semibold mb-2 text-slate-700 dark:text-slate-300">
+            <div className="bg-card p-8 rounded-2xl shadow-sm border border-border">
+              <h2 className="text-2xl font-semibold mb-2 text-foreground">
                 No Reservations Found
               </h2>
-              <p className="text-slate-500">
+              <p className="text-muted-foreground">
                 There are no bookings scheduled for {dayjs(date).format('MMMM D, YYYY')}.
               </p>
             </div>
@@ -160,8 +180,7 @@ function BizContent({
 export default async function BizPage({ params, searchParams }: any) {
   const { date } = await params;
   const search = await searchParams;
-  const dcos = search.dcos === 'true';
-
+  
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) redirect('/biz/calendar');
 
   const supabase = await createClient(); 
@@ -173,15 +192,37 @@ export default async function BizPage({ params, searchParams }: any) {
   
   if (role < 300) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-200 gap-4">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground gap-4">
         <h1 className="text-3xl font-bold text-red-500">Access Denied</h1>
-        <p className="text-slate-400">You need Employee Access (Level 300+) to view the Dashboard.</p>
+        <p className="text-muted-foreground">You need Employee Access (Level 300+) to view the Dashboard.</p>
         <Link href="/">
           <Button variant="outline">Return Home</Button>
         </Link>
       </div>
     );
   }
+
+  // --- PREFERENCE FETCHING ---
+  // We check the DB for the 'show_financials' preference to set the initial toggle state.
+  let showFinancials = role >= 500; 
+  
+  try {
+    const { data: userPrefs } = await supabase
+      .from('users')
+      .select('preferences')
+      .eq('id', user[0].id)
+      .single();
+      
+    if (userPrefs?.preferences && typeof userPrefs.preferences.show_financials !== 'undefined') {
+      showFinancials = userPrefs.preferences.show_financials;
+    }
+  } catch (err) {
+    console.warn('Could not fetch user preferences, using defaults.');
+  }
+
+  // Allow URL override (?dcos=true)
+  if (search.dcos === 'true') showFinancials = true;
+  if (role < 500) showFinancials = false; 
 
   const yesterday = dayjs(date).subtract(1, 'day').format('YYYY-MM-DD');
   const tomorrow = dayjs(date).add(1, 'day').format('YYYY-MM-DD');
@@ -197,12 +238,14 @@ export default async function BizPage({ params, searchParams }: any) {
 
     const reservations = await reservationsPromise;
 
-    const [operationsData, drivers, shiftsResult, shuttles, weatherResult] = await Promise.all([
+    // --- PARALLEL DATA FETCHING ---
+    const [operationsData, drivers, shiftsResult, shuttles, weatherResult, groupsData] = await Promise.all([
       getDailyOperations(date, reservations),
       getVegasShuttleDrivers(),
       shiftsQuery,
       fetchShuttlesOnly(supabase),
-      getLocationWeather('Las Vegas', date, 1) 
+      getLocationWeather('Las Vegas', date, 1),
+      fetchDailyGroupsData(date) 
     ]);
 
     const todaysShifts = shiftsResult.data || [];
@@ -212,7 +255,7 @@ export default async function BizPage({ params, searchParams }: any) {
       <Suspense fallback={<LoadingModal />}>
         <BizContent
           date={date}
-          dcos={dcos}
+          display_cost={showFinancials} 
           role={role}
           full_name={user[0].full_name}
           reservations={reservations}
@@ -225,6 +268,7 @@ export default async function BizPage({ params, searchParams }: any) {
           todaysShifts={todaysShifts}
           realFleet={shuttles}
           weatherData={dailyWeather}
+          groupsData={groupsData}
         />
       </Suspense>
     );

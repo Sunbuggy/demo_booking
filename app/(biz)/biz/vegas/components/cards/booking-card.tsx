@@ -44,9 +44,7 @@ const BookingCard: React.FC<BookingCardProps> = ({
 
   return (
     <div className={cn(
-      // SEMANTIC: Card background, subtle border, hover effect from theme
       "relative flex flex-col gap-2 p-3 border-b border-border bg-card hover:bg-accent/50 transition-colors min-h-[90px] w-full max-w-full overflow-hidden first:rounded-t-md last:rounded-b-md",
-      // SEMANTIC: Special event uses semantically aware orange tint
       isSpecial && "bg-orange-50 dark:bg-orange-950/20 border-l-2 border-l-orange-500 pl-2.5" 
     )}>
       
@@ -59,7 +57,6 @@ const BookingCard: React.FC<BookingCardProps> = ({
           {reservation.res_id}
         </Link>
         
-        {/* SEMANTIC: Primary text color */}
         <span className="text-sm font-bold text-foreground truncate min-w-0 flex-1">
           {reservation.full_name || '—'}
         </span>
@@ -75,7 +72,6 @@ const BookingCard: React.FC<BookingCardProps> = ({
       <div className="flex flex-wrap items-center gap-2 w-full min-h-[24px]">
         {/* Location Badge */}
         {reservation.hotel && (
-           // SEMANTIC: Muted background for secondary info
            <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-muted px-2 py-1 rounded border border-border max-w-full sm:max-w-[200px]">
               <span className="truncate">{reservation.hotel}</span>
            </div>
@@ -90,7 +86,8 @@ const BookingCard: React.FC<BookingCardProps> = ({
             currentStatus={currentStatus}
             activeFleet={activeFleet || []}
             hourlyUtilization={hourlyUtilization || {}}
-            dateContext={reservation.sch_date.toISOString()} 
+            // [FIX] Wrap in new Date() to handle strings safely
+            dateContext={new Date(reservation.sch_date).toISOString()} 
             pickupLocation={pickupLoc || 'Unknown'}
             groupName={reservation.full_name || 'Guest'}
             drivers={drivers || []}
@@ -103,7 +100,6 @@ const BookingCard: React.FC<BookingCardProps> = ({
         
         {/* LEFT: Fleet Info */}
         <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-           {/* COLOR: Orange for vehicles (Dark/Light compatible) */}
            <span className="font-mono text-xs font-bold text-orange-600 dark:text-orange-400 truncate w-full">
              <span className="text-sm text-orange-700 dark:text-orange-500 mr-1">{reservation.ppl_count}P</span>
              {vehicleString && <span className="opacity-80 font-normal">({vehicleString})</span>}
@@ -113,7 +109,6 @@ const BookingCard: React.FC<BookingCardProps> = ({
         {/* RIGHT: Arrow & Cost */}
         <div className="flex items-center gap-3 shrink-0">
            {display_cost && (
-             // COLOR: Green for Money
              <span className="text-[10px] font-mono text-green-600 dark:text-green-500 font-bold">
                ${Number(reservation.total_cost || 0).toFixed(0)}
              </span>
