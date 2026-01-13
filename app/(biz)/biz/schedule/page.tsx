@@ -3,16 +3,10 @@
 // ============================================================================
 // SUNBUGGY ROSTER PAGE (v14.5 - CONFLICT DETECTOR & RESOLVER)
 // ============================================================================
-// CHANGELOG v14.5:
-// 1. FEATURE: Added 'Conflict Detector' to the grid. 
-//    - Cells with >1 shift on the same day now show a pulsing 'xN' badge.
-// 2. FEATURE: Added 'Conflict Resolution Panel' to the Shift Modal.
-//    - Allows deleting specific duplicate shifts ("Ghost Data") individually.
-// 3. REFACTOR: Updated grid logic from .find() (single) to .filter() (multi) to detect these issues.
-// 4. PRESERVED: Smart Copy (v14.4) and Strict Hours Calc (v14.3).
 
 import { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; 
 import { createClient } from '@/utils/supabase/client';
 import { fetchFullRosterData } from '@/app/actions/fetch-roster';
 import { getLocationWeather, DailyWeather } from '@/app/actions/weather';
@@ -189,6 +183,7 @@ const TaskBadge = ({ taskKey }: { taskKey: string }) => {
 // ============================================================================
 export default function RosterPage() {
   const supabase = createClient();
+  const router = useRouter(); 
   const [isMounted, setIsMounted] = useState(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
 
@@ -316,11 +311,21 @@ export default function RosterPage() {
   const fetchData = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setCurrentUserId(user.id);
-      const { data: userData } = await supabase.from('users').select('user_level').eq('id', user.id).single();
-      if (userData) setCurrentUserLevel(userData.user_level || 0);
+
+    // ---------------------------------------------------------
+    // THE SAFE FIX: REDIRECT TO /signin IF NO SESSION
+    // ---------------------------------------------------------
+    if (!user) {
+      console.warn("No active session. Redirecting to signin...");
+      window.location.href = '/signin'; // <--- POINTING TO CORRECT PATH
+      return; 
     }
+
+    // Existing Logic continues...
+    setCurrentUserId(user.id);
+    const { data: userData } = await supabase.from('users').select('user_level').eq('id', user.id).single();
+    if (userData) setCurrentUserLevel(userData.user_level || 0);
+    
 
     const { data: hrData } = await supabase
       .from('locations')
@@ -536,8 +541,8 @@ export default function RosterPage() {
        
        // If only 1 remains, switch to normal edit mode
        if (updatedConflicts.length === 1) {
-          loadShiftIntoForm(updatedConflicts[0]);
-          setConflictShifts([]); // Exit conflict mode
+         loadShiftIntoForm(updatedConflicts[0]);
+         setConflictShifts([]); // Exit conflict mode
        }
     }
   };
@@ -800,7 +805,7 @@ export default function RosterPage() {
                                               {/* CONFLICT INDICATOR BADGE */}
                                               {hasConflict && (
                                                  <div className="absolute -top-2 -right-1 z-50 bg-purple-600 text-white border-2 border-white dark:border-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[9px] font-bold shadow-md animate-pulse print:hidden" title="Multiple shifts found! Click to resolve.">
-                                                   x{dailyShifts.length}
+                                                    x{dailyShifts.length}
                                                  </div>
                                               )}
                                               
@@ -930,32 +935,32 @@ export default function RosterPage() {
                {/* --- CONFLICT RESOLUTION PANEL (v14.5) --- */}
                {conflictShifts.length > 1 && (
                   <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-3 animate-in fade-in slide-in-from-top-2">
-                     <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-bold text-xs mb-2">
-                        <AlertTriangle className="w-4 h-4" /> 
-                        <span>Resolve Conflicts ({conflictShifts.length})</span>
-                     </div>
-                     <p className="text-[10px] text-muted-foreground mb-2">Multiple shifts exist for this day. This causes incorrect hour totals. Delete the duplicates below:</p>
-                     <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                        {conflictShifts.map(s => (
-                           <div key={s.id} className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 text-xs shadow-sm">
-                              <div>
-                                 <span className="font-bold block">{format(parseISO(s.start_time), 'h:mm a')} - {format(parseISO(s.end_time), 'h:mm a')}</span>
-                                 <span className="text-[10px] text-muted-foreground">{s.role} {s.task ? `(${s.task})` : ''}</span>
-                              </div>
-                              <Button 
-                                 size="sm" 
-                                 variant="destructive" 
-                                 className="h-6 w-6 p-0" 
-                                 onClick={() => handleResolveConflict(s.id)}
-                                 title="Delete this specific shift"
-                              >
-                                 <Trash2 className="w-3 h-3" />
-                              </Button>
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-               )}
+                      <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-bold text-xs mb-2">
+                         <AlertTriangle className="w-4 h-4" /> 
+                         <span>Resolve Conflicts ({conflictShifts.length})</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mb-2">Multiple shifts exist for this day. This causes incorrect hour totals. Delete the duplicates below:</p>
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                         {conflictShifts.map(s => (
+                            <div key={s.id} className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 text-xs shadow-sm">
+                               <div>
+                                  <span className="font-bold block">{format(parseISO(s.start_time), 'h:mm a')} - {format(parseISO(s.end_time), 'h:mm a')}</span>
+                                  <span className="text-[10px] text-muted-foreground">{s.role} {s.task ? `(${s.task})` : ''}</span>
+                               </div>
+                               <Button 
+                                  size="sm" 
+                                  variant="destructive" 
+                                  className="h-6 w-6 p-0" 
+                                  onClick={() => handleResolveConflict(s.id)}
+                                  title="Delete this specific shift"
+                               >
+                                  <Trash2 className="w-3 h-3" />
+                               </Button>
+                            </div>
+                         ))}
+                      </div>
+                   </div>
+                )}
 
               <div className="text-sm font-semibold">{selectedEmpName} <span className="font-normal text-muted-foreground">- {selectedDate ? format(parseISO(selectedDate), 'MMM do') : ''}</span></div>
               <div className="grid grid-cols-2 gap-4"><div><label className="text-xs">Start</label><Input type="time" disabled={!isManager} value={formStart} onChange={(e) => { const newStart = e.target.value; setFormStart(newStart); if (newStart && selectedDate) { const startDateTime = parseISO(`${selectedDate}T${newStart}`); const endDateTime = addHours(startDateTime, 8); setFormEnd(format(endDateTime, 'HH:mm')); } }} /></div><div><label className="text-xs">End</label><Input type="time" disabled={!isManager} value={formEnd} onChange={e => setFormEnd(e.target.value)} /></div></div><div><label className="text-xs">Role</label><Select value={formRole} onValueChange={setFormRole} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['Guide', 'Desk', 'Driver', 'Mechanic', 'Manager'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div><div><label className="text-xs">Special Task</label><Select value={formTask} onValueChange={setFormTask} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">None</SelectItem>{Object.entries(TASKS).map(([key, task]) => (<SelectItem key={key} value={key}><div className="flex items-center gap-2"><div className={`w-3 h-3 ${task.color} rounded-sm`}></div>{task.label}</div></SelectItem>))}</SelectContent></Select></div><div><label className="text-xs">Location</label><Select value={formLocation} onValueChange={setFormLocation} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hrConfig.map(l => <SelectItem key={l.name} value={l.name}>{l.name}</SelectItem>)}</SelectContent></Select></div></div>

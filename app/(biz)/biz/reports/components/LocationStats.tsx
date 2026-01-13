@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Assuming you have a utils file, otherwise remove cn
+// import { cn } from '@/lib/utils'; 
 
 const NMI_ENDPOINT = 'https://bookings.sunbuggy.com/functions/v1/nmi-charges';
 
@@ -18,7 +18,6 @@ const LocationStat: React.FC<LocationStatProps> = ({ location, label }) => {
   const [error, setError] = useState<string | null>(null);
 
   // --- HELPER: Strict Total Calculation ---
-  // Identical logic to ReportsBoard to ensure numbers match exactly
   const calculateSafeTotal = (transactions: any[]) => {
     if (!Array.isArray(transactions)) return 0;
 
@@ -44,18 +43,14 @@ const LocationStat: React.FC<LocationStatProps> = ({ location, label }) => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     try {
-      // We must request the same data range to get the granular list
       const url = `${NMI_ENDPOINT}?location=${location}&start_date=${todayStr}&end_date=${todayStr}`;
-      
       const res = await fetch(url);
       if (!res.ok) throw new Error('Gateway Error');
       
       const json = await res.json();
       if (json.error) throw new Error(json.error);
 
-      // --- CRITICAL FIX ---
       // Do NOT use json.unsettledTotal (it includes failed txns).
-      // Calculate it manually from the list.
       const safeTotal = calculateSafeTotal(json.unsettled || []);
       
       setTotal(safeTotal);
@@ -74,16 +69,17 @@ const LocationStat: React.FC<LocationStatProps> = ({ location, label }) => {
   }, [fetchData]);
 
   return (
-    <div className="relative group min-w-[200px] p-4 rounded-lg border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900 transition-all">
+    // THEME FIX: Use semantic 'bg-card', 'border-border', 'text-card-foreground'
+    <div className="relative group min-w-[200px] p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-all shadow-sm">
       {/* Header: Label + Refresh Icon */}
       <div className="flex justify-between items-start mb-2">
-        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
           {label}
         </span>
         <button 
           onClick={fetchData} 
           disabled={loading}
-          className="text-zinc-600 hover:text-white transition-colors disabled:animate-spin"
+          className="text-muted-foreground hover:text-foreground transition-colors disabled:animate-spin"
         >
           {loading ? <Loader2 className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
         </button>
@@ -92,7 +88,7 @@ const LocationStat: React.FC<LocationStatProps> = ({ location, label }) => {
       {/* Content: Value or Error */}
       <div className="flex items-baseline gap-2">
         {error ? (
-          <div className="flex items-center gap-2 text-red-500">
+          <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="h-4 w-4" />
             <span className="text-xs font-bold uppercase tracking-tight">
               {error === 'Gateway Error' ? 'GATEWAY ERROR' : 'LOAD FAILED'}
@@ -100,8 +96,9 @@ const LocationStat: React.FC<LocationStatProps> = ({ location, label }) => {
           </div>
         ) : (
           <div>
-            <span className="text-xs text-zinc-400 mr-2 font-medium">UNSETTLED</span>
-            <span className={`text-2xl font-mono font-bold tracking-tighter ${loading ? 'opacity-50' : 'text-yellow-400'}`}>
+            <span className="text-xs text-muted-foreground mr-2 font-medium">UNSETTLED</span>
+            {/* We keep yellow-500/600 explicitly for money visibility, but adaptable */}
+            <span className={`text-2xl font-mono font-bold tracking-tighter ${loading ? 'opacity-50' : 'text-yellow-600 dark:text-yellow-400'}`}>
               {total !== null 
                 ? `$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
                 : '$0.00'
