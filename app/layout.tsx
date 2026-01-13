@@ -62,19 +62,23 @@ export default async function RootLayout({ children }: PropsWithChildren) {
         <Providers>
           
           {/* === LAYER 2: Navbar ===  */}
-          {/* FIX: Removed the <header> wrapper entirely. 
-              The Navbar handles its own fixed positioning. */}
           <Navbar />
 
           {/* === LAYER 3: Main Content ===  */}
           <div className="flex flex-col min-h-screen pt-20 relative z-0 w-full min-w-0">
-            <main className="p-2 flex flex-col flex-grow w-full max-w-7xl mx-auto pb-28 md:pb-12">
+            {/* GLOBAL FIX: Increased bottom padding from pb-28 to pb-36.
+               This ensures the bottom of every page clears the floating NavigationButtons
+               so users don't have to "scroll up" to click bottom actions.
+            */}
+            <main className="p-2 flex flex-col flex-grow w-full max-w-7xl mx-auto pb-36 md:pb-16">
               {children}
             </main>
             <Footer />
           </div>
 
-          {/* === LAYER 4: Navigation Buttons === */}
+          {/* === LAYER 4: Navigation Buttons (Floating) === */}
+          {/* Ensure this component has pointer-events-none on its container 
+              and pointer-events-auto on the buttons themselves */}
           <NavigationButtons />
 
           <Suspense>
