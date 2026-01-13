@@ -4,11 +4,15 @@
  * * CHANGE LOG:
  * - Jan 11, 2026: Added 'Fun License' Architecture (Smartwaiver + Selfie).
  * - Jan 11, 2026: Added S3 Architecture, Fleet Geofencing UI, and Icon Management.
+ * - Jan 12, 2026: Integrated Live Markdown Rendering for THEMING.md
  * * ACCESS CONTROL:
  * - Level 950+ (Developers) Only.
  */
 
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
+import Markdown from 'react-markdown';
 import { 
   ShieldAlert, 
   Server, 
@@ -32,13 +36,26 @@ import {
   Cloud,         // Storage
   Image as ImageIcon, // Storage
   Move,          // Storage
-  ShieldCheck,   // Fun License (NEW)
-  FileSignature, // Fun License (NEW)
-  Camera         // Fun License (NEW)
+  ShieldCheck,   // Fun License
+  FileSignature, // Fun License
+  Camera,        // Fun License
+  Palette        // Theming (NEW)
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+
+// --- HELPER: Fetch Markdown Content ---
+// This runs on the server at build/request time to fetch the file content.
+const getDocContent = (filename: string) => {
+  try {
+    const filePath = path.join(process.cwd(), 'docs', filename);
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    return fileContent;
+  } catch (error) {
+    return `**Error:** Could not load documentation file: ${filename}. Ensure it exists in the /docs folder.`;
+  }
+};
 
 export default function DeveloperDocsPage() {
   
@@ -46,6 +63,9 @@ export default function DeveloperDocsPage() {
   const glassCardStyles = "bg-white/60 dark:bg-zinc-950/80 backdrop-blur-md border-white/40 dark:border-zinc-800 shadow-xl transition-all hover:shadow-2xl hover:bg-white/70 dark:hover:bg-zinc-950/90";
   const glassHeaderStyles = "text-zinc-800 dark:text-zinc-100";
   const glassTextStyles = "text-zinc-600 dark:text-zinc-400";
+
+  // === LOAD DYNAMIC DOCS ===
+  const themingDoc = getDocContent('THEMING.md');
   
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 pb-20">
@@ -143,7 +163,48 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* --- SECTION 2: THE FUN LICENSE (NEW!) --- */}
+          {/* --- SECTION: THEMING & STANDARDS (NEW!) --- */}
+          <Card className={`${glassCardStyles} overflow-hidden`}>
+            <CardHeader className="bg-gradient-to-r from-purple-500/10 to-transparent border-b border-purple-100 dark:border-purple-900/50">
+              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
+                <Palette size={24} />
+                <CardTitle className="uppercase tracking-widest">Theming & UI Standards</CardTitle>
+              </div>
+              <CardDescription className={glassTextStyles}>
+                Live documentation from <code>docs/THEMING.md</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="prose prose-sm dark:prose-invert max-w-none p-6 bg-zinc-50/50 dark:bg-black/20">
+              {/* MARKDOWN RENDERER */}
+              <Markdown
+                components={{
+                  // Style Overrides for Markdown Elements
+                  h1: ({node, ...props}) => <h1 className="text-2xl font-bold text-foreground mb-4 border-b pb-2" {...props} />,
+                  h2: ({node, ...props}) => <h2 className="text-lg font-bold text-foreground mt-6 mb-3" {...props} />,
+                  h3: ({node, ...props}) => <h3 className="text-md font-semibold text-foreground mt-4 mb-2" {...props} />,
+                  ul: ({node, ...props}) => <ul className="list-disc list-inside space-y-1 my-2" {...props} />,
+                  li: ({node, ...props}) => <li className="text-muted-foreground" {...props} />,
+                  p: ({node, ...props}) => <p className="text-muted-foreground leading-relaxed mb-3" {...props} />,
+                  code: ({node, ...props}) => <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-primary" {...props} />,
+                  pre: ({node, ...props}) => (
+                    <pre className="bg-zinc-950 text-zinc-100 p-4 rounded-lg overflow-x-auto my-4 text-xs font-mono border border-zinc-800" {...props} />
+                  ),
+                  table: ({node, ...props}) => (
+                    <div className="overflow-x-auto my-4 border rounded-lg">
+                      <table className="w-full text-sm text-left" {...props} />
+                    </div>
+                  ),
+                  thead: ({node, ...props}) => <thead className="bg-muted text-muted-foreground" {...props} />,
+                  th: ({node, ...props}) => <th className="p-2 font-bold uppercase text-xs" {...props} />,
+                  td: ({node, ...props}) => <td className="p-2 border-t border-border" {...props} />,
+                }}
+              >
+                {themingDoc}
+              </Markdown>
+            </CardContent>
+          </Card>
+
+          {/* --- SECTION 2: THE FUN LICENSE --- */}
           <Card className={glassCardStyles}>
             <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div className="flex items-center gap-2 text-green-600 dark:text-green-500">
@@ -546,7 +607,6 @@ export default function DeveloperDocsPage() {
                 <a href="/biz/vehicles/admin" className="text-xs text-yellow-600 dark:text-yellow-400 hover:underline">Fleet Command</a>
                 <a href="/biz/admin/fleet/geofencing" className="text-xs text-yellow-600 dark:text-yellow-400 hover:underline">Geofencing</a>
                 <a href="/biz/admin/hr/structure" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">HR Structure</a>
-                {/* NEW LINK */}
                 <a href="/fun-license" className="text-xs text-green-600 dark:text-green-400 hover:underline font-bold">Fun License Test</a>
             </CardContent>
           </Card>
