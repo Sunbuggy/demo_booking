@@ -36,7 +36,6 @@ export async function POST(request: Request) {
         const email = holder.email.toLowerCase().trim();
 
         // 1. Search for existing user by email
-        // Note: listUsers is an admin function
         const { data: { users } } = await adminSupabase.auth.admin.listUsers();
         const existingUser = users.find(u => u.email?.toLowerCase() === email);
 
@@ -47,19 +46,16 @@ export async function POST(request: Request) {
             console.log(`[Booking] Creating new account for: ${email}`);
             
             // 2. Create new user & Send Invite
-            // inviteUserByEmail creates the user AND sends them a magic link to set a password
             const { data: newUser, error: createError } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
                 data: {
                     first_name: holder.firstName,
                     last_name: holder.lastName,
                     user_level: 100 // Default level
                 }
-                // redirectTo: 'https://your-site.com/profile' // Optional: redirect after they set password
             });
 
             if (createError) {
                 console.error("Auto-Account Error:", createError);
-                // Fallback: Proceed without linking user (don't block booking)
                 userId = null; 
             } else {
                 userId = newUser.user?.id;
@@ -124,12 +120,12 @@ export async function POST(request: Request) {
             paymentSuccess = true;
             transactionId = params.get('transactionid');
         } else {
-            // Payment Failed: Clean up and return error
+            // Payment Failed: Clean up
             await adminSupabase.from('pismo_bookings').delete().eq('id', bookingRec.id);
             return NextResponse.json({ success: false, error: `Payment Declined: ${params.get('responsetext')}` }, { status: 400 });
         }
     } else {
-        paymentSuccess = true; // Pay Later
+        paymentSuccess = true; 
     }
 
     // --- 4. FINALIZE ---
@@ -139,7 +135,6 @@ export async function POST(request: Request) {
             .update({ status: 'confirmed', transaction_id: transactionId })
             .eq('id', bookingRec.id);
 
-        // Insert Items
         const itemsToInsert = [];
         const vehicles = booking.vehicles || {};
         for (const [catId, itemData] of Object.entries(vehicles)) {
@@ -157,7 +152,6 @@ export async function POST(request: Request) {
         }
         if (itemsToInsert.length > 0) await adminSupabase.from('pismo_booking_items').insert(itemsToInsert);
 
-        // Log
         await adminSupabase.from('pismo_booking_logs').insert({
             booking_id: bookingRec.id,
             editor_name: creatorName,
