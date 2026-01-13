@@ -11,14 +11,13 @@ import { VehicleType } from '@/app/(biz)/biz/vehicles/admin/page';
 
 /**
  * UPDATED INTERFACE
- * Now expects 'stage_name' to be part of the driver object.
  */
 interface Props { 
   date: string; 
   drivers: { 
     id: string; 
     full_name: string; 
-    stage_name?: string | null; // Added optional stage_name
+    stage_name?: string | null; 
   }[]; 
   activeFleet: any[]; 
   todaysShifts: any[];
@@ -48,11 +47,9 @@ export default function FleetManagerDialog({
 
   /**
    * HELPER: GET DISPLAY NAME
-   * Prioritizes Stage Name. Falls back to Full Name.
    */
   const getDriverName = (driver: any) => {
     if (!driver) return 'Unknown';
-    // If stage_name exists and isn't empty, use it. Otherwise use full_name.
     return driver.stage_name && driver.stage_name.trim() !== '' 
       ? driver.stage_name 
       : driver.full_name;
@@ -60,14 +57,11 @@ export default function FleetManagerDialog({
 
   /**
    * MEMOIZED FILTER LOGIC
-   * 1. Dedupes drivers (fixes the 'duplicate listing' visual bug).
-   * 2. Filters by Schedule (unless 'Show All' is checked).
    */
   const filteredDrivers = useMemo(() => {
     if (!drivers || drivers.length === 0) return [];
 
     // STEP 1: Deduplicate drivers by ID
-    // This handles cases where the DB might return the same user row twice.
     const uniqueDrivers = Object.values(
       drivers.reduce((acc, driver) => {
         acc[driver.id] = driver;
@@ -108,7 +102,6 @@ export default function FleetManagerDialog({
     const vehicleSeats = vehicle?.seats || 14; 
 
     try {
-      // We send IDs to the server. The server/DB handles the record creation.
       await createFleetPairing(
         date, 
         selectedDriverId, 
@@ -152,19 +145,21 @@ export default function FleetManagerDialog({
           {trigger ? (
             trigger
           ) : (
-            <Button className="bg-slate-900 border border-slate-700 text-yellow-500 hover:bg-slate-800 hover:text-yellow-400 transition-all gap-2 shadow-sm">
+            // SEMANTIC: Updated Trigger Button
+            <Button className="bg-popover border border-border text-yellow-600 dark:text-yellow-500 hover:bg-accent hover:text-yellow-700 dark:hover:text-yellow-400 transition-all gap-2 shadow-sm">
               <FaBus /> Morning Roll Call
             </Button>
           )}
         </div>
       </DialogTrigger>
       
+      {/* SEMANTIC: Using theme variables for Dialog Content */}
       <DialogContent 
-        className="bg-slate-900 border-slate-700 text-white sm:max-w-[450px]"
+        className="bg-popover border-border text-popover-foreground sm:max-w-[450px]"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-yellow-500">
+          <DialogTitle className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
             <FaUserPlus /> <span>Manage Daily Fleet</span>
           </DialogTitle>
         </DialogHeader>
@@ -173,12 +168,13 @@ export default function FleetManagerDialog({
           
           {/* --- SECTION 1: ADD NEW DRIVER --- */}
           {canEdit ? (
-            <div className="grid gap-4 p-4 bg-slate-950 rounded border border-slate-800">
+            // SEMANTIC: Using 'bg-card' or 'bg-muted' for the form container
+            <div className="grid gap-4 p-4 bg-muted/40 rounded border border-border">
                <div className="flex items-center justify-between">
-                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Add to Schedule</h4>
+                 <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Add to Schedule</h4>
                  
                  <div className="flex items-center gap-2">
-                   <label htmlFor="show-all" className="text-[10px] text-slate-400 cursor-pointer select-none">
+                   <label htmlFor="show-all" className="text-[10px] text-muted-foreground cursor-pointer select-none">
                      {showAllStaff ? 'Showing All Staff' : 'Scheduled Only'}
                    </label>
                    <Switch 
@@ -192,7 +188,8 @@ export default function FleetManagerDialog({
 
                <div className="grid gap-2">
                  <select
-                   className="w-full h-10 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                   // SEMANTIC: Standard Input Styling
+                   className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
                    value={selectedDriverId}
                    onChange={(e) => { setSelectedDriverId(e.target.value); e.target.blur(); }}
                  >
@@ -206,14 +203,14 @@ export default function FleetManagerDialog({
                    </option>
                    {filteredDrivers.map((d) => (
                      <option key={d.id} value={d.id}>
-                       {/* UPDATED: Uses Stage Name */}
                        {getDriverName(d)}
                      </option>
                    ))}
                  </select>
 
                  <select
-                   className="w-full h-10 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                   // SEMANTIC: Standard Input Styling
+                   className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
                    value={selectedVehicleId}
                    onChange={(e) => { setSelectedVehicleId(e.target.value); e.target.blur(); }}
                  >
@@ -228,23 +225,23 @@ export default function FleetManagerDialog({
                  <Button 
                    onClick={handlePair} 
                    disabled={isSubmitting} 
-                   className="mt-2 bg-yellow-500 text-black hover:bg-yellow-400 w-full"
+                   className="mt-2 bg-yellow-600 hover:bg-yellow-500 text-white dark:text-black dark:bg-yellow-500 dark:hover:bg-yellow-400 w-full"
                  >
                    {isSubmitting ? 'Saving...' : 'Add Driver'}
                  </Button>
                </div>
             </div>
           ) : (
-            <div className="p-4 bg-slate-950/50 rounded border border-dashed border-slate-800 text-center flex flex-col items-center gap-2">
-              <FaLock className="text-slate-600 text-xl" /> 
-              <p className="text-sm text-slate-500">Editing is restricted to Managers.</p>
+            <div className="p-4 bg-muted/20 rounded border border-dashed border-border text-center flex flex-col items-center gap-2">
+              <FaLock className="text-muted-foreground text-xl" /> 
+              <p className="text-sm text-muted-foreground">Editing is restricted to Managers.</p>
             </div>
           )}
 
           {/* --- SECTION 2: CURRENT ROSTER LIST --- */}
           <div>
              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   Current Roster ({activeFleet ? activeFleet.length : 0})
                 </h4>
              </div>
@@ -253,20 +250,20 @@ export default function FleetManagerDialog({
                <div className="max-h-[250px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                  {activeFleet.map((item) => {
                    
-                   // MATCHING LOGIC: Find the driver object to get the correct name
+                   // MATCHING LOGIC
                    const matchedDriver = drivers.find(d => d.id === item.driverId);
                    const displayName = getDriverName(matchedDriver) || item.driverName || 'Unknown';
 
                    return (
-                     <div key={item.id} className="flex items-center justify-between p-2 rounded bg-slate-800 border border-slate-700">
+                     // SEMANTIC: List Item
+                     <div key={item.id} className="flex items-center justify-between p-2 rounded bg-card border border-border shadow-sm">
                        <div className="flex items-center gap-3">
-                         <div className="bg-slate-700 p-1.5 rounded-full text-slate-300">
+                         <div className="bg-muted p-1.5 rounded-full text-muted-foreground">
                            <FaUsers size={12} />
                          </div>
                          <div>
-                           {/* UPDATED: Uses Stage Name */}
-                           <div className="text-sm font-bold text-slate-200">{displayName}</div>
-                           <div className="text-xs text-slate-500">{item.vehicleName}</div>
+                           <div className="text-sm font-bold text-foreground">{displayName}</div>
+                           <div className="text-xs text-muted-foreground">{item.vehicleName}</div>
                          </div>
                        </div>
                        
@@ -274,7 +271,7 @@ export default function FleetManagerDialog({
                          <button 
                            onClick={() => handleRemove(item.id, displayName)}
                            disabled={isSubmitting}
-                           className="text-slate-500 hover:text-red-500 p-2 transition-colors rounded-full hover:bg-slate-700/50"
+                           className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 p-2 transition-colors rounded-full hover:bg-muted"
                          >
                            <FaTrash size={14} />
                            <span className="sr-only">Remove {displayName}</span>
@@ -285,7 +282,7 @@ export default function FleetManagerDialog({
                  })}
                </div>
              ) : (
-               <div className="text-center py-6 text-slate-600 text-sm bg-slate-950 rounded border border-slate-800 border-dashed">
+               <div className="text-center py-6 text-muted-foreground text-sm bg-muted/20 rounded border border-border border-dashed">
                  No drivers assigned yet.
                </div>
              )}
@@ -293,7 +290,7 @@ export default function FleetManagerDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white">
+          <Button variant="ghost" onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground">
             Close
           </Button>
         </DialogFooter>
