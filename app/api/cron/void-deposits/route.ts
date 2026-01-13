@@ -1,15 +1,13 @@
-// app/api/cron/void-deposits/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Admin Client (Bypasses RLS)
+// Initialize Admin Client
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const NMI_SECURITY_KEY = process.env.NMI_SECURITY_KEY!;
 
 export async function GET(request: Request) {
-  // 1. SECURITY: Verify the Vercel Cron Header
-  // Vercel automatically sends this header. If it's missing, reject the request.
+  // 1. SECURITY: Verify Vercel Cron Header
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new NextResponse('Unauthorized', { status: 401 });
@@ -18,66 +16,107 @@ export async function GET(request: Request) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   try {
-    console.log('[Cron] Starting Daily Deposit Release...');
+    console.log('[Cron] Starting Daily Deposit Release for YESTERDAY...');
 
-    // 2. FIND ELIGIBLE BOOKINGS
-    // We want bookings that ended "Yesterday" (so we give staff all day to report damage)
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const dateString = yesterday.toISOString().split('T')[0]; // YYYY-MM-DD
+    // 2. TIMING: Target "Yesterday"
+    // Since this runs at midnight/early morning, "Yesterday" covers the bookings 
+    // that likely finished late last night.
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() - 1);
+    const dateString = targetDate.toISOString().split('T')[0]; // YYYY-MM-DD
 
-    // Fetch confirmed bookings from yesterday that have a transaction ID
+    console.log(`[Cron] Target Date: ${dateString}`);
+
+    // 3. FETCH ELIGIBLE BOOKINGS
+    // We look for 'confirmed' (active) bookings from yesterday that have a transaction ID.
+    // We ignore 'completed' bookings because those were likely released manually by staff.
     const { data: bookings, error } = await supabase
       .from('pismo_bookings')
-      .select('id, reservation_id, transaction_id, first_name, last_name')
+      .select('id, reservation_id, transaction_id')
       .eq('booking_date', dateString) 
       .eq('status', 'confirmed') 
       .not('transaction_id', 'is', null);
 
     if (error) throw error;
     if (!bookings || bookings.length === 0) {
-        return NextResponse.json({ message: 'No deposits to release for ' + dateString });
+        return NextResponse.json({ message: 'No active deposits found for ' + dateString });
     }
 
     const results = [];
 
-    // 3. LOOP AND VOID
+    // 4. LOOP AND PROCESS
     for (const booking of bookings) {
-        // NMI Void Request
-        const nmiBody = new URLSearchParams({
-            security_key: NMI_SECURITY_KEY,
-            type: 'void', // 'void' cancels an Auth so the money is released
-            transactionid: booking.transaction_id
-        });
-
+        
         try {
-            const nmiRes = await fetch('https://secure.nmi.com/api/transact.php', {
+            // --- A. SAFETY CHECK: QUERY NMI FIRST ---
+            // We verify this is actually a "deposit_" order before voiding.
+            const queryBody = new URLSearchParams({
+                security_key: NMI_SECURITY_KEY,
+                transaction_id: booking.transaction_id
+            });
+
+            const queryRes = await fetch('https://secure.nmi.com/api/query.php', {
                 method: 'POST',
-                body: nmiBody
+                body: queryBody
             });
-            const nmiText = await nmiRes.text();
-            const params = new URLSearchParams(nmiText);
-            const response = params.get('response');
             
-            // Log Success or Failure
-            const logEntry = {
-                booking_id: booking.id,
-                editor_name: 'System Cron',
-                action_description: response === '1' 
-                    ? `Auto-Released Deposit (Void Success). TransID: ${booking.transaction_id}`
-                    : `Failed to Auto-Release Deposit. NMI Error: ${params.get('responsetext')}`
-            };
-
-            await supabase.from('pismo_booking_logs').insert(logEntry);
+            const xmlText = await queryRes.text();
             
-            results.push({ 
-                reservation: booking.reservation_id, 
-                success: response === '1',
-                msg: params.get('responsetext') 
-            });
+            // Extract Order ID: <order_id>deposit_12345</order_id>
+            const orderIdMatch = xmlText.match(/<order_id>(.*?)<\/order_id>/);
+            const nmiOrderId = orderIdMatch ? orderIdMatch[1] : '';
 
-        } catch (err: any) {
-            console.error(`Failed to void ${booking.reservation_id}`, err);
+            // --- B. CONDITION: IS IT A DEPOSIT? ---
+            if (nmiOrderId.startsWith('deposit_')) {
+                console.log(`[Cron] Releasing Deposit ${nmiOrderId}...`);
+
+                // --- C. VOID THE DEPOSIT ---
+                const voidBody = new URLSearchParams({
+                    security_key: NMI_SECURITY_KEY,
+                    type: 'void',
+                    transactionid: booking.transaction_id
+                });
+
+                const voidRes = await fetch('https://secure.nmi.com/api/transact.php', {
+                    method: 'POST',
+                    body: voidBody
+                });
+                const voidText = await voidRes.text();
+                const params = new URLSearchParams(voidText);
+                const response = params.get('response');
+
+                // Log Result
+                const logEntry = {
+                    booking_id: booking.id,
+                    editor_name: 'System Cron',
+                    action_description: response === '1' 
+                        ? `Auto-Released Deposit (Void Success).`
+                        : `Failed to Release Deposit. NMI Error: ${params.get('responsetext')}`
+                };
+
+                await supabase.from('pismo_booking_logs').insert(logEntry);
+
+                // If successful, update status so we don't try again
+                if (response === '1') {
+                     await supabase.from('pismo_bookings')
+                        .update({ status: 'completed' })
+                        .eq('id', booking.id);
+                }
+
+                results.push({ 
+                    reservation: booking.reservation_id, 
+                    status: response === '1' ? 'Released' : 'Failed',
+                    msg: params.get('responsetext')
+                });
+
+            } else {
+                // It was a regular sale/payment, NOT a deposit. Skip it.
+                console.log(`[Cron] Skipping Res #${booking.reservation_id} (Type: Payment/Sale)`);
+                results.push({ reservation: booking.reservation_id, status: 'Skipped (Not a deposit)' });
+            }
+
+        } catch (err) {
+            console.error(`Error processing booking ${booking.reservation_id}`, err);
         }
     }
 
