@@ -5,11 +5,11 @@ import { ColumnDef } from '@tanstack/react-table';
 
 // UI Components
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 
 // Custom Components
 import { DataTableColumnHeader } from '../components/column-header';
-import UserStatusAvatar from '@/components/UserStatusAvatar'; // NEW IMPORT
+import UserStatusAvatar from '@/components/UserStatusAvatar'; 
+import { USER_LEVELS } from '@/lib/constants/user-levels';
 
 // ---------------------------------------------------------
 // Column Definitions
@@ -27,21 +27,22 @@ export const columns: ColumnDef<any, any>[] = [
       
       return (
         <div className="flex items-center gap-3 py-1">
-          {/* REPLACEMENT: Standardized UserStatusAvatar sits on the left.
-             The 'pencil' icon inside it redirects to /account?userId=...
-          */}
+          {/* Avatar Component */}
           <UserStatusAvatar 
             user={user} 
-            currentUserLevel={900} // Admin view context
+            currentUserLevel={USER_LEVELS.ADMIN} 
             size="sm" 
           />
           
           <div className="flex flex-col min-w-0">
-            {/* Displaying name as a bold label; navigation is handled by the Avatar hub */}
-            <span className="font-bold text-white truncate">
+            {/* FIX: Replaced 'text-white' with 'text-foreground'.
+               This ensures the name is Black in Light Mode and White in Dark Mode.
+            */}
+            <span className="font-bold text-foreground truncate">
               {user.full_name}
             </span>
-            <span className="text-[10px] text-blue-500 uppercase font-black tracking-widest">
+            {/* Semantic: Primary color for the verification tag */}
+            <span className="text-[10px] text-primary uppercase font-black tracking-widest">
               Verified Customer
             </span>
           </div>
@@ -52,7 +53,7 @@ export const columns: ColumnDef<any, any>[] = [
     enableHiding: false
   },
 
-  // 2. ROLE COLUMN (Simplified for Customers)
+  // 2. ROLE COLUMN
   {
     accessorKey: 'user_level',
     header: ({ column }) => (
@@ -62,7 +63,10 @@ export const columns: ColumnDef<any, any>[] = [
       const userLevel = Number(row.getValue('user_level'));
       return (
         <div className="w-[40px]">
-          <Badge variant="outline" className="font-mono bg-zinc-900 border-zinc-800">
+          {/* FIX: Removed hardcoded 'bg-zinc-900' which looked like a black hole in Light Mode.
+             Used variant='secondary' for a soft gray/muted look that works in both themes.
+          */}
+          <Badge variant="secondary" className="font-mono font-bold justify-center w-full">
             {userLevel}
           </Badge>
         </div>
@@ -77,7 +81,8 @@ export const columns: ColumnDef<any, any>[] = [
       <DataTableColumnHeader column={column} title="Email" />
     ),
     cell: ({ row }) => (
-      <div className="w-[200px] truncate font-mono text-xs text-zinc-400" title={row.getValue('email')}>
+      // Semantic: muted-foreground for secondary text
+      <div className="w-[200px] truncate font-mono text-xs text-muted-foreground" title={row.getValue('email')}>
         {row.getValue('email')}
       </div>
     )
@@ -90,7 +95,7 @@ export const columns: ColumnDef<any, any>[] = [
       <DataTableColumnHeader column={column} title="Phone" />
     ),
     cell: ({ row }) => (
-      <div className="w-[120px] font-mono text-xs text-zinc-400">
+      <div className="w-[120px] font-mono text-xs text-muted-foreground">
         {row.getValue('phone') || 'NO_PHONE'}
       </div>
     )

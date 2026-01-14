@@ -1,7 +1,6 @@
 /**
  * @file /app/(biz)/biz/users/admin/page.tsx
- * @description Unified User Management. Now includes full operational metadata
- * for seamless integration with UserStatusAvatar and the centralized /account hub.
+ * @description Unified User Management with Semantic Theming.
  */
 import React from 'react';
 import UsersTabsContainer from './tabs-container';
@@ -13,11 +12,6 @@ const UserManagementPage = async () => {
   const supabase = await createClient();
   const loggedInUser = await getUser(supabase);
 
-  /**
-   * THE JOINED FETCH: Identity + Operations
-   * We pull 'department' and 'hire_date' to ensure the Roster and Account 
-   * logic stays perfectly synced even when editing from this admin panel.
-   */
   const { data: usersData, error } = await supabase
     .from('users')
     .select(`
@@ -36,27 +30,26 @@ const UserManagementPage = async () => {
 
   if (error) console.error("Fetch error:", error);
 
-  /**
-   * DATA NORMALIZATION:
-   * We flatten the employee_details array into a single object property
-   * to make it easier for the Table/Avatar components to consume.
-   */
   const users = (usersData || []).map(u => ({
     ...u,
-    // Ensure nested details are easily accessible as an object, not an array
     employee_details: Array.isArray(u.employee_details) 
       ? u.employee_details[0] 
       : u.employee_details
   }));
 
   return (
-    <div className="space-y-6">
+    // FIX: Added bg-background and text-foreground to the wrapper
+    // This ensures that even if there is no parent layout background, this page sets one.
+    <div className="min-h-screen space-y-6 bg-background text-foreground p-6">
+      
       <div className="flex justify-between items-center px-4 md:px-0">
         <div>
-          <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">
-            User <span className="text-orange-500">Management</span>
+          {/* Replaced 'text-white' with 'text-foreground' */}
+          <h1 className="text-3xl font-black italic uppercase tracking-tighter text-foreground">
+            User <span className="text-primary">Management</span>
           </h1>
-          <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em]">
+          {/* Replaced 'text-zinc-500' with 'text-muted-foreground' */}
+          <p className="text-muted-foreground text-[10px] font-black uppercase tracking-[0.2em]">
             Identity & Fleet Access Control
           </p>
         </div>
@@ -65,10 +58,6 @@ const UserManagementPage = async () => {
         </div>
       </div>
       
-      {/* UsersTabsContainer now receives users with their 'employee_details' nested.
-          In your columns.tsx for these tables, you should now use:
-          <UserStatusAvatar user={row.original} currentUserLevel={loggedInUserLevel} />
-      */}
       <UsersTabsContainer users={users as any[]} loggedInUser={loggedInUser} />
     </div>
   );

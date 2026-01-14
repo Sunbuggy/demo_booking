@@ -1,6 +1,6 @@
 /**
  * @file /app/(biz)/biz/users/admin/components/add-staff-dialog.tsx
- * @description Refactored to include Department logic and use Centralized User Levels.
+ * @description Refactored to include Department logic and use Centralized User Levels with Semantic Theming.
  */
 'use client';
 
@@ -42,7 +42,13 @@ const LOCATIONS_CONFIG: Record<string, string[]> = {
 function SubmitButton({ isInvite }: { isInvite: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold italic uppercase tracking-wider">
+    // SEMANTIC: Primary Button Styling
+    // Replaced bg-orange-600 with bg-primary
+    <Button 
+      type="submit" 
+      disabled={pending} 
+      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold italic uppercase tracking-wider transition-colors"
+    >
       {pending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : 
        isInvite ? <Mail className="h-4 w-4 mr-2" /> : <UserCheck className="h-4 w-4 mr-2" />}
       {isInvite ? 'Send Invitation' : 'Add to Roster (Silent)'}
@@ -77,17 +83,25 @@ export default function AddStaffDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800">
-          <UserPlus className="w-4 h-4 text-orange-500" />
+        {/* SEMANTIC: Primary Trigger Button 
+           Replaced hardcoded zinc/black with bg-primary. 
+           This ensures high contrast in both Light and Dark modes. 
+        */}
+        <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 border border-transparent shadow-sm">
+          <UserPlus className="w-4 h-4" />
           Add Staff
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] bg-zinc-950 border-zinc-800 text-white">
+      
+      {/* SEMANTIC: Card Background & Foreground 
+         Replaced bg-zinc-950/text-white with semantic bg-card/text-card-foreground
+      */}
+      <DialogContent className="sm:max-w-[500px] bg-card text-card-foreground border-border">
         <DialogHeader>
-          <DialogTitle className="text-xl font-black italic tracking-tighter uppercase">
-            Onboard <span className="text-orange-500">New Staff</span>
+          <DialogTitle className="text-xl font-black italic tracking-tighter uppercase text-foreground">
+            Onboard <span className="text-primary">New Staff</span>
           </DialogTitle>
-          <DialogDescription className="text-zinc-500">
+          <DialogDescription className="text-muted-foreground">
             Link identity credentials to operational fleet data.
           </DialogDescription>
         </DialogHeader>
@@ -96,10 +110,11 @@ export default function AddStaffDialog() {
           <input type="hidden" name="mode" value={sendInvite ? 'invite' : 'silent'} />
           
           {/* Invite Mode Toggle */}
-          <div className="flex items-center justify-between p-3 border border-zinc-800 rounded-lg bg-zinc-900/50">
+          {/* SEMANTIC: Muted Background for secondary containers */}
+          <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-muted/30">
             <div className="space-y-0.5">
-              <Label className="text-sm font-bold uppercase italic">Invitation Protocol</Label>
-              <div className="text-[10px] text-zinc-500 uppercase tracking-widest">
+              <Label className="text-sm font-bold uppercase italic text-foreground">Invitation Protocol</Label>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-widest">
                 {sendInvite ? "External Email Link" : "Internal Silent Creation"}
               </div>
             </div>
@@ -108,50 +123,72 @@ export default function AddStaffDialog() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-xs text-zinc-500 font-bold uppercase">Full Name</Label>
-              <Input name="fullName" className="bg-zinc-900 border-zinc-800" placeholder="John Doe" required />
+              <Label className="text-xs text-muted-foreground font-bold uppercase">Full Name</Label>
+              {/* SEMANTIC: Inputs use bg-background and border-input */}
+              <Input 
+                name="fullName" 
+                className="bg-background border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-primary" 
+                placeholder="John Doe" 
+                required 
+              />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs text-zinc-500 font-bold uppercase">Email</Label>
-              <Input name="email" type="email" className="bg-zinc-900 border-zinc-800" placeholder="john@sunbuggy.com" required />
+              <Label className="text-xs text-muted-foreground font-bold uppercase">Email</Label>
+              <Input 
+                name="email" 
+                type="email" 
+                className="bg-background border-input text-foreground placeholder:text-muted-foreground focus-visible:ring-primary" 
+                placeholder="john@sunbuggy.com" 
+                required 
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-xs text-zinc-500 font-bold uppercase">Phone</Label>
-              <Input name="phone" type="tel" className="bg-zinc-900 border-zinc-800 font-mono" placeholder="702-555-0199" />
+              <Label className="text-xs text-muted-foreground font-bold uppercase">Phone</Label>
+              <Input 
+                name="phone" 
+                type="tel" 
+                className="bg-background border-input font-mono text-foreground placeholder:text-muted-foreground focus-visible:ring-primary" 
+                placeholder="702-555-0199" 
+              />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs text-zinc-500 font-bold uppercase">Employee ID</Label>
-              <Input name="employeeId" className="bg-zinc-900 border-zinc-800 font-mono" placeholder="NV-100" />
+              <Label className="text-xs text-muted-foreground font-bold uppercase">Employee ID</Label>
+              <Input 
+                name="employeeId" 
+                className="bg-background border-input font-mono text-foreground placeholder:text-muted-foreground focus-visible:ring-primary" 
+                placeholder="NV-100" 
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
              <div className="space-y-2">
-               <Label className="text-xs text-orange-500 font-bold uppercase">Location</Label>
+               {/* SEMANTIC: Primary color highlights */}
+               <Label className="text-xs text-primary font-bold uppercase">Location</Label>
                <Select name="location" defaultValue="Las Vegas" onValueChange={setSelectedLoc}>
-                 <SelectTrigger className="bg-zinc-900 border-zinc-800">
+                 <SelectTrigger className="bg-background border-input text-foreground focus:ring-primary">
                     <SelectValue />
                  </SelectTrigger>
-                 <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                 <SelectContent className="bg-popover text-popover-foreground border-border">
                    {Object.keys(LOCATIONS_CONFIG).map(loc => (
-                     <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                     <SelectItem key={loc} value={loc} className="focus:bg-accent focus:text-accent-foreground">{loc}</SelectItem>
                    ))}
                  </SelectContent>
                </Select>
              </div>
 
              <div className="space-y-2">
-               <Label className="text-xs text-orange-500 font-bold uppercase">Department</Label>
+               <Label className="text-xs text-primary font-bold uppercase">Department</Label>
                <Select name="department" required>
-                 <SelectTrigger className="bg-zinc-900 border-zinc-800">
+                 <SelectTrigger className="bg-background border-input text-foreground focus:ring-primary">
                     <SelectValue placeholder="Select Dept" />
                  </SelectTrigger>
-                 <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+                 <SelectContent className="bg-popover text-popover-foreground border-border">
                    {availableDepartments.map(dept => (
-                     <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                     <SelectItem key={dept} value={dept} className="focus:bg-accent focus:text-accent-foreground">{dept}</SelectItem>
                    ))}
                  </SelectContent>
                </Select>
@@ -159,15 +196,15 @@ export default function AddStaffDialog() {
           </div>
 
           <div className="space-y-2">
-             <Label className="text-xs text-zinc-500 font-bold uppercase">Access Level</Label>
+             <Label className="text-xs text-muted-foreground font-bold uppercase">Access Level</Label>
              <Select name="userLevel" defaultValue={USER_LEVELS.STAFF.toString()}>
-              <SelectTrigger className="bg-zinc-900 border-zinc-800">
+              <SelectTrigger className="bg-background border-input text-foreground focus:ring-primary">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-zinc-900 border-zinc-800 text-white">
+              <SelectContent className="bg-popover text-popover-foreground border-border">
                 {/* Dynamically render only STAFF and higher */}
                 {onboardingRoles.map(([level, label]) => (
-                  <SelectItem key={level} value={level}>
+                  <SelectItem key={level} value={level} className="focus:bg-accent focus:text-accent-foreground">
                     {label} ({level})
                   </SelectItem>
                 ))}

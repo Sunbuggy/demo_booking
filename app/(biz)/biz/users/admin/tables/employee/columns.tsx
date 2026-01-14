@@ -32,9 +32,7 @@ import {
   changeUserRole,
 } from '@/utils/supabase/queries';
 import { UserType } from '../../../types';
-
-// --- NEW IMPORT: Single Source of Truth ---
-import { USER_LEVELS, ROLE_LABELS } from '@/lib/constants/user-levels';
+import { USER_LEVELS } from '@/lib/constants/user-levels';
 
 // ---------------------------------------------------------
 // Types
@@ -60,27 +58,29 @@ export const columns: ColumnDef<UserType, any>[] = [
       
       return (
         <div className="flex items-center gap-3 py-1">
-          {/* REPLACEMENT: The interactive UserStatusAvatar now sits on the left.
-             The 'pencil' icon inside it redirects to /account?userId=... 
-          */}
+          {/* Avatar sits on the left */}
           <UserStatusAvatar 
             user={user} 
-            currentUserLevel={USER_LEVELS.ADMIN} // Updated: Uses Constant
+            currentUserLevel={USER_LEVELS.ADMIN} 
             size="sm" 
           />
           
           <div className="flex flex-col min-w-0">
-            {/* Displaying name as a bold label; navigation is handled by the Avatar */}
-            <span className="font-bold text-white truncate">
+            {/* FIX: Replaced 'text-white' with 'text-foreground' 
+               This ensures visibility in both Light (Black text) and Dark (White text) modes.
+            */}
+            <span className="font-bold text-foreground truncate">
               {user.stage_name || user.full_name}
             </span>
             
-            {/* METADATA: Pulling hierarchical info from employee_details */}
+            {/* METADATA */}
             <div className="flex items-center gap-1.5">
-               <span className="text-[10px] text-orange-500 uppercase font-black tracking-widest">
+               {/* Semantic: Primary color for emphasis */}
+               <span className="text-[10px] text-primary uppercase font-black tracking-widest">
                  {user.employee_details?.department || 'STAFF'}
                </span>
-               <span className="text-[10px] text-zinc-500 uppercase font-medium">
+               {/* Semantic: Muted color for secondary info */}
+               <span className="text-[10px] text-muted-foreground uppercase font-medium">
                  • {user.employee_details?.primary_position || 'UNASSIGNED'}
                </span>
             </div>
@@ -92,14 +92,13 @@ export const columns: ColumnDef<UserType, any>[] = [
     enableHiding: false
   },
 
-  // 2. ROLE COLUMN (The Heavy Refactor)
+  // 2. ROLE COLUMN
   {
     accessorKey: 'user_level',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Role" />
     ),
     cell: ({ row }) => {
-      // Local state triggers for the useEffect below
       const [makeEmployee, setMakeEmployee] = useState(false);
       const [makeDriver, setMakeDriver] = useState(false);
       const [makeManager, setMakeManager] = useState(false);
@@ -117,7 +116,7 @@ export const columns: ColumnDef<UserType, any>[] = [
                     title: 'Success',
                     description: `User updated to ${roleName} (Level ${roleLevel})`,
                     duration: 2000,
-                    variant: 'default' // 'success' isn't standard in all Shadcn versions, using default
+                    variant: 'default' 
                 });
             } catch (err) {
                 console.error(err);
@@ -129,19 +128,12 @@ export const columns: ColumnDef<UserType, any>[] = [
             }
         };
 
-        // --- UPDATED LOGIC: Using Constants instead of Magic Numbers ---
-        
         if (makeCustomer) handleRoleChange(USER_LEVELS.CUSTOMER, 'Customer');
         if (makeEmployee) handleRoleChange(USER_LEVELS.STAFF, 'Staff');
-        
-        // Note: Drivers are now functionally "Staff" (300), but we keep the specific button for UI preference.
-        // This ensures they get the correct permissions without needing a unique '350' level.
         if (makeDriver) handleRoleChange(USER_LEVELS.STAFF, 'Driver');
-        
         if (makeManager) handleRoleChange(USER_LEVELS.MANAGER, 'Manager');
         if (makeAdmin) handleRoleChange(USER_LEVELS.ADMIN, 'Admin');
 
-        // Reset triggers
         setMakeEmployee(false);
         setMakeDriver(false);
         setMakeManager(false);
@@ -159,25 +151,24 @@ export const columns: ColumnDef<UserType, any>[] = [
               <Button
                 variant={
                   userLevel >= USER_LEVELS.ADMIN
-                    ? 'positive'
+                    ? 'default' // Primary
                     : userLevel >= USER_LEVELS.MANAGER
                       ? 'secondary'
-                      : 'default'
+                      : 'outline'
                 }
-                className="w-full"
+                className="w-full font-mono font-bold"
               >
                 {userLevel}
               </Button>
             </DialogTrigger>
-            <DialogContent className='w-fit'>
+            <DialogContent className='w-fit bg-card text-card-foreground border-border'>
               <DialogHeader>
-                <DialogTitle>Change User Level</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-foreground">Change User Level</DialogTitle>
+                <DialogDescription className="text-muted-foreground">
                   <span className="text-3xl font-extrabold text-foreground block my-2">
                     Current Level: {row.original.user_level}
                   </span>
-                  {/* Dynamic Legend from Constants - Never gets out of sync */}
-                  <div className="text-sm space-y-1 text-muted-foreground">
+                  <div className="text-sm space-y-1">
                     <p>Customer = {USER_LEVELS.CUSTOMER}</p>
                     <p>Staff / Driver = {USER_LEVELS.STAFF}</p>
                     <p>Manager = {USER_LEVELS.MANAGER}</p>
@@ -193,7 +184,6 @@ export const columns: ColumnDef<UserType, any>[] = [
                   <Button onClick={() => setMakeEmployee(true)}>Staff</Button>
                 </DialogClose>
                  <DialogClose asChild>
-                  {/* Keeps the specific 'Driver' button for ease of use, but applies Level 300 */}
                   <Button onClick={() => setMakeDriver(true)}>Driver</Button>
                 </DialogClose>
                 <DialogClose asChild>
@@ -202,7 +192,7 @@ export const columns: ColumnDef<UserType, any>[] = [
                   </Button>
                 </DialogClose>
                 <DialogClose asChild>
-                  <Button variant={'positive'} onClick={() => setMakeAdmin(true)}>
+                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setMakeAdmin(true)}>
                     Admin
                   </Button>
                 </DialogClose>
@@ -220,7 +210,12 @@ export const columns: ColumnDef<UserType, any>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Email" />
     ),
-    cell: ({ row }) => <div className="w-[200px] truncate font-mono text-xs text-zinc-400" title={row.getValue('email')}>{row.getValue('email')}</div>
+    cell: ({ row }) => (
+        // Semantic: muted-foreground instead of zinc-400
+        <div className="w-[200px] truncate font-mono text-xs text-muted-foreground" title={row.getValue('email')}>
+            {row.getValue('email')}
+        </div>
+    )
   },
 
   // 4. TIME CLOCK COLUMN
@@ -245,21 +240,12 @@ export const columns: ColumnDef<UserType, any>[] = [
           .channel(`track_time_${id}`)
           .on(
             'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'users',
-              filter: `id=eq.${id}`
-            },
-            () => {
-              router.refresh();
-            }
+            { event: '*', schema: 'public', table: 'users', filter: `id=eq.${id}` },
+            () => router.refresh()
           )
           .subscribe();
 
-        return () => {
-          supabase.removeChannel(channel);
-        };
+        return () => { supabase.removeChannel(channel); };
       }, [supabase, router, id]);
 
       useEffect(() => {
@@ -305,19 +291,19 @@ export const columns: ColumnDef<UserType, any>[] = [
                 className="cursor-pointer hover:opacity-80 transition-opacity"
                 variant={
                   status === 'clocked_in'
-                    ? 'positive'
+                    ? 'default' // Primary (Green usually)
                     : status === 'on_break'
-                      ? 'cautious'
-                      : 'default'
+                      ? 'secondary' // Yellow/Orange
+                      : 'outline' // Grey
                 }
               >
                 {status}
               </Badge>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] bg-card text-card-foreground border-border">
               <DialogHeader>
-                <DialogTitle>Time Clock Management</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-foreground">Time Clock Management</DialogTitle>
+                <DialogDescription className="text-muted-foreground">
                   {(status === 'clocked_in' || status === 'on_break') 
                     ? `Current Shift Duration: ${timeSinceClockIn}`
                     : 'User is currently off the clock.'}
@@ -325,19 +311,19 @@ export const columns: ColumnDef<UserType, any>[] = [
               </DialogHeader>
               
               <div className="flex flex-col gap-6 py-4">
-                <div className="flex items-center gap-3 p-3 bg-muted rounded-md">
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-md border border-border">
                     <UserStatusAvatar user={row.original} size="md" />
                     <div>
-                        <p className="text-sm font-medium leading-none">Employee</p>
-                        <p className="text-lg font-bold">{row.original.full_name}</p>
+                        <p className="text-sm font-medium leading-none text-muted-foreground">Employee</p>
+                        <p className="text-lg font-bold text-foreground">{row.original.full_name}</p>
                     </div>
                 </div>
 
                 {(status === 'clocked_in' || status === 'on_break') && (
                   <div className="flex flex-col gap-2">
                      <p className="text-sm text-muted-foreground mb-1">Actions</p>
-                     <div className="flex justify-between items-center bg-card p-2 rounded border">
-                        <span className="text-sm font-semibold">Adjust Time Sheet</span>
+                     <div className="flex justify-between items-center bg-background p-2 rounded border border-border">
+                        <span className="text-sm font-semibold text-foreground">Adjust Time Sheet</span>
                         <AdjustTime /> 
                      </div>
                   </div>
@@ -350,7 +336,7 @@ export const columns: ColumnDef<UserType, any>[] = [
                   </div>
                 )}
                 
-                <div className="border-t pt-4">
+                <div className="border-t border-border pt-4">
                     <HistoryTimeClockEvents user={row.original} />
                 </div>
               </div>
@@ -359,9 +345,7 @@ export const columns: ColumnDef<UserType, any>[] = [
         </div>
       );
     },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
-    },
+    filterFn: (row, id, value) => value.includes(row.getValue(id)),
     enableSorting: false
   }
 ];
