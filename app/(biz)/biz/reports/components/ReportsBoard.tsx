@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -26,11 +26,16 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
   // --- UI STATE ---
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [selectedNmiReport, setSelectedNmiReport] = useState<NmiReportType | null>(null);
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | null>(null);
+  
+  // DEFAULT DATE: Set to TODAY instead of last 30 days
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | null>({
+    from: new Date(),
+    to: new Date()
+  });
+  
   const [showVisualization, setShowVisualization] = useState(false);
 
   // --- NMI DATA STATE ---
-  // We store the raw master list here and filter it on the fly
   const [nmiTransactions, setNmiTransactions] = useState<any[]>([]);
   const [nmiLoading, setNmiLoading] = useState(false);
   const [nmiError, setNmiError] = useState<string | null>(null);
@@ -49,9 +54,9 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
   const handleNmiReportSelect = (type: NmiReportType) => {
     setSelectedNmiReport(type);
     setSelectedTable(null);
-    setShowVisualization(false); // Hide until they click Generate
+    setShowVisualization(false); // Wait for Generate button
     setNmiError(null);
-    setNmiTransactions([]); // Clear old data to prevent confusion
+    setNmiTransactions([]); 
   };
 
   const handleDateRangeSelect = (range: { from: Date; to: Date }) => {
@@ -79,7 +84,7 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
         const json = await res.json();
         if (json.error) throw new Error(json.error);
 
-        // Handle both data formats (Legacy vs New)
+        // Normalize Data
         let combined = json.transactions || [];
         if (!json.transactions) {
           combined = [...(json.settled || []), ...(json.unsettled || []), ...(json.holds || [])];
@@ -100,20 +105,15 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
     }
   };
 
-  // --- CLIENT-SIDE FILTERING (The Core Logic) ---
+  // --- CLIENT-SIDE FILTERING ---
   const nmiData = useMemo(() => {
     // 1. UNSETTLED (Live Batches)
-    // Approved Sales/Captures waiting to be sent to bank
     const unsettled = nmiTransactions.filter(txn => 
       txn.condition === 'pendingsettlement' && 
       (txn.action_type === 'sale' || txn.action_type === 'capture')
     );
 
     // 2. SETTLED (Money in Bank)
-    // We count:
-    // A) Transactions specifically marked 'settle' (Historical Deposits)
-    // B) Completed Sales (Historical Sales that didn't get a 'settle' event yet)
-    // We exclude $0.00 system rows.
     const settled = nmiTransactions.filter(txn => 
       (txn.action_type === 'settle' || 
        (txn.action_type === 'sale' && txn.condition === 'complete')) &&
@@ -134,7 +134,7 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
   const nmiUnsettledTotal = nmiData.unsettled.reduce((acc, t) => acc + (t.amount || 0), 0);
   const nmiHoldsTotal = nmiData.holds.reduce((acc, t) => acc + (t.amount || 0), 0);
 
-  // Determine what to pass to DataVisualization
+  // Determine Data to Display
   let displayData: any[] = [];
   let tableName = '';
 
@@ -155,7 +155,7 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-12">
       
       {/* 1. Database Reports Section */}
       <div>
@@ -163,7 +163,7 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
         <TableSelector tables={tables} onSelect={handleTableSelect} />
       </div>
 
-      {/* 2. Card Transactions Section (Restored Position) */}
+      {/* 2. Card Transactions Section */}
       <div>
         <h2 className="text-xl font-bold mb-4 text-zinc-100">Card Transactions</h2>
         <div className="flex flex-wrap gap-4 mb-6">
@@ -184,10 +184,13 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
         </div>
       </div>
 
-      {/* 3. Controls Bar (Date & Generate) */}
+      {/* 3. Controls Bar */}
       {(selectedTable || selectedNmiReport) && (
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-zinc-900/50 p-6 rounded-lg border border-zinc-800">
-          <DateRangePicker onSelect={handleDateRangeSelect} />
+          <DateRangePicker 
+            date={dateRange || undefined} 
+            onSelect={handleDateRangeSelect} 
+          />
           
           <Button 
             onClick={handleGenerateReport} 
@@ -211,7 +214,7 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
         </div>
       )}
 
-      {/* 5. NMI Tabs (Only show if NMI is active & report generated) */}
+      {/* 5. NMI Tabs */}
       {selectedNmiReport && showVisualization && !nmiLoading && (
         <div className="space-y-4 pt-4">
           <div className="flex gap-6 border-b border-zinc-700">
@@ -249,7 +252,7 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
         </div>
       )}
 
-      {/* 6. Visualization Component (Restored!) */}
+      {/* 6. Visualization Component */}
       {showVisualization && (
         <div className="mt-6">
           {displayData.length > 0 ? (
@@ -257,6 +260,7 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
               data={displayData}
               dateRange={dateRange!}
               tableName={tableName}
+              isFinancial={!!selectedNmiReport} 
             />
           ) : (
             !nmiLoading && (
