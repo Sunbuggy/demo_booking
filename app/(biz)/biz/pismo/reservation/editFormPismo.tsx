@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client'; 
 import { getUserDetails } from '@/utils/supabase/queries'; 
+import { ChevronLeft, ClipboardList, History, Pencil } from 'lucide-react';
 
 import DateTimeSelector from '@/app/pismo/book/components/dateTimeSelector';
 import ReservationHolderForm from '@/app/pismo/book/components/reservationForm';
@@ -166,17 +167,31 @@ export default function PismoReservationEditForm({
     }));
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto text-white pb-32 flex flex-col lg:flex-row gap-8">
-      {/* LEFT */}
-      <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-700">
+    // FIX: Added 'bg-background' and 'min-h-screen' to ensure the background color 
+    // matches the 'text-foreground' regardless of the parent layout style.
+    <div className="min-h-screen bg-background text-foreground p-4 md:p-8 flex flex-col lg:flex-row gap-8">
+      
+      {/* LEFT COLUMN */}
+      <div className="flex-1 min-w-0 max-w-5xl mx-auto">
+          
+          {/* Header Section */}
+          <div className="flex items-center justify-between mb-8 pb-6 border-b border-border">
             <div>
-              <Link href={`/biz/pismo/${initialData.booking_date}`} className="text-orange-400 hover:text-orange-300 mb-2 block">← Back to Dashboard</Link>
-              <h1 className="text-3xl font-bold">Res #{initialData.reservation_id}</h1>
-              <span className="text-gray-400">Created {new Date(initialData.created_at).toLocaleDateString()}</span>
+              <Link href={`/biz/pismo/${initialData.booking_date}`} className="text-primary hover:text-primary/80 mb-2 block flex items-center gap-1 transition-colors">
+                <ChevronLeft className="w-4 h-4" /> Back to Dashboard
+              </Link>
+              <h1 className="text-3xl font-bold text-foreground">Res #{initialData.reservation_id}</h1>
+              <span className="text-muted-foreground text-sm">Created {new Date(initialData.created_at).toLocaleDateString()}</span>
             </div>
             <div className="text-right">
-              <span className={`block font-bold uppercase text-lg ${initialData.status === 'confirmed' ? 'text-green-400' : 'text-yellow-400'}`}>{initialData.status}</span>
+              {/* SEMANTIC: Status Badge */}
+              <span className={`block font-bold uppercase text-lg px-3 py-1 rounded border ${
+                initialData.status === 'confirmed' 
+                  ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' 
+                  : 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20'
+              }`}>
+                {initialData.status}
+              </span>
             </div>
           </div>
 
@@ -191,19 +206,36 @@ export default function PismoReservationEditForm({
           />
 
           <section className="mb-12 mt-8">
-            <h2 className="text-xl font-bold text-orange-500 mb-4">Vehicles</h2>
+            <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
+                <Pencil className="w-5 h-5" /> Vehicles & Extras
+            </h2>
+            
             {pricingCategories.length > 0 ? (
               <VehicleGrid categories={pricingCategories} selections={selections} setSelections={setSelections} durationHours={durationHours} />
-            ) : <div className="p-8 text-center bg-gray-800 rounded-xl text-gray-400">Loading...</div>}
+            ) : <div className="p-8 text-center bg-card rounded-xl text-muted-foreground border border-border">Loading...</div>}
             
-            <div className="mt-8 flex gap-8 justify-center bg-gray-800 p-6 rounded-xl border border-gray-700">
+            {/* SEMANTIC: Extras Card (bg-card) */}
+            <div className="mt-8 flex gap-8 justify-center bg-card p-6 rounded-xl border border-border shadow-sm text-card-foreground">
               <div className="text-center">
-                  <label className="block mb-2 font-bold">Goggles</label>
-                  <input type="number" min="0" value={goggles} onChange={e => setGoggles(Number(e.target.value))} className="w-24 bg-gray-700 p-3 rounded text-center text-xl outline-none" />
+                  <label className="block mb-2 font-bold text-foreground">Goggles</label>
+                  {/* FIX: Explicitly set text and background to ensure visibility inside inputs */}
+                  <input 
+                    type="number" 
+                    min="0" 
+                    value={goggles} 
+                    onChange={e => setGoggles(Number(e.target.value))} 
+                    className="w-24 bg-background border border-input p-3 rounded text-center text-xl outline-none focus:ring-2 focus:ring-ring text-foreground" 
+                  />
               </div>
               <div className="text-center">
-                  <label className="block mb-2 font-bold">Bandannas</label>
-                  <input type="number" min="0" value={bandannas} onChange={e => setBandannas(Number(e.target.value))} className="w-24 bg-gray-700 p-3 rounded text-center text-xl outline-none" />
+                  <label className="block mb-2 font-bold text-foreground">Bandannas</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    value={bandannas} 
+                    onChange={e => setBandannas(Number(e.target.value))} 
+                    className="w-24 bg-background border border-input p-3 rounded text-center text-xl outline-none focus:ring-2 focus:ring-ring text-foreground" 
+                  />
               </div>
             </div>
           </section>
@@ -225,16 +257,25 @@ export default function PismoReservationEditForm({
           />
       </div>
 
-      {/* RIGHT */}
+      {/* RIGHT COLUMN (Sidebar) */}
       <div className="w-full lg:w-96 space-y-8 flex-shrink-0">
-          <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-              <h3 className="text-xl font-bold text-orange-400 mb-4 flex items-center gap-2">📝 Notes</h3>
-              <textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Type note here..." className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500 min-h-[80px]" />
+          
+          {/* SEMANTIC: Notes Card */}
+          <div className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-md">
+              <h3 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5" /> Notes
+              </h3>
+              <textarea 
+                value={newNote} 
+                onChange={e => setNewNote(e.target.value)} 
+                placeholder="Type note here..." 
+                className="w-full bg-background border border-input rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px] text-foreground placeholder:text-muted-foreground" 
+              />
               <div className="max-h-64 overflow-y-auto space-y-3 pr-2 mt-4 custom-scrollbar">
                   {existingNotes.map((note: any) => (
-                      <div key={note.id} className="bg-gray-900/50 p-3 rounded border border-gray-700 text-sm">
-                          <p className="text-gray-200">{note.note_text}</p>
-                          <div className="flex justify-between mt-2 text-xs text-gray-500">
+                      <div key={note.id} className="bg-muted/50 p-3 rounded border border-border text-sm">
+                          <p className="text-foreground">{note.note_text}</p>
+                          <div className="flex justify-between mt-2 text-xs text-muted-foreground">
                               <span>{note.author_name}</span>
                               <span suppressHydrationWarning>{new Date(note.created_at).toLocaleDateString()}</span>
                           </div>
@@ -243,15 +284,19 @@ export default function PismoReservationEditForm({
               </div>
           </div>
 
-          <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-              <h3 className="text-xl font-bold text-blue-400 mb-4 flex items-center gap-2">🕒 Edit History</h3>
+          {/* SEMANTIC: Logs Card */}
+          <div className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-md">
+              <h3 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
+                <History className="w-5 h-5" /> Edit History
+              </h3>
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                   {logs.map((log: any) => (
-                      <div key={log.id} className="relative pl-4 border-l-2 border-blue-500/30">
-                          <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-blue-500"></div>
-                          <p className="text-sm text-gray-300">{log.action_description}</p>
-                          <div className="text-xs text-gray-500 mt-1">
-                              <span className="text-blue-300">{log.editor_name}</span> • <span suppressHydrationWarning>{new Date(log.created_at).toLocaleString()}</span>
+                      <div key={log.id} className="relative pl-4 border-l-2 border-primary/30">
+                          {/* Timeline Dot */}
+                          <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-primary"></div>
+                          <p className="text-sm text-foreground">{log.action_description}</p>
+                          <div className="text-xs text-muted-foreground mt-1">
+                              <span className="text-primary font-medium">{log.editor_name}</span> • <span suppressHydrationWarning>{new Date(log.created_at).toLocaleString()}</span>
                           </div>
                       </div>
                   ))}
