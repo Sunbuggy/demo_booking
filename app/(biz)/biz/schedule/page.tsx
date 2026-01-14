@@ -1,8 +1,11 @@
 'use client';
 
 // ============================================================================
-// SUNBUGGY ROSTER PAGE (v14.5 - CONFLICT DETECTOR & RESOLVER)
+// SUNBUGGY ROSTER PAGE (v15.0 - GRANULAR COPY & CONFLICT RESOLVER)
 // ============================================================================
+// History:
+// v14.5: Added Conflict Detector for duplicate shifts.
+// v15.0: Added Granular Copy-to-Next-Week by Location/Department.
 
 import { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import Link from 'next/link';
@@ -39,6 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ChevronLeft, ChevronRight, Plus, Trash2, MapPin,
   Ban, Filter, History, Users, BarChart3, Calendar as CalendarIcon,
@@ -46,7 +50,7 @@ import {
   Sun, Cloud, CloudRain, Snowflake, CloudLightning, Wind, Printer,
   Info, Settings, User, Plane,
   AlertCircle, Check, X, ThumbsDown, CalendarClock, Copy, Loader2,
-  AlertTriangle
+  AlertTriangle, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -99,7 +103,7 @@ const getWeatherIcon = (code: number): LucideIcon => {
   return Sun;
 };
 
-// --- MINI CALENDAR ---
+// --- SUB-COMPONENT: MINI CALENDAR ---
 const MiniCalendar = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect: (d: Date) => void }) => {
   const [viewDate, setViewDate] = useState(startOfMonth(selectedDate));
   const days = useMemo(() => {
@@ -123,6 +127,140 @@ const MiniCalendar = ({ selectedDate, onSelect }: { selectedDate: Date, onSelect
         })}
       </div>
     </div>
+  );
+};
+
+// --- SUB-COMPONENT: COPY SCHEDULE MODAL (NEW v15.0) ---
+// Allows selecting specific locations and departments to copy to next week
+const CopyScheduleModal = ({ 
+  isOpen, 
+  onClose, 
+  hrConfig, 
+  employees,
+  weekRangeText, 
+  onExecute 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  hrConfig: HRLocation[]; 
+  employees: Employee[];
+  weekRangeText: string;
+  onExecute: (selectedScope: Set<string>) => void;
+}) => {
+  // Store selections as "LocationName:DepartmentName" strings
+  const [selections, setSelections] = useState<Set<string>>(new Set());
+  const [expandedLocs, setExpandedLocs] = useState<Record<string, boolean>>({});
+
+  // Initialize with all expanded and selected by default for convenience
+  useEffect(() => {
+    if (isOpen) {
+      const allDepts = new Set<string>();
+      const allLocs: Record<string, boolean> = {};
+      hrConfig.forEach(loc => {
+        allLocs[loc.name] = true;
+        // Don't auto-select everything to avoid accidents, let user choose, 
+        // OR auto-select all if that's the preferred workflow. 
+        // Let's start CLEAN (nothing selected) to prevent accidents.
+      });
+      setExpandedLocs(allLocs);
+      setSelections(new Set()); 
+    }
+  }, [isOpen, hrConfig]);
+
+  const toggleLoc = (locName: string, depts: HRDepartment[]) => {
+    const newSet = new Set(selections);
+    const allSelected = depts.every(d => newSet.has(`${locName}:${d.name}`));
+    
+    depts.forEach(d => {
+      const key = `${locName}:${d.name}`;
+      if (allSelected) newSet.delete(key);
+      else newSet.add(key);
+    });
+    setSelections(newSet);
+  };
+
+  const toggleDept = (key: string) => {
+    const newSet = new Set(selections);
+    if (newSet.has(key)) newSet.delete(key);
+    else newSet.add(key);
+    setSelections(newSet);
+  };
+
+  const employeeCount = employees.filter(e => {
+    // Basic estimation of how many people are affected
+    const key = `${e.location}:${e.department}`;
+    return selections.has(key);
+  }).length;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Copy Schedule to Next Week</DialogTitle>
+          <DialogDescription>
+            Select the departments you want to copy from <strong>{weekRangeText}</strong> to the following week.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto py-2 pr-2 border rounded-md bg-muted/20">
+          {hrConfig.map(loc => {
+            const isExpanded = expandedLocs[loc.name];
+            const allDeptsSelected = loc.departments.every(d => selections.has(`${loc.name}:${d.name}`));
+            const someDeptsSelected = loc.departments.some(d => selections.has(`${loc.name}:${d.name}`));
+
+            return (
+              <div key={loc.id} className="mb-2 bg-card border rounded-md overflow-hidden">
+                <div className="flex items-center justify-between p-2 bg-muted/50">
+                  <div className="flex items-center gap-2">
+                     <Checkbox 
+                        checked={allDeptsSelected || (someDeptsSelected && "indeterminate")}
+                        onCheckedChange={() => toggleLoc(loc.name, loc.departments)}
+                     />
+                     <span className="font-bold text-sm cursor-pointer" onClick={() => setExpandedLocs(p => ({...p, [loc.name]: !isExpanded}))}>
+                       {loc.name}
+                     </span>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setExpandedLocs(p => ({...p, [loc.name]: !isExpanded}))}>
+                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </div>
+                
+                {isExpanded && (
+                  <div className="p-2 pl-8 space-y-2">
+                    {loc.departments.map(dept => {
+                      const key = `${loc.name}:${dept.name}`;
+                      return (
+                        <div key={dept.id} className="flex items-center gap-2">
+                          <Checkbox id={key} checked={selections.has(key)} onCheckedChange={() => toggleDept(key)} />
+                          <label htmlFor={key} className="text-sm cursor-pointer select-none">{dept.name}</label>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <DialogFooter className="flex-col sm:flex-row items-center gap-2 border-t pt-4">
+          <div className="text-xs text-muted-foreground mr-auto">
+             Approx. {employeeCount} employees selected
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+             <Button variant="outline" className="flex-1 sm:flex-none" onClick={onClose}>Cancel</Button>
+             <Button 
+                disabled={selections.size === 0}
+                onClick={() => onExecute(selections)}
+                className="flex-1 sm:flex-none"
+             >
+               <Copy className="w-4 h-4 mr-2" />
+               Copy Selected
+             </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -193,7 +331,7 @@ export default function RosterPage() {
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
-  
+   
   // Data
   const [hrConfig, setHrConfig] = useState<HRLocation[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -203,7 +341,7 @@ export default function RosterPage() {
   const [rosterMetadata, setRosterMetadata] = useState<Record<string, { requests: TimeOffRequest[], availability: AvailabilityRule[] }>>({});
   const [weatherData, setWeatherData] = useState<Record<string, DailyWeather[]>>({});
   const [dailyStats, setDailyStats] = useState<Record<string, { people: number, fullString: string }>>({});
-  
+   
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [currentUserLevel, setCurrentUserLevel] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -217,7 +355,8 @@ export default function RosterPage() {
   const [selectedEmpName, setSelectedEmpName] = useState('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
-  
+  const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+   
   // --- CONFLICT RESOLUTION STATE (v14.5) ---
   const [conflictShifts, setConflictShifts] = useState<Shift[]>([]);
 
@@ -317,16 +456,14 @@ export default function RosterPage() {
     // ---------------------------------------------------------
     if (!user) {
       console.warn("No active session. Redirecting to signin...");
-      window.location.href = '/signin'; // <--- POINTING TO CORRECT PATH
+      window.location.href = '/signin'; 
       return; 
     }
 
-    // Existing Logic continues...
     setCurrentUserId(user.id);
     const { data: userData } = await supabase.from('users').select('user_level').eq('id', user.id).single();
     if (userData) setCurrentUserLevel(userData.user_level || 0);
     
-
     const { data: hrData } = await supabase
       .from('locations')
       .select(`*, departments (*, positions (*))`)
@@ -466,11 +603,11 @@ export default function RosterPage() {
   // --- UPDATED HANDLER: ACCEPTS ARRAY OF SHIFTS (CONFLICT DETECTOR) ---
   const handleCellClick = (emp: Employee, dateStr: string, dailyShifts: Shift[]) => {
     if (!isManager) return;
-    
+     
     setSelectedEmpId(emp.id); 
     setSelectedEmpName(emp.full_name); 
     setSelectedDate(dateStr);
-    
+     
     // Reset defaults
     setFormRole('Guide'); 
     setFormTask('NONE'); 
@@ -520,11 +657,11 @@ export default function RosterPage() {
   };
 
   const handleDeleteShift = async () => { if (!isManager || !selectedShiftId) return; await logChange(`Deleted shift`, 'employee_schedules', selectedShiftId); await supabase.from('employee_schedules').delete().eq('id', selectedShiftId); setShifts((prev) => prev.filter(s => s.id !== selectedShiftId)); setIsShiftModalOpen(false); toast.success("Shift Deleted"); };
-  
+   
   // --- CONFLICT RESOLVER: DELETE SPECIFIC GHOST SHIFT ---
   const handleResolveConflict = async (idToDelete: string) => {
     if (!isManager) return;
-    
+     
     // Optimistic Update
     const updatedConflicts = conflictShifts.filter(s => s.id !== idToDelete);
     setConflictShifts(updatedConflicts);
@@ -547,62 +684,92 @@ export default function RosterPage() {
     }
   };
 
-  const handleCopyWeek = async () => { 
+  // --- NEW (v15.0): GRANULAR COPY EXECUTION ---
+  const handleExecuteCopy = async (selectedScope: Set<string>) => {
+    setIsCopyModalOpen(false);
     if (!isManager || shifts.length === 0) return;
+
+    setCopying(true);
     const sourceStart = startOfWeekDate; 
     const targetStart = addWeeks(sourceStart, 1); 
     const targetEnd = addWeeks(targetStart, 1); 
 
-    if (!confirm(`Copy displayed shifts to the week of ${format(targetStart, 'MMM d')}?`)) return;
-
-    setCopying(true);
     try {
-      const { count, error: checkError } = await supabase
-        .from('employee_schedules')
-        .select('id', { count: 'exact', head: true })
-        .gte('start_time', targetStart.toISOString())
-        .lt('start_time', targetEnd.toISOString());
+        // 1. Identify Employees based on selections (Location:Dept)
+        const employeesToCopy = employees.filter(e => {
+            const key = `${e.location}:${e.department}`;
+            return selectedScope.has(key);
+        });
+        const userIdsToCopy = employeesToCopy.map(e => e.id);
 
-      if (checkError) throw checkError;
+        if (userIdsToCopy.length === 0) {
+            toast.error("No employees found in selected departments.");
+            setCopying(false);
+            return;
+        }
 
-      if (count && count > 0) {
-        toast.error("Copy Aborted: Target week already has shifts.", { description: `Found ${count} existing shifts. Please clear the target week first.` });
-        setCopying(false);
-        return;
-      }
+        // 2. Identify Shifts in Current View belonging to these users
+        const sourceEnd = addWeeks(sourceStart, 1);
+        const shiftsToCopy = shifts.filter(s => {
+            const sTime = parseISO(s.start_time);
+            return (
+                userIdsToCopy.includes(s.user_id) && 
+                sTime >= sourceStart && 
+                sTime < sourceEnd
+            );
+        });
 
-      const sourceEnd = addWeeks(sourceStart, 1);
-      const shiftsToCopy = shifts.filter(s => {
-        const sTime = parseISO(s.start_time);
-        return sTime >= sourceStart && sTime < sourceEnd;
-      });
+        if (shiftsToCopy.length === 0) {
+            toast.info("No shifts found for selected departments in the current week.");
+            setCopying(false);
+            return;
+        }
 
-      if (shiftsToCopy.length === 0) {
-        toast.error("No shifts found in the current week view to copy.");
-        setCopying(false);
-        return;
-      }
+        // 3. Check for Conflicts in Target Week (Scoped to these users only)
+        // We only block if the SPECIFIC users we are copying already have shifts.
+        // We do NOT block if other departments have shifts.
+        const { count, error: checkError } = await supabase
+            .from('employee_schedules')
+            .select('id', { count: 'exact', head: true })
+            .gte('start_time', targetStart.toISOString())
+            .lt('start_time', targetEnd.toISOString())
+            .in('user_id', userIdsToCopy); // Critical: Scope check to selected users
 
-      const newShifts = shiftsToCopy.map(s => {
-        const originalStart = parseISO(s.start_time);
-        const originalEnd = parseISO(s.end_time);
-        return {
-          user_id: s.user_id, role: s.role, task: s.task,
-          start_time: addWeeks(originalStart, 1).toISOString(),
-          end_time: addWeeks(originalEnd, 1).toISOString(),
-          location: s.location || 'Las Vegas'
-        };
-      });
+        if (checkError) throw checkError;
 
-      const { error: insertError } = await supabase.from('employee_schedules').insert(newShifts);
-      if (insertError) throw insertError;
-      toast.success("Schedule Copied Successfully");
-      
+        if (count && count > 0) {
+             toast.error("Copy Aborted: Target Conflict", { 
+                 description: `${count} shifts already exist next week for the selected departments. Please clear them first.` 
+             });
+             setCopying(false);
+             return;
+        }
+
+        // 4. Prepare New Shifts
+        const newShifts = shiftsToCopy.map(s => {
+            const originalStart = parseISO(s.start_time);
+            const originalEnd = parseISO(s.end_time);
+            return {
+                user_id: s.user_id, 
+                role: s.role, 
+                task: s.task,
+                start_time: addWeeks(originalStart, 1).toISOString(),
+                end_time: addWeeks(originalEnd, 1).toISOString(),
+                location: s.location || 'Las Vegas'
+            };
+        });
+
+        // 5. Insert
+        const { error: insertError } = await supabase.from('employee_schedules').insert(newShifts);
+        if (insertError) throw insertError;
+
+        toast.success(`Copied ${newShifts.length} shifts to next week.`);
+        
     } catch (e: any) {
-      console.error("Copy Error:", e);
-      toast.error(`Failed to copy: ${e.message}`);
+        console.error("Copy Error:", e);
+        toast.error(`Failed to copy: ${e.message}`);
     } finally {
-      setCopying(false);
+        setCopying(false);
     }
   };
 
@@ -662,7 +829,13 @@ export default function RosterPage() {
                     <div className="flex flex-col gap-1">
                         <Button variant="ghost" size="sm" onClick={handlePrint} className="justify-start h-8 text-xs w-full"><Printer className="w-3.5 h-3.5 mr-2" /> Print Schedule</Button>
                         {isManager && (
-                            <Button variant="ghost" size="sm" disabled={copying || shifts.length === 0} onClick={handleCopyWeek} className="justify-start h-8 text-xs w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                disabled={copying || shifts.length === 0} 
+                                onClick={() => setIsCopyModalOpen(true)} // UPDATED: Open Modal instead of direct action
+                                className="justify-start h-8 text-xs w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
                                 {copying ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Copy className="w-3.5 h-3.5 mr-2" />}
                                 Copy to Next Week
                             </Button>
@@ -782,7 +955,7 @@ export default function RosterPage() {
                                     </td>
                                     {weekDays.map(day => {
                                       const dateStr = format(day, 'yyyy-MM-dd');
-                                      
+                                       
                                       // --- NEW: CONFLICT DETECTION LOGIC (v14.5) ---
                                       // Find ALL shifts for this day, not just the first one.
                                       const dailyShifts = shifts.filter(s => s.user_id === emp.id && format(parseISO(s.start_time), 'yyyy-MM-dd') === dateStr);
@@ -797,7 +970,7 @@ export default function RosterPage() {
                                       });
                                       const availRule = empAvail.find(a => a.day_of_week === day.getDay());
                                       const reqStatus = request?.status.trim().toUpperCase();
-                                      
+                                       
                                       return (
                                         <td key={dateStr} className={`p-1 border-l relative h-14 print:h-auto print:border-black ${isManager ? 'cursor-pointer group' : ''}`} onClick={() => isManager && handleCellClick(emp, dateStr, dailyShifts)}>
                                           {shift ? (
@@ -808,7 +981,7 @@ export default function RosterPage() {
                                                     x{dailyShifts.length}
                                                  </div>
                                               )}
-                                              
+                                               
                                               {reqStatus === 'APPROVED' && (<div className="absolute -top-1 -left-1 z-50 bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold shadow-sm" title="Conflict: Scheduled during Time Off">!</div>)}
                                               {reqStatus === 'PENDING' && (<div className="absolute inset-x-0 -top-2 z-50 flex justify-center cursor-pointer" onClick={(e) => openReviewModal(request!, e)}><div className="bg-orange-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold shadow-sm border border-orange-600 flex items-center gap-1 hover:bg-orange-600"><AlertCircle className="w-2 h-2" /> Pending</div></div>)}
                                               {shift.task && <div className="absolute top-0 right-0 p-0.5 print:p-0 print:top-0 print:right-0"><TaskBadge taskKey={shift.task} /></div>}
@@ -921,6 +1094,16 @@ export default function RosterPage() {
           onNavigate={handleNavWeatherDay}
         />
 
+        {/* --- NEW COPY MODAL --- */}
+        <CopyScheduleModal 
+          isOpen={isCopyModalOpen}
+          onClose={() => setIsCopyModalOpen(false)}
+          hrConfig={hrConfig}
+          employees={employees}
+          weekRangeText={weekRangeText}
+          onExecute={handleExecuteCopy}
+        />
+
         <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle className={`flex items-center gap-2 ${selectedRequest?.status.toUpperCase() === 'APPROVED' ? 'text-zinc-600' : 'text-orange-600'}`}><CalendarClock className="w-5 h-5" /> {selectedRequest?.status.toUpperCase() === 'APPROVED' ? 'Manage Approved Time Off' : 'Review Request'}</DialogTitle><DialogDescription>Request for {selectedRequest?.user_name}</DialogDescription></DialogHeader>
@@ -941,26 +1124,26 @@ export default function RosterPage() {
                       </div>
                       <p className="text-[10px] text-muted-foreground mb-2">Multiple shifts exist for this day. This causes incorrect hour totals. Delete the duplicates below:</p>
                       <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                         {conflictShifts.map(s => (
-                            <div key={s.id} className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 text-xs shadow-sm">
-                               <div>
-                                  <span className="font-bold block">{format(parseISO(s.start_time), 'h:mm a')} - {format(parseISO(s.end_time), 'h:mm a')}</span>
-                                  <span className="text-[10px] text-muted-foreground">{s.role} {s.task ? `(${s.task})` : ''}</span>
-                               </div>
-                               <Button 
-                                  size="sm" 
-                                  variant="destructive" 
-                                  className="h-6 w-6 p-0" 
-                                  onClick={() => handleResolveConflict(s.id)}
-                                  title="Delete this specific shift"
-                               >
-                                  <Trash2 className="w-3 h-3" />
-                               </Button>
-                            </div>
-                         ))}
+                          {conflictShifts.map(s => (
+                             <div key={s.id} className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-2 text-xs shadow-sm">
+                                <div>
+                                   <span className="font-bold block">{format(parseISO(s.start_time), 'h:mm a')} - {format(parseISO(s.end_time), 'h:mm a')}</span>
+                                   <span className="text-[10px] text-muted-foreground">{s.role} {s.task ? `(${s.task})` : ''}</span>
+                                </div>
+                                <Button 
+                                   size="sm" 
+                                   variant="destructive" 
+                                   className="h-6 w-6 p-0" 
+                                   onClick={() => handleResolveConflict(s.id)}
+                                   title="Delete this specific shift"
+                                >
+                                   <Trash2 className="w-3 h-3" />
+                                </Button>
+                             </div>
+                          ))}
                       </div>
-                   </div>
-                )}
+                    </div>
+                 )}
 
               <div className="text-sm font-semibold">{selectedEmpName} <span className="font-normal text-muted-foreground">- {selectedDate ? format(parseISO(selectedDate), 'MMM do') : ''}</span></div>
               <div className="grid grid-cols-2 gap-4"><div><label className="text-xs">Start</label><Input type="time" disabled={!isManager} value={formStart} onChange={(e) => { const newStart = e.target.value; setFormStart(newStart); if (newStart && selectedDate) { const startDateTime = parseISO(`${selectedDate}T${newStart}`); const endDateTime = addHours(startDateTime, 8); setFormEnd(format(endDateTime, 'HH:mm')); } }} /></div><div><label className="text-xs">End</label><Input type="time" disabled={!isManager} value={formEnd} onChange={e => setFormEnd(e.target.value)} /></div></div><div><label className="text-xs">Role</label><Select value={formRole} onValueChange={setFormRole} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['Guide', 'Desk', 'Driver', 'Mechanic', 'Manager'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div><div><label className="text-xs">Special Task</label><Select value={formTask} onValueChange={setFormTask} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">None</SelectItem>{Object.entries(TASKS).map(([key, task]) => (<SelectItem key={key} value={key}><div className="flex items-center gap-2"><div className={`w-3 h-3 ${task.color} rounded-sm`}></div>{task.label}</div></SelectItem>))}</SelectContent></Select></div><div><label className="text-xs">Location</label><Select value={formLocation} onValueChange={setFormLocation} disabled={!isManager}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hrConfig.map(l => <SelectItem key={l.name} value={l.name}>{l.name}</SelectItem>)}</SelectContent></Select></div></div>
