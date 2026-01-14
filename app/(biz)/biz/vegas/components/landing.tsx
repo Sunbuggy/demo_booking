@@ -244,6 +244,8 @@ const Landing = ({
             drivers={drivers}
             groupsData={groupsData}
             todaysShifts={todaysShifts}
+            // [CRITICAL FIX] Pass role down to HourCard
+            role={role}
           />
         );
       })}

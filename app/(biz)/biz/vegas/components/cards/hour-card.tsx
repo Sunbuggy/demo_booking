@@ -31,7 +31,8 @@ const HourCard = ({
   hourlyUtilization,
   drivers,
   groupsData,
-  todaysShifts 
+  todaysShifts,
+  role // [NEW] Accept role prop
 }: {
   hr: string; 
   data: Record<string, Record<string, Reservation[]>>; 
@@ -44,6 +45,7 @@ const HourCard = ({
   drivers: any[]; 
   groupsData: GroupsData; 
   todaysShifts?: any[]; 
+  role?: number; // [NEW] Define type
 }) => {
   
   // --- 1. DATA PREPARATION ---
@@ -109,7 +111,6 @@ const HourCard = ({
   }) || [];
 
   // Helper to count vehicles per group
-  // UPDATED: Now looks for 'group_vehicles' directly on the group object first
   const getGroupStats = (group: any) => {
     // 1. Get Vehicles: Prefer nested array from new fetcher, fallback to filtering global list
     let vehicles = group.group_vehicles;
@@ -214,11 +215,13 @@ const HourCard = ({
                       <span>{lead}/{sweep}</span>
                    </div>
 
+                   {/* [CRITICAL UPDATE] Pass role to LaunchGroup */}
                    <LaunchGroup 
                      groupId={group.id} 
                      launchedAt={timing?.launched_at} 
                      landedAt={timing?.landed_at} 
                      groupName={group.group_name}
+                     role={role}
                    />
 
                    <div className="pl-1 border-l border-gray-200 dark:border-gray-700 ml-1">
