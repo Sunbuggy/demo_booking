@@ -524,6 +524,39 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_waivers: {
+        Row: {
+          id: string
+          is_active: boolean | null
+          location_tag: string | null
+          pdf_url: string | null
+          signed_at: string
+          smartwaiver_waiver_id: string
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean | null
+          location_tag?: string | null
+          pdf_url?: string | null
+          signed_at: string
+          smartwaiver_waiver_id: string
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_active?: boolean | null
+          location_tag?: string | null
+          pdf_url?: string | null
+          signed_at?: string
+          smartwaiver_waiver_id?: string
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null
@@ -584,17 +617,34 @@ export type Database = {
       departments: {
         Row: {
           id: string
+          location_id: string | null
           name: string
+          sort_order: number | null
+          style_class: string | null
         }
         Insert: {
           id?: string
+          location_id?: string | null
           name: string
+          sort_order?: number | null
+          style_class?: string | null
         }
         Update: {
           id?: string
+          location_id?: string | null
           name?: string
+          sort_order?: number | null
+          style_class?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "departments_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dispatch_groups: {
         Row: {
@@ -621,6 +671,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_logs: {
+        Row: {
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          recipient_email: string
+          recipient_name: string | null
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          subject: string
+        }
+        Insert: {
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email: string
+          recipient_name?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status: string
+          subject: string
+        }
+        Update: {
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email?: string
+          recipient_name?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          body_template: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string
+          subject_template: string
+        }
+        Insert: {
+          body_template: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name: string
+          subject_template: string
+        }
+        Update: {
+          body_template?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string
+          subject_template?: string
+        }
+        Relationships: []
       }
       employee_availability_patterns: {
         Row: {
@@ -754,6 +867,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fleet_type_settings: {
+        Row: {
+          icon_name: string
+          updated_at: string | null
+          updated_by: string | null
+          vehicle_type: string
+        }
+        Insert: {
+          icon_name: string
+          updated_at?: string | null
+          updated_by?: string | null
+          vehicle_type: string
+        }
+        Update: {
+          icon_name?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          vehicle_type?: string
+        }
+        Relationships: []
       }
       group_timings: {
         Row: {
@@ -975,24 +1109,60 @@ export type Database = {
         }
         Relationships: []
       }
+      location_geofences: {
+        Row: {
+          center_lat: number | null
+          center_lng: number | null
+          description: string | null
+          id: number
+          name: string
+          polygon_coords: Json | null
+          radius_miles: number | null
+          type: string
+        }
+        Insert: {
+          center_lat?: number | null
+          center_lng?: number | null
+          description?: string | null
+          id?: number
+          name: string
+          polygon_coords?: Json | null
+          radius_miles?: number | null
+          type: string
+        }
+        Update: {
+          center_lat?: number | null
+          center_lng?: number | null
+          description?: string | null
+          id?: number
+          name?: string
+          polygon_coords?: Json | null
+          radius_miles?: number | null
+          type?: string
+        }
+        Relationships: []
+      }
       locations: {
         Row: {
           created_at: string | null
           created_by: string | null
           id: string
           name: string
+          sort_order: number | null
         }
         Insert: {
           created_at?: string | null
           created_by?: string | null
           id?: string
           name: string
+          sort_order?: number | null
         }
         Update: {
           created_at?: string | null
           created_by?: string | null
           id?: string
           name?: string
+          sort_order?: number | null
         }
         Relationships: []
       }
@@ -1134,6 +1304,7 @@ export type Database = {
       }
       pismo_bookings: {
         Row: {
+          adults: number | null
           bandannas_qty: number | null
           booked_by: string | null
           booking_date: string
@@ -1145,6 +1316,7 @@ export type Database = {
           goggles_qty: number | null
           id: string
           last_name: string
+          minors: number | null
           notes: string | null
           phone: string
           reservation_id: number
@@ -1155,6 +1327,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          adults?: number | null
           bandannas_qty?: number | null
           booked_by?: string | null
           booking_date: string
@@ -1166,6 +1339,7 @@ export type Database = {
           goggles_qty?: number | null
           id?: string
           last_name: string
+          minors?: number | null
           notes?: string | null
           phone: string
           reservation_id?: number
@@ -1176,6 +1350,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          adults?: number | null
           bandannas_qty?: number | null
           booked_by?: string | null
           booking_date?: string
@@ -1187,6 +1362,7 @@ export type Database = {
           goggles_qty?: number | null
           id?: string
           last_name?: string
+          minors?: number | null
           notes?: string | null
           phone?: string
           reservation_id?: number
@@ -1335,6 +1511,41 @@ export type Database = {
           start_date?: string
         }
         Relationships: []
+      }
+      positions: {
+        Row: {
+          created_at: string | null
+          department_id: string | null
+          id: string
+          keyword: string | null
+          sort_order: number | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          department_id?: string | null
+          id?: string
+          keyword?: string | null
+          sort_order?: number | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          department_id?: string | null
+          id?: string
+          keyword?: string | null
+          sort_order?: number | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       qr_history: {
         Row: {
@@ -1595,6 +1806,7 @@ export type Database = {
           id: string
           is_on_break: boolean | null
           location: string | null
+          notes: string | null
           role: string | null
           start_time: string | null
           status: string | null
@@ -1620,6 +1832,7 @@ export type Database = {
           id?: string
           is_on_break?: boolean | null
           location?: string | null
+          notes?: string | null
           role?: string | null
           start_time?: string | null
           status?: string | null
@@ -1645,6 +1858,7 @@ export type Database = {
           id?: string
           is_on_break?: boolean | null
           location?: string | null
+          notes?: string | null
           role?: string | null
           start_time?: string | null
           status?: string | null
@@ -1803,13 +2017,17 @@ export type Database = {
           external_metadata: Json | null
           first_name: string | null
           full_name: string | null
+          fun_license_id: string | null
           hire_date: string | null
           homepage: string | null
           id: string
           job_title: string | null
           last_name: string | null
+          license_photo_url: string | null
+          license_signed_at: string | null
           location: string | null
           phone: string | null
+          photo_url: string | null
           stage_name: string | null
           time_entry_status:
             | Database["public"]["Enums"]["time_entry_status"]
@@ -1829,13 +2047,17 @@ export type Database = {
           external_metadata?: Json | null
           first_name?: string | null
           full_name?: string | null
+          fun_license_id?: string | null
           hire_date?: string | null
           homepage?: string | null
           id: string
           job_title?: string | null
           last_name?: string | null
+          license_photo_url?: string | null
+          license_signed_at?: string | null
           location?: string | null
           phone?: string | null
+          photo_url?: string | null
           stage_name?: string | null
           time_entry_status?:
             | Database["public"]["Enums"]["time_entry_status"]
@@ -1855,13 +2077,17 @@ export type Database = {
           external_metadata?: Json | null
           first_name?: string | null
           full_name?: string | null
+          fun_license_id?: string | null
           hire_date?: string | null
           homepage?: string | null
           id?: string
           job_title?: string | null
           last_name?: string | null
+          license_photo_url?: string | null
+          license_signed_at?: string | null
           location?: string | null
           phone?: string | null
+          photo_url?: string | null
           stage_name?: string | null
           time_entry_status?:
             | Database["public"]["Enums"]["time_entry_status"]
@@ -1907,6 +2133,47 @@ export type Database = {
           },
           {
             foreignKeyName: "vehicle_future_location_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_inspections: {
+        Row: {
+          checklist_data: Json
+          created_at: string | null
+          created_by: string | null
+          id: string
+          notes: string | null
+          passed: boolean | null
+          vehicle_id: string | null
+          vehicle_type: string | null
+        }
+        Insert: {
+          checklist_data?: Json
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          passed?: boolean | null
+          vehicle_id?: string | null
+          vehicle_type?: string | null
+        }
+        Update: {
+          checklist_data?: Json
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          passed?: boolean | null
+          vehicle_id?: string | null
+          vehicle_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_inspections_vehicle_id_fkey"
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
@@ -2874,6 +3141,24 @@ export type Database = {
       auto_clock_out: { Args: never; Returns: undefined }
       clock_in_user: { Args: { user_id: string }; Returns: undefined }
       clock_out_user: { Args: { user_id: string }; Returns: undefined }
+      get_email_conflicts: {
+        Args: never
+        Returns: {
+          account_count: number
+          accounts: Json
+          shared_email: string
+        }[]
+      }
+      get_null_email_profiles: {
+        Args: never
+        Returns: {
+          created_at: string
+          full_name: string
+          id: string
+          last_sign_in: string
+          user_level: number
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       is_high_level_user: { Args: { uid: string }; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }

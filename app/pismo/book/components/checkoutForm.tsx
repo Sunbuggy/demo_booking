@@ -6,6 +6,7 @@ import { ChevronLeft, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-reac
 
 export default function CheckoutForm({ 
   total, 
+  depositTotal = 0, // <--- NEW PROP
   isExpanded, 
   setIsExpanded, 
   onPayment, 
@@ -15,7 +16,6 @@ export default function CheckoutForm({
   selectedItems = [],
   goggles = 0,
   bandannas = 0,
-  // --- IMPORTANT: Ensure holderInfo is passed ---
   holderInfo, 
   // --- Staff Props ---
   userLevel = 0, 
@@ -33,9 +33,21 @@ export default function CheckoutForm({
   const isStaff = userLevel >= 300;
   const showDepositOption = isStaff && isEditing;
 
+  // Logic: Calculate the base price depending on mode (Deposit vs Payment)
+  const basePrice = paymentType === 'deposit' ? depositTotal : total;
+  
+  // Logic: Final Price is either the Base Price OR the Manual Override
+  const finalDisplayPrice = useCustomAmount ? Number(customAmount) : basePrice;
+
+  // Auto-check "Pay Now" if using custom amount
   useEffect(() => {
     if (useCustomAmount) setPayNow(true);
   }, [useCustomAmount]);
+
+  // When switching payment types, reset custom amount toggle so it defaults to the correct calculated value
+  useEffect(() => {
+    setUseCustomAmount(false);
+  }, [paymentType, setUseCustomAmount]);
 
   const handleConfirm = () => {
     setCardError(null);
@@ -60,12 +72,7 @@ export default function CheckoutForm({
       setCardError(err);
   };
 
-  const finalDisplayPrice = useCustomAmount ? Number(customAmount) : total;
-
   return (
-    // SEMANTIC: Main Container
-    // Collapsed: Primary Background
-    // Expanded: Page Background (likely white in light mode, dark gray in dark mode)
     <div className={`fixed bottom-0 left-0 right-0 z-[100] transition-all duration-300 shadow-[0_-5px_25px_rgba(0,0,0,0.3)] ${
       isExpanded 
         ? 'bg-background h-[85vh] rounded-t-3xl border-t border-border' 
@@ -73,7 +80,6 @@ export default function CheckoutForm({
     }`}>
       
       {!isExpanded ? (
-        // --- COLLAPSED STATE ---
         <div onClick={() => setIsExpanded(true)} className="flex justify-between items-center p-5 h-full max-w-5xl mx-auto">
           <span className="text-2xl font-bold">Total: ${finalDisplayPrice.toFixed(2)}</span>
           <span className="animate-pulse font-bold uppercase tracking-widest text-lg flex items-center gap-2">
@@ -81,7 +87,6 @@ export default function CheckoutForm({
           </span>
         </div>
       ) : (
-        // --- EXPANDED STATE ---
         <div className="flex flex-col h-full max-w-2xl mx-auto">
           
           {/* Header */}
@@ -98,11 +103,9 @@ export default function CheckoutForm({
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar pb-32">
             
-             {/* SEMANTIC: Summary Card (bg-card, text-card-foreground) */}
              <div className="bg-card text-card-foreground p-6 rounded-xl mb-8 border border-border shadow-sm relative overflow-hidden">
                
                {isStaff && (
-                 // SEMANTIC: Staff Badge (Secondary color)
                  <div className="absolute top-0 right-0 bg-secondary text-secondary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider shadow-sm">
                     Staff Mode
                  </div>
@@ -132,7 +135,6 @@ export default function CheckoutForm({
                                 onClick={() => setPaymentType('deposit')}
                                 className={`p-2 text-sm font-bold rounded transition-colors border shadow-sm ${
                                     paymentType === 'deposit' 
-                                    // SEMANTIC: Secondary for Deposit (Hold)
                                     ? 'bg-secondary text-secondary-foreground border-secondary' 
                                     : 'bg-background border-border text-muted-foreground hover:bg-muted'
                                 }`}
@@ -144,7 +146,6 @@ export default function CheckoutForm({
                                 onClick={() => setPaymentType('payment')}
                                 className={`p-2 text-sm font-bold rounded transition-colors border shadow-sm ${
                                     paymentType === 'payment' 
-                                    // SEMANTIC: Primary for Payment (Sale)
                                     ? 'bg-primary text-primary-foreground border-primary' 
                                     : 'bg-background border-border text-muted-foreground hover:bg-muted'
                                 }`}
@@ -161,13 +162,14 @@ export default function CheckoutForm({
                                 checked={useCustomAmount} 
                                 onChange={e => {
                                     setUseCustomAmount(e.target.checked);
+                                    // Default to the current correct base price when enabling override
                                     if(e.target.checked && (!customAmount || customAmount === 0)) {
-                                        setCustomAmount(total);
+                                        setCustomAmount(basePrice);
                                     }
                                 }}
                                 className="w-4 h-4 accent-primary rounded cursor-pointer"
                             />
-                            <span className="text-sm font-medium text-foreground">Override Total Price</span>
+                            <span className="text-sm font-medium text-foreground">Custom cost</span>
                         </label>
                         
                         {useCustomAmount && (
@@ -177,7 +179,6 @@ export default function CheckoutForm({
                                     type="number" 
                                     value={customAmount} 
                                     onChange={e => setCustomAmount(parseFloat(e.target.value) || 0)}
-                                    // SEMANTIC: Input Styling
                                     className="bg-background border border-input rounded p-1 w-28 text-right text-foreground font-bold focus:ring-2 focus:ring-primary outline-none"
                                 />
                             </div>
@@ -213,7 +214,6 @@ export default function CheckoutForm({
             <div className="mb-8">
                 <label className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors shadow-sm ${
                     payNow 
-                    // SEMANTIC: Selected state uses Primary/10 bg and Primary border
                     ? 'bg-primary/5 border-primary ring-1 ring-primary/20' 
                     : 'bg-card border-border hover:bg-muted/50'
                 }`}>
@@ -229,7 +229,7 @@ export default function CheckoutForm({
                         </span>
                         <span className="text-xs text-muted-foreground">
                             {paymentType === 'deposit' 
-                                ? 'Authorize card for security deposit (Hold)' 
+                                ? `Authorize card for security deposit ($${finalDisplayPrice.toFixed(0)} Hold)` 
                                 : 'Charge card immediately via NMI'
                             }
                         </span>
@@ -244,7 +244,6 @@ export default function CheckoutForm({
             )}
 
             {/* Waiver Agreement */}
-            {/* SEMANTIC: Destructive/Warning tint if unchecked implies importance */}
             <label className={`flex gap-4 items-start p-4 rounded-xl mb-8 cursor-pointer border transition-colors ${
                 agreed 
                 ? 'bg-green-500/10 border-green-500/20' 
@@ -279,7 +278,6 @@ export default function CheckoutForm({
               type="button"
               onClick={handleConfirm} 
               disabled={loading || !agreed}
-              // SEMANTIC: Primary Button Styling
               className={`w-full hover:brightness-110 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-primary-foreground py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-[0.98] ${
                  paymentType === 'deposit' && payNow ? 'bg-secondary text-secondary-foreground' : 'bg-primary'
               }`}

@@ -43,7 +43,7 @@ export default function PismoReservationEditForm({
   const [goggles, setGoggles] = useState<number>(initialData.goggles_qty || 0);
   const [bandannas, setBandannas] = useState<number>(initialData.bandannas_qty || 0);
   
-  // --- Initialize Holder Info with Adults/Minors ---
+  // --- Initialize Holder Info ---
   const [holderInfo, setHolderInfo] = useState({ 
     firstName: initialData.first_name, 
     lastName: initialData.last_name, 
@@ -63,6 +63,8 @@ export default function PismoReservationEditForm({
   );
 
   const [total, setTotal] = useState<number>(0);
+  const [depositTotal, setDepositTotal] = useState<number>(0); // <--- NEW STATE
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [isCheckoutExpanded, setIsCheckoutExpanded] = useState(false);
@@ -85,20 +87,34 @@ export default function PismoReservationEditForm({
     fetchUser();
   }, []);
 
-  // --- Calculations & Updates ---
+  // --- Calculations (TOTAL & DEPOSIT) ---
   useEffect(() => {
     if (!pricingCategories.length) return;
-    let calc = goggles * 4 + bandannas * 5;
+    
+    let rentalCalc = goggles * 4 + bandannas * 5;
+    let depositCalc = 0; // <--- Start Deposit Calc
+
     pricingCategories.forEach(cat => {
       const sel = selections[cat.id] || { qty: 0, waiver: false };
       const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
       const price = cat[priceKey] !== undefined ? cat[priceKey] : (cat.price_1hr || 0);
-      calc += sel.qty * price;
-      if (sel.waiver) calc += sel.qty * (cat.damage_waiver || 0);
+      
+      // Add to Rental Total
+      rentalCalc += sel.qty * price;
+      if (sel.waiver) rentalCalc += sel.qty * (cat.damage_waiver || 0);
+
+      // Add to Deposit Total (From Database Column 'deposit')
+      depositCalc += sel.qty * (cat.deposit || 0);
     });
-    setTotal(calc);
-    if (!useCustomAmount) setCustomAmount(calc);
-  }, [selections, goggles, bandannas, pricingCategories, durationHours, useCustomAmount]);
+
+    setTotal(rentalCalc);
+    setDepositTotal(depositCalc); // <--- Set Deposit Total
+    
+    // Logic for setting custom amount default only if it hasn't been touched yet
+    if (!useCustomAmount) {
+        setCustomAmount(paymentType === 'deposit' ? depositCalc : rentalCalc);
+    }
+  }, [selections, goggles, bandannas, pricingCategories, durationHours, useCustomAmount, paymentType]);
 
   const handleUpdate = async (paymentToken: string | null) => {
     setLoading(true);
@@ -116,7 +132,10 @@ export default function PismoReservationEditForm({
         }
     });
 
-    const transactionAmount = useCustomAmount ? customAmount : total;
+    // Use Custom Amount or auto-select based on payment mode (deposit vs full payment)
+    const baseAmount = paymentType === 'deposit' ? depositTotal : total;
+    const transactionAmount = useCustomAmount ? customAmount : baseAmount;
+
     const orderIdOverride = paymentType === 'deposit' ? `deposit_${initialData.reservation_id}` : String(initialData.reservation_id);
 
     try {
@@ -126,10 +145,10 @@ export default function PismoReservationEditForm({
             body: JSON.stringify({
                 reservation_id: initialData.reservation_id, 
                 booking_id: initialData.id,
-                total_amount: total, 
+                total_amount: total, // Always save the RENTAL value as total_amount
                 
                 payment_token: paymentToken,
-                payment_amount: transactionAmount,
+                payment_amount: transactionAmount, // The specific amount we just charged/held
                 transaction_type: paymentType === 'deposit' ? 'auth' : 'sale',
                 order_id_override: orderIdOverride,
 
@@ -167,8 +186,6 @@ export default function PismoReservationEditForm({
     }));
 
   return (
-    // FIX: Added 'bg-background' and 'min-h-screen' to ensure the background color 
-    // matches the 'text-foreground' regardless of the parent layout style.
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8 flex flex-col lg:flex-row gap-8">
       
       {/* LEFT COLUMN */}
@@ -184,7 +201,6 @@ export default function PismoReservationEditForm({
               <span className="text-muted-foreground text-sm">Created {new Date(initialData.created_at).toLocaleDateString()}</span>
             </div>
             <div className="text-right">
-              {/* SEMANTIC: Status Badge */}
               <span className={`block font-bold uppercase text-lg px-3 py-1 rounded border ${
                 initialData.status === 'confirmed' 
                   ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' 
@@ -214,11 +230,9 @@ export default function PismoReservationEditForm({
               <VehicleGrid categories={pricingCategories} selections={selections} setSelections={setSelections} durationHours={durationHours} />
             ) : <div className="p-8 text-center bg-card rounded-xl text-muted-foreground border border-border">Loading...</div>}
             
-            {/* SEMANTIC: Extras Card (bg-card) */}
             <div className="mt-8 flex gap-8 justify-center bg-card p-6 rounded-xl border border-border shadow-sm text-card-foreground">
               <div className="text-center">
                   <label className="block mb-2 font-bold text-foreground">Goggles</label>
-                  {/* FIX: Explicitly set text and background to ensure visibility inside inputs */}
                   <input 
                     type="number" 
                     min="0" 
@@ -241,13 +255,21 @@ export default function PismoReservationEditForm({
           </section>
 
           <CheckoutForm 
-            total={total} holderInfo={holderInfo} isExpanded={isCheckoutExpanded} setIsExpanded={setIsCheckoutExpanded}
-            onPayment={handleUpdate} message={message} loading={loading} 
-            selectedItems={selectedItemsList} goggles={goggles} bandannas={bandannas}
+            total={total} 
+            depositTotal={depositTotal} // <--- PASSING THE CALCULATED DEPOSIT
+            holderInfo={holderInfo} 
+            isExpanded={isCheckoutExpanded} 
+            setIsExpanded={setIsCheckoutExpanded}
+            onPayment={handleUpdate} 
+            message={message} 
+            loading={loading} 
+            selectedItems={selectedItemsList} 
+            goggles={goggles} 
+            bandannas={bandannas}
             
             // --- STAFF CONTROL PROPS ---
             userLevel={userLevel} 
-            isEditing={true} // Enables Deposit Toggle
+            isEditing={true} 
             paymentType={paymentType}
             setPaymentType={setPaymentType}
             customAmount={customAmount}
@@ -260,7 +282,7 @@ export default function PismoReservationEditForm({
       {/* RIGHT COLUMN (Sidebar) */}
       <div className="w-full lg:w-96 space-y-8 flex-shrink-0">
           
-          {/* SEMANTIC: Notes Card */}
+          {/* Notes Card */}
           <div className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-md">
               <h3 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
                 <ClipboardList className="w-5 h-5" /> Notes
@@ -284,7 +306,7 @@ export default function PismoReservationEditForm({
               </div>
           </div>
 
-          {/* SEMANTIC: Logs Card */}
+          {/* Logs Card */}
           <div className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-md">
               <h3 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
                 <History className="w-5 h-5" /> Edit History
@@ -292,7 +314,6 @@ export default function PismoReservationEditForm({
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                   {logs.map((log: any) => (
                       <div key={log.id} className="relative pl-4 border-l-2 border-primary/30">
-                          {/* Timeline Dot */}
                           <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-primary"></div>
                           <p className="text-sm text-foreground">{log.action_description}</p>
                           <div className="text-xs text-muted-foreground mt-1">
