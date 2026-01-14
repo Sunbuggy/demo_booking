@@ -7,6 +7,7 @@
  * - Service Role: Bypasses RLS for admin actions.
  * - Enum Safety: Uses 'accepted'/'rejected' to match DB constraints.
  * - Locking & Overlap: Prevents conflicts and edits to finalized weeks.
+ * - Conflict Resolution: Handles 'forceOverride' to fix overlaps.
  */
 
 'use server';
@@ -53,10 +54,12 @@ async function isPeriodLocked(supabaseAdmin: any, dateToCheck: string) {
   return !!data;
 }
 
-async function checkOverlap(supabaseAdmin: any, userId: string, start: string, end: string | null, excludeEntryId?: string) {
+// Renamed helper to return ALL conflicts, not just the first one
+async function getConflicts(supabaseAdmin: any, userId: string, start: string, end: string | null, excludeEntryId?: string) {
   const targetStart = toDate(start);
   const targetEnd = end ? toDate(end) : new Date(); 
 
+  // Query a wider range to catch shifts crossing midnight or long shifts
   const queryStart = new Date(targetStart.getTime() - 86400000).toISOString(); 
   const queryEnd = new Date(targetEnd.getTime() + 86400000).toISOString();     
 
@@ -72,93 +75,136 @@ async function checkOverlap(supabaseAdmin: any, userId: string, start: string, e
   }
 
   const { data: entries } = await query;
-  if (!entries || entries.length === 0) return null;
+  if (!entries || entries.length === 0) return [];
 
-  const conflict = entries.find((entry: any) => {
+  // Filter precisely in JS 
+  return entries.filter((entry: any) => {
     const existingStart = parseISO(entry.start_time);
     const existingEnd = entry.end_time ? parseISO(entry.end_time) : new Date();
+    // Overlap logic: (StartA < EndB) AND (EndA > StartB)
     return isBefore(targetStart, existingEnd) && isAfter(targetEnd, existingStart);
   });
+}
 
-  return conflict || null;
+// Old helper wrapper for backward compatibility if needed, though we use getConflicts mostly now
+async function checkOverlap(supabaseAdmin: any, userId: string, start: string, end: string | null, excludeEntryId?: string) {
+  const conflicts = await getConflicts(supabaseAdmin, userId, start, end, excludeEntryId);
+  return conflicts.length > 0 ? conflicts[0] : null;
 }
 
 // --- ACTIONS --------------------------------------------------------
 
-export async function approveCorrectionRequest(requestId: string) {
+// UPDATED: Now accepts forceOverride flag
+export async function approveCorrectionRequest(requestId: string, forceOverride = false) {
   const userClient = await createUserClient();
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return { message: 'Unauthorized', success: false };
   
   const supabaseAdmin = getAdminClient();
 
-  // A. Fetch Request
-  const { data: request, error: reqError } = await supabaseAdmin
-    .from('time_sheet_requests')
-    .select('*')
-    .eq('id', requestId)
-    .single();
+  try {
+    // A. Fetch Request
+    const { data: request, error: reqError } = await supabaseAdmin
+      .from('time_sheet_requests')
+      .select('*')
+      .eq('id', requestId)
+      .single();
 
-  if (reqError || !request) return { message: 'Request not found', success: false };
+    if (reqError || !request) return { message: 'Request not found', success: false };
 
-  // B. Check Locking
-  if (await isPeriodLocked(supabaseAdmin, request.start_time)) {
-    return { message: 'Cannot approve: Payroll period is locked.', success: false };
+    // B. Check Locking
+    if (await isPeriodLocked(supabaseAdmin, request.start_time)) {
+      return { message: 'Cannot approve: Payroll period is locked.', success: false };
+    }
+
+    // C. Check Overlap (Conflict Detection)
+    const conflicts = await getConflicts(supabaseAdmin, request.user_id, request.start_time, request.end_time);
+    const hasConflict = conflicts.length > 0;
+
+    if (hasConflict) {
+      // 1. If NOT forcing, return conflict info to UI
+      if (!forceOverride) {
+        return { 
+          success: false, 
+          isConflict: true, 
+          conflictingEntry: conflicts[0], // Pass the first conflict to the resolver
+          message: 'Time overlap detected.' 
+        };
+      } 
+      
+      // 2. If FORCING, delete the conflicting entries
+      else {
+        const conflictIds = conflicts.map((c: any) => c.id);
+        
+        // Audit log the deletion before it happens
+        await supabaseAdmin.from('audit_logs').insert({
+          user_id: user.id,
+          action: 'OVERWRITE_CONFLICT',
+          table_name: 'time_entries',
+          record_id: conflictIds.join(','),
+          new_data: { deleted_ids: conflictIds, reason: `Overwritten by Request ${requestId}` }
+        });
+
+        const { error: delError } = await supabaseAdmin
+            .from('time_entries')
+            .delete()
+            .in('id', conflictIds);
+
+        if (delError) throw new Error(`Failed to clear conflict: ${delError.message}`);
+      }
+    }
+
+    // D. Create New Entry
+    const durationHours = parseFloat(
+      (differenceInMinutes(parseISO(request.end_time), parseISO(request.start_time)) / 60).toFixed(2)
+    );
+
+    const { data: newEntry, error: entryError } = await supabaseAdmin
+      .from('time_entries') 
+      .insert({
+        user_id: request.user_id,
+        start_time: request.start_time,
+        end_time: request.end_time,
+        date: request.start_time.split('T')[0],
+        status: 'completed',             
+        duration: durationHours,
+        location: 'Admin Correction',
+        role: 'employee',
+        notes: `Correction Approved: ${request.reason}` // Added reason to notes
+      })
+      .select()
+      .single();
+
+    if (entryError) return { message: `DB Error: ${entryError.message}`, success: false };
+
+    // E. Update Request Status (Enum: 'accepted')
+    const { error: updateError } = await supabaseAdmin
+      .from('time_sheet_requests')
+      .update({ status: 'accepted' }) 
+      .eq('id', requestId);
+
+    if (updateError) return { message: `Failed to update status: ${updateError.message}`, success: false };
+    
+    // Increment Correction Count
+    const { data: empDetails } = await supabaseAdmin.from('employee_details').select('time_correction_count').eq('user_id', request.user_id).single();
+    const newCount = (empDetails?.time_correction_count || 0) + 1;
+    await supabaseAdmin.from('employee_details').update({ time_correction_count: newCount }).eq('user_id', request.user_id);
+
+    // F. Audit Log
+    await supabaseAdmin.from('audit_logs').insert({
+      user_id: user.id, 
+      action: 'APPROVE_TIME_REQUEST',
+      table_name: 'time_sheet_requests',
+      record_id: requestId,
+      new_data: { approved_entry_id: newEntry.id, employee_id: request.user_id }
+    });
+
+    revalidatePath('/biz/payroll');
+    return { message: 'Request approved.', success: true };
+
+  } catch (error: any) {
+    return { success: false, message: error.message || "Unknown error occurred" };
   }
-
-  // C. Check Overlap
-  const conflict = await checkOverlap(supabaseAdmin, request.user_id, request.start_time, request.end_time);
-  if (conflict) {
-    const conflictTime = format(parseISO(conflict.start_time), 'MMM d h:mm a');
-    return { message: `Cannot approve: Overlaps with entry at ${conflictTime}.`, success: false };
-  }
-
-  // D. Create Entry
-  const durationHours = parseFloat(
-    (differenceInMinutes(parseISO(request.end_time), parseISO(request.start_time)) / 60).toFixed(2)
-  );
-
-  const { data: newEntry, error: entryError } = await supabaseAdmin
-    .from('time_entries') 
-    .insert({
-      user_id: request.user_id,
-      start_time: request.start_time,
-      end_time: request.end_time,
-      date: request.start_time.split('T')[0],
-      status: 'completed',             
-      duration: durationHours,
-      location: 'Admin Correction',
-      role: 'employee'                 
-    })
-    .select()
-    .single();
-
-  if (entryError) return { message: `DB Error: ${entryError.message}`, success: false };
-
-  // E. Update Request Status (Enum: 'accepted')
-  const { error: updateError } = await supabaseAdmin
-    .from('time_sheet_requests')
-    .update({ status: 'accepted' }) 
-    .eq('id', requestId);
-
-  if (updateError) return { message: `Failed to update status: ${updateError.message}`, success: false };
-  
-  // Increment Correction Count
-  const { data: empDetails } = await supabaseAdmin.from('employee_details').select('time_correction_count').eq('user_id', request.user_id).single();
-  const newCount = (empDetails?.time_correction_count || 0) + 1;
-  await supabaseAdmin.from('employee_details').update({ time_correction_count: newCount }).eq('user_id', request.user_id);
-
-  // F. Audit Log
-  await supabaseAdmin.from('audit_logs').insert({
-    user_id: user.id, 
-    action: 'APPROVE_TIME_REQUEST',
-    table_name: 'time_sheet_requests',
-    record_id: requestId,
-    new_data: { approved_entry_id: newEntry.id, employee_id: request.user_id }
-  });
-
-  revalidatePath('/biz/payroll');
-  return { message: 'Request approved.', success: true };
 }
 
 export async function denyCorrectionRequest(requestId: string) {
