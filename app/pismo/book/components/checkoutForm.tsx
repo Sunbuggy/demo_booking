@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import PaymentFields from './paymentFields';
+import { ChevronLeft, ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function CheckoutForm({ 
   total, 
@@ -62,51 +63,66 @@ export default function CheckoutForm({
   const finalDisplayPrice = useCustomAmount ? Number(customAmount) : total;
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 z-[100] transition-all duration-300 ${
-      isExpanded ? 'bg-gray-900 h-[85vh] rounded-t-3xl shadow-2xl border-t border-gray-700' : 'bg-orange-600 h-20 cursor-pointer'
+    // SEMANTIC: Main Container
+    // Collapsed: Primary Background
+    // Expanded: Page Background (likely white in light mode, dark gray in dark mode)
+    <div className={`fixed bottom-0 left-0 right-0 z-[100] transition-all duration-300 shadow-[0_-5px_25px_rgba(0,0,0,0.3)] ${
+      isExpanded 
+        ? 'bg-background h-[85vh] rounded-t-3xl border-t border-border' 
+        : 'bg-primary text-primary-foreground h-20 cursor-pointer hover:bg-primary/90'
     }`}>
       
       {!isExpanded ? (
-        <div onClick={() => setIsExpanded(true)} className="flex justify-between items-center p-5 h-full">
-          <span className="text-xl font-bold">Total: ${finalDisplayPrice.toFixed(2)}</span>
-          <span className="animate-pulse font-bold uppercase tracking-widest">
-            {isEditing ? 'Review & Update →' : 'Review & Book →'}
+        // --- COLLAPSED STATE ---
+        <div onClick={() => setIsExpanded(true)} className="flex justify-between items-center p-5 h-full max-w-5xl mx-auto">
+          <span className="text-2xl font-bold">Total: ${finalDisplayPrice.toFixed(2)}</span>
+          <span className="animate-pulse font-bold uppercase tracking-widest text-lg flex items-center gap-2">
+            {isEditing ? 'Review & Update' : 'Review & Book'} →
           </span>
         </div>
       ) : (
+        // --- EXPANDED STATE ---
         <div className="flex flex-col h-full max-w-2xl mx-auto">
           
           {/* Header */}
-          <div className="flex-shrink-0 px-6 py-5 md:px-8 border-b border-gray-800 bg-gray-900 rounded-t-3xl flex justify-between items-center z-50">
-            <button onClick={() => setIsExpanded(false)} className="text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1"><span>←</span> Back</button>
-            <h2 className="text-xl font-bold text-white">{isEditing ? 'Update Reservation' : 'Confirm Reservation'}</h2>
+          <div className="flex-shrink-0 px-6 py-5 md:px-8 border-b border-border bg-muted/20 rounded-t-3xl flex justify-between items-center z-50 backdrop-blur-sm">
+            <button 
+                onClick={() => setIsExpanded(false)} 
+                className="text-primary hover:text-primary/80 font-bold flex items-center gap-1 transition-colors"
+            >
+                <ChevronLeft className="w-5 h-5" /> Back
+            </button>
+            <h2 className="text-xl font-bold text-foreground">{isEditing ? 'Update Reservation' : 'Confirm Reservation'}</h2>
           </div>
           
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar pb-32">
             
-             <div className="bg-gray-800 p-6 rounded-xl mb-8 border border-gray-700 shadow-lg relative overflow-hidden">
+             {/* SEMANTIC: Summary Card (bg-card, text-card-foreground) */}
+             <div className="bg-card text-card-foreground p-6 rounded-xl mb-8 border border-border shadow-sm relative overflow-hidden">
                
                {isStaff && (
-                 <div className="absolute top-0 right-0 bg-blue-600 text-xs font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider shadow-lg">
+                 // SEMANTIC: Staff Badge (Secondary color)
+                 <div className="absolute top-0 right-0 bg-secondary text-secondary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider shadow-sm">
                     Staff Mode
                  </div>
                )}
 
-               <div className="text-center mb-6 border-b border-gray-700 pb-6">
-                  <div className={`text-4xl font-bold mb-2 ${useCustomAmount ? 'text-yellow-400' : 'text-white'}`}>
+               <div className="text-center mb-6 border-b border-border pb-6">
+                  {/* Price Display */}
+                  <div className={`text-4xl font-bold mb-2 ${useCustomAmount ? 'text-primary' : 'text-foreground'}`}>
                     ${finalDisplayPrice.toFixed(2)}
                   </div>
-                  <div className="text-gray-400 text-sm uppercase tracking-wide">
+                  <div className="text-muted-foreground text-sm uppercase tracking-wide">
                     {paymentType === 'deposit' && payNow ? 'Deposit Amount to Hold' : 'Total Due'}
                   </div>
                </div>
 
                {/* Staff Controls */}
                {isStaff && (
-                 <div className="bg-gray-900/50 p-4 rounded-lg mb-6 border border-gray-600">
+                 <div className="bg-muted/50 p-4 rounded-lg mb-6 border border-border">
                     <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase">Staff Controls</h4>
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase">Staff Controls</h4>
                     </div>
                     
                     {showDepositOption && (
@@ -114,10 +130,11 @@ export default function CheckoutForm({
                             <button 
                                 type="button"
                                 onClick={() => setPaymentType('deposit')}
-                                className={`p-2 text-sm font-bold rounded transition-colors border ${
+                                className={`p-2 text-sm font-bold rounded transition-colors border shadow-sm ${
                                     paymentType === 'deposit' 
-                                    ? 'bg-blue-600 border-blue-500 text-white' 
-                                    : 'bg-gray-800 border-gray-600 text-gray-400 hover:bg-gray-700'
+                                    // SEMANTIC: Secondary for Deposit (Hold)
+                                    ? 'bg-secondary text-secondary-foreground border-secondary' 
+                                    : 'bg-background border-border text-muted-foreground hover:bg-muted'
                                 }`}
                             >
                                 Hold Deposit
@@ -125,10 +142,11 @@ export default function CheckoutForm({
                             <button 
                                 type="button"
                                 onClick={() => setPaymentType('payment')}
-                                className={`p-2 text-sm font-bold rounded transition-colors border ${
+                                className={`p-2 text-sm font-bold rounded transition-colors border shadow-sm ${
                                     paymentType === 'payment' 
-                                    ? 'bg-green-600 border-green-500 text-white' 
-                                    : 'bg-gray-800 border-gray-600 text-gray-400 hover:bg-gray-700'
+                                    // SEMANTIC: Primary for Payment (Sale)
+                                    ? 'bg-primary text-primary-foreground border-primary' 
+                                    : 'bg-background border-border text-muted-foreground hover:bg-muted'
                                 }`}
                             >
                                 Charge Payment
@@ -147,19 +165,20 @@ export default function CheckoutForm({
                                         setCustomAmount(total);
                                     }
                                 }}
-                                className="w-4 h-4 accent-yellow-500 rounded cursor-pointer"
+                                className="w-4 h-4 accent-primary rounded cursor-pointer"
                             />
-                            <span className="text-sm font-medium text-gray-300">Override Total Price</span>
+                            <span className="text-sm font-medium text-foreground">Override Total Price</span>
                         </label>
                         
                         {useCustomAmount && (
                             <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <span className="text-gray-400 font-bold">$</span>
+                                <span className="text-muted-foreground font-bold">$</span>
                                 <input 
                                     type="number" 
                                     value={customAmount} 
                                     onChange={e => setCustomAmount(parseFloat(e.target.value) || 0)}
-                                    className="bg-gray-700 border border-gray-500 rounded p-1 w-28 text-right text-white font-bold focus:border-yellow-500 outline-none"
+                                    // SEMANTIC: Input Styling
+                                    className="bg-background border border-input rounded p-1 w-28 text-right text-foreground font-bold focus:ring-2 focus:ring-primary outline-none"
                                 />
                             </div>
                         )}
@@ -169,42 +188,46 @@ export default function CheckoutForm({
 
                {/* === ORDER SUMMARY === */}
                <div className="space-y-3 text-sm">
-                  <h3 className="font-bold text-gray-400 uppercase text-xs mb-3">Order Summary</h3>
+                  <h3 className="font-bold text-muted-foreground uppercase text-xs mb-3">Order Summary</h3>
                   
-                  {/* --- NEW: Guest Count --- */}
-                  <div className="flex justify-between text-gray-300 border-b border-gray-700/50 pb-2 mb-2">
+                  {/* Guest Count */}
+                  <div className="flex justify-between text-muted-foreground border-b border-border pb-2 mb-2">
                     <span>Guests</span>
-                    <span className="font-medium text-white">
+                    <span className="font-medium text-foreground">
                         {holderInfo?.adults || 1} Adult(s), {holderInfo?.minors || 0} Minor(s)
                     </span>
                   </div>
 
                   {selectedItems.map((item: any, idx: number) => (
-                    <div key={idx} className="flex justify-between text-white font-medium">
+                    <div key={idx} className="flex justify-between text-foreground font-medium">
                       <span>{item.qty}x {item.name} {item.waiver ? '(+Waiver)' : ''}</span>
                       <span>${item.price.toFixed(2)}</span>
                     </div>
                   ))}
-                  {goggles > 0 && <div className="flex justify-between text-gray-300"><span>{goggles}x Goggles</span><span>${(goggles * 4).toFixed(2)}</span></div>}
-                  {bandannas > 0 && <div className="flex justify-between text-gray-300"><span>{bandannas}x Bandannas</span><span>${(bandannas * 5).toFixed(2)}</span></div>}
+                  {goggles > 0 && <div className="flex justify-between text-muted-foreground"><span>{goggles}x Goggles</span><span>${(goggles * 4).toFixed(2)}</span></div>}
+                  {bandannas > 0 && <div className="flex justify-between text-muted-foreground"><span>{bandannas}x Bandannas</span><span>${(bandannas * 5).toFixed(2)}</span></div>}
                </div>
             </div>
 
+            {/* Payment Toggle */}
             <div className="mb-8">
-                <label className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
-                    payNow ? 'bg-gray-700 border-orange-500/50' : 'bg-gray-800 border-gray-600 hover:bg-gray-750'
+                <label className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors shadow-sm ${
+                    payNow 
+                    // SEMANTIC: Selected state uses Primary/10 bg and Primary border
+                    ? 'bg-primary/5 border-primary ring-1 ring-primary/20' 
+                    : 'bg-card border-border hover:bg-muted/50'
                 }`}>
                     <input 
                         type="checkbox" 
                         checked={payNow} 
                         onChange={e => setPayNow(e.target.checked)} 
-                        className="w-5 h-5 accent-orange-500 cursor-pointer"
+                        className="w-5 h-5 accent-primary cursor-pointer"
                     />
                     <div>
-                        <span className="block font-bold text-white">
+                        <span className="block font-bold text-foreground">
                             {paymentType === 'deposit' ? 'Process Deposit Now' : 'Pay with Card Now'}
                         </span>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-muted-foreground">
                             {paymentType === 'deposit' 
                                 ? 'Authorize card for security deposit (Hold)' 
                                 : 'Charge card immediately via NMI'
@@ -220,25 +243,45 @@ export default function CheckoutForm({
                 </div>
             )}
 
-            <label className="flex gap-4 items-start bg-red-950/30 p-4 rounded-xl mb-8 cursor-pointer border border-red-800/50 hover:bg-red-900/40 transition-colors">
-              <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="w-6 h-6 mt-1 accent-orange-500 cursor-pointer shrink-0" />
-              <span className="text-sm text-gray-200 font-medium leading-relaxed">I agree to the liability waiver and assume full responsibility for any equipment damages.</span>
+            {/* Waiver Agreement */}
+            {/* SEMANTIC: Destructive/Warning tint if unchecked implies importance */}
+            <label className={`flex gap-4 items-start p-4 rounded-xl mb-8 cursor-pointer border transition-colors ${
+                agreed 
+                ? 'bg-green-500/10 border-green-500/20' 
+                : 'bg-destructive/5 border-destructive/20 hover:bg-destructive/10'
+            }`}>
+              <div className="mt-1">
+                 {agreed 
+                    ? <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    : <ShieldCheck className="w-6 h-6 text-destructive" />
+                 }
+              </div>
+              <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="hidden" />
+              <span className={`text-sm font-medium leading-relaxed ${agreed ? 'text-foreground' : 'text-foreground'}`}>
+                I agree to the liability waiver and assume full responsibility for any equipment damages.
+              </span>
             </label>
 
+            {/* Messages */}
             {(message || cardError) && (
-              <div className={`text-center font-bold p-4 rounded-lg mb-6 border animate-pulse ${
+              <div className={`text-center font-bold p-4 rounded-lg mb-6 border animate-pulse flex items-center justify-center gap-2 ${
                 (message?.includes('Success') || message?.includes('Confirmed') || message?.includes('Updated')) && !cardError 
-                ? 'bg-green-900/40 text-green-400 border-green-800' 
-                : 'bg-red-900/40 text-red-400 border-red-800'
-              }`}>{cardError || message}</div>
+                ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' 
+                : 'bg-destructive/10 text-destructive border-destructive/20'
+              }`}>
+                {cardError && <AlertCircle className="w-5 h-5" />}
+                {cardError || message}
+              </div>
             )}
 
+            {/* Main Action Button */}
             <button 
               type="button"
               onClick={handleConfirm} 
               disabled={loading || !agreed}
-              className={`w-full hover:brightness-110 disabled:bg-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed text-white py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-[0.98] ${
-                 paymentType === 'deposit' && payNow ? 'bg-blue-600' : 'bg-orange-600'
+              // SEMANTIC: Primary Button Styling
+              className={`w-full hover:brightness-110 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed text-primary-foreground py-5 rounded-2xl text-2xl font-bold shadow-lg transition-all active:scale-[0.98] ${
+                 paymentType === 'deposit' && payNow ? 'bg-secondary text-secondary-foreground' : 'bg-primary'
               }`}
             >
               {loading ? 'Processing...' : (

@@ -10,8 +10,6 @@ import { useRouter } from 'next/navigation';
 /**
  * CONSTANT: TYPE_ORDER
  * We use an "Index Signature" { [key: string]: number } here.
- * Why? By default, TypeScript thinks an object only has the specific keys you typed (ATV, UTV, etc).
- * But later, when we do Object.keys(grouped), TypeScript sees those keys as generic 'strings'.
  * The Index Signature tells TS: "It's okay to use ANY string to look up a number in this object."
  */
 const TYPE_ORDER: { [key: string]: number } = {
@@ -127,12 +125,10 @@ export default function PismoPricingAdmin() {
     setSaving(false);
   };
 
-  if (loading) return <div className="p-8 text-center text-2xl">Checking access...</div>;
+  if (loading) return <div className="p-8 text-center text-2xl text-foreground">Checking access...</div>;
 
   /**
    * DATA TRANSFORMATION: Grouping
-   * We turn the flat list of rules into an object grouped by vehicle type.
-   * Example: { "ATV": [...rules], "UTV": [...rules] }
    */
   const grouped = rules.reduce((acc, rule) => {
     const type = rule.type_vehicle || 'Other';
@@ -143,25 +139,31 @@ export default function PismoPricingAdmin() {
 
   /**
    * DATA TRANSFORMATION: Sorting Keys
-   * We get the keys (ATV, UTV, Buggy) and sort them based on our TYPE_ORDER constant.
    */
   const sortedTypes = Object.keys(grouped).sort((a, b) => 
     (TYPE_ORDER[a] || 99) - (TYPE_ORDER[b] || 99)
   );
 
   /**
-   * FIX 1: Explicit 'any' Typing in Sort
-   * TypeScript inferred 'a' and 'b' as unknown types.
-   * We explicitly type them as 'any' to allow access to .sort_order.
+   * FIX: Explicit 'any' Typing in Sort
    */
   sortedTypes.forEach(type => {
     grouped[type].sort((a: any, b: any) => (a.sort_order || 100) - (b.sort_order || 100));
   });
 
   return (
-    <div className="max-w-7xl mx-auto p-8 bg-gray-900 text-white min-h-screen">
-      <h1 className="text-4xl font-bold text-orange-500 mb-4 text-center">Pismo Pricing Rules Admin (Managers Only)</h1>
-      <p className="text-center mb-8">Logged in as: {currentUser?.name}</p>
+    // SEMANTIC: Page background and default text color
+    <div className="max-w-7xl mx-auto p-8 bg-background text-foreground min-h-screen">
+      
+      {/* SEMANTIC: Primary Brand Color for Main Title */}
+      <h1 className="text-4xl font-bold text-primary mb-4 text-center">
+        Pismo Pricing Rules Admin (Managers Only)
+      </h1>
+      
+      {/* SEMANTIC: Muted text for secondary info */}
+      <p className="text-center mb-8 text-muted-foreground">
+        Logged in as: {currentUser?.name}
+      </p>
 
       {/* Control Buttons */}
       <div className="flex justify-center gap-4 mb-12">
@@ -194,7 +196,8 @@ export default function PismoPricingAdmin() {
             });
             setSelectedPrefixes([]);
           }}
-          className="bg-green-600 hover:bg-green-700 px-8 py-4 rounded text-2xl"
+          // SEMANTIC: Success/Green action
+          className="bg-green-600 text-white hover:bg-green-700 px-8 py-4 rounded text-2xl shadow-md transition-colors"
         >
           + Add New Rule
         </button>
@@ -203,7 +206,8 @@ export default function PismoPricingAdmin() {
             const { data } = await supabase.from('pismo_pricing_rules').select('*').order('created_at', { ascending: false });
             setRules(data || []);
           }}
-          className="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded text-2xl"
+          // SEMANTIC: Primary/Blue action
+          className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4 rounded text-2xl shadow-md transition-colors"
         >
           Refresh
         </button>
@@ -212,52 +216,51 @@ export default function PismoPricingAdmin() {
       {/* Render the grouped sections */}
       {sortedTypes.map(type => (
         <div key={type} className="mb-16">
-          <h2 className="text-3xl font-bold text-orange-400 mb-8 text-center">
+          <h2 className="text-3xl font-bold text-primary mb-8 text-center border-b border-border pb-4">
             {type === 'Buggy' ? 'Buggies' : type + 's'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/** * FIX 2: Explicit 'any' Typing in Map
-             * This was the missing error. Even though grouped[type] is an array of any,
-             * strictly typed builds require the render callback variable to also be explicit.
-             */}
             {grouped[type].map((rule: any) => (
-              <div key={rule.id} className="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700">
-                <h3 className="text-3xl font-bold text-orange-300 mb-6 text-center">
+              // SEMANTIC: Card styling (bg-card, border-border)
+              <div key={rule.id} className="bg-card text-card-foreground p-8 rounded-2xl shadow-sm border border-border flex flex-col h-full">
+                <h3 className="text-3xl font-bold text-primary mb-6 text-center">
                   {rule.vehicle_name}
                 </h3>
-                <p className="text-xl text-center mb-6 text-gray-300">
+                <p className="text-xl text-center mb-6 text-muted-foreground">
                   Seats: {rule.seats}
                 </p>
 
                 {/* Price Grid */}
-                <div className="space-y-3 mb-8 text-lg">
-                  <div className="grid grid-cols-2"><span className="font-semibold">1hr:</span> <span className="text-right">${rule.price_1hr}</span></div>
-                  <div className="grid grid-cols-2"><span className="font-semibold">1.5hr:</span> <span className="text-right">${rule.price_1_5hr}</span></div>
-                  <div className="grid grid-cols-2"><span className="font-semibold">2hr:</span> <span className="text-right">${rule.price_2hr}</span></div>
-                  <div className="grid grid-cols-2"><span className="font-semibold">2.5hr:</span> <span className="text-right">${rule.price_2_5hr}</span></div>
-                  <div className="grid grid-cols-2"><span className="font-semibold">3hr:</span> <span className="text-right">${rule.price_3hr}</span></div>
-                  <div className="grid grid-cols-2"><span className="font-semibold">3.5hr:</span> <span className="text-right">${rule.price_3_5hr}</span></div>
+                <div className="space-y-3 mb-8 text-lg flex-grow">
+                  <div className="grid grid-cols-2 border-b border-border pb-1"><span className="font-semibold">1hr:</span> <span className="text-right">${rule.price_1hr}</span></div>
+                  <div className="grid grid-cols-2 border-b border-border pb-1"><span className="font-semibold">1.5hr:</span> <span className="text-right">${rule.price_1_5hr}</span></div>
+                  <div className="grid grid-cols-2 border-b border-border pb-1"><span className="font-semibold">2hr:</span> <span className="text-right">${rule.price_2hr}</span></div>
+                  <div className="grid grid-cols-2 border-b border-border pb-1"><span className="font-semibold">2.5hr:</span> <span className="text-right">${rule.price_2_5hr}</span></div>
+                  <div className="grid grid-cols-2 border-b border-border pb-1"><span className="font-semibold">3hr:</span> <span className="text-right">${rule.price_3hr}</span></div>
+                  <div className="grid grid-cols-2 border-b border-border pb-1"><span className="font-semibold">3.5hr:</span> <span className="text-right">${rule.price_3_5hr}</span></div>
                   <div className="grid grid-cols-2"><span className="font-semibold">4hr:</span> <span className="text-right">${rule.price_4hr}</span></div>
                 </div>
 
-                <p className="mb-2 text-sm"><strong>Prefixes:</strong> {rule.fleet_prefixes?.join(', ')}</p>
+                <div className="bg-muted p-4 rounded-lg mb-4 text-sm">
+                  <strong>Prefixes:</strong> {rule.fleet_prefixes?.join(', ')}
+                </div>
                 
-                <p className="mb-4 text-lg font-semibold text-yellow-300">
+                <p className="mb-4 text-lg font-semibold text-primary">
                   <strong>Sort Order:</strong> {rule.sort_order ?? 100}
-                  <span className="block text-sm font-normal text-gray-400 mt-1">
+                  <span className="block text-sm font-normal text-muted-foreground mt-1">
                     (lower number = appears higher on booking page)
                   </span>
                 </p>
 
-                <p className="mb-4 text-sm"><strong>Active:</strong> {rule.start_date} → {rule.end_date || 'Ongoing'}</p>
-                <p className="text-xs text-gray-400 mb-6">
+                <p className="mb-4 text-sm text-foreground"><strong>Active:</strong> {rule.start_date} → {rule.end_date || 'Ongoing'}</p>
+                <p className="text-xs text-muted-foreground mb-6">
                   Created by: {rule.created_by_name || rule.created_by}<br />
                   {rule.updated_by && `Updated by: ${rule.updated_by_name || rule.updated_by}`}
                 </p>
 
                 <button
                   onClick={() => startEdit(rule)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-lg text-xl font-bold"
+                  className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 py-4 rounded-lg text-xl font-bold transition-colors mt-auto"
                 >
                   Edit Rule
                 </button>
@@ -269,10 +272,11 @@ export default function PismoPricingAdmin() {
 
       {/* Editing Modal Overlay */}
       {editingRule && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-            <div className="p-8 border-b border-gray-700 text-center">
-              <h2 className="text-3xl font-bold">
+        // SEMANTIC: Overlay background
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-card text-card-foreground rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl border border-border">
+            <div className="p-8 border-b border-border text-center bg-muted/30">
+              <h2 className="text-3xl font-bold text-primary">
                 {editingRule.id ? 'Edit' : 'New'} Pricing Rule
               </h2>
             </div>
@@ -281,43 +285,84 @@ export default function PismoPricingAdmin() {
             <div className="flex-1 overflow-y-auto p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-xl mb-2">Vehicle Name</label>
+                  <label className="block text-xl mb-2 text-muted-foreground">Vehicle Name</label>
                   <input
                     type="text"
                     value={editingRule.vehicle_name}
                     onChange={e => setEditingRule({ ...editingRule, vehicle_name: e.target.value })}
-                    className="p-4 bg-gray-700 rounded w-full text-xl"
+                    // SEMANTIC: Input styling
+                    className="p-4 bg-background border border-input rounded w-full text-xl focus:ring-2 focus:ring-ring focus:outline-none text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="block text-xl mb-2">Seats</label>
-                  <input type="number" value={editingRule.seats} onChange={e => setEditingRule({ ...editingRule, seats: parseInt(e.target.value) || 1 })} className="p-4 bg-gray-700 rounded w-full text-xl" />
+                  <label className="block text-xl mb-2 text-muted-foreground">Seats</label>
+                  <input 
+                    type="number" 
+                    value={editingRule.seats} 
+                    onChange={e => setEditingRule({ ...editingRule, seats: parseInt(e.target.value) || 1 })} 
+                    className="p-4 bg-background border border-input rounded w-full text-xl focus:ring-2 focus:ring-ring focus:outline-none text-foreground" 
+                  />
                 </div>
                 <div>
-                  <label className="block text-xl mb-2">Type</label>
-                  <select value={editingRule.type_vehicle} onChange={e => setEditingRule({ ...editingRule, type_vehicle: e.target.value })} className="p-4 bg-gray-700 rounded w-full text-xl">
+                  <label className="block text-xl mb-2 text-muted-foreground">Type</label>
+                  <select 
+                    value={editingRule.type_vehicle} 
+                    onChange={e => setEditingRule({ ...editingRule, type_vehicle: e.target.value })} 
+                    className="p-4 bg-background border border-input rounded w-full text-xl focus:ring-2 focus:ring-ring focus:outline-none text-foreground"
+                  >
                     <option>ATV</option><option>UTV</option><option>Buggy</option>
                   </select>
                 </div>
                 
                 {/* Price Inputs */}
-                <div><label className="block text-xl mb-2">1hr Price</label><input type="number" step="0.01" value={editingRule.price_1hr} onChange={e => setEditingRule({ ...editingRule, price_1hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
-                <div><label className="block text-xl mb-2">1.5hr Price</label><input type="number" step="0.01" value={editingRule.price_1_5hr} onChange={e => setEditingRule({ ...editingRule, price_1_5hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
-                <div><label className="block text-xl mb-2">2hr Price</label><input type="number" step="0.01" value={editingRule.price_2hr} onChange={e => setEditingRule({ ...editingRule, price_2hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
-                <div><label className="block text-xl mb-2">2.5hr Price</label><input type="number" step="0.01" value={editingRule.price_2_5hr} onChange={e => setEditingRule({ ...editingRule, price_2_5hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
-                <div><label className="block text-xl mb-2">3hr Price</label><input type="number" step="0.01" value={editingRule.price_3hr} onChange={e => setEditingRule({ ...editingRule, price_3hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
-                <div><label className="block text-xl mb-2">3.5hr Price</label><input type="number" step="0.01" value={editingRule.price_3_5hr} onChange={e => setEditingRule({ ...editingRule, price_3_5hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
-                <div><label className="block text-xl mb-2">4hr Price</label><input type="number" step="0.01" value={editingRule.price_4hr} onChange={e => setEditingRule({ ...editingRule, price_4hr: parseFloat(e.target.value) || 0 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
+                {['1hr','1_5hr','2hr','2_5hr','3hr','3_5hr','4hr'].map((duration) => (
+                   <div key={duration}>
+                     <label className="block text-xl mb-2 text-muted-foreground">{duration.replace('_', '.')} Price</label>
+                     <input 
+                       type="number" 
+                       step="0.01" 
+                       value={editingRule[`price_${duration}`]} 
+                       onChange={e => setEditingRule({ ...editingRule, [`price_${duration}`]: parseFloat(e.target.value) || 0 })} 
+                       className="p-4 bg-background border border-input rounded w-full text-xl focus:ring-2 focus:ring-ring focus:outline-none text-foreground" 
+                      />
+                   </div>
+                ))}
 
-                <div><label className="block text-xl mb-2">Sort Order</label><input type="number" value={editingRule.sort_order} onChange={e => setEditingRule({ ...editingRule, sort_order: parseInt(e.target.value) || 100 })} className="p-4 bg-gray-700 rounded w-full text-xl" /></div>
-                <div><label className="block text-xl mb-2">Online</label><select value={editingRule.online ? 'true' : 'false'} onChange={e => setEditingRule({ ...editingRule, online: e.target.value === 'true' })} className="p-4 bg-gray-700 rounded w-full text-xl"><option value="true">Yes</option><option value="false">No</option></select></div>
-                <div><label className="block text-xl mb-2">Phone</label><select value={editingRule.phone ? 'true' : 'false'} onChange={e => setEditingRule({ ...editingRule, phone: e.target.value === 'true' })} className="p-4 bg-gray-700 rounded w-full text-xl"><option value="true">Yes</option><option value="false">No</option></select></div>
+                <div>
+                  <label className="block text-xl mb-2 text-muted-foreground">Sort Order</label>
+                  <input 
+                    type="number" 
+                    value={editingRule.sort_order} 
+                    onChange={e => setEditingRule({ ...editingRule, sort_order: parseInt(e.target.value) || 100 })} 
+                    className="p-4 bg-background border border-input rounded w-full text-xl focus:ring-2 focus:ring-ring focus:outline-none text-foreground" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xl mb-2 text-muted-foreground">Online</label>
+                  <select 
+                    value={editingRule.online ? 'true' : 'false'} 
+                    onChange={e => setEditingRule({ ...editingRule, online: e.target.value === 'true' })} 
+                    className="p-4 bg-background border border-input rounded w-full text-xl focus:ring-2 focus:ring-ring focus:outline-none text-foreground"
+                  >
+                    <option value="true">Yes</option><option value="false">No</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xl mb-2 text-muted-foreground">Phone</label>
+                  <select 
+                    value={editingRule.phone ? 'true' : 'false'} 
+                    onChange={e => setEditingRule({ ...editingRule, phone: e.target.value === 'true' })} 
+                    className="p-4 bg-background border border-input rounded w-full text-xl focus:ring-2 focus:ring-ring focus:outline-none text-foreground"
+                  >
+                    <option value="true">Yes</option><option value="false">No</option>
+                  </select>
+                </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-xl mb-2">Fleet Prefixes</label>
-                  <div className="grid grid-cols-6 gap-4 max-h-60 overflow-y-auto p-4 bg-gray-700 rounded">
+                  <label className="block text-xl mb-2 text-muted-foreground">Fleet Prefixes</label>
+                  <div className="grid grid-cols-4 md:grid-cols-6 gap-4 max-h-60 overflow-y-auto p-4 bg-muted border border-border rounded">
                     {ALL_PREFIXES.map(prefix => (
-                      <label key={prefix} className="flex items-center">
+                      <label key={prefix} className="flex items-center cursor-pointer hover:text-primary transition-colors">
                         <input
                           type="checkbox"
                           checked={selectedPrefixes.includes(prefix)}
@@ -328,7 +373,7 @@ export default function PismoPricingAdmin() {
                               setSelectedPrefixes(prev => prev.filter(p => p !== prefix));
                             }
                           }}
-                          className="mr-2"
+                          className="mr-2 h-5 w-5 accent-primary"
                         />
                         {prefix}
                       </label>
@@ -338,11 +383,18 @@ export default function PismoPricingAdmin() {
               </div>
             </div>
 
-            <div className="p-8 border-t border-gray-700 text-center space-x-6">
-              <button onClick={saveRule} disabled={saving} className="bg-orange-600 hover:bg-orange-700 px-8 py-4 rounded text-2xl disabled:opacity-50">
+            <div className="p-8 border-t border-border text-center space-x-6 bg-muted/30">
+              <button 
+                onClick={saveRule} 
+                disabled={saving} 
+                className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4 rounded text-2xl disabled:opacity-50 transition-colors shadow-md"
+              >
                 {saving ? 'Saving...' : 'Save Rule'}
               </button>
-              <button onClick={() => { setEditingRule(null); setSelectedPrefixes([]); }} className="bg-gray-600 hover:bg-gray-700 px-8 py-4 rounded text-2xl">
+              <button 
+                onClick={() => { setEditingRule(null); setSelectedPrefixes([]); }} 
+                className="bg-secondary text-secondary-foreground hover:bg-secondary/80 px-8 py-4 rounded text-2xl transition-colors shadow-sm"
+              >
                 Cancel
               </button>
             </div>

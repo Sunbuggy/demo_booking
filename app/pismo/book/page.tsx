@@ -146,10 +146,17 @@ export default function PismoBookingPage() {
     });
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 pb-64 md:p-8">
+    // SEMANTIC: Main Background & Foreground Text
+    // Replaced bg-gray-900 with bg-background and text-white with text-foreground
+    <div className="min-h-screen bg-background text-foreground p-4 pb-64 md:p-8">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-4xl md:text-5xl font-bold text-center mb-8 text-orange-500">Pismo Beach Rentals</h1>
         
+        {/* SEMANTIC: Primary Brand Color */}
+        <h1 className="text-4xl md:text-5xl font-bold text-center mb-8 text-primary">
+          Pismo Beach Rentals
+        </h1>
+        
+        {/* Components - Assumed to handle their own semantic theming or inherit props */}
         <BookingProgress isStep1={!!endTime && !!durationHours} isStep2={total > 0} isStep3={isCheckoutExpanded} />
         <ReservationHolderForm onUpdate={(newInfo: any) => setHolderInfo(prev => ({ ...prev, ...newInfo }))} />
         <DateTimeSelector 
@@ -164,16 +171,36 @@ export default function PismoBookingPage() {
           <VehicleGrid categories={pricingCategories} selections={selections} setSelections={setSelections} durationHours={durationHours} />
         )}
 
-        <section className="bg-gray-800 rounded-2xl p-6 md:p-8 mb-12 shadow-xl">
-          <h2 className="text-3xl font-bold text-center mb-8 text-orange-500">Optional Extras</h2>
+        {/* SEMANTIC: Card Styling for Extras 
+            Replaced bg-gray-800 with bg-card/text-card-foreground
+            Added border-border for light mode definition
+        */}
+        <section className="bg-card text-card-foreground rounded-2xl p-6 md:p-8 mb-12 shadow-sm border border-border">
+          <h2 className="text-3xl font-bold text-center mb-8 text-primary">Optional Extras</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
             <div className="text-center">
-              <label className="text-2xl block mb-4">Goggles ($4)</label>
-              <input type="number" min="0" value={goggles} onChange={e => setGoggles(parseInt(e.target.value) || 0)} className="p-4 bg-gray-700 rounded w-32 text-xl text-center" />
+              <label className="text-2xl block mb-4 font-medium">Goggles ($4)</label>
+              {/* SEMANTIC: Input Styling 
+                  Replaced bg-gray-700 with bg-background
+                  Added standard border and focus rings
+              */}
+              <input 
+                type="number" 
+                min="0" 
+                value={goggles} 
+                onChange={e => setGoggles(parseInt(e.target.value) || 0)} 
+                className="p-4 bg-background border border-input rounded w-32 text-xl text-center focus:ring-2 focus:ring-ring focus:outline-none text-foreground" 
+              />
             </div>
             <div className="text-center">
-              <label className="text-2xl block mb-4">Bandannas ($5)</label>
-              <input type="number" min="0" value={bandannas} onChange={e => setBandannas(parseInt(e.target.value) || 0)} className="p-4 bg-gray-700 rounded w-32 text-xl text-center" />
+              <label className="text-2xl block mb-4 font-medium">Bandannas ($5)</label>
+              <input 
+                type="number" 
+                min="0" 
+                value={bandannas} 
+                onChange={e => setBandannas(parseInt(e.target.value) || 0)} 
+                className="p-4 bg-background border border-input rounded w-32 text-xl text-center focus:ring-2 focus:ring-ring focus:outline-none text-foreground" 
+              />
             </div>
           </div>
         </section>

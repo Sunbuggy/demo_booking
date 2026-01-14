@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { Lock } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -89,11 +90,15 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
   }, [onTokenGenerated, onError]);
 
   return (
-    <div className="bg-gray-800 p-6 rounded-lg border border-gray-600 space-y-4 mb-6">
-      <h3 className="font-bold text-orange-500 mb-2">Credit Card Details</h3>
+    // SEMANTIC: Card Container (bg-card, border-border)
+    // Removed hardcoded bg-gray-800
+    <div className="bg-card text-card-foreground p-6 rounded-lg border border-border space-y-4 mb-6 shadow-sm">
+      <h3 className="font-bold text-primary mb-2">Credit Card Details</h3>
       
       {loadingStatus && (
-          <div className="bg-yellow-900/30 text-yellow-200 p-3 rounded text-sm text-center border border-yellow-800 animate-pulse">
+          // SEMANTIC: Warning State (Destructive tint or secondary)
+          // Using secondary here for a softer "Loading" state, or destructive for error
+          <div className="bg-secondary text-secondary-foreground p-3 rounded text-sm text-center border border-border animate-pulse">
             {loadingStatus}
           </div>
       )}
@@ -101,23 +106,30 @@ export default function PaymentFields({ onTokenGenerated, onError }: { onTokenGe
       {/* Fields */}
       <div className="space-y-4">
         <div>
-           <label className="block text-xs text-gray-400 uppercase mb-1">Card Number</label>
-           <div id="cc-number" className="bg-gray-900 border border-gray-700 rounded h-12 w-full relative"></div>
+           {/* SEMANTIC: Label (Muted Foreground) */}
+           <label className="block text-xs text-muted-foreground uppercase mb-1 font-semibold">Card Number</label>
+           
+           {/* SEMANTIC: Input Container 
+               These divs host the NMI iframes. 
+               We give them bg-background and border-input so they match standard inputs.
+           */}
+           <div id="cc-number" className="bg-background border border-input rounded h-12 w-full relative focus-within:ring-2 focus-within:ring-ring focus-within:border-primary transition-all"></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
             <div>
-               <label className="block text-xs text-gray-400 uppercase mb-1">Expiry (MM/YY)</label>
-               <div id="cc-exp" className="bg-gray-900 border border-gray-700 rounded h-12 w-full relative"></div>
+               <label className="block text-xs text-muted-foreground uppercase mb-1 font-semibold">Expiry (MM/YY)</label>
+               <div id="cc-exp" className="bg-background border border-input rounded h-12 w-full relative focus-within:ring-2 focus-within:ring-ring focus-within:border-primary transition-all"></div>
             </div>
             <div>
-               <label className="block text-xs text-gray-400 uppercase mb-1">CVV</label>
-               <div id="cc-cvc" className="bg-gray-900 border border-gray-700 rounded h-12 w-full relative"></div>
+               <label className="block text-xs text-muted-foreground uppercase mb-1 font-semibold">CVV</label>
+               <div id="cc-cvc" className="bg-background border border-input rounded h-12 w-full relative focus-within:ring-2 focus-within:ring-ring focus-within:border-primary transition-all"></div>
             </div>
         </div>
       </div>
       
-      <p className="text-xs text-gray-500 text-center mt-2 flex items-center justify-center gap-1">
-        🔒 Payments secured by NMI
+      {/* SEMANTIC: Footer Text */}
+      <p className="text-xs text-muted-foreground text-center mt-2 flex items-center justify-center gap-1">
+        <Lock className="w-3 h-3" /> Payments secured by NMI
       </p>
 
       {/* --- THE HIDDEN TRIGGER BUTTON --- */}
