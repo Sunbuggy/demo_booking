@@ -1,11 +1,7 @@
 /**
  * TIMESHEET GRID
  * Path: app/(biz)/biz/payroll/components/timesheet-grid.tsx
- * Description: Displays stacked timesheets for selected users.
- * * Updates:
- * - Accepts 'isLocked' prop.
- * - Integration: Uses <EditEntryDialog /> for the edit action.
- * - Schema: Uses correct 'start_time' / 'end_time' columns.
+ * Update: Passes 'onUpdate' callback to Edit Dialog.
  */
 
 'use client';
@@ -15,7 +11,6 @@ import { format, parseISO, differenceInHours } from 'date-fns';
 import type { TimeEntry } from '@/app/actions/get-timesheets';
 import EditEntryDialog from './edit-entry-dialog'; 
 
-// Helper to format ISO string -> "08:00 AM"
 const formatTime = (isoString: string | null) => {
   if (!isoString) return '--:--';
   try {
@@ -25,7 +20,6 @@ const formatTime = (isoString: string | null) => {
   }
 };
 
-// Helper to format Date -> "Mon Jan 5"
 const formatDate = (isoString: string) => {
   try {
     return format(parseISO(isoString), 'EEE MMM d');
@@ -37,10 +31,11 @@ const formatDate = (isoString: string) => {
 interface TimesheetGridProps {
   selectedStaff: any[];
   timesheetData: TimeEntry[];
-  isLocked: boolean; // <--- NEW PROP
+  isLocked: boolean;
+  onUpdate?: () => void; // <--- NEW PROP
 }
 
-export function TimesheetGrid({ selectedStaff, timesheetData, isLocked }: TimesheetGridProps) {
+export function TimesheetGrid({ selectedStaff, timesheetData, isLocked, onUpdate }: TimesheetGridProps) {
   
   if (!selectedStaff || selectedStaff.length === 0) {
     return (
@@ -54,14 +49,12 @@ export function TimesheetGrid({ selectedStaff, timesheetData, isLocked }: Timesh
   return (
     <div className="space-y-6 pb-12">
       {selectedStaff.map((staff) => {
-        // Filter entries for THIS user
         const safeData = timesheetData || [];
         const userEntries = safeData.filter(t => t.user_id === staff.id);
 
         return (
           <div key={staff.id} className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
             
-            {/* USER HEADER */}
             <div className="bg-gray-50 dark:bg-slate-950 px-6 py-4 border-b border-gray-200 dark:border-slate-800 flex justify-between items-center">
                <div className="flex items-center gap-3">
                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-200 font-bold text-sm">
@@ -75,7 +68,6 @@ export function TimesheetGrid({ selectedStaff, timesheetData, isLocked }: Timesh
                  </div>
                </div>
                
-               {/* User Specific Action - Disabled if Locked */}
                <button 
                  disabled={isLocked}
                  className="text-xs font-bold text-blue-600 bg-white border border-blue-200 px-3 py-1.5 rounded hover:bg-blue-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
@@ -84,7 +76,6 @@ export function TimesheetGrid({ selectedStaff, timesheetData, isLocked }: Timesh
                </button>
             </div>
 
-            {/* GRID */}
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-gray-400 uppercase bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
@@ -105,7 +96,6 @@ export function TimesheetGrid({ selectedStaff, timesheetData, isLocked }: Timesh
                     </tr>
                   ) : (
                     userEntries.map((entry) => {
-                      // Calculate Hours
                       let hoursDisplay = '--';
                       if (entry.start_time && entry.end_time) {
                          const h = differenceInHours(parseISO(entry.end_time), parseISO(entry.start_time));
@@ -126,7 +116,6 @@ export function TimesheetGrid({ selectedStaff, timesheetData, isLocked }: Timesh
                             )}
                           </td>
                           
-                          {/* CLOCK IN */}
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3 group relative">
                                <span className="font-mono text-gray-700 dark:text-gray-300">
@@ -139,7 +128,6 @@ export function TimesheetGrid({ selectedStaff, timesheetData, isLocked }: Timesh
                                      alt="In"
                                      className="w-8 h-8 rounded border object-cover shadow-sm cursor-zoom-in" 
                                    />
-                                   {/* Hover Zoom Effect */}
                                    <div className="absolute bottom-full left-0 hidden group-hover/img:block z-50 w-32 h-32 bg-white p-1 shadow-xl rounded border">
                                       <img src={entry.clock_in_photo_url} className="w-full h-full object-cover" alt="Punch In" />
                                    </div>
@@ -148,7 +136,6 @@ export function TimesheetGrid({ selectedStaff, timesheetData, isLocked }: Timesh
                             </div>
                           </td>
 
-                          {/* CLOCK OUT */}
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3 group">
                                <span className="font-mono text-gray-700 dark:text-gray-300">
@@ -176,8 +163,12 @@ export function TimesheetGrid({ selectedStaff, timesheetData, isLocked }: Timesh
                           </td>
 
                           <td className="px-6 py-4 text-right">
-                            {/* INTEGRATED EDIT DIALOG */}
-                            <EditEntryDialog entry={entry} isLocked={isLocked} />
+                            {/* PASSED CALLBACK HERE */}
+                            <EditEntryDialog 
+                                entry={entry} 
+                                isLocked={isLocked} 
+                                onSuccess={onUpdate}
+                            />
                           </td>
                         </tr>
                       );

@@ -1,11 +1,7 @@
 /**
  * EDIT ENTRY DIALOG
  * Path: app/(biz)/biz/payroll/components/edit-entry-dialog.tsx
- * Description: A modal to audit, edit, delete, or resume time entries.
- * * CRITICAL FEATURES:
- * - Resume Shift: Clears the 'end_time' to fix split-shift errors.
- * - Audit Log: Enforces a reason for every change.
- * - Lock Awareness: Disables editing if the payroll week is finalized.
+ * Update: Now triggers 'onSuccess' to refresh the dashboard immediately.
  */
 
 'use client';
@@ -22,40 +18,15 @@ import { useToast } from '@/components/ui/use-toast';
 import { format, parseISO, differenceInHours } from 'date-fns';
 
 interface EditEntryProps {
-  entry: any;       // The raw time entry object from Supabase
-  isLocked: boolean; // Passed down from page.tsx check
+  entry: any;       
+  isLocked: boolean; 
+  onSuccess?: () => void; // <--- NEW PROP
 }
 
-export default function EditEntryDialog({ entry, isLocked }: EditEntryProps) {
+export default function EditEntryDialog({ entry, isLocked, onSuccess }: EditEntryProps) {
   const [open, setOpen] = useState(false);
   const [resumeShift, setResumeShift] = useState(false);
   
-  // Server Action Hooks
-  const [editState, editAction, isEditPending] = useActionState(manualEditTimeEntry, { message: '', success: false });
-  const [deleteState, deleteAction, isDeletePending] = useActionState(deleteTimeEntry, { message: '', success: false });
-  
-  const { toast } = useToast();
-
-  // Handle Server Responses
-  useEffect(() => {
-    if (editState.success) {
-      toast({ title: "Success", description: editState.message });
-      setOpen(false);
-      setResumeShift(false); // Reset internal state
-    } else if (editState.message) {
-      toast({ title: "Edit Failed", description: editState.message, variant: "destructive" });
-    }
-    
-    if (deleteState.success) {
-      toast({ title: "Deleted", description: deleteState.message, variant: "destructive" });
-      setOpen(false);
-    } else if (deleteState.message) {
-      toast({ title: "Delete Failed", description: deleteState.message, variant: "destructive" });
-    }
-  }, [editState, deleteState, toast]);
-
-  // DATE-FNS FORMATTING (Input requires: yyyy-MM-ddThh:mm)
-  // Handles potential nulls safely
   const startDefault = entry.start_time 
     ? format(parseISO(entry.start_time), "yyyy-MM-dd'T'HH:mm") 
     : '';
@@ -64,12 +35,52 @@ export default function EditEntryDialog({ entry, isLocked }: EditEntryProps) {
     ? format(parseISO(entry.end_time), "yyyy-MM-dd'T'HH:mm") 
     : '';
 
-  // LOGIC: Only show "Resume Shift" if the entry is closed AND was closed recently (<12h).
-  // This prevents UI clutter on old historical records.
+  const [localStart, setLocalStart] = useState(startDefault);
+  const [localEnd, setLocalEnd] = useState(endDefault);
+
+  useEffect(() => {
+    setLocalStart(entry.start_time ? format(parseISO(entry.start_time), "yyyy-MM-dd'T'HH:mm") : '');
+    setLocalEnd(entry.end_time ? format(parseISO(entry.end_time), "yyyy-MM-dd'T'HH:mm") : '');
+  }, [entry]);
+
+  const [editState, editAction, isEditPending] = useActionState(manualEditTimeEntry, { message: '', success: false });
+  const [deleteState, deleteAction, isDeletePending] = useActionState(deleteTimeEntry, { message: '', success: false });
+  
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (editState.success) {
+      toast({ title: "Success", description: editState.message });
+      setOpen(false);
+      setResumeShift(false); 
+      
+      // TRIGGER REFRESH
+      if (onSuccess) onSuccess();
+
+    } else if (editState.message) {
+      toast({ title: "Edit Failed", description: editState.message, variant: "destructive" });
+    }
+    
+    if (deleteState.success) {
+      toast({ title: "Deleted", description: deleteState.message, variant: "destructive" });
+      setOpen(false);
+
+      // TRIGGER REFRESH
+      if (onSuccess) onSuccess();
+
+    } else if (deleteState.message) {
+      toast({ title: "Delete Failed", description: deleteState.message, variant: "destructive" });
+    }
+  }, [editState, deleteState, toast, onSuccess]);
+
   const showResumeOption = !!entry.end_time && 
     differenceInHours(parseISO(entry.end_time), parseISO(entry.start_time)) < 12;
 
-  // RENDER: Locked State
+  const getIsoTime = (localTime: string) => {
+    if (!localTime) return '';
+    return new Date(localTime).toISOString();
+  };
+
   if (isLocked) {
       return (
         <Button variant="ghost" size="sm" disabled title="Payroll Period Locked">
@@ -78,7 +89,6 @@ export default function EditEntryDialog({ entry, isLocked }: EditEntryProps) {
       );
   }
 
-  // RENDER: Active State
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -93,24 +103,22 @@ export default function EditEntryDialog({ entry, isLocked }: EditEntryProps) {
         </DialogHeader>
         
         <form className="space-y-5 py-2">
-          {/* Hidden Identifiers */}
           <input type="hidden" name="entryId" value={entry.id} />
           <input type="hidden" name="resumeShift" value={resumeShift ? 'true' : 'false'} /> 
           
           <div className="grid grid-cols-2 gap-4">
-            {/* CLOCK IN */}
             <div className="space-y-2">
                <Label className="text-xs font-bold uppercase text-gray-500">Clock In</Label>
+               <input type="hidden" name="newStart" value={getIsoTime(localStart)} />
                <Input 
                  type="datetime-local" 
-                 name="newStart" 
-                 defaultValue={startDefault} 
+                 value={localStart}
+                 onChange={(e) => setLocalStart(e.target.value)}
                  required 
                  className="font-mono"
                />
             </div>
 
-            {/* CLOCK OUT (Conditional UI) */}
             <div className="space-y-2">
                <Label className="text-xs font-bold uppercase text-gray-500">Clock Out</Label>
                {resumeShift ? (
@@ -118,17 +126,19 @@ export default function EditEntryDialog({ entry, isLocked }: EditEntryProps) {
                        <History className="w-3 h-3 mr-2" /> RESUMING SHIFT...
                    </div>
                ) : (
-                   <Input 
-                     type="datetime-local" 
-                     name="newEnd" 
-                     defaultValue={endDefault} 
-                     className="font-mono"
-                   />
+                   <>
+                     <input type="hidden" name="newEnd" value={getIsoTime(localEnd)} />
+                     <Input 
+                       type="datetime-local" 
+                       value={localEnd}
+                       onChange={(e) => setLocalEnd(e.target.value)}
+                       className="font-mono"
+                     />
+                   </>
                )}
             </div>
           </div>
 
-          {/* TOGGLE: Resume Shift Action */}
           {showResumeOption && !resumeShift && (
              <Button 
                type="button" 
@@ -154,7 +164,6 @@ export default function EditEntryDialog({ entry, isLocked }: EditEntryProps) {
              </Button>
           )}
 
-          {/* REASON FIELD */}
           <div className="space-y-2">
              <Label className="text-xs font-bold uppercase text-red-500">Audit Reason (Required)</Label>
              <Textarea 
@@ -165,7 +174,6 @@ export default function EditEntryDialog({ entry, isLocked }: EditEntryProps) {
              />
           </div>
 
-          {/* ACTIONS FOOTER */}
           <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-800 mt-4">
              <Button 
                 type="submit" 

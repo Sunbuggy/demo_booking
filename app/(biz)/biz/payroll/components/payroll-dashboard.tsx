@@ -1,12 +1,12 @@
 /**
  * PAYROLL DASHBOARD (Client Container)
  * Path: app/(biz)/biz/payroll/components/payroll-dashboard.tsx
- * Update: Fixed 406 Error by using .maybeSingle() for lock check.
+ * Update: Added 'onSuccess' callbacks to Dialogs/Grid to trigger instant refetching.
  */
 
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, startOfWeek, endOfWeek, parseISO, differenceInMinutes } from 'date-fns';
 import { createClient } from '@/utils/supabase/client';
 import { ListChecks, Clock, AlertCircle } from 'lucide-react';
@@ -40,17 +40,19 @@ export default function PayrollDashboard({ initialStaff }: { initialStaff: any[]
     const end = format(endOfWeek(parseISO(currentDate), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
     // DATA FETCHING
-    const fetchData = async () => {
-        setIsLoading(true);
+    // Wrapped in useCallback to safely pass as prop
+    const fetchData = useCallback(async () => {
+        // We don't set isLoading(true) here to prevent flashing the whole grid on minor updates
+        // But you could if you wanted a loading spinner on every edit.
         const supabase = createClient();
 
-        // 1. Lock Check (FIX: Use maybeSingle to avoid 406 error on empty)
+        // 1. Lock Check
         const { data: lockReport } = await supabase
             .from('payroll_reports')
             .select('id')
             .eq('period_start', start)
             .eq('period_end', end)
-            .maybeSingle(); // <--- CHANGED FROM .single()
+            .maybeSingle(); 
             
         setIsLocked(!!lockReport);
 
@@ -73,12 +75,13 @@ export default function PayrollDashboard({ initialStaff }: { initialStaff: any[]
         } else {
             setTimesheets([]);
         }
-        setIsLoading(false);
-    };
+    }, [start, end, selectedIds]);
 
+    // Initial Fetch & Refetch on Dependencies
     useEffect(() => {
-        fetchData();
-    }, [currentDate, selectedIds]);
+        setIsLoading(true);
+        fetchData().finally(() => setIsLoading(false));
+    }, [fetchData]);
 
     // CALC TOTALS
     const totalHours = useMemo(() => {
@@ -159,7 +162,13 @@ export default function PayrollDashboard({ initialStaff }: { initialStaff: any[]
                                     </span>
                                  )}
                             </div>
-                            <AddEntryDialog users={initialStaff} isLocked={isLocked} />
+                            
+                            {/* PASSED CALLBACK HERE */}
+                            <AddEntryDialog 
+                                users={initialStaff} 
+                                isLocked={isLocked} 
+                                onSuccess={fetchData} 
+                            />
                         </div>
 
                         <div className="flex-1 overflow-y-auto pr-2 pb-20">
@@ -169,10 +178,12 @@ export default function PayrollDashboard({ initialStaff }: { initialStaff: any[]
                                     <p>Loading...</p>
                                 </div>
                             ) : (
+                                /* PASSED CALLBACK HERE */
                                 <TimesheetGrid 
                                     selectedStaff={selectedStaff} 
                                     timesheetData={timesheets} 
                                     isLocked={isLocked} 
+                                    onUpdate={fetchData}
                                 />
                             )}
                         </div>

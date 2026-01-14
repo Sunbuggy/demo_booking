@@ -1,11 +1,7 @@
 /**
  * ADD ENTRY DIALOG
  * Path: app/(biz)/biz/payroll/components/add-entry-dialog.tsx
- * Description: Form to create a new time entry from scratch.
- * * FEATURES:
- * - Server Action Integration: Calls 'addTimeEntry' with audit logging.
- * - Lock Awareness: Hides button if payroll is finalized.
- * - Employee Selection: Dropdown to assign the punch.
+ * Update: Now triggers 'onSuccess' to refresh the dashboard immediately.
  */
 
 'use client';
@@ -24,26 +20,37 @@ import { useToast } from '@/components/ui/use-toast';
 interface AddEntryProps {
   users: { id: string; full_name: string }[];
   isLocked: boolean;
+  onSuccess?: () => void; // <--- NEW PROP
 }
 
-export default function AddEntryDialog({ users, isLocked }: AddEntryProps) {
+export default function AddEntryDialog({ users, isLocked, onSuccess }: AddEntryProps) {
   const [open, setOpen] = useState(false);
-  
-  // Server Action Hook
+  const [localStart, setLocalStart] = useState('');
+  const [localEnd, setLocalEnd] = useState('');
+
   const [state, action, isPending] = useActionState(addTimeEntry, { message: '', success: false });
   const { toast } = useToast();
 
-  // Handle Response
   useEffect(() => {
     if (state.success) {
       toast({ title: "Success", description: state.message });
       setOpen(false);
+      setLocalStart('');
+      setLocalEnd('');
+      
+      // TRIGGER REFRESH
+      if (onSuccess) onSuccess(); 
+
     } else if (state.message) {
       toast({ title: "Error", description: state.message, variant: "destructive" });
     }
-  }, [state, toast]);
+  }, [state, toast, onSuccess]);
 
-  // If week is locked, do not allow adding entries
+  const getIsoTime = (localTime: string) => {
+    if (!localTime) return '';
+    return new Date(localTime).toISOString();
+  };
+
   if (isLocked) return null;
 
   return (
@@ -82,19 +89,23 @@ export default function AddEntryDialog({ users, isLocked }: AddEntryProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
                <Label className="text-xs font-bold uppercase text-gray-500">Start Time</Label>
+               <input type="hidden" name="start" value={getIsoTime(localStart)} />
                <Input 
                  type="datetime-local" 
-                 name="start" 
                  required 
-                 className="font-mono text-sm" 
+                 className="font-mono text-sm"
+                 value={localStart}
+                 onChange={(e) => setLocalStart(e.target.value)}
                />
             </div>
             <div className="space-y-2">
                <Label className="text-xs font-bold uppercase text-gray-500">End Time</Label>
+               <input type="hidden" name="end" value={getIsoTime(localEnd)} />
                <Input 
                  type="datetime-local" 
-                 name="end" 
                  className="font-mono text-sm" 
+                 value={localEnd}
+                 onChange={(e) => setLocalEnd(e.target.value)}
                />
                <p className="text-[10px] text-gray-400 mt-1">
                  Leave blank to keep them clocked in (Active).
@@ -113,15 +124,10 @@ export default function AddEntryDialog({ users, isLocked }: AddEntryProps) {
              />
           </div>
 
-          {/* SUBMIT */}
           <Button type="submit" disabled={isPending} className="w-full mt-2 font-bold">
              {isPending ? (
-               <>
-                 <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...
-               </>
-             ) : (
-               'Create Time Entry'
-             )}
+               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding...</>
+             ) : 'Create Time Entry'}
           </Button>
 
         </form>

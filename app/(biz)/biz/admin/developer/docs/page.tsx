@@ -5,6 +5,7 @@
  * - Jan 11, 2026: Added 'Fun License' Architecture (Smartwaiver + Selfie).
  * - Jan 11, 2026: Added S3 Architecture, Fleet Geofencing UI, and Icon Management.
  * - Jan 12, 2026: Integrated Live Markdown Rendering for THEMING.md
+ * - Jan 14, 2026: Added Timezone Architecture (Multi-location support).
  * * ACCESS CONTROL:
  * - Level 950+ (Developers) Only.
  */
@@ -39,7 +40,8 @@ import {
   ShieldCheck,   // Fun License
   FileSignature, // Fun License
   Camera,        // Fun License
-  Palette        // Theming (NEW)
+  Palette,       // Theming
+  Globe          // Timezones (NEW)
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,6 +68,7 @@ export default function DeveloperDocsPage() {
 
   // === LOAD DYNAMIC DOCS ===
   const themingDoc = getDocContent('THEMING.md');
+  const timezonesDoc = getDocContent('TIMEZONES.md'); // <--- NEW LOAD
   
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 pb-20">
@@ -163,7 +166,7 @@ export default function DeveloperDocsPage() {
             </CardContent>
           </Card>
 
-          {/* --- SECTION: THEMING & STANDARDS (NEW!) --- */}
+          {/* --- SECTION: THEMING & STANDARDS --- */}
           <Card className={`${glassCardStyles} overflow-hidden`}>
             <CardHeader className="bg-gradient-to-r from-purple-500/10 to-transparent border-b border-purple-100 dark:border-purple-900/50">
               <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
@@ -175,10 +178,8 @@ export default function DeveloperDocsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="prose prose-sm dark:prose-invert max-w-none p-6 bg-zinc-50/50 dark:bg-black/20">
-              {/* MARKDOWN RENDERER */}
               <Markdown
                 components={{
-                  // Style Overrides for Markdown Elements
                   h1: ({node, ...props}) => <h1 className="text-2xl font-bold text-foreground mb-4 border-b pb-2" {...props} />,
                   h2: ({node, ...props}) => <h2 className="text-lg font-bold text-foreground mt-6 mb-3" {...props} />,
                   h3: ({node, ...props}) => <h3 className="text-md font-semibold text-foreground mt-4 mb-2" {...props} />,
@@ -189,17 +190,40 @@ export default function DeveloperDocsPage() {
                   pre: ({node, ...props}) => (
                     <pre className="bg-zinc-950 text-zinc-100 p-4 rounded-lg overflow-x-auto my-4 text-xs font-mono border border-zinc-800" {...props} />
                   ),
-                  table: ({node, ...props}) => (
-                    <div className="overflow-x-auto my-4 border rounded-lg">
-                      <table className="w-full text-sm text-left" {...props} />
-                    </div>
-                  ),
-                  thead: ({node, ...props}) => <thead className="bg-muted text-muted-foreground" {...props} />,
-                  th: ({node, ...props}) => <th className="p-2 font-bold uppercase text-xs" {...props} />,
-                  td: ({node, ...props}) => <td className="p-2 border-t border-border" {...props} />,
                 }}
               >
                 {themingDoc}
+              </Markdown>
+            </CardContent>
+          </Card>
+
+          {/* --- SECTION: TIMEZONE ARCHITECTURE (NEW) --- */}
+          <Card className={`${glassCardStyles} overflow-hidden`}>
+            <CardHeader className="bg-gradient-to-r from-blue-500/10 to-transparent border-b border-blue-100 dark:border-blue-900/50">
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                <Globe size={24} />
+                <CardTitle className="uppercase tracking-widest">Timezone Architecture</CardTitle>
+              </div>
+              <CardDescription className={glassTextStyles}>
+                Standards for Multi-Location Time Handling. Source: <code>docs/TIMEZONES.md</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="prose prose-sm dark:prose-invert max-w-none p-6 bg-zinc-50/50 dark:bg-black/20">
+              <Markdown
+                components={{
+                  h1: ({node, ...props}) => <h1 className="text-2xl font-bold text-foreground mb-4 border-b pb-2" {...props} />,
+                  h2: ({node, ...props}) => <h2 className="text-lg font-bold text-foreground mt-6 mb-3" {...props} />,
+                  h3: ({node, ...props}) => <h3 className="text-md font-semibold text-foreground mt-4 mb-2" {...props} />,
+                  ul: ({node, ...props}) => <ul className="list-disc list-inside space-y-1 my-2" {...props} />,
+                  li: ({node, ...props}) => <li className="text-muted-foreground" {...props} />,
+                  p: ({node, ...props}) => <p className="text-muted-foreground leading-relaxed mb-3" {...props} />,
+                  code: ({node, ...props}) => <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono text-primary" {...props} />,
+                  pre: ({node, ...props}) => (
+                    <pre className="bg-zinc-950 text-zinc-100 p-4 rounded-lg overflow-x-auto my-4 text-xs font-mono border border-zinc-800" {...props} />
+                  ),
+                }}
+              >
+                {timezonesDoc}
               </Markdown>
             </CardContent>
           </Card>
