@@ -147,7 +147,7 @@ export default function PismoReservationEditForm({
         transactionAmount = useCustomAmount ? customAmount : baseAmount;
     }
 
-    const orderIdOverride = paymentType === 'deposit' ? `deposit_${initialData.reservation_id}` : String(initialData.reservation_id);
+    const orderIdOverride = paymentType === 'deposit' ? `Deposit_${initialData.reservation_id}` : String(initialData.reservation_id);
 
     try {
         const res = await fetch('/api/pismo/update', {
