@@ -12,6 +12,8 @@ export async function POST(request: Request) {
     const { 
         reservation_id, booking_id, total_amount, 
         payment_token, payment_amount, transaction_type, order_id_override,
+        capture_deposit,         // Boolean
+        existing_transaction_id, // ID to capture
         holder, booking, note 
     } = body;
 
@@ -29,11 +31,34 @@ export async function POST(request: Request) {
       if (profile) editorName = profile.full_name || profile.email || 'Staff';
     }
 
-    // 2. PROCESS PAYMENT (NMI)
-    let transactionId: string | null = null;
+    let transactionId: string | null = existing_transaction_id || null;
     let paymentLogText = "";
 
-    if (payment_token) {
+    // 2. PAYMENT LOGIC
+    if (capture_deposit && existing_transaction_id) {
+        // === A. CAPTURE EXISTING DEPOSIT (Partial or Full) ===
+        const nmiParams = {
+            security_key: NMI_SECURITY_KEY,
+            type: 'capture',
+            transactionid: existing_transaction_id,
+            amount: Number(payment_amount).toFixed(2), // <--- Uses the custom amount here
+        };
+
+        console.log(`[API] Capturing $${nmiParams.amount} on TransID ${existing_transaction_id}`);
+
+        const nmiBody = new URLSearchParams(nmiParams);
+        const nmiRes = await fetch('https://secure.nmi.com/api/transact.php', { method: 'POST', body: nmiBody });
+        const nmiText = await nmiRes.text();
+        const params = new URLSearchParams(nmiText);
+
+        if (params.get('response') !== '1') {
+            return NextResponse.json({ success: false, error: `Capture Failed: ${params.get('responsetext')}` }, { status: 400 });
+        }
+
+        paymentLogText = ` | Captured Deposit: $${nmiParams.amount} (TransID: ${existing_transaction_id})`;
+
+    } else if (payment_token) {
+        // === B. NEW CARD TRANSACTION ===
         const nmiParams = {
             security_key: NMI_SECURITY_KEY,
             type: transaction_type || 'sale',
@@ -63,7 +88,7 @@ export async function POST(request: Request) {
     // 3. DATABASE UPDATE
     const adminSupabase = createAdminClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // --- A. Update Booking Header (Include Adults/Minors) ---
+    // Update Booking Header
     const updatePayload: any = {
         first_name: holder.firstName,
         last_name: holder.lastName,
@@ -90,7 +115,7 @@ export async function POST(request: Request) {
 
     if (headerErr) throw headerErr;
 
-    // B. Update Line Items (Standard logic)
+    // Update Vehicles
     const { data: existingItems } = await adminSupabase
         .from('pismo_booking_items')
         .select('id, pricing_category_id')
@@ -123,7 +148,7 @@ export async function POST(request: Request) {
     if (itemsToUpdate.length) await adminSupabase.from('pismo_booking_items').upsert(itemsToUpdate);
     if (itemsToInsert.length) await adminSupabase.from('pismo_booking_items').insert(itemsToInsert);
 
-    // C. History & Log
+    // Note & Log
     if (note) await adminSupabase.from('pismo_booking_notes').insert({ booking_id, author_name: editorName, note_text: note });
     
     await adminSupabase.from('pismo_booking_logs').insert({

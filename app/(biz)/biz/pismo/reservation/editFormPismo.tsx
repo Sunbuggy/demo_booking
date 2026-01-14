@@ -63,7 +63,7 @@ export default function PismoReservationEditForm({
   );
 
   const [total, setTotal] = useState<number>(0);
-  const [depositTotal, setDepositTotal] = useState<number>(0); // <--- NEW STATE
+  const [depositTotal, setDepositTotal] = useState<number>(0);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -92,33 +92,35 @@ export default function PismoReservationEditForm({
     if (!pricingCategories.length) return;
     
     let rentalCalc = goggles * 4 + bandannas * 5;
-    let depositCalc = 0; // <--- Start Deposit Calc
+    let depositCalc = 0;
 
     pricingCategories.forEach(cat => {
       const sel = selections[cat.id] || { qty: 0, waiver: false };
       const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
       const price = cat[priceKey] !== undefined ? cat[priceKey] : (cat.price_1hr || 0);
       
-      // Add to Rental Total
       rentalCalc += sel.qty * price;
       if (sel.waiver) rentalCalc += sel.qty * (cat.damage_waiver || 0);
 
-      // Add to Deposit Total (From Database Column 'deposit')
       depositCalc += sel.qty * (cat.deposit || 0);
     });
 
     setTotal(rentalCalc);
-    setDepositTotal(depositCalc); // <--- Set Deposit Total
+    setDepositTotal(depositCalc);
     
-    // Logic for setting custom amount default only if it hasn't been touched yet
     if (!useCustomAmount) {
         setCustomAmount(paymentType === 'deposit' ? depositCalc : rentalCalc);
     }
   }, [selections, goggles, bandannas, pricingCategories, durationHours, useCustomAmount, paymentType]);
 
-  const handleUpdate = async (paymentToken: string | null) => {
+  // --- HANDLE UPDATE / PAYMENT / CAPTURE ---
+  // Added optional captureAmountOverride argument
+  const handleUpdate = async (paymentToken: string | null, captureDeposit: boolean = false, captureAmountOverride?: number) => {
     setLoading(true);
-    setMessage(paymentToken ? 'Processing Transaction...' : 'Updating Reservation...');
+    
+    if (captureDeposit) setMessage('Capturing Deposit...');
+    else if (paymentToken) setMessage('Processing Transaction...');
+    else setMessage('Updating Reservation...');
 
     const vehiclesPayload: Record<string, any> = {};
     pricingCategories.forEach(cat => {
@@ -132,9 +134,18 @@ export default function PismoReservationEditForm({
         }
     });
 
-    // Use Custom Amount or auto-select based on payment mode (deposit vs full payment)
-    const baseAmount = paymentType === 'deposit' ? depositTotal : total;
-    const transactionAmount = useCustomAmount ? customAmount : baseAmount;
+    // Determine the Amount
+    // 1. If Capturing, use the specific Override Amount from the input
+    // 2. Else if Custom Amount Toggle is ON, use that
+    // 3. Else default to either Deposit Total or Rental Total
+    let transactionAmount = 0;
+    
+    if (captureDeposit && captureAmountOverride !== undefined) {
+        transactionAmount = captureAmountOverride;
+    } else {
+        const baseAmount = paymentType === 'deposit' ? depositTotal : total;
+        transactionAmount = useCustomAmount ? customAmount : baseAmount;
+    }
 
     const orderIdOverride = paymentType === 'deposit' ? `deposit_${initialData.reservation_id}` : String(initialData.reservation_id);
 
@@ -145,12 +156,15 @@ export default function PismoReservationEditForm({
             body: JSON.stringify({
                 reservation_id: initialData.reservation_id, 
                 booking_id: initialData.id,
-                total_amount: total, // Always save the RENTAL value as total_amount
+                total_amount: total, 
                 
                 payment_token: paymentToken,
-                payment_amount: transactionAmount, // The specific amount we just charged/held
+                payment_amount: transactionAmount, 
                 transaction_type: paymentType === 'deposit' ? 'auth' : 'sale',
                 order_id_override: orderIdOverride,
+                
+                capture_deposit: captureDeposit,
+                existing_transaction_id: initialData.transaction_id,
 
                 holder: holderInfo,
                 note: newNote, 
@@ -191,7 +205,6 @@ export default function PismoReservationEditForm({
       {/* LEFT COLUMN */}
       <div className="flex-1 min-w-0 max-w-5xl mx-auto">
           
-          {/* Header Section */}
           <div className="flex items-center justify-between mb-8 pb-6 border-b border-border">
             <div>
               <Link href={`/biz/pismo/${initialData.booking_date}`} className="text-primary hover:text-primary/80 mb-2 block flex items-center gap-1 transition-colors">
@@ -256,7 +269,7 @@ export default function PismoReservationEditForm({
 
           <CheckoutForm 
             total={total} 
-            depositTotal={depositTotal} // <--- PASSING THE CALCULATED DEPOSIT
+            depositTotal={depositTotal} 
             holderInfo={holderInfo} 
             isExpanded={isCheckoutExpanded} 
             setIsExpanded={setIsCheckoutExpanded}
@@ -266,8 +279,6 @@ export default function PismoReservationEditForm({
             selectedItems={selectedItemsList} 
             goggles={goggles} 
             bandannas={bandannas}
-            
-            // --- STAFF CONTROL PROPS ---
             userLevel={userLevel} 
             isEditing={true} 
             paymentType={paymentType}
@@ -276,13 +287,12 @@ export default function PismoReservationEditForm({
             setCustomAmount={setCustomAmount}
             useCustomAmount={useCustomAmount}
             setUseCustomAmount={setUseCustomAmount}
+            existingTransactionId={initialData.transaction_id}
           />
       </div>
 
-      {/* RIGHT COLUMN (Sidebar) */}
+      {/* RIGHT COLUMN */}
       <div className="w-full lg:w-96 space-y-8 flex-shrink-0">
-          
-          {/* Notes Card */}
           <div className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-md">
               <h3 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
                 <ClipboardList className="w-5 h-5" /> Notes
@@ -306,7 +316,6 @@ export default function PismoReservationEditForm({
               </div>
           </div>
 
-          {/* Logs Card */}
           <div className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-md">
               <h3 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
                 <History className="w-5 h-5" /> Edit History
