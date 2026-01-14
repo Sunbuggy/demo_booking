@@ -15,6 +15,10 @@ import GlobalBackgroundManager from '@/components/global-background-manager';
 import BackgroundLayer from '@/components/ui/BackgroundLayer';
 import NavigationButtons from '@/components/NavigationButtons'; 
 
+// Auth Components
+// Ensure you have created this file at this path based on our previous step
+import GoogleOneTap from '@/components/auth/google-one-tap';
+
 const title = 'Sunbuggy Fun Rentals';
 const description = 'Sunbuggy Fun Rentals is the ultimate off-road adventure experience.';
 
@@ -61,6 +65,15 @@ export default async function RootLayout({ children }: PropsWithChildren) {
 
         <Providers>
           
+          {/* === LAYER 1.5: Auth Incentives (Non-Blocking) === */}
+          {/* Only load the Google Script if the user is NOT logged in.
+              Suspense ensures this never blocks the UI from painting. */}
+          {!user && (
+            <Suspense fallback={null}>
+              <GoogleOneTap />
+            </Suspense>
+          )}
+
           {/* === LAYER 2: Navbar ===  */}
           <Navbar />
 

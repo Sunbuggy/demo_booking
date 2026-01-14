@@ -15,12 +15,11 @@ import {
   Phone, Mail, MessageSquare, Pencil, 
   Clock, Coffee, Timer, AlertCircle, 
   LogOut, Sun, Moon, User, Play, Square, Calendar,
-  ShieldCheck, FileWarning // <-- NEW ICONS
+  Shield, AlertTriangle, Briefcase, ChevronRight // Standardized Icons
 } from 'lucide-react';
 import moment from 'moment';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
-import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 
 import SmartTimeClock from '@/app/(biz)/biz/users/admin/tables/employee/time-clock/clock-in';
@@ -35,7 +34,7 @@ export default function UserStatusAvatar({
   currentUserLevel = 0,
   isCurrentUser = false,
   size = 'md',
-  funLicenseStatus = 'missing' // <-- NEW PROP (Default Red)
+  funLicenseStatus = 'missing'
 }: { 
   user: any; 
   currentUserLevel?: number;
@@ -44,7 +43,6 @@ export default function UserStatusAvatar({
   funLicenseStatus?: FunLicenseStatus;
 }) {
   const supabase = createClient();
-  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   
@@ -55,19 +53,17 @@ export default function UserStatusAvatar({
   
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
-  
   const [clockKey, setClockKey] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Permission Checks
   const isEmployee = (user?.user_level || 0) >= 300;
   const canEdit = currentUserLevel >= 650; 
 
-  // --- 1. DATA FETCHING (Employees Only - Time Clock) ---
+  // --- 1. DATA FETCHING ---
   const fetchData = useCallback(async () => {
     if (!user?.id || !isEmployee) return;
 
-    // A. Get Active Time Entry
+    // A. Active Entry
     const { data: timeData } = await supabase
       .from('time_entries')
       .select('*')
@@ -75,7 +71,7 @@ export default function UserStatusAvatar({
       .is('end_time', null)
       .maybeSingle();
 
-    // B. Get Today's Schedule
+    // B. Today's Schedule
     const startOfDay = moment().startOf('day').toISOString();
     const endOfDay = moment().endOf('day').toISOString();
     
@@ -90,32 +86,29 @@ export default function UserStatusAvatar({
     setTodayShift(shiftData);
     setActiveEntry(timeData);
 
-    // C. Determine Time Status
+    // C. Status Logic
     if (timeData) {
-      if (timeData.is_on_break) {
-         setStatus('break');
-      } else {
-         setStatus('online');
-      }
+      setStatus(timeData.is_on_break ? 'break' : 'online');
     } else if (shiftData) {
       const currentTime = moment();
       const shiftStart = moment(shiftData.start_time);
       const shiftEnd = moment(shiftData.end_time);
-
-      if (currentTime.isBetween(shiftStart, shiftEnd)) {
-          setStatus('late'); 
-      } else {
-          setStatus('offline');
-      }
+      setStatus(currentTime.isBetween(shiftStart, shiftEnd) ? 'late' : 'offline');
     } else {
       setStatus('offline');
     }
   }, [user?.id, supabase, isEmployee]);
 
-  // --- 2. REALTIME SUBSCRIPTION ---
+  // --- 2. SUBSCRIPTIONS (CRITICAL FIX) ---
   useEffect(() => {
     if (!isEmployee) return;
+    
+    // Initial Fetch for everyone (one-time)
     fetchData();
+
+    // PERFORMANCE GUARD: Only subscribe to Realtime if it's ME.
+    // Prevents crashing the Roster page with 50+ websocket connections.
+    if (!isCurrentUser) return;
 
     const channel = supabase
       .channel(`live-status-${user.id}`)
@@ -128,22 +121,16 @@ export default function UserStatusAvatar({
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user?.id, supabase, fetchData, isEmployee]);
+  }, [user?.id, supabase, fetchData, isEmployee, isCurrentUser]);
 
   // --- 3. TIMERS ---
   useEffect(() => {
-    if (!isEmployee) return;
+    if (!isEmployee || !isCurrentUser) return; // Only tick timer for self
     const timer = setInterval(() => {
         setNow(moment());
-        if ((status === 'offline' || status === 'late') && todayShift && !activeEntry) {
-            const currentTime = moment();
-            const shiftStart = moment(todayShift.start_time);
-            const shiftEnd = moment(todayShift.end_time);
-            if (currentTime.isBetween(shiftStart, shiftEnd)) setStatus('late');
-        }
     }, 60000); 
     return () => clearInterval(timer);
-  }, [status, todayShift, activeEntry, isEmployee]);
+  }, [isEmployee, isCurrentUser]);
 
   // --- 4. ACTIONS ---
   const closePopover = () => setIsPopoverOpen(false);
@@ -151,7 +138,7 @@ export default function UserStatusAvatar({
   const handleSignOut = async () => {
       closePopover();
       await supabase.auth.signOut();
-      router.push('/login');
+      window.location.href = '/signin';
   };
 
   const openTimeClockModal = () => {
@@ -175,77 +162,55 @@ export default function UserStatusAvatar({
             .eq('id', activeEntry.id);
 
         if (error) throw error;
-        
         setActiveEntry({ ...activeEntry, ...updateData });
         setStatus(action === 'start' ? 'break' : 'online');
-        
-        toast({ 
-          title: action === 'start' ? "Break Started" : "Welcome Back", 
-          description: action === 'start' ? "Relax & Recharge!" : "You are back on the clock." 
-        });
-        
+        toast({ title: action === 'start' ? "Break Started" : "Welcome Back" });
         closePopover();
     } catch (err) {
-        console.error("Break Update Error:", err);
-        toast({ title: "Error", description: "Failed to update break status", variant: "destructive" });
+        toast({ title: "Error", variant: "destructive" });
     } finally {
         setIsProcessing(false);
     }
   };
 
-  // --- 5. COMPUTED ---
+  // --- 5. VISUAL HELPERS ---
   const durationStr = useMemo(() => {
     let startTime = null;
-    if (status === 'break' && activeEntry?.break_start) {
-        startTime = moment(activeEntry.break_start);
-    } else if (status === 'online' && activeEntry?.start_time) {
-        startTime = moment(activeEntry.start_time);
-    }
+    if (status === 'break' && activeEntry?.break_start) startTime = moment(activeEntry.break_start);
+    else if (status === 'online' && activeEntry?.start_time) startTime = moment(activeEntry.start_time);
     
     if (!startTime) return null;
-    
     const diff = moment.duration(now.diff(startTime));
     const hours = Math.floor(diff.asHours());
     const minutes = diff.minutes();
-    
     return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   }, [activeEntry, status, now]);
 
   const dims = size === 'sm' ? 'w-8 h-8' : size === 'lg' ? 'w-16 h-16' : 'w-10 h-10';
   
-  // --- FUN LICENSE COLOR LOGIC ---
-  const getLicenseColorClass = (status: FunLicenseStatus) => {
-    switch (status) {
-      case 'active': return 'ring-2 ring-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]';
-      case 'pending': return 'ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]';
-      case 'missing': return 'ring-2 ring-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]';
-      default: return 'ring-1 ring-slate-300';
-    }
+  const getLicenseColorClass = (s: FunLicenseStatus) => {
+    if (s === 'active') return 'ring-2 ring-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]';
+    if (s === 'pending') return 'ring-2 ring-yellow-400';
+    return 'ring-2 ring-red-500';
   };
 
-  // --- TIME CLOCK DOT COLORS (Employees Only) ---
   const timeStatusColors = {
       online: 'bg-green-500',
       break: 'bg-orange-500',
       late: 'bg-red-600',
-      offline: 'bg-slate-300' // Usually hidden or grey
+      offline: 'bg-slate-300' 
   };
 
   if (!user) return null;
 
   return (
     <>
-    {/* TIMECLOCK MODAL (Employees Only) */}
     {isCurrentUser && isEmployee && (
         <Dialog open={isTimeClockOpen} onOpenChange={setIsTimeClockOpen}>
             <DialogContent className="max-w-md p-0 border-none bg-transparent shadow-none">
                 <DialogTitle className="sr-only">Time Clock</DialogTitle>
-                <DialogDescription className="sr-only">Interface for verifying time entry.</DialogDescription>
-                <SmartTimeClock 
-                    key={clockKey} 
-                    employeeId={user.id} 
-                    onClose={() => { setIsTimeClockOpen(false); fetchData(); }} 
-                />
+                <DialogDescription className="sr-only">Verify Time Entry</DialogDescription>
+                <SmartTimeClock key={clockKey} employeeId={user.id} onClose={() => { setIsTimeClockOpen(false); fetchData(); }} />
             </DialogContent>
         </Dialog>
     )}
@@ -253,14 +218,7 @@ export default function UserStatusAvatar({
     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
         <div className="relative cursor-pointer hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()}>
-          
-          {/* AVATAR CONTAINER */}
-          {/* We apply the Fun License Ring here */}
-          <div className={cn(
-              dims, 
-              "rounded-full overflow-hidden bg-slate-200 relative",
-              getLicenseColorClass(funLicenseStatus)
-            )}>
+          <div className={cn(dims, "rounded-full overflow-hidden bg-slate-200 relative", getLicenseColorClass(funLicenseStatus))}>
             {user.avatar_url ? (
               <Image src={user.avatar_url} alt={user.full_name || 'User'} fill className="object-cover" />
             ) : (
@@ -269,32 +227,15 @@ export default function UserStatusAvatar({
               </div>
             )}
           </div>
-
-          {/* TIME CLOCK STATUS DOT (Employees Only) */}
           {isEmployee && (
-            <span 
-              className={cn(
-                  "absolute bottom-0 right-0 block rounded-full ring-2 ring-white transition-colors duration-300 h-3 w-3",
-                  timeStatusColors[status]
-              )} 
-            />
-          )}
-
-          {/* FUN LICENSE ICON (Mini Badge for Non-Employees or Overlay) */}
-          {/* If it's active, we show a tiny shield. If missing, a tiny alert. */}
-          {!isEmployee && (
-             <div className="absolute -bottom-1 -right-1 bg-white dark:bg-zinc-900 rounded-full p-[2px]">
-               {funLicenseStatus === 'active' && <ShieldCheck size={12} className="text-green-500 fill-green-500/20" />}
-               {funLicenseStatus === 'missing' && <FileWarning size={12} className="text-red-500 fill-red-500/20" />}
-               {funLicenseStatus === 'pending' && <Clock size={12} className="text-yellow-500 fill-yellow-500/20" />}
-             </div>
+            <span className={cn("absolute bottom-0 right-0 block rounded-full ring-2 ring-white h-3 w-3", timeStatusColors[status])} />
           )}
         </div>
       </PopoverTrigger>
 
       <PopoverContent className="w-80 p-0 shadow-xl border-slate-200 dark:border-slate-800" align="end" sideOffset={5}>
         
-        {/* HEADER */}
+        {/* === HEADER: IDENTITY === */}
         <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800 flex justify-between items-start">
           <div className="flex gap-3 items-center">
              <div className={cn("w-12 h-12 rounded-full overflow-hidden border relative bg-slate-200", getLicenseColorClass(funLicenseStatus))}>
@@ -311,161 +252,132 @@ export default function UserStatusAvatar({
                 <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wider font-semibold">
                   {user.job_title || (isEmployee ? 'Staff' : 'Customer')}
                 </p>
-                {/* FUN LICENSE TEXT STATUS */}
-                <div className="flex items-center gap-1 mt-1 text-[10px] uppercase font-bold">
-                    License: 
-                    <span className={cn(
-                        funLicenseStatus === 'active' ? "text-green-600" : 
-                        funLicenseStatus === 'pending' ? "text-yellow-600" : "text-red-600"
-                    )}>
-                        {funLicenseStatus === 'active' ? 'READY' : funLicenseStatus === 'pending' ? 'PENDING' : 'MISSING'}
-                    </span>
-                </div>
              </div>
           </div>
-          
           {(canEdit && !isCurrentUser) && (
             <Link href={`/account?userId=${user.id}`} onClick={closePopover}>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30">
-                <Pencil className="w-4 h-4" />
-              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Pencil className="w-4 h-4" /></Button>
             </Link>
           )}
         </div>
 
-        <div className="p-4 space-y-4">
-          
-          {/* TIME CLOCK STATUS BAR (Employees Only) */}
-          {isEmployee && (
-            <div className={cn("flex items-center justify-between p-3 rounded-lg border shadow-sm select-none transition-colors", 
-                status === 'late' ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-900" : 
-                status === 'break' ? "bg-orange-50 border-orange-200 dark:bg-orange-900/20" :
-                status === 'online' ? "bg-green-50 border-green-200 dark:bg-green-900/20" :
-                "bg-white dark:bg-slate-950 dark:border-slate-800"
-            )}>
-              <div className="flex items-center gap-2">
-                {status === 'online' && <Clock className="w-4 h-4 text-green-600" />}
-                {status === 'break' && <Coffee className="w-4 h-4 text-orange-600 animate-pulse" />}
-                {status === 'late' && <AlertCircle className="w-4 h-4 text-red-600" />}
-                {status === 'offline' && <Moon className="w-4 h-4 text-slate-400" />}
-                
-                <div className="flex flex-col">
-                    <span className="text-sm font-bold capitalize leading-none text-slate-900 dark:text-slate-100">
-                        {status === 'late' ? 'Absent / Late' : status === 'online' ? 'Clocked In' : status}
-                    </span>
-                </div>
-              </div>
-              {durationStr && status !== 'offline' && (
-                <div className="flex items-center gap-1 text-[11px] font-mono font-bold bg-white/50 px-2 py-0.5 rounded border border-black/5">
-                  <Timer className="w-3 h-3" /> {durationStr}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* === CONTROLS === */}
-          {isCurrentUser ? (
-            <div className="space-y-3 pt-1">
-                
-                {/* 1. FUN LICENSE BUTTON (Top Priority for Everyone) */}
+        {/* === SECTION A: FUN LICENSE (The "Wallet Card") === */}
+        {isCurrentUser && (
+            <div className="p-3 bg-white dark:bg-black">
                 <Button 
                    variant="ghost" 
                    className={cn(
-                     "w-full justify-start px-2 gap-3 h-10 font-bold border",
+                     "w-full justify-between px-3 h-12 font-bold border-2 transition-all",
                      funLicenseStatus === 'active' 
-                        ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100" 
-                        : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100 animate-pulse"
+                        ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-900/10 dark:border-green-800" 
+                        : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-900/10 dark:border-red-800"
                    )}
-                   asChild 
-                   onClick={closePopover}
+                   asChild onClick={closePopover}
                 >
                     <Link href="/fun-license">
-                        {funLicenseStatus === 'active' ? <ShieldCheck className="w-4 h-4" /> : <FileWarning className="w-4 h-4" />}
-                        {funLicenseStatus === 'active' ? 'MY FUN LICENSE' : 'GET FUN LICENSE'}
+                        <div className="flex items-center gap-2">
+                            {funLicenseStatus === 'active' ? <Shield className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                            <div className="flex flex-col items-start">
+                                <span className="text-[10px] uppercase tracking-wider opacity-70 leading-none mb-0.5">Identity</span>
+                                <span className="text-sm leading-none">{funLicenseStatus === 'active' ? 'FUN LICENSE ACTIVE' : 'LICENSE MISSING'}</span>
+                            </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
                     </Link>
                 </Button>
+            </div>
+        )}
 
-                {/* 2. EMPLOYEE TIME CLOCK CONTROLS */}
-                {isEmployee && (
-                  <div className="grid grid-cols-1 gap-2 pt-2 border-t dark:border-slate-800">
-                      {(status === 'offline' || status === 'late') && (
-                          <Button 
-                              className="w-full h-10 gap-2 bg-green-600 hover:bg-green-700 text-white font-bold shadow-sm"
-                              onClick={openTimeClockModal}
-                          >
-                              <Play className="w-4 h-4 fill-current" /> CLOCK IN
-                          </Button>
-                      )}
-                      {status === 'online' && (
-                          <div className="grid grid-cols-2 gap-2">
-                              <Button 
-                                  variant="outline"
-                                  className="h-10 gap-2 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
-                                  onClick={() => handleBreakToggle('start')}
-                                  disabled={isProcessing}
-                              >
-                                  <Coffee className="w-4 h-4" /> Break
-                              </Button>
-                              <Button 
-                                  variant="outline"
-                                  className="h-10 gap-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-                                  onClick={openTimeClockModal} 
-                              >
-                                  <Square className="w-4 h-4 fill-current" /> Out
-                              </Button>
-                          </div>
-                      )}
-                      {status === 'break' && (
-                          <Button 
-                              className="w-full h-10 gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold shadow-sm"
-                              onClick={() => handleBreakToggle('end')}
-                              disabled={isProcessing}
-                          >
-                              <Play className="w-4 h-4 fill-current" /> END BREAK
-                          </Button>
-                      )}
-                  </div>
+        <div className="h-px bg-slate-100 dark:bg-slate-800" />
+
+        <div className="p-4 space-y-4">
+          
+          {/* === SECTION B: SHIFT STATUS (For Employees) === */}
+          {isEmployee && (
+            <>
+                <div className={cn("flex items-center justify-between p-3 rounded-lg border shadow-sm select-none", 
+                    status === 'late' ? "bg-red-50 border-red-200 dark:bg-red-900/20" : 
+                    status === 'break' ? "bg-orange-50 border-orange-200 dark:bg-orange-900/20" :
+                    status === 'online' ? "bg-green-50 border-green-200 dark:bg-green-900/20" :
+                    "bg-slate-50 border-slate-200 dark:bg-slate-900/50"
+                )}>
+                <div className="flex items-center gap-2">
+                    {status === 'online' && <Clock className="w-4 h-4 text-green-600" />}
+                    {status === 'break' && <Coffee className="w-4 h-4 text-orange-600 animate-pulse" />}
+                    {status === 'late' && <AlertCircle className="w-4 h-4 text-red-600" />}
+                    {status === 'offline' && <Moon className="w-4 h-4 text-slate-400" />}
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 leading-none mb-0.5">Status</span>
+                        <span className="text-sm font-bold capitalize leading-none text-slate-900 dark:text-slate-100">
+                            {status === 'late' ? 'Absent / Late' : status === 'online' ? 'Clocked In' : status}
+                        </span>
+                    </div>
+                </div>
+                {durationStr && status !== 'offline' && (
+                    <div className="flex items-center gap-1 text-[11px] font-mono font-bold bg-white/50 px-2 py-0.5 rounded border border-black/5">
+                    <Timer className="w-3 h-3" /> {durationStr}
+                    </div>
                 )}
-
-                {/* 3. STANDARD MENU LINKS */}
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t dark:border-slate-800">
-                    <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9" asChild onClick={closePopover}>
-                        <Link href={`/account`}>
-                            <User className="w-4 h-4 text-slate-500" /> ACCOUNT
-                        </Link>
-                    </Button>
-                    
-                    <Button 
-                        variant="ghost" 
-                        className="justify-start px-2 gap-2 text-xs h-9" 
-                        onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); closePopover(); }}
-                    >
-                        {theme === 'dark' ? <Sun className="w-4 h-4 text-slate-500" /> : <Moon className="w-4 h-4 text-slate-500" />}
-                        Theme
-                    </Button>
                 </div>
 
+                {/* === SECTION C: CONTROLS (Only for ME) === */}
+                {isCurrentUser && (
+                    <>
+                    {(status === 'offline' || status === 'late') ? (
+                        <Button className="w-full h-12 gap-2 bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-sm" onClick={openTimeClockModal}>
+                            <Play className="w-5 h-5 fill-current" /> CLOCK IN
+                        </Button>
+                    ) : (
+                        <div className="rounded-xl border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-3 shadow-inner">
+                            <div className="flex items-center justify-center gap-2 mb-3 opacity-60">
+                                <Briefcase size={12} className="text-slate-500" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Shift Controls</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                {status === 'online' ? (
+                                    <Button variant="outline" className="h-14 flex-col gap-1 border-orange-200 bg-white text-orange-700" onClick={() => handleBreakToggle('start')} disabled={isProcessing}>
+                                        <Coffee className="w-5 h-5 mb-0.5" /> <span className="text-xs font-bold">START BREAK</span>
+                                    </Button>
+                                ) : (
+                                    <Button className="h-14 flex-col gap-1 bg-orange-500 text-white" onClick={() => handleBreakToggle('end')} disabled={isProcessing}>
+                                        <Play className="w-5 h-5 fill-current" /> <span className="text-xs font-bold">RESUME</span>
+                                    </Button>
+                                )}
+                                <Button variant="destructive" className="h-14 flex-col gap-1 bg-red-600 border-b-4 border-red-800 active:border-b-0 active:translate-y-1" onClick={openTimeClockModal}>
+                                    <Square className="w-5 h-5 fill-current" /> <span className="text-xs font-black">CLOCK OUT</span>
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                    </>
+                )}
+            </>
+          )}
+
+          {/* === FOOTER: TOOLS (User vs Other) === */}
+          {isCurrentUser ? (
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t dark:border-slate-800 mt-2">
                 {isEmployee && (
-                  <Button variant="ghost" className="w-full justify-start px-2 gap-2 text-xs h-9 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20" asChild onClick={closePopover}>
-                      <Link href="/biz/my-schedule">
-                          <Calendar className="w-4 h-4" /> My Schedule
-                      </Link>
+                  <Button variant="ghost" className="w-full justify-start px-2 gap-2 text-xs h-9 text-blue-600" asChild onClick={closePopover}>
+                      <Link href="/biz/my-schedule"><Calendar className="w-4 h-4" /> My Schedule</Link>
                   </Button>
                 )}
-
-                <Button variant="ghost" className="w-full justify-start px-2 gap-2 text-xs h-9 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleSignOut}>
+                <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9" asChild onClick={closePopover}>
+                    <Link href={`/account?userId=${user.id}`}><User className="w-4 h-4 text-slate-500" /> Account</Link>
+                </Button>
+                <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); closePopover(); }}>
+                    {theme === 'dark' ? <Sun className="w-4 h-4 text-slate-500" /> : <Moon className="w-4 h-4 text-slate-500" />} Theme
+                </Button>
+                <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9 text-slate-400 hover:text-red-600" onClick={handleSignOut}>
                     <LogOut className="w-4 h-4" /> Sign Out
                 </Button>
             </div>
           ) : (
-            <>
-              {/* OTHER USER VIEW */}
-              <div className="grid grid-cols-3 gap-2 pt-4 border-t dark:border-slate-800">
+            <div className="grid grid-cols-3 gap-2 pt-2 border-t dark:border-slate-800">
                  <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5" onClick={closePopover} asChild><a href={`tel:${user.phone}`}><Phone className="w-4 h-4"/><span className="text-[10px]">Call</span></a></Button>
                  <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5" onClick={closePopover} asChild><a href={`sms:${user.phone}`}><MessageSquare className="w-4 h-4"/><span className="text-[10px]">Text</span></a></Button>
-                 <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5" onClick={closePopover} asChild><a href={`mailto:${user.email}`} target="_blank"><Mail className="w-4 h-4"/><span className="text-[10px]">Email</span></a></Button>
-              </div>
-            </>
+                 <Button variant="outline" size="sm" className="flex flex-col h-12 gap-0.5" onClick={closePopover} asChild><a href={`mailto:${user.email}`}><Mail className="w-4 h-4"/><span className="text-[10px]">Email</span></a></Button>
+            </div>
           )}
         </div>
       </PopoverContent>

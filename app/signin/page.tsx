@@ -1,28 +1,32 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import { headers } from 'next/headers';
-import SmartLoginForm from './login-form'; // We will create this below
+import SmartLoginForm from './login-form';
 
+// FIX: Type definition now requires Promise wrapping
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: { message?: string };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const supabase = await createClient();
 
   // 1. SESSION CHECK (Server-Side)
-  // If they are already logged in, don't let them see the sign-in page.
-  // Bounce them straight to work.
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
     return redirect('/biz');
   }
 
-  // 2. Render the "Smart" Login UI
+  // 2. AWAIT THE SEARCH PARAMS (The Fix)
+  // In Next.js 15, we must await this object before reading properties.
+  const resolvedParams = await searchParams;
+  const message = typeof resolvedParams.message === 'string' 
+    ? resolvedParams.message 
+    : undefined;
+
+  // 3. Render
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-950 px-4">
       <div className="w-full max-w-md space-y-8">
-        {/* Branding Area */}
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-extrabold text-white tracking-tight">
             SunBuggy Staff
@@ -32,8 +36,8 @@ export default async function SignInPage({
           </p>
         </div>
 
-        {/* The Actual Form Logic */}
-        <SmartLoginForm initialMessage={searchParams.message} />
+        {/* Pass the unwrapped message string */}
+        <SmartLoginForm initialMessage={message} />
       </div>
     </div>
   );
