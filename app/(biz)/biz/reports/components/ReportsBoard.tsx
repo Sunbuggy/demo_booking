@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import TableSelector from './TableSelector';
@@ -22,49 +23,22 @@ const NMI_ENDPOINT = 'https://bookings.sunbuggy.com/functions/v1/nmi-charges';
 type NmiReportType = 'pismo' | 'vegas' | 'all';
 
 const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
+  // --- UI STATE ---
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [selectedNmiReport, setSelectedNmiReport] = useState<NmiReportType | null>(null);
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | null>(null);
   const [showVisualization, setShowVisualization] = useState(false);
 
-  // NMI data and loading state
-  const [nmiSettled, setNmiSettled] = useState<any[]>([]);
-  const [nmiUnsettled, setNmiUnsettled] = useState<any[]>([]);
-  const [nmiHolds, setNmiHolds] = useState<any[]>([]);
-  
-  // Totals State
-  const [nmiSettledTotal, setNmiSettledTotal] = useState(0);
-  const [nmiUnsettledTotal, setNmiUnsettledTotal] = useState(0);
-  const [nmiHoldsTotal, setNmiHoldsTotal] = useState(0);
-  
+  // --- NMI DATA STATE ---
+  // We store the raw master list here and filter it on the fly
+  const [nmiTransactions, setNmiTransactions] = useState<any[]>([]);
   const [nmiLoading, setNmiLoading] = useState(false);
   const [nmiError, setNmiError] = useState<string | null>(null);
 
-  // Active tab within NMI reports
-  const [activeNmiTab, setActiveNmiTab] = useState<'settled' | 'unsettled' | 'holds'>('settled');
+  // Active tab for NMI view
+  const [activeNmiTab, setActiveNmiTab] = useState<'settled' | 'unsettled' | 'holds'>('unsettled');
 
-  // --- HELPER: Strict Total Calculation ---
-  // This ensures the header matches the footer by filtering out failed transactions
-  const calculateSafeTotal = (transactions: any[]) => {
-    if (!Array.isArray(transactions)) return 0;
-    
-    return transactions.reduce((acc, curr) => {
-      // 1. Must be Approved
-      if (curr.response_text !== 'Approved') return acc;
-      
-      // 2. Handle Refunds (Subtract if it's a refund, Add if it's a sale)
-      const amount = parseFloat(curr.amount) || 0;
-      
-      // If the API returns positive numbers for refunds, we might need to subtract.
-      // Assuming 'sale' adds to revenue and 'refund' subtracts:
-      if (curr.action_type === 'refund') {
-        return acc - amount;
-      }
-      
-      return acc + amount;
-    }, 0);
-  };
-
+  // --- HANDLERS ---
   const handleTableSelect = (table: Table) => {
     setSelectedTable(table);
     setSelectedNmiReport(null);
@@ -75,157 +49,171 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
   const handleNmiReportSelect = (type: NmiReportType) => {
     setSelectedNmiReport(type);
     setSelectedTable(null);
-    setShowVisualization(false);
+    setShowVisualization(false); // Hide until they click Generate
     setNmiError(null);
+    setNmiTransactions([]); // Clear old data to prevent confusion
   };
 
   const handleDateRangeSelect = (range: { from: Date; to: Date }) => {
     setDateRange(range);
   };
 
+  // --- FETCHING LOGIC ---
   const handleGenerateReport = async () => {
     if (!dateRange) return;
 
+    // 1. If NMI Report Selected
     if (selectedNmiReport) {
-      // NMI Report - fetch live data
-      const from = format(dateRange.from, 'yyyy-MM-dd');
-      const to = format(dateRange.to, 'yyyy-MM-dd');
-
       setNmiLoading(true);
       setNmiError(null);
+      setShowVisualization(false);
 
       try {
+        const from = format(dateRange.from, 'yyyy-MM-dd');
+        const to = format(dateRange.to, 'yyyy-MM-dd');
         const url = `${NMI_ENDPOINT}?location=${selectedNmiReport}&start_date=${from}&end_date=${to}`;
-        const res = await fetch(url);
 
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Failed to fetch: ${res.status} ${text.substring(0, 200)}`);
-        }
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Gateway Error: ${res.status}`);
 
         const json = await res.json();
-
         if (json.error) throw new Error(json.error);
 
-        const settledData = json.settled || [];
-        const unsettledData = json.unsettled || [];
-        const holdsData = json.holds || [];
-
-        setNmiSettled(settledData);
-        setNmiUnsettled(unsettledData);
-        setNmiHolds(holdsData);
-
-        // --- FIX: Calculate Totals Client-Side ---
-        // We ignore json.settledTotal to avoid including failed transactions
-        setNmiSettledTotal(calculateSafeTotal(settledData));
-        setNmiUnsettledTotal(calculateSafeTotal(unsettledData));
-        setNmiHoldsTotal(calculateSafeTotal(holdsData));
-
-        // Auto-switch to Unsettled tab if Settled is empty but Unsettled has data
-        if (settledData.length === 0 && unsettledData.length > 0) {
-            setActiveNmiTab('unsettled');
-        } else {
-            setActiveNmiTab('settled');
+        // Handle both data formats (Legacy vs New)
+        let combined = json.transactions || [];
+        if (!json.transactions) {
+          combined = [...(json.settled || []), ...(json.unsettled || []), ...(json.holds || [])];
         }
-
+        setNmiTransactions(combined);
+        
       } catch (err: any) {
-        setNmiError(err.message || 'Failed to load NMI transactions');
-        setNmiSettled([]);
-        setNmiUnsettled([]);
-        setNmiHolds([]);
-        setNmiSettledTotal(0);
-        setNmiUnsettledTotal(0);
-        setNmiHoldsTotal(0);
+        setNmiError(err.message || 'Failed to load transactions');
+        setNmiTransactions([]);
       } finally {
         setNmiLoading(false);
         setShowVisualization(true);
       }
-    } else if (selectedTable) {
-      // Regular database report
+    } 
+    // 2. If Database Table Selected
+    else if (selectedTable) {
       setShowVisualization(true);
     }
   };
 
-  // Determine which data to show
-  let visualizationData: any[] = [];
-  let visualizationTableName = '';
+  // --- CLIENT-SIDE FILTERING (The Core Logic) ---
+  const nmiData = useMemo(() => {
+    // 1. UNSETTLED (Live Batches)
+    // Approved Sales/Captures waiting to be sent to bank
+    const unsettled = nmiTransactions.filter(txn => 
+      txn.condition === 'pendingsettlement' && 
+      (txn.action_type === 'sale' || txn.action_type === 'capture')
+    );
+
+    // 2. SETTLED (Money in Bank)
+    // We count:
+    // A) Transactions specifically marked 'settle' (Historical Deposits)
+    // B) Completed Sales (Historical Sales that didn't get a 'settle' event yet)
+    // We exclude $0.00 system rows.
+    const settled = nmiTransactions.filter(txn => 
+      (txn.action_type === 'settle' || 
+       (txn.action_type === 'sale' && txn.condition === 'complete')) &&
+      txn.amount > 0
+    );
+
+    // 3. HOLDS (Pending Auths)
+    const holds = nmiTransactions.filter(txn => 
+      txn.action_type === 'auth' && 
+      txn.condition === 'pending'
+    );
+
+    return { settled, unsettled, holds };
+  }, [nmiTransactions]);
+
+  // Calculate Totals
+  const nmiSettledTotal = nmiData.settled.reduce((acc, t) => acc + (t.amount || 0), 0);
+  const nmiUnsettledTotal = nmiData.unsettled.reduce((acc, t) => acc + (t.amount || 0), 0);
+  const nmiHoldsTotal = nmiData.holds.reduce((acc, t) => acc + (t.amount || 0), 0);
+
+  // Determine what to pass to DataVisualization
+  let displayData: any[] = [];
+  let tableName = '';
 
   if (selectedNmiReport && showVisualization) {
     if (activeNmiTab === 'settled') {
-      visualizationData = nmiSettled;
-      visualizationTableName = `Settled Charges (${selectedNmiReport.toUpperCase()} - NMI)`;
+      displayData = nmiData.settled;
+      tableName = `Settled (${selectedNmiReport.toUpperCase()}) - $${nmiSettledTotal.toLocaleString()}`;
     } else if (activeNmiTab === 'unsettled') {
-      visualizationData = nmiUnsettled;
-      visualizationTableName = `Unsettled Charges (${selectedNmiReport.toUpperCase()} - NMI)`;
+      displayData = nmiData.unsettled;
+      tableName = `Unsettled (${selectedNmiReport.toUpperCase()}) - $${nmiUnsettledTotal.toLocaleString()}`;
     } else if (activeNmiTab === 'holds') {
-      visualizationData = nmiHolds;
-      visualizationTableName = `Holds / Damage Deposits (${selectedNmiReport.toUpperCase()} - NMI)`;
+      displayData = nmiData.holds;
+      tableName = `Holds (${selectedNmiReport.toUpperCase()}) - $${nmiHoldsTotal.toLocaleString()}`;
     }
   } else if (selectedTable) {
-    visualizationData = selectedTable.data;
-    visualizationTableName = selectedTable.name;
+    displayData = selectedTable.data;
+    tableName = selectedTable.name;
   }
 
   return (
     <div className="space-y-8">
-      {/* Database Reports Section */}
+      
+      {/* 1. Database Reports Section */}
       <div>
-        <h2 className="text-2xl font-bold mb-4 text-zinc-100">Database Reports</h2>
+        <h2 className="text-xl font-bold mb-4 text-zinc-100">Database Reports</h2>
         <TableSelector tables={tables} onSelect={handleTableSelect} />
       </div>
 
-      {/* NMI Live Card Reports Section */}
+      {/* 2. Card Transactions Section (Restored Position) */}
       <div>
-        <h2 className="text-2xl font-bold mb-4 text-zinc-100">Card Transactions</h2>
+        <h2 className="text-xl font-bold mb-4 text-zinc-100">Card Transactions</h2>
         <div className="flex flex-wrap gap-4 mb-6">
-          <Button
-            onClick={() => handleNmiReportSelect('pismo')}
-            variant={selectedNmiReport === 'pismo' ? 'default' : 'outline'}
-            className={selectedNmiReport === 'pismo' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'border-zinc-700 hover:bg-zinc-800'}
-          >
-            Pismo Beach (NMI)
-          </Button>
-          <Button
-            onClick={() => handleNmiReportSelect('vegas')}
-            variant={selectedNmiReport === 'vegas' ? 'default' : 'outline'}
-            className={selectedNmiReport === 'vegas' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'border-zinc-700 hover:bg-zinc-800'}
-          >
-            Las Vegas (NMI)
-          </Button>
-          <Button
-            onClick={() => handleNmiReportSelect('all')}
-            variant={selectedNmiReport === 'all' ? 'default' : 'outline'}
-            className={selectedNmiReport === 'all' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'border-zinc-700 hover:bg-zinc-800'}
-          >
-            All Locations (NMI)
-          </Button>
+          {(['pismo', 'vegas', 'all'] as NmiReportType[]).map((type) => (
+            <Button
+              key={type}
+              onClick={() => handleNmiReportSelect(type)}
+              variant={selectedNmiReport === type ? 'default' : 'outline'}
+              className={`capitalize ${
+                selectedNmiReport === type 
+                  ? 'bg-indigo-600 hover:bg-indigo-500 border-indigo-500 text-white' 
+                  : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'
+              }`}
+            >
+              {type === 'all' ? 'All Locations' : type} (NMI)
+            </Button>
+          ))}
         </div>
       </div>
 
-      {/* Date Range Picker and Generate Button */}
+      {/* 3. Controls Bar (Date & Generate) */}
       {(selectedTable || selectedNmiReport) && (
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-zinc-900/50 p-6 rounded-lg border border-zinc-800">
           <DateRangePicker onSelect={handleDateRangeSelect} />
+          
           <Button 
             onClick={handleGenerateReport} 
             disabled={!dateRange || nmiLoading}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto min-w-[140px]"
           >
-            {nmiLoading ? 'Loading Transactions...' : 'Generate Report'}
+            {nmiLoading ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...</>
+            ) : (
+              'Generate Report'
+            )}
           </Button>
         </div>
       )}
 
-      {/* NMI Error Display */}
+      {/* 4. Error Message */}
       {nmiError && (
-        <div className="bg-red-950/30 border border-red-900 text-red-200 px-6 py-4 rounded mb-6">
-          <strong className="text-red-100">Error:</strong> {nmiError}
+        <div className="bg-red-950/30 border border-red-900 text-red-200 px-6 py-4 rounded flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-red-400" />
+          <span>{nmiError}</span>
         </div>
       )}
 
-      {/* NMI Tabs with Totals */}
+      {/* 5. NMI Tabs (Only show if NMI is active & report generated) */}
       {selectedNmiReport && showVisualization && !nmiLoading && (
-        <div className="space-y-4">
+        <div className="space-y-4 pt-4">
           <div className="flex gap-6 border-b border-zinc-700">
             <button
               onClick={() => setActiveNmiTab('settled')}
@@ -235,7 +223,7 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Settled <span className="ml-2 text-sm bg-zinc-800 px-2 py-0.5 rounded text-zinc-300">${nmiSettledTotal.toFixed(2)}</span>
+              Settled <span className="ml-2 text-sm bg-zinc-800 px-2 py-0.5 rounded text-zinc-300 font-mono">${nmiSettledTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
             </button>
             <button
               onClick={() => setActiveNmiTab('unsettled')}
@@ -245,7 +233,7 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Unsettled <span className="ml-2 text-sm bg-zinc-800 px-2 py-0.5 rounded text-zinc-300">${nmiUnsettledTotal.toFixed(2)}</span>
+              Unsettled <span className="ml-2 text-sm bg-zinc-800 px-2 py-0.5 rounded text-zinc-300 font-mono">${nmiUnsettledTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
             </button>
             <button
               onClick={() => setActiveNmiTab('holds')}
@@ -255,24 +243,28 @@ const ReportsBoard: React.FC<ReportsBoardProps> = ({ tables }) => {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Holds <span className="ml-2 text-sm bg-zinc-800 px-2 py-0.5 rounded text-zinc-300">${nmiHoldsTotal.toFixed(2)}</span>
+              Holds <span className="ml-2 text-sm bg-zinc-800 px-2 py-0.5 rounded text-zinc-300 font-mono">${nmiHoldsTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Visualization - Database or NMI */}
-      {showVisualization && visualizationData.length > 0 && (
-        <DataVisualization
-          data={visualizationData}
-          dateRange={dateRange!}
-          tableName={visualizationTableName}
-        />
-      )}
-
-      {showVisualization && visualizationData.length === 0 && !nmiError && (
-        <div className="text-zinc-500 text-center py-16 bg-zinc-900/20 rounded-lg border border-zinc-800 border-dashed">
-          <p className="text-lg">No transactions found for this period.</p>
+      {/* 6. Visualization Component (Restored!) */}
+      {showVisualization && (
+        <div className="mt-6">
+          {displayData.length > 0 ? (
+            <DataVisualization
+              data={displayData}
+              dateRange={dateRange!}
+              tableName={tableName}
+            />
+          ) : (
+            !nmiLoading && (
+              <div className="text-zinc-500 text-center py-16 bg-zinc-900/20 rounded-lg border border-zinc-800 border-dashed">
+                <p className="text-lg">No transactions found for this period.</p>
+              </div>
+            )
+          )}
         </div>
       )}
     </div>
