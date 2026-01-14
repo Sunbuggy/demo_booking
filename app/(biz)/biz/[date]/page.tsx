@@ -62,12 +62,31 @@ function BizContent({
 }: any) {
   const hasReservations = reservations.length > 0;
   let sortedData = hasReservations ? getTimeSortedData(reservations) : null;
-
+// --- 🔴 ADD THIS DEBUG BLOCK 🔴 ---
+  if (sortedData) {
+    console.log("---------------- DIAGNOSTIC START ----------------");
+    console.log("Type of sortedData:", typeof sortedData);
+    console.log("Is Array?", Array.isArray(sortedData));
+    console.log("Raw Keys:", Object.keys(sortedData));
+    console.log("Sample Value (first key):", sortedData[Object.keys(sortedData)[0]]?.[0]); // Peek at one reservation
+    console.log("---------------- DIAGNOSTIC END ------------------");
+  }
+  // ------------------------------------
+  // [FIX] Updated sorting logic to handle 12-hour format (AM/PM) correctly.
+  // Previous parseInt() logic caused 2PM (int 2) to sort before 8AM (int 8).
   if (Array.isArray(sortedData)) {
     sortedData = sortedData.sort((a: any, b: any) => {
-      const timeA = parseInt(a.time || a.key || a, 10); 
-      const timeB = parseInt(b.time || b.key || b, 10);
-      return timeA - timeB;
+      // 1. Extract the time string (e.g., "08:00 AM" or "2:00 PM")
+      const timeStrA = a.time || a.key || a;
+      const timeStrB = b.time || b.key || b;
+
+      // 2. Parse using DayJS with the context of the current date.
+      //    This handles the 12h -> 24h conversion automatically.
+      const dateA = dayjs(`${date} ${timeStrA}`);
+      const dateB = dayjs(`${date} ${timeStrB}`);
+
+      // 3. Compare timestamps
+      return dateA.valueOf() - dateB.valueOf();
     });
   } 
 

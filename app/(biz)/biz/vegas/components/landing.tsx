@@ -72,6 +72,22 @@ const Landing = ({
 
   if (!data) return <div className="p-8 text-center text-muted-foreground">No data available</div>;
 
+  // --- [DEFINITIVE FIX] SORTING LOGIC ---
+  // The data keys are strings like "2", "8", "10".
+  // Problem: Numerically, 2 < 8, so 2pm appears before 8am.
+  // Solution: Apply business logic. Hours 1-6 are treated as PM (+12h).
+  const sortedKeys = Object.keys(data).sort((keyA, keyB) => {
+    const getSortValue = (k: string) => {
+      let h = parseInt(k, 10);
+      // HEURISTIC: If hour is 1-6, assume PM (13-18).
+      // This correctly places "2" (14) after "10".
+      if (h >= 1 && h <= 6) return h + 12;
+      return h;
+    };
+
+    return getSortValue(keyA) - getSortValue(keyB);
+  });
+
   // --- CALCULATIONS ---
   const calculateTotalRevenue = () => {
     return Object.keys(data).reduce((acc, hr) => {
@@ -119,7 +135,6 @@ const Landing = ({
               {vehiclesList
                 .filter((key) => Object.keys(data).some((hr) => Object.keys(data[hr]).some((loc) => data[hr][loc].some((r) => Number(r[key as keyof typeof r]) > 0))))
                 .map((key) => {
-                  // FIX: Corrected the nesting of reduce functions below
                   const count = Object.keys(data).reduce((acc, hr) => {
                     return acc + Object.keys(data[hr]).reduce((accLoc, loc) => {
                       return accLoc + data[hr][loc].reduce((accRes, r) => {
@@ -213,8 +228,8 @@ const Landing = ({
         </div>
       </div>
 
-      {/* CARDS LOOP */}
-      {Object.keys(data).map((key, idx) => {
+      {/* CARDS LOOP - USING SORTED KEYS */}
+      {sortedKeys.map((key, idx) => {
         return (
           <HourCard
             key={idx}
@@ -228,6 +243,9 @@ const Landing = ({
             hourlyUtilization={hourlyUtilization}
             drivers={drivers}
             groupsData={groupsData}
+            todaysShifts={todaysShifts}
+            // [CRITICAL FIX] Pass role down to HourCard
+            role={role}
           />
         );
       })}
