@@ -20,14 +20,14 @@ import { useRouter } from 'next/navigation';
 interface Endorsement {
   id: string;
   name: string;
-  url: string; // Required for the "Red" step
+  url: string; 
   active: boolean;
 }
 
 interface Props {
   user: {
     name: string;
-    id: string; // This is now the full UUID
+    id: string; // Full UUID
     photoUrl?: string | null;
     level: number;
   };
@@ -42,27 +42,23 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
   // State: The photo to display
   const [currentPhoto, setCurrentPhoto] = useState<string | null>(user.photoUrl || null);
   
-  // State: Allows user to manually retake photo even if they have one (Green -> Yellow)
+  // State: Allows user to manually retake photo
   const [isRetaking, setIsRetaking] = useState(false);
 
   // --- WORKFLOW LOGIC ---
-  // 1. RED: No Waiver Signed
   const showWaiverStep = !status.hasWaiver;
-  // 2. YELLOW: Waiver Signed, but No Photo (or user is retaking)
   const showSelfieStep = status.hasWaiver && (!status.hasPhoto || isRetaking);
-  // 3. GREEN: All Complete (and not retaking) -- Implied if above are false
-
+  
   // --- HANDLER: Save Photo ---
   const handlePhotoConfirmed = async (photoDataUrl: string) => {
-    setCurrentPhoto(photoDataUrl); // Optimistic Update
+    setCurrentPhoto(photoDataUrl); 
     
     startTransition(async () => {
       try {
         const result = await uploadUserPhoto(photoDataUrl);
-        
         if (result.success) {
           setIsRetaking(false);
-          router.refresh(); // Refresh to update server-side status
+          router.refresh(); 
         } else {
           alert(`Save failed: ${result.message}`);
         }
@@ -78,8 +74,6 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
   if (showWaiverStep) {
     return (
       <div className="w-full max-w-md animate-in slide-in-from-bottom duration-500">
-        
-        {/* RED STATUS BANNER */}
         <div className="bg-red-600 text-white text-xs font-black text-center py-3 rounded-t-xl uppercase tracking-widest shadow-[0_0_15px_rgba(220,38,38,0.5)] relative z-10">
           <span className="flex items-center justify-center gap-2">
             <AlertCircle size={16} /> Step 1: Validation Required
@@ -138,13 +132,10 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
   if (showSelfieStep) {
     return (
       <div className="w-full max-w-md bg-zinc-900 rounded-xl p-4 border border-zinc-800 relative shadow-2xl">
-        
-        {/* YELLOW STATUS BANNER */}
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-500 text-black text-[10px] font-bold px-4 py-1 rounded-full uppercase tracking-wider shadow-lg z-20">
            Step 2: Add Photo
         </div>
 
-        {/* Loading Overlay */}
         {isPending && (
            <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center rounded-xl animate-in fade-in">
              <Loader2 className="animate-spin text-[#FFEC00] mb-3" size={40} />
@@ -152,7 +143,6 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
            </div>
         )}
 
-        {/* Cancel Button (Only if retaking) */}
         {status.hasPhoto && !isPending && (
           <button 
             onClick={() => setIsRetaking(false)}
@@ -174,11 +164,10 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
   // VIEW 3: THE GREEN CARD (GREEN RING)
   // ===========================================================================
   
-  // Dynamic Environment Logic
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://book.sunbuggy.com';
   
-  // CRITICAL FIX: Encode the FULL user.id into the QR code
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${siteUrl}/verify/${user.id}`)}&color=000000&bgcolor=FFFFFF`;
+  // UPDATE: Increased API size to 300x300 for high resolution
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`${siteUrl}/verify/${user.id}`)}&color=000000&bgcolor=FFFFFF`;
 
   return (
     <div className="w-full max-w-sm animate-in fade-in zoom-in duration-500 perspective-1000">
@@ -234,7 +223,6 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
                {user.name}
              </h2>
              
-             {/* VISUAL FIX: Only display the first 8 chars for aesthetics */}
              <p className="text-xs font-mono text-zinc-500 mb-3 tracking-wide">
                 ID: {user.id.slice(0, 8).toUpperCase()}
              </p>
@@ -264,7 +252,6 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
              {endorsements.map((end, i) => (
                <a 
                  key={end.id}
-                 // Only link if NOT active so they can sign missing ones easily
                  href={!end.active ? end.url : undefined} 
                  target={!end.active ? "_blank" : undefined}
                  className={`
@@ -285,19 +272,20 @@ export default function FunLicenseCard({ user, endorsements, status }: Props) {
 
         {/* BOTTOM SECTION: Verification Footer */}
         <div className="mt-1 bg-white dark:bg-black/20 p-3 flex items-center justify-between border-t border-dashed border-zinc-300 dark:border-zinc-800">
-           <div className="text-[10px] text-zinc-500 leading-tight pr-2">
+           <div className="text-[10px] text-zinc-500 leading-tight pr-2 max-w-[50%]">
               <span className="font-bold text-zinc-900 dark:text-zinc-300 block mb-1">
                 Official Verification
               </span>
               Scan to validate status.
            </div>
            
+           {/* UPDATE: Increased QR container size to w-32 h-32 */}
            <div className="bg-white p-1 rounded border border-zinc-200 shrink-0 shadow-sm">
              {/* eslint-disable-next-line @next/next/no-img-element */}
              <img 
                src={qrCodeUrl}
                alt="Verification QR"
-               className="w-14 h-14"
+               className="w-32 h-32" // Massive Size Increase
                loading="lazy"
              />
            </div>
