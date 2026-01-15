@@ -13,7 +13,7 @@ interface Props {
   hour: string;
   date: string;
   existingGroups: any[];
-  guides: any[]; // [FIX] Renamed from 'drivers' to 'guides'
+  guides: any[]; 
   trigger?: React.ReactNode;
 }
 
@@ -23,7 +23,7 @@ export default function GroupAssignerDialog({
   hour,
   date,
   existingGroups,
-  guides, // [FIX] Now accepts the pre-filtered guides list
+  guides, 
   trigger
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
@@ -79,8 +79,8 @@ export default function GroupAssignerDialog({
         reservationId,
         selectedGroupId,
         assignCounts,
-        leadGuideId, // Can be empty string (handled by server action)
-        sweepGuideId, // Can be empty string
+        leadGuideId,
+        sweepGuideId, 
         groupName
       );
       toast.success("Group Assigned");
@@ -102,7 +102,8 @@ export default function GroupAssignerDialog({
         )}
       </DialogTrigger>
       
-      <DialogContent className="bg-popover border-border text-foreground sm:max-w-[500px]">
+      {/* Ensure Dialog text is readable */}
+      <DialogContent className="bg-popover border-border text-popover-foreground sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500">
             <FaLayerGroup /> <span>Assign to Tour Group</span>
@@ -116,7 +117,8 @@ export default function GroupAssignerDialog({
              <label className="text-xs font-bold text-muted-foreground uppercase">Target Group</label>
              <div className="flex gap-2">
                <select 
-                 className="flex-1 h-10 rounded-md border border-input bg-background px-3 text-sm"
+                 // FIX: Added text-foreground and option styling for dark mode
+                 className="flex-1 h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground [&>option]:bg-background [&>option]:text-foreground"
                  value={selectedGroupId}
                  onChange={(e) => setSelectedGroupId(e.target.value)}
                >
@@ -132,7 +134,8 @@ export default function GroupAssignerDialog({
                   <div className="flex items-center gap-1 bg-muted px-2 rounded border border-border">
                      <span className="text-sm font-bold text-muted-foreground">{hour.split(':')[0]}</span>
                      <select 
-                       className="bg-transparent font-bold text-foreground focus:outline-none"
+                       // FIX: Added text-foreground and forced background for options
+                       className="bg-transparent font-bold text-foreground focus:outline-none [&>option]:bg-background [&>option]:text-foreground"
                        value={newGroupSuffix}
                        onChange={(e) => setNewGroupSuffix(e.target.value)}
                      >
@@ -152,14 +155,15 @@ export default function GroupAssignerDialog({
              <div className="grid grid-cols-2 gap-2">
                 {Object.entries(reservationVehicles).map(([type, max]) => (
                   <div key={type} className="flex items-center justify-between bg-card p-2 rounded border border-border">
-                     <span className="font-bold text-sm">{type}</span>
+                     <span className="font-bold text-sm text-foreground">{type}</span>
                      <div className="flex items-center gap-2">
                        <span className="text-xs text-muted-foreground">/ {max}</span>
                        <input 
                          type="number" 
                          min="0" 
                          max={max}
-                         className="w-12 h-8 text-center bg-background border border-input rounded"
+                         // FIX: Added text-foreground so the number "8" is visible in dark mode
+                         className="w-12 h-8 text-center bg-background text-foreground border border-input rounded focus:ring-1 focus:ring-primary"
                          value={assignCounts[type] || 0}
                          onChange={(e) => setAssignCounts({...assignCounts, [type]: Number(e.target.value)})}
                        />
@@ -173,7 +177,6 @@ export default function GroupAssignerDialog({
           <div className="space-y-2">
              <div className="flex justify-between items-center">
                <label className="text-xs font-bold text-muted-foreground uppercase">Assign Guides</label>
-               {/* Note: 'Show All' toggle removed because 'guides' prop is already the correct list */}
              </div>
              
              <div className="grid grid-cols-2 gap-3">
@@ -181,7 +184,8 @@ export default function GroupAssignerDialog({
                <div className="space-y-1">
                  <span className="text-[10px] font-bold text-green-600 dark:text-green-400">LEAD GUIDE</span>
                  <select 
-                    className="w-full h-9 rounded border border-input bg-background text-xs"
+                    // FIX: Added text-foreground and option styling
+                    className="w-full h-9 rounded border border-input bg-background text-foreground text-xs [&>option]:bg-background [&>option]:text-foreground"
                     value={leadGuideId}
                     onChange={(e) => setLeadGuideId(e.target.value)}
                  >
@@ -196,7 +200,8 @@ export default function GroupAssignerDialog({
                <div className="space-y-1">
                  <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400">SWEEP (Tail)</span>
                  <select 
-                    className="w-full h-9 rounded border border-input bg-background text-xs"
+                    // FIX: Added text-foreground and option styling
+                    className="w-full h-9 rounded border border-input bg-background text-foreground text-xs [&>option]:bg-background [&>option]:text-foreground"
                     value={sweepGuideId}
                     onChange={(e) => setSweepGuideId(e.target.value)}
                  >

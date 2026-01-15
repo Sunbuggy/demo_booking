@@ -21,6 +21,7 @@ import moment from 'moment';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useToast } from '@/components/ui/use-toast';
+import { signOutAction } from '@/app/actions/auth-actions'; // <--- NEW SERVER ACTION
 
 import SmartTimeClock from '@/app/(biz)/biz/users/admin/tables/employee/time-clock/clock-in';
 
@@ -133,11 +134,7 @@ export default function UserStatusAvatar({
   // --- 4. ACTIONS ---
   const closePopover = () => setIsPopoverOpen(false);
 
-  const handleSignOut = async () => {
-      closePopover();
-      await supabase.auth.signOut();
-      window.location.href = '/signin'; // Hard redirect to clear cache
-  };
+  // NOTE: handleSignOut removed. Replaced by signOutAction in the JSX below.
 
   const openTimeClockModal = () => {
       closePopover();
@@ -371,9 +368,18 @@ export default function UserStatusAvatar({
                 <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9 text-slate-600" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); closePopover(); }}>
                     {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />} Theme
                 </Button>
-                <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={handleSignOut}>
-                    <LogOut className="w-4 h-4" /> Sign Out
-                </Button>
+                
+                {/* SAFE SIGN OUT (Uses Server Action to clear cookies first) */}
+                <form action={signOutAction} className="w-full">
+                    <Button 
+                        variant="ghost" 
+                        type="submit"
+                        className="w-full justify-start px-2 gap-2 text-xs h-9 text-slate-400 hover:text-red-600 hover:bg-red-50" 
+                        onClick={closePopover}
+                    >
+                        <LogOut className="w-4 h-4" /> Sign Out
+                    </Button>
+                </form>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 pt-2 border-t dark:border-slate-800">
