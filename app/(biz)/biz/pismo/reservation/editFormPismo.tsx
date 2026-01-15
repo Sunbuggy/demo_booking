@@ -225,6 +225,8 @@ export default function PismoReservationEditForm({
             message={message} loading={loading} selectedItems={selectedItemsList} goggles={goggles} bandannas={bandannas}
             userLevel={userLevel} isEditing={true} paymentType={paymentType} setPaymentType={setPaymentType}
             customAmount={customAmount} setCustomAmount={setCustomAmount} useCustomAmount={useCustomAmount} setUseCustomAmount={setUseCustomAmount}
+            duration={durationHours || 0}
+            startTime={startTime}
             existingTransactionId={initialData.transaction_id}
           />
       </div>
