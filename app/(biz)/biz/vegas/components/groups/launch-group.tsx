@@ -46,7 +46,7 @@ export default function LaunchGroup({
   
   // Manual Edit States
   const [manualLaunchTime, setManualLaunchTime] = useState('');
-  const [manualLandTime, setManualLandTime] = useState(''); // NEW: For fixing land time
+  const [manualLandTime, setManualLandTime] = useState(''); 
   
   const { toast } = useToast();
   const isManager = role >= 500;
@@ -120,9 +120,7 @@ export default function LaunchGroup({
     }
   };
 
-  // NEW: Allow fixing the land time
   const handleUpdateLandTime = async () => {
-    // We re-land the group with the specific timestamp
     if (!manualLandTime) return;
     const [hours, minutes] = manualLandTime.split(':');
     
@@ -133,7 +131,7 @@ export default function LaunchGroup({
     }
     newDate.setHours(parseInt(hours), parseInt(minutes), 0);
 
-    const res = await landGroup(groupId, newDate.toISOString()); // Ensure your action accepts this optional arg
+    const res = await landGroup(groupId, newDate.toISOString()); 
     if (res?.error) toast({ title: 'Error', description: res.error, variant: 'destructive' });
     else { 
       toast({ title: 'Updated', description: 'Land time corrected.', variant: 'default' }); 
@@ -152,8 +150,13 @@ export default function LaunchGroup({
     }
   };
 
+  // Helper: "9:15am" format
   const formatTime = (iso: string) => {
-    return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return new Date(iso).toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    }).toLowerCase().replace(' ', ''); // "9:15 AM" -> "9:15am"
   };
 
   // --- RENDER: STATE 3 - COMPLETED (GREEN) ---
@@ -163,11 +166,15 @@ export default function LaunchGroup({
     // Common Inner Content
     const BadgeContent = (
       <>
-        <CheckCircle2 className="w-4 h-4" />
-        <div className="flex flex-col items-start leading-none">
-          <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">Completed</span>
-          <span className="text-xs font-mono font-bold">
-             {duration}m total
+        <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="flex flex-col items-start leading-none gap-0.5">
+          {/* Format: "9:15am to 10:17am" */}
+          <span className="text-[10px] font-bold opacity-90 whitespace-nowrap">
+            {formatTime(launchedAt)} to {formatTime(landedAt)}
+          </span>
+          {/* Format: "(62min)" */}
+          <span className="text-[10px] font-mono font-medium opacity-70">
+             ({duration}min)
           </span>
         </div>
       </>
