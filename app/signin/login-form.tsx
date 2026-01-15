@@ -22,6 +22,7 @@ export default function SmartLoginForm({ initialMessage }: { initialMessage?: st
         provider: 'google',
         options: {
           // Dynamic Redirect: Sends them back to wherever they currently are
+          // This fixes the "localhost vs production" loop issue
           redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: { prompt: 'select_account' },
         },
@@ -46,7 +47,8 @@ export default function SmartLoginForm({ initialMessage }: { initialMessage?: st
       if (view === 'password') {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        window.location.href = '/biz'; // Hard redirect to Dashboard
+        // Hard redirect to clear any lingering router cache
+        window.location.href = '/biz'; 
       } 
       
       // SCENARIO B: "Email me a link" (Magic Link)
@@ -54,9 +56,9 @@ export default function SmartLoginForm({ initialMessage }: { initialMessage?: st
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
-            // FIX: Uses window.location.origin to support Localhost AND Production
+            // Fix: Uses window.location.origin to support Localhost AND Production
             emailRedirectTo: `${window.location.origin}/auth/callback`,
-            shouldCreateUser: false, // Don't create new accounts via this form if you want to restrict it
+            shouldCreateUser: false, 
           },
         });
         if (error) throw error;
@@ -66,7 +68,7 @@ export default function SmartLoginForm({ initialMessage }: { initialMessage?: st
       // SCENARIO C: Forgot Password
       else if (view === 'forgot_password') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-           // Redirects them to callback, which logs them in so they can change password
+           // Redirects to callback -> logs in -> redirects to account settings
            redirectTo: `${window.location.origin}/auth/callback?next=/account`,
         });
         if (error) throw error;
@@ -86,7 +88,6 @@ export default function SmartLoginForm({ initialMessage }: { initialMessage?: st
 
   return (
     // SEMANTIC: Card Container (bg-card, border-border)
-    // Removed hardcoded bg-slate-900
     <div className="bg-card text-card-foreground py-8 px-4 shadow-xl rounded-lg sm:px-10 border border-border animate-in fade-in zoom-in-95 duration-300">
       
       {/* HEADER */}

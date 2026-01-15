@@ -1,10 +1,9 @@
-// app/signin/page.tsx
 import { createClient } from '@/utils/supabase/server';
 import SmartLoginForm from './login-form';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, LogOut } from 'lucide-react';
-import { redirect } from 'next/navigation';
+import { signOutAction } from '@/app/actions/auth-actions'; // <--- NEW IMPORT
 
 export default async function SignInPage({
   searchParams,
@@ -25,7 +24,7 @@ export default async function SignInPage({
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background px-4 text-center">
         
         {/* SEMANTIC: Card Container (bg-card, border-border) */}
-        <div className="max-w-md w-full space-y-6 p-8 bg-card rounded-xl border border-border shadow-2xl">
+        <div className="max-w-md w-full space-y-6 p-8 bg-card rounded-xl border border-border shadow-2xl animate-in fade-in zoom-in-95">
           
           {/* SEMANTIC: Status Indicator (Primary tint) */}
           <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-primary/20">
@@ -46,15 +45,15 @@ export default async function SignInPage({
               </Button>
             </Link>
             
-            {/* This sign out button is critical if they are stuck in a bad session */}
-            <form action={async () => {
-              'use server';
-              const sb = await createClient();
-              await sb.auth.signOut();
-              redirect('/signin');
-            }}>
+            {/* SHARED SERVER ACTION: Ensures strict cookie clearing */}
+            {/* We replaced the inline action with the imported one */}
+            <form action={signOutAction} className="w-full">
                {/* SEMANTIC: Destructive/Ghost Action */}
-               <Button variant="ghost" className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+               <Button 
+                 variant="ghost" 
+                 type="submit"
+                 className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+               >
                  <LogOut className="mr-2 w-4 h-4" /> Sign Out & Switch Account
                </Button>
             </form>
