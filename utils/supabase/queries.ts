@@ -3,22 +3,22 @@ import { Database } from '@/types_db';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { cache } from 'react';
 
-// Utility function to get the current date and time in PST
+// -----------------------------------------------------------------------------
+// USER & AUTH QUERIES
+// -----------------------------------------------------------------------------
 
-// Get Generated uuid from supabase
-
-// Usage
 export const getUser = cache(async (supabase: SupabaseClient) => {
   try {
     const {
       data: { user }
     } = await supabase.auth.getUser();
-    console.log('run getUser');
+    // console.log('run getUser');
     return user;
   } catch (error) {
     console.error(error);
   }
 });
+
 export type UserDetails = {
   avatar_url: string | null;
   full_name: string | null;
@@ -29,17 +29,28 @@ export type UserDetails = {
 };
 
 export const getUserDetails = cache(
-  async (supabase: SupabaseClient): Promise<any[] | null | undefined> => {
+  async (supabase: any): Promise<any[] | null | undefined> => {
     try {
       if (!supabase) {
+        console.error('getUserDetails: No supabase client provided');
         return null;
       }
-      const {
-        data: { user }
-      } = await supabase.auth.getUser();
+
+      // Check if auth is available
+      if (!supabase.auth) {
+        return null;
+      }
+
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError) {
+        console.error(authError);
+        return null;
+      }
 
       const id = user?.id;
       if (!id) {
+        console.log('getUserDetails: No user ID found');
         return null;
       }
 
@@ -55,7 +66,8 @@ export const getUserDetails = cache(
 
       return userDetails;
     } catch (error) {
-      console.error(error);
+      console.error('getUserDetails error:', error);
+      return null;
     }
   }
 );
@@ -104,6 +116,145 @@ export const getAllUsers = cache(async (supabase: SupabaseClient) => {
   return data;
 });
 
+// -----------------------------------------------------------------------------
+// STAFF ROSTER & EMPLOYEE MANAGEMENT (NEW SECTION)
+// -----------------------------------------------------------------------------
+
+/**
+ * Fetches the staff roster for a specific location.
+ * Joins 'users' with 'employee_details' to allow sorting by hire_date.
+ */
+// Find the getStaffRoster function and update it:
+
+/**
+ * @file queries.ts
+ * Updated getStaffRoster to exclude former employees (Level < 300)
+ */
+export const getStaffRoster = cache(async (supabase: SupabaseClient, location: string) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select(`
+      *,
+      employee_details!inner (
+        hire_date,
+        department,
+        primary_position,
+        primary_work_location,
+        timeclock_blocked
+      )
+    `)
+    // CRITICAL FIX: Only fetch active staff members (Level 300+)
+    .gte('user_level', 300) 
+    
+    // Filter by location in the related table
+    .eq('employee_details.primary_work_location', location)
+    
+    // Sorting: Managers first, then by seniority
+    .order('user_level', { ascending: false })
+    .order('hire_date', { foreignTable: 'employee_details', ascending: true });
+
+  if (error) {
+    console.error('Detailed Roster Error:', error.message);
+    return [];
+  }
+
+  // Flatten for the Roster Page
+  return data.map((user: any) => ({
+    ...user,
+    hire_date: user.employee_details?.hire_date || null,
+    department: user.employee_details?.department || 'Unassigned',
+    job_title: user.employee_details?.primary_position || 'Staff',
+    primary_work_location: user.employee_details?.primary_work_location,
+    timeclock_blocked: !!user.employee_details?.timeclock_blocked
+  }));
+});
+
+export const getEmployeeDetails = cache(
+  async (supabase: SupabaseClient, user_id: string) => {
+    const { data, error } = await supabase
+      .from('employee_details')
+      .select()
+      .eq('user_id', user_id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data as Database['public']['Tables']['employee_details']['Row'][];
+  }
+);
+
+/**
+ * Modified version of getEmployeeDetails.
+ * Returns null instead of an empty array if not found.
+ */
+export const getEmployeeDetailsSafe = cache(
+  async (supabase: SupabaseClient, user_id: string) => {
+    const { data, error } = await supabase
+      .from('employee_details')
+      .select()
+      .eq('user_id', user_id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getEmployeeDetailsSafe Error:', error);
+      return null;
+    }
+    return data;
+  }
+);
+
+export const upsertEmployeeDetails = cache(
+  async (
+    supabase: SupabaseClient,
+    employee_details: Database['public']['Tables']['employee_details']['Insert']
+  ) => {
+    const { data, error } = await supabase
+      .from('employee_details')
+      .upsert(employee_details);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+/**
+ * Highly efficient unified fetch for the Profile Page.
+ * Uses a LEFT JOIN to ensure Customers (who have no employee_details) 
+ * still load successfully without a 404.
+ */
+export const getFullUserProfile = cache(
+  async (supabase: SupabaseClient, userId: string) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select(`
+        *,
+        employee_details (
+          primary_work_location,
+          primary_position,
+          emp_id,
+          dialpad_number,
+          work_phone,
+          hire_date,
+          department
+        )
+      `)
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('getFullUserProfile Error:', error.message);
+      return null;
+    }
+    return data;
+  }
+);
+
+// -----------------------------------------------------------------------------
+// USER UPDATES
+// -----------------------------------------------------------------------------
+
 export const updateUserName = cache(
   async (supabase: SupabaseClient, name: string) => {
     const { data, error } = await supabase
@@ -134,6 +285,43 @@ export const updateUserLevel = cache(
   }
 );
 
+export const updateUser = cache(
+  async (
+    supabase: SupabaseClient,
+    user: Database['public']['Tables']['users']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase
+      .from('users')
+      .update(user)
+      .eq('id', id);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const checkIfUserHasLevel = cache(
+  async (supabase: SupabaseClient, user_id: string, user_level: number) => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', user_id)
+      .gte('user_level', user_level);
+    if (error) {
+      console.error(error);
+      return false;
+    }
+    return data.length > 0;
+  }
+);
+
+// -----------------------------------------------------------------------------
+// BOOKING GROUPS & VEHICLES
+// -----------------------------------------------------------------------------
+
 export const fetchHotels = cache(async (supabase: SupabaseClient) => {
   const { data, error } = await supabase.from('hotels').select();
   if (error) {
@@ -142,9 +330,10 @@ export const fetchHotels = cache(async (supabase: SupabaseClient) => {
   }
   return data;
 });
+
 export const fetchGroups = cache(
   async (supabase: SupabaseClient, date: Date) => {
-    const isoDate = date.toISOString().split('T')[0]; // Convert to ISO string and extract the date part
+    const isoDate = date.toISOString().split('T')[0];
     const { data, error } = await supabase
       .from('groups')
       .select()
@@ -156,15 +345,34 @@ export const fetchGroups = cache(
     return data;
   }
 );
+
+export const updateGroup = cache(
+  async (
+    supabase: SupabaseClient,
+    updates: Partial<Database['public']['Tables']['groups']['Update']>,
+    groupId: string
+  ) => {
+    const { data, error } = await supabase
+      .from('groups')
+      .update(updates)
+      .eq('id', groupId)
+      .select();
+    
+    if (error) {
+      console.error('Error updating group:', error);
+      throw error;
+    }
+    return data;
+  }
+);
+
 export const fetchGroupVehicles = cache(
   async (supabase: SupabaseClient, date: Date) => {
-    // Join with groups table with group_id then pull results that match the date
-    const isoDate = date.toISOString().split('T')[0]; // Convert to ISO string and extract the date part
+    const isoDate = date.toISOString().split('T')[0];
     const { data, error } = await supabase
       .from('group_vehicles')
       .select(
-        `
-       id, quantity, old_vehicle_name, old_booking_id, groups(group_name, group_date) `
+        `id, quantity, old_vehicle_name, old_booking_id, groups(group_name, group_date)`
       )
       .filter('groups.group_date', 'eq', isoDate);
 
@@ -176,7 +384,6 @@ export const fetchGroupVehicles = cache(
   }
 );
 
-// Grab all the group_name(s) fro the selected old_booking_id
 export const fetchGroupNames = cache(
   async (supabase: SupabaseClient, old_booking_id: number) => {
     const { data, error } = await supabase
@@ -193,6 +400,10 @@ export const fetchGroupNames = cache(
     return data;
   }
 );
+
+// -----------------------------------------------------------------------------
+// TIME CLOCK & BREAKS
+// -----------------------------------------------------------------------------
 
 export const fetchTimeEntryByUserId = cache(
   async (supabase: SupabaseClient, userId: string) => {
@@ -226,21 +437,22 @@ export const insertIntoClockIn = cache(
     supabase: SupabaseClient,
     userId: string,
     lat: number,
-    long: number
+    long: number,
+    imageUrl?: string 
   ) => {
-    // If this user_id has a time_entry that has a clock_in_id but no clock_out_id, then return and do nothing
     const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
     if (looseClockedInData.length > 0) {
       return [];
     }
-    // First insert into clock_in table clock_in_time, lat, long
+    
     const { data, error } = await supabase
       .from('clock_in')
       .insert([
         {
           clock_in_time: new Date().toISOString(),
           lat,
-          long
+          long,
+          image_url: imageUrl
         }
       ])
       .select();
@@ -249,7 +461,6 @@ export const insertIntoClockIn = cache(
       return [];
     }
 
-    // Then insert into time_entries table user_id, date, and clock_in_id from the clock_in table above
     const clock_in_id = data[0]?.id;
     const { data: timeEntryData, error: timeEntryError } = await supabase
       .from('time_entries')
@@ -268,7 +479,6 @@ export const insertIntoClockIn = cache(
       return [];
     }
 
-    // Go to users table and change the time_entry_status to 'clocked_in'
     const { data: userData, error: userError } = await supabase
       .from('users')
       .update({ time_entry_status: 'clocked_in' })
@@ -282,45 +492,6 @@ export const insertIntoClockIn = cache(
   }
 );
 
-export const removeDispatchGroup = async (
-  supabase: SupabaseClient<Database>,
-  userId: string,
-  location: string
-) => {
-  const { error } = await supabase
-    .from('dispatch_groups')
-    .delete()
-    .match({ user: userId, location: location });
-
-  if (error) {
-    console.error('Error removing dispatch group:', error);
-    throw error;
-  }
-};
-
-export const upsertDispatchGroup = cache(
-  async (
-    supabase: SupabaseClient,
-    user: string,
-    location: 'NV' | 'CA' | 'MI'
-  ) => {
-    const { data, error } = await supabase
-      .from('dispatch_groups')
-      .upsert([
-        {
-          user,
-          location
-        }
-      ])
-      .select();
-    if (error) {
-      console.error(error);
-      return [];
-    }
-    return data;
-  }
-);
-
 export const insertIntoClockOut = cache(
   async (
     supabase: SupabaseClient,
@@ -328,9 +499,9 @@ export const insertIntoClockOut = cache(
     lat: number,
     long: number,
     totalClockinHours: number,
-    clockOutTime?: string
+    clockOutTime?: string,
+    imageUrl?: string
   ) => {
-    // check the users table and get the time_entry_status
     const { data: urData, error: usError } = await supabase
       .from('users')
       .select('time_entry_status')
@@ -340,8 +511,9 @@ export const insertIntoClockOut = cache(
       return [];
     }
     const time_clock_status = urData[0]?.time_entry_status;
+    
+    // Handle break auto-close
     if (time_clock_status === 'on_break') {
-      // First get the user's time entry that has a clock_in_id but no clock_out_id
       const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
       if (looseClockedInData.length === 0) {
         return [];
@@ -352,32 +524,27 @@ export const insertIntoClockOut = cache(
         .eq('entry_id', looseClockedInData[0]?.id)
         .select();
 
-      // Update the user's time_entry_status to 'clocked_in'
       const { data: userData, error: userError } = await supabase
         .from('users')
         .update({ time_entry_status: 'clocked_in' })
         .eq('id', userId);
 
-      if (userError) {
-        console.error(userError, `insertIntoBreakEnd Error! userId: ${userId}`);
-        return [];
-      }
-
-      if (error) {
-        console.error(error, `insertIntoBreakEnd Error! userId: ${userId}`);
+      if (userError || error) {
+        console.error(userError || error, `insertIntoBreakEnd Error! userId: ${userId}`);
         return [];
       }
     }
 
     const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
-    // First insert into clock_out table clock_out_time, lat, long
+    
     const { data, error } = await supabase
       .from('clock_out')
       .insert([
         {
           clock_out_time: clockOutTime || new Date().toISOString(),
           lat,
-          long
+          long,
+          image_url: imageUrl
         }
       ])
       .select();
@@ -386,7 +553,6 @@ export const insertIntoClockOut = cache(
       return [];
     }
 
-    // Then insert into time_entries table user_id, date, and clock_out_id from the clock_out table above
     const clock_out_id = data[0]?.id;
     const { data: timeEntryData, error: timeEntryError } = await supabase
       .from('time_entries')
@@ -403,7 +569,6 @@ export const insertIntoClockOut = cache(
       return [];
     }
 
-    // Go to users table and change the time_entry_status to 'clocked_out'
     const { data: userData, error: userError } = await supabase
       .from('users')
       .update({ time_entry_status: 'clocked_out' })
@@ -418,7 +583,6 @@ export const insertIntoClockOut = cache(
 
 export const insertIntoBreak = cache(
   async (supabase: SupabaseClient, userId: string) => {
-    // First get the user's time entry that has a clock_in_id but no clock_out_id
     const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
     if (looseClockedInData.length === 0) {
       return [];
@@ -433,19 +597,13 @@ export const insertIntoBreak = cache(
       ])
       .select();
 
-    // Update the user's time_entry_status to 'on_break'
     const { data: userData, error: userError } = await supabase
       .from('users')
       .update({ time_entry_status: 'on_break' })
       .eq('id', userId);
 
-    if (userError) {
-      console.error(userError, `insertIntoBreak Error! userId: ${userId}`);
-      return [];
-    }
-
-    if (error) {
-      console.error(error, `insertIntoBreak Error! userId: ${userId}`);
+    if (userError || error) {
+      console.error(userError || error, `insertIntoBreak Error! userId: ${userId}`);
       return [];
     }
     return data;
@@ -474,7 +632,6 @@ export const getSessionBreakStartTime = cache(
 
 export const insertIntoBreakEnd = cache(
   async (supabase: SupabaseClient, userId: string) => {
-    // First get the user's time entry that has a clock_in_id but no clock_out_id
     const looseClockedInData = await fetchTimeEntryByUserId(supabase, userId);
     if (looseClockedInData.length === 0) {
       return [];
@@ -485,19 +642,13 @@ export const insertIntoBreakEnd = cache(
       .eq('entry_id', looseClockedInData[0]?.id)
       .select();
 
-    // Update the user's time_entry_status to 'clocked_in'
     const { data: userData, error: userError } = await supabase
       .from('users')
       .update({ time_entry_status: 'clocked_in' })
       .eq('id', userId);
 
-    if (userError) {
-      console.error(userError, `insertIntoBreakEnd Error! userId: ${userId}`);
-      return [];
-    }
-
-    if (error) {
-      console.error(error, `insertIntoBreakEnd Error! userId: ${userId}`);
+    if (userError || error) {
+      console.error(userError || error, `insertIntoBreakEnd Error! userId: ${userId}`);
       return [];
     }
     return data;
@@ -589,7 +740,6 @@ export const fetchBreaksByUserId = cache(
     dateFrom: string,
     dateTo: string
   ) => {
-    // First get entry_id from time_entries table by userId
     const { data: timeEntries, error: timeEntryError } = await supabase
       .from('time_entries')
       .select('id')
@@ -607,7 +757,6 @@ export const fetchBreaksByUserId = cache(
 
     const entry_ids = timeEntries.map((entry) => entry.id);
 
-    // Then get breaks by entry_ids
     const { data, error } = await supabase
       .from('breaks')
       .select()
@@ -641,9 +790,6 @@ export const calculateTimeSinceClockIn = cache(
     }
     const clock_in_time = data_time[0]?.clock_in_time;
     const data = new Date().getTime() - new Date(clock_in_time).getTime();
-    const seconds = Math.floor(data / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
     return { data };
   }
 );
@@ -666,6 +812,10 @@ export const getClockedInTime = cache(
     return data;
   }
 );
+
+// -----------------------------------------------------------------------------
+// USER ROLE MANAGEMENT
+// -----------------------------------------------------------------------------
 
 export const makeUserEmployee = cache(
   async (supabase: SupabaseClient, userId: string) => {
@@ -708,6 +858,53 @@ export const changeUserRole = cache(
     return data;
   }
 );
+
+// -----------------------------------------------------------------------------
+// DISPATCH GROUPS
+// -----------------------------------------------------------------------------
+
+export const removeDispatchGroup = async (
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  location: string
+) => {
+  const { error } = await supabase
+    .from('dispatch_groups')
+    .delete()
+    .match({ user: userId, location: location });
+
+  if (error) {
+    console.error('Error removing dispatch group:', error);
+    throw error;
+  }
+};
+
+export const upsertDispatchGroup = cache(
+  async (
+    supabase: SupabaseClient,
+    user: string,
+    location: 'NV' | 'CA' | 'MI'
+  ) => {
+    const { data, error } = await supabase
+      .from('dispatch_groups')
+      .upsert([
+        {
+          user,
+          location
+        }
+      ])
+      .select();
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+// -----------------------------------------------------------------------------
+// VEHICLE MANAGEMENT
+// -----------------------------------------------------------------------------
 
 export const fetchVehicles = cache(async (supabase: SupabaseClient) => {
   const { data, error } = await supabase.from('vehicles').select();
@@ -795,6 +992,7 @@ export const insertIntoVehicles = cache(
     return data;
   }
 );
+
 export const fetchVehicleInfo = cache(
   async (supabase: SupabaseClient, vehicle_id: string) => {
     const { data, error } = await supabase
@@ -808,6 +1006,7 @@ export const fetchVehicleInfo = cache(
     return data;
   }
 );
+
 export const updateVehicle = cache(
   async (
     supabase: SupabaseClient,
@@ -853,6 +1052,7 @@ export const fetchVehicleNameFromId = cache(
     return data;
   }
 );
+
 export const fetchVehicleNamesFromIds = cache(
   async (supabase: SupabaseClient, vehicle_ids: string[]) => {
     const { data, error } = await supabase
@@ -866,6 +1066,10 @@ export const fetchVehicleNamesFromIds = cache(
     return data;
   }
 );
+
+// -----------------------------------------------------------------------------
+// VEHICLE TAGS & STATUS
+// -----------------------------------------------------------------------------
 
 export const createVehicleTag = cache(
   async (
@@ -944,12 +1148,6 @@ export const changeVehicleStatusToFine = cache(
   }
 );
 
-// create a checkandchangevehiclestatus function
-// check all the statuses inside the vehicle_tag table for the given vehicle_id
-// if all the statuses are 'closed' then change the vehicle status to 'fine'
-// if any of the statuses are 'open' and all their statuses are 'maintenance' then change the vehicle status to 'maintenance'
-// if any of the statuses are 'open' and any of their statuses are 'repair' then change the vehicle status to 'broken'
-
 export const checkAndChangeVehicleStatus = async (
   supabase: SupabaseClient,
   vehicle_id: string
@@ -982,6 +1180,10 @@ export const checkAndChangeVehicleStatus = async (
     return changeVehicleStatusToBroken(supabase, vehicle_id);
   }
 };
+
+// -----------------------------------------------------------------------------
+// QR & PRETRIP FORMS
+// -----------------------------------------------------------------------------
 
 export const insertIntoQrHistorys = cache(
   async (
@@ -1090,7 +1292,6 @@ export const insertIntoBuggyPretripForm = cache(
   }
 );
 
-// atv
 export const insertIntoAtvPretripForm = cache(
   async (
     supabase: SupabaseClient,
@@ -1105,7 +1306,7 @@ export const insertIntoAtvPretripForm = cache(
     return data;
   }
 );
-// forklift
+
 export const insertIntoForkliftPretripForm = cache(
   async (
     supabase: SupabaseClient,
@@ -1120,7 +1321,7 @@ export const insertIntoForkliftPretripForm = cache(
     return data;
   }
 );
-// truck
+
 export const insertIntoTruckPretripForm = cache(
   async (
     supabase: SupabaseClient,
@@ -1136,7 +1337,10 @@ export const insertIntoTruckPretripForm = cache(
   }
 );
 
-// Get all vehicle locations
+// -----------------------------------------------------------------------------
+// VEHICLE LOCATION TRACKING
+// -----------------------------------------------------------------------------
+
 export const fetchAllVehicleLocations = cache(
   async (supabase: SupabaseClient) => {
     const { data, error } = await supabase.from('vehicle_locations').select();
@@ -1148,13 +1352,13 @@ export const fetchAllVehicleLocations = cache(
   }
 );
 
-// Get vehicle locations by vehicle_id
 export const fetchVehicleLocations = cache(
   async (supabase: SupabaseClient, vehicle_id: string) => {
     const { data, error } = await supabase
       .from('vehicle_locations')
       .select()
-      .eq('vehicle_id', vehicle_id);
+      .eq('vehicle_id', vehicle_id)
+      .order('created_at', { ascending: false });
     if (error) {
       console.error(error);
       return [];
@@ -1162,7 +1366,7 @@ export const fetchVehicleLocations = cache(
     return data;
   }
 );
-// Insert into vehicle locations
+
 export const recordVehicleLocation = cache(
   async (
     supabase: SupabaseClient,
@@ -1178,7 +1382,7 @@ export const recordVehicleLocation = cache(
     return data;
   }
 );
-// Update VehicleLocations
+
 export const updateVehicleLocation = cache(
   async (
     supabase: SupabaseClient,
@@ -1196,7 +1400,7 @@ export const updateVehicleLocation = cache(
     return data;
   }
 );
-// insert into vehicle_inventory_location
+
 export const insertIntoVehicleInventoryLocation = cache(
   async (
     supabase: SupabaseClient,
@@ -1213,7 +1417,6 @@ export const insertIntoVehicleInventoryLocation = cache(
   }
 );
 
-// fetch vehicle inventory location
 export const fetchVehicleInventoryLocation = cache(
   async (supabase: SupabaseClient, vehicle_id: string) => {
     const { data, error } = await supabase
@@ -1258,25 +1461,7 @@ export const fetchVehicleFutureLocationForVehicle = cache(
   }
 );
 
-export const upsertUserBackgroundPreference = cache(
-  async (
-    supabase: SupabaseClient,
-    user_id: string,
-    background_image: string
-  ) => {
-    const { data, error } = await supabase
-      .from('users')
-      .upsert({ id: user_id, background_image });
-    if (error) {
-      console.error(error);
-      return [];
-    }
-    return data;
-  }
-);
-
-// Check the vehicle_future_location table then if today is the future date or if it has passed copy the future_location to the city column of the  vehicle_location table along with created_at and created_by with the same names for the same vehicle_id vehicles. Then clear the vehicle_future_location table for that vehicle_id
-
+// Check the vehicle_future_location table
 export const checkVehicleFutureLocation = cache(
   async (supabase: SupabaseClient) => {
     const { data: futureLocations, error: futureLocationError } = await supabase
@@ -1328,6 +1513,27 @@ export const checkVehicleFutureLocation = cache(
         }
       }
     }
+  }
+);
+
+// -----------------------------------------------------------------------------
+// USER PREFERENCES & BG IMAGES
+// -----------------------------------------------------------------------------
+
+export const upsertUserBackgroundPreference = cache(
+  async (
+    supabase: SupabaseClient,
+    user_id: string,
+    background_image: string
+  ) => {
+    const { data, error } = await supabase
+      .from('users')
+      .upsert({ id: user_id, background_image });
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
   }
 );
 
@@ -1392,67 +1598,10 @@ export const getUserBgProperties = cache(
   }
 );
 
-export const getEmployeeDetails = cache(
-  async (supabase: SupabaseClient, user_id: string) => {
-    const { data, error } = await supabase
-      .from('employee_details')
-      .select()
-      .eq('user_id', user_id);
-    if (error) {
-      console.error(error);
-      return [];
-    }
-    return data as Database['public']['Tables']['employee_details']['Row'][];
-  }
-);
+// -----------------------------------------------------------------------------
+// QR & AUDIT LOGS
+// -----------------------------------------------------------------------------
 
-export const upsertEmployeeDetails = cache(
-  async (
-    supabase: SupabaseClient,
-    employee_details: Database['public']['Tables']['employee_details']['Insert']
-  ) => {
-    const { data, error } = await supabase
-      .from('employee_details')
-      .upsert(employee_details);
-    if (error) {
-      console.error(error);
-      return [];
-    }
-    return data;
-  }
-);
-export const updateUser = cache(
-  async (
-    supabase: SupabaseClient,
-    user: Database['public']['Tables']['users']['Update'],
-    id: string
-  ) => {
-    const { data, error } = await supabase
-      .from('users')
-      .update(user)
-      .eq('id', id);
-    if (error) {
-      console.error(error);
-      return [];
-    }
-    return data;
-  }
-);
-
-export const checkIfUserHasLevel = cache(
-  async (supabase: SupabaseClient, user_id: string, user_level: number) => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('id')
-      .eq('id', user_id)
-      .gte('user_level', user_level);
-    if (error) {
-      console.error(error);
-      return false;
-    }
-    return data.length > 0;
-  }
-);
 export const getQrHistoryByUser = cache(
   async (supabase: SupabaseClient, user_id: string) => {
     const { data, error } = await supabase
@@ -1480,16 +1629,13 @@ export const fetchAuditLog = cache(async (supabase: SupabaseClient) => {
   return data;
 });
 
-
 export const updateAuditLog = cache(
   async (
     supabase: SupabaseClient,
     audit_log: Database['public']['Tables']['audit_logs']['Update'],
     id: string
   ) => {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .update(audit_log)
+    const { data, error } = await supabase.from('audit_logs').update(audit_log);
     if (error) {
       console.error(error);
       return [];
@@ -1497,6 +1643,7 @@ export const updateAuditLog = cache(
     return data;
   }
 );
+
 export const fetchAuditQueue = cache(async (supabase: SupabaseClient) => {
   const { data, error } = await supabase
     .from('audit_table_queue')
@@ -1522,17 +1669,177 @@ export const updateAuditQueue = cache(
 
     if (error) {
       console.error('Error inserting audit queue:', error);
-      return null; 
+      return null;
     }
     return data;
   }
 );
 
-export const deleteAuditQueue = async (supabase: SupabaseClient, id: string) => {
-  const { error } = await supabase.from('audit_table_queue').delete().eq('id', id);
+export const deleteAuditQueue = async (
+  supabase: SupabaseClient,
+  id: string
+) => {
+  const { error } = await supabase
+    .from('audit_table_queue')
+    .delete()
+    .eq('id', id);
   if (error) {
     console.error('Error deleting audit queue:', error);
     return null; // Return null on failure
   }
-  return true; 
+  return true;
+};
+
+// -----------------------------------------------------------------------------
+// PISMO CHARGES & SHUTTLE ASSIGNMENTS
+// -----------------------------------------------------------------------------
+
+export const fetchChargesPismo = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('charges_pismo')
+    .select('id, created_at, table')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching audit logs:', error);
+    return [];
+  }
+  return data;
+});
+
+export const updateChargesPismo = cache(
+  async (
+    supabase: SupabaseClient,
+    audit_log: Database['public']['Tables']['charges_pismo']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase.from('charges_pismo').update(audit_log);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+export const fetchShuttleAssignment = cache(async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('shuttle_assignment')
+    .select(`
+      id,
+      created_at,
+      date_assigned_for,
+      employee_id,
+      vehicle_id,
+      vehicles:vehicle_id (id, name),
+      users:employee_id (id, full_name)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching shuttle assignments:', error);
+    return [];
+  }
+  return data;
+});
+
+export const updateShuttleAssignment = cache(
+  async (
+    supabase: SupabaseClient,
+    audit_log: Database['public']['Tables']['shuttle_assignment']['Update'],
+    id: string
+  ) => {
+    const { data, error } = await supabase.from('shuttle_assignment').update(audit_log);
+    if (error) {
+      console.error(error);
+      return [];
+    }
+    return data;
+  }
+);
+
+/**
+ * Targeted fetch for the Torch Dashboard.
+ * 1. Filters by Type: 'shuttle'
+ * 2. Filters by Status: Excludes 'broken' AND 'former' (keeps 'maintenance' active)
+ * 3. Filters by Location: Uses a specific Lat/Long bounding box for Las Vegas.
+ * - Lat: 35.5 to 37.0 (Excludes Michigan & Phoenix)
+ * - Long: -116.0 to -114.05 (Excludes CA & AZ)
+ */
+export const fetchShuttlesOnly = cache(async (supabase: SupabaseClient) => {
+  // A. Fetch candidate vehicles (Shuttles that are active)
+  const { data: vehicles, error } = await supabase
+    .from('vehicles')
+    .select('*')
+    .eq('type', 'shuttle')
+    .neq('vehicle_status', 'broken') // Exclude broken
+    .neq('vehicle_status', 'former') // Exclude sold/retired vehicles
+    .order('name', { ascending: true });
+
+  if (error || !vehicles) {
+    console.error('Error fetching shuttles:', error);
+    return [];
+  }
+
+  // B. Get IDs to check location
+  const vehicleIds = vehicles.map((v) => v.id);
+  if (vehicleIds.length === 0) return [];
+
+  // C. Fetch latest location history
+  const { data: locations } = await supabase
+    .from('vehicle_locations')
+    .select('vehicle_id, latitude, longitude, created_at')
+    .in('vehicle_id', vehicleIds)
+    .order('created_at', { ascending: false });
+
+  // D. Map latest location per vehicle
+  const latestLocMap = new Map();
+  locations?.forEach((loc) => {
+    if (!latestLocMap.has(loc.vehicle_id)) {
+      latestLocMap.set(loc.vehicle_id, loc);
+    }
+  });
+
+  // E. Filter: Apply Las Vegas Bounding Box
+  const vegasVehicles = vehicles.filter((v) => {
+    const loc = latestLocMap.get(v.id);
+    
+    // If no location data exists, we assume it's valid to show (fallback)
+    if (!loc) return true;
+
+    const lat = loc.latitude;
+    const lng = loc.longitude;
+
+    // Check if inside Las Vegas Box
+    const inVegasLat = lat > 35.5 && lat < 37.0;
+    const inVegasLng = lng > -116.0 && lng < -114.05;
+
+    return inVegasLat && inVegasLng;
+  });
+  
+  return vegasVehicles as VehicleType[];
+});
+export const getIncompleteStaffProfiles = async (supabase: SupabaseClient) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select(`
+      id,
+      full_name,
+      email,
+      user_level,
+      employee_details (
+        department,
+        primary_position,
+        primary_work_location
+      )
+    `)
+    .gte('user_level', 300); // Only check active staff
+
+  if (error) return [];
+
+  // Filter for users missing any critical roster field
+  return data.filter(user => {
+    const details = Array.isArray(user.employee_details) ? user.employee_details[0] : user.employee_details;
+    return !details?.department || !details?.primary_position || !details?.primary_work_location;
+  });
 };

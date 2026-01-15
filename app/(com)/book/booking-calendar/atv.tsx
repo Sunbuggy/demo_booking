@@ -322,7 +322,7 @@ export function CalendarForm({
                           vehicle.id,
                           vehicle.name,
                           vehicle.seats,
-                          vehicle.pricing
+                          vehicle.pricing as unknown as VehiclePricingType
                         )
                       }
                     >
@@ -330,15 +330,15 @@ export function CalendarForm({
                     </button>
                     <span>{vehicleCounts[vehicle.id]?.count || 0}</span>
                     <button
-                      onClick={() =>
-                        incrementCount(
-                          vehicle.id,
-                          true,
-                          vehicle.name,
-                          vehicle.seats,
-                          vehicle.pricing
-                        )
-                      }
+                      // onClick={() =>
+                      //   incrementCount(
+                      //     vehicle.id,
+                      //     true,
+                      //     vehicle.name,
+                      //     vehicle.seats,
+                      //     vehicle.pricing
+                      //   )
+                      // }
                     >
                       +
                     </button>

@@ -1,66 +1,54 @@
+/**
+ * @file vehicles-lister.tsx
+ * @description Renders a grid of Vehicle Avatars.
+ * Updated to use DashboardVehicle objects (Instant Render) instead of fetching IDs.
+ */
 'use client';
-import { createClient } from '@/utils/supabase/client';
-import { fetchVehiclesFromListOfIds } from '@/utils/supabase/queries';
+
 import React from 'react';
-import { VehicleType } from '@/app/(biz)/biz/vehicles/admin/page';
-import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import { DashboardVehicle } from '@/app/actions/fleet';
+import VehicleStatusAvatar from '@/components/fleet/vehicle-status-avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-const VehiclesLister = ({ list }: { list: string[] | null }) => {
-  const [vehicles, setVehicles] = React.useState<VehicleType[]>([]);
-  const supabase = createClient();
-  React.useEffect(() => {
-    if (list) {
-      fetchVehiclesFromListOfIds(supabase, list).then((data) => {
-        setVehicles(data);
-      });
-    }
-  }, [list]);
+interface VehiclesListerProps {
+  vehicles: DashboardVehicle[]; // Now accepts full objects
+}
 
-  if (list === null || list.length === 0) {
-    return <div>Nothing Found</div>;
+const VehiclesLister = ({ vehicles }: VehiclesListerProps) => {
+  
+  if (!vehicles || vehicles.length === 0) {
+    return (
+      <div className="p-4 text-center text-slate-400 text-sm italic">
+        No vehicles found in this category.
+      </div>
+    );
   }
-  if (vehicles.length === 0) {
-    return <div>Loading...</div>;
-  }
-  const router = useRouter();
 
-  const handleClick = (vehicleId: string) => {
-    router.push(`/biz/vehicles/${vehicleId}`); // Navigate to the new page
-  };
+  // Sort by Name (Numeric if possible, then Alphabetical)
+  const sortedVehicles = [...vehicles].sort((a, b) => 
+    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+  );
 
   return (
     <div>
-      <h2 className="text-2xl font-bold tracking-tight">Vehicles</h2>
-      <ScrollArea className="h-[215px] ml-2 rounded-md border p-4">
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-          {vehicles.map((vehicle, index) => (
-            <span key={index}>
-              <Button
-                className="large_button_circular relative"
-                onClick={() => handleClick(vehicle.id)}
-              >
-                {vehicle.pet_name ? (
-                  <>
-                    {vehicle.pet_name}
-                    <br />
-                    {vehicle.name}
-                  </>
-                ) : (
-                  vehicle.name
-                )}{' '}
-                {vehicle.vehicle_status === 'broken' && (
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-                )}
-                {vehicle.vehicle_status === 'maintenance' && (
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-amber-500 rounded-full"></span>
-                )}
-                {vehicle.vehicle_status === 'fine' && (
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full"></span>
-                )}
-              </Button>
-            </span>
+      <div className="flex justify-between items-center mb-2 px-2">
+        <h2 className="text-sm font-bold tracking-tight text-slate-500 uppercase">
+          {sortedVehicles.length} Vehicles
+        </h2>
+      </div>
+      
+      <ScrollArea className="h-[300px] w-full rounded-md border p-4 bg-slate-50 dark:bg-zinc-900/50">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+          {sortedVehicles.map((vehicle) => (
+            <div key={vehicle.id} className="flex flex-col items-center gap-1">
+              <VehicleStatusAvatar 
+                vehicle={vehicle} 
+                size="lg" 
+              />
+              <span className="text-[10px] font-mono text-slate-500 font-medium">
+                {vehicle.name}
+              </span>
+            </div>
           ))}
         </div>
       </ScrollArea>

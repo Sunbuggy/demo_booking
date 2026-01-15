@@ -1,56 +1,51 @@
+'use client';
+
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import VehiclesTab from './tables/fleet/vehicles-tab';
-import { User } from '@supabase/supabase-js';
-import { VehicleType } from './page';
-import VehicleStatus from './tables/components/vehicle-status';
+import { DashboardVehicle } from '@/app/actions/fleet';
 
-import { createClient } from '@/utils/supabase/server';
-import LocationHistory from '../[id]/components/vehicle-location-history';
-import { fetchAllVehicleLocations } from '@/utils/supabase/queries';
-import { VehicleLocation } from '../types';
+// --- IMPORTS ---
+import VehiclesTab from './tables/fleet/vehicles-tab'; 
 import VehiclesOverview from './tables/components/overview/vehicles-overview';
-import { FilteredVehicles } from './tables/components/filter-vehicles';
+import DataStream from './tables/components/data-stream'; 
 
-const VehiclesTabContainer = async ({
-  vehicles,
-  loggedInUser
-}: {
-  vehicles: VehicleType[];
-  loggedInUser: User | null | undefined;
-}) => {
-  const supabase = createClient();
-  const userFullName = String(loggedInUser?.user_metadata.full_name);
-  const allVehicleLocations = (await fetchAllVehicleLocations(
-    supabase
-  )) as VehicleLocation[];
+interface Props {
+  vehicles: DashboardVehicle[];
+  loggedInUser: any;
+}
 
+const VehiclesTabContainer = ({ vehicles, loggedInUser }: Props) => {
+  // CHANGED: defaultValue is now "vehicles" (Fleet Grid)
   return (
-    <Tabs defaultValue="vehicles" className="w-[375px] md:w-full">
-      <TabsList>
-        <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
-        <TabsTrigger value="vehicle_status">Vehicles Status</TabsTrigger>
-        <TabsTrigger value="location_stream">Location Stream</TabsTrigger>
-      </TabsList>
-      <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex ">
-        <div className="flex items-center justify-between space-y-2"></div>
-        <TabsContent value="vehicles">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">
-              Welcome back {userFullName.split(' ')[0]}!{' '}
-            </h2>
-            <p className="text-muted-foreground"></p>
-          </div>
-          <FilteredVehicles vehicles={vehicles} />
-        </TabsContent>
-        <TabsContent value="vehicle_status">
-          {/* <VehicleStatus vehicles={vehicles} /> */}
-          <VehiclesOverview />
-        </TabsContent>
-        <TabsContent value="location_stream">
-          <LocationHistory vehicleLocations={allVehicleLocations} />
-        </TabsContent>
+    <Tabs defaultValue="vehicles" className="w-full">
+      <div className="flex justify-between items-center mb-4">
+        <TabsList>
+          {/* TAB 1: GRID (Moved to First Position) */}
+          <TabsTrigger value="vehicles">Fleet Grid</TabsTrigger>
+
+          {/* TAB 2: STATUS REPORT */}
+          <TabsTrigger value="status-report">Status Report</TabsTrigger>
+          
+          {/* TAB 3: DATA STREAM */}
+          <TabsTrigger value="data-stream">Data Stream</TabsTrigger>
+        </TabsList>
       </div>
+
+      {/* CONTENT 1: GRID (Default) */}
+      <TabsContent value="vehicles">
+        <VehiclesTab vehicles={vehicles} />
+      </TabsContent>
+
+      {/* CONTENT 2: STATUS REPORT */}
+      <TabsContent value="status-report">
+        <VehiclesOverview vehicles={vehicles} />
+      </TabsContent>
+      
+      {/* CONTENT 3: STREAM */}
+      <TabsContent value="data-stream">
+        <DataStream vehicles={vehicles} />
+      </TabsContent>
+
     </Tabs>
   );
 };

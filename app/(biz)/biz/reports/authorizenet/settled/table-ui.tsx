@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { SettledCombinedData } from './page';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Loader2, Settings } from 'lucide-react';
@@ -35,8 +34,9 @@ import dayjs from 'dayjs';
 import Link from 'next/link';
 import { BackwardFilled } from '@ant-design/icons';
 
+// Accept any data array — TableUI dynamically reads columns
 interface TableUIProps {
-  data: SettledCombinedData[];
+  data: any[];
   isSettled?: boolean;
 }
 
@@ -46,56 +46,50 @@ interface ColumnDef {
   visible: boolean;
 }
 
-export default function TableUI({ data, isSettled }: TableUIProps) {
+export default function TableUI({ data, isSettled = true }: TableUIProps) {
   const router = useRouter();
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [singleDate, setSingleDate] = useState<Date | undefined>(undefined);
   const [filter, setFilter] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
   const [columns, setColumns] = useState<ColumnDef[]>([
-    { key: 'invoiceNumber', label: 'Invoice #', visible: true },
-    { key: 'customer', label: 'Customer', visible: true },
-    { key: 'amount', label: 'Amount', visible: true },
-    { key: 'location', label: 'Location', visible: false },
-    { key: 'resTime', label: 'Reservation Time', visible: false },
-    { key: 'resDate', label: 'Reservation Date', visible: false },
-    { key: 'card', label: 'Card', visible: false }
+    { key: 'batchId', label: 'Batch ID', visible: true },
+    { key: 'settlementTimeUTC', label: 'Settlement Date', visible: true },
+    { key: 'accountType', label: 'Card Type', visible: true },
+    { key: 'chargeAmount', label: 'Total Amount', visible: true },
+    { key: 'chargeCount', label: 'Transaction Count', visible: true },
   ]);
 
   const filteredData = useMemo(() => {
-    return data.filter((item) =>
-      Object.values(item).some((value) =>
-        String(value).toLowerCase().includes(filter.toLowerCase())
-      )
-    );
+    return data.filter((item: any) => {
+      const searchLower = filter.toLowerCase();
+      return Object.values(item).some((value: any) =>
+        String(value || '').toLowerCase().includes(searchLower)
+      );
+    });
   }, [data, filter]);
 
   const totalAmount = useMemo(() => {
     return filteredData
-      .reduce(
-        (a, b) =>
-          b.transactionStatus ===
-          (isSettled ? 'settledSuccessfully' : 'capturedPendingSettlement')
-            ? a + b.settleAmount
-            : b.transactionStatus === 'refundPendingSettlement' ||
-                b.transactionStatus === 'refundSettledSuccessfully'
-              ? a - b.settleAmount
-              : a,
-        0
-      )
-      .toLocaleString('en-US', {
-        style: 'currency',
-        currency: 'USD'
-      });
-  }, [filteredData, isSettled]);
+      .reduce((sum: number, item: any) => {
+        const amount = parseFloat(
+          item.statistics?.statistic?.[0]?.chargeAmount ||
+          item.chargeAmount ||
+          '0'
+        );
+        return sum + amount;
+      }, 0)
+      .toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  }, [filteredData]);
 
   const handleDateRangeChange = async (range: DateRange | undefined) => {
     setIsLoading(true);
     setDateRange(range);
     setSingleDate(undefined);
     if (range?.from && range?.to) {
-      const fromStr = dayjs(range.from).format('YYYY-MM-DD');
-      const toStr = dayjs(range.to).format('YYYY-MM-DD');
+      const fromStr = format(range.from, 'yyyy-MM-dd');
+      const toStr = format(range.to, 'yyyy-MM-dd');
       router.push(`?first_date=${fromStr}&last_date=${toStr}`);
     }
     setIsLoading(false);
@@ -120,8 +114,8 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
 
   return (
     <div className="space-y-4">
-      <Link href={'/biz/reports'}>
-        <Button variant={'outline'}>
+      <Link href="/biz/reports">
+        <Button variant="outline">
           <BackwardFilled /> Back To Reports Page
         </Button>
       </Link>
@@ -199,19 +193,6 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
         </div>
       </div>
 
-      {dateRange && dateRange.from && dateRange.to && (
-        <div className="text-center text-2xl font-bold my-4">
-          {singleDate ? (
-            <span>{format(singleDate, 'LLL dd, y')}</span>
-          ) : (
-            <span>
-              {format(dateRange.from, 'LLL dd, y')} -{' '}
-              {format(dateRange.to, 'LLL dd, y')}
-            </span>
-          )}
-        </div>
-      )}
-
       <div className="flex justify-end mb-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -236,80 +217,57 @@ export default function TableUI({ data, isSettled }: TableUIProps) {
         </DropdownMenu>
       </div>
 
-      <div className="w-full overflow-x-auto max-w-sm md:max-w-max mx-auto">
-        <div className="w-full overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {columns
-                  .filter((col) => col.visible)
-                  .map((column) => (
-                    <TableHead key={column.key} className="whitespace-nowrap">
-                      {column.label}
-                    </TableHead>
-                  ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredData
-                .sort((a, b) => {
-                  if (a.submitTimeLocal && b.submitTimeLocal) {
-                    return a.submitTimeLocal > b.submitTimeLocal ? -1 : 1;
-                  }
-                  return 0;
-                })
-                .map((item, index) => (
-                  <TableRow key={index}>
-                    {columns
-                      .filter((col) => col.visible)
-                      .map((column) => (
-                        <TableCell key={column.key}>
-                          {column.key === 'invoiceNumber' && (
-                            <Link
-                              href={`https://sunbuggy.biz/edt_res.php?id=${item.invoiceNumber}`}
-                              target="_blank"
-                              className="text-rose-400 underline"
-                            >
-                              {item.invoiceNumber}
-                            </Link>
-                          )}
-                          {column.key === 'customer' &&
-                            `${item.firstName || ''} ${item.lastName || ''}`}
-                          {column.key === 'amount' && (
-                            <span
-                              className={`${
-                                item.transactionStatus ===
-                                  'refundPendingSettlement' ||
-                                item.transactionStatus ===
-                                  'refundSettledSuccessfully'
-                                  ? 'text-red-600'
-                                  : item.transactionStatus ===
-                                        'capturedPendingSettlement' ||
-                                      item.transactionStatus ===
-                                        'settledSuccessfully'
-                                    ? 'text-green-600'
-                                    : item.transactionStatus === 'declined'
-                                      ? 'text-stone-400 line-through'
-                                      : ''
-                              }`}
-                            >
-                              ${item.settleAmount?.toFixed(2) || '-'}
-                            </span>
-                          )}
-                          {column.key === 'location' && (item.Location || '-')}
-                          {column.key === 'resTime' && (item.Res_Time || '-')}
-                          {column.key === 'resDate' &&
-                            (item.Res_Date
-                              ? dayjs(item.Res_Date).format('YYYY-MM-DD')
-                              : '-')}
-                          {column.key === 'card' && (item.accountType || '-')}
-                        </TableCell>
-                      ))}
-                  </TableRow>
+      <div className="w-full overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {columns
+                .filter((col) => col.visible)
+                .map((column) => (
+                  <TableHead key={column.key} className="whitespace-nowrap">
+                    {column.label}
+                  </TableHead>
                 ))}
-            </TableBody>
-          </Table>
-        </div>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredData.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.filter((c) => c.visible).length}
+                  className="text-center py-8 text-gray-500"
+                >
+                  No batches found for the selected date range.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredData.map((batch: any, index) => (
+                <TableRow key={index}>
+                  {columns
+                    .filter((col) => col.visible)
+                    .map((column) => (
+                      <TableCell key={column.key}>
+                        {column.key === 'batchId' && batch.batchId}
+                        {column.key === 'settlementTimeUTC' &&
+                          new Date(batch.settlementTimeUTC).toLocaleDateString()}
+                        {column.key === 'accountType' && (batch.accountType || '—')}
+                        {column.key === 'chargeAmount' && (
+                          <span className="text-green-600 font-medium">
+                            $
+                            {parseFloat(
+                              batch.statistics?.statistic?.[0]?.chargeAmount || '0'
+                            ).toFixed(2)}
+                          </span>
+                        )}
+                        {column.key === 'chargeCount' &&
+                          batch.statistics?.statistic?.[0]?.chargeCount}
+                      </TableCell>
+                    ))}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

@@ -1,14 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchAllVehicleLocations,
   fetchVehicleNamesFromIds
 } from '@/utils/supabase/queries';
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client'; // Client-side Supabase
 import { VehicleLocation } from '../vehicles/types';
-import { ArrowLeft, ArrowUpLeftFromSquareIcon, MapIcon } from 'lucide-react';
+import { ArrowLeft, MapIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import DialogFactory from '@/components/dialog-factory';
@@ -27,51 +27,60 @@ export default function VehicleLocationsDisplay({
   initialData,
   user
 }: VehicleLocationsDisplayProps) {
-  const [openDialogIndex, setOpenDialogIndex] = React.useState<number | null>(
-    null
-  );
-  const [openReDialogIndex, setOpenReDialogIndex] = React.useState<
-    number | null
-  >(null);
-  const [isDispatchGroupsDialogOpen, setDispatchGroupsDialogOpen] =
-    React.useState<boolean>(false);
-  const supabase = createClient();
+  const [supabase, setSupabase] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [openDialogIndex, setOpenDialogIndex] = useState<number | null>(null);
+  const [openReDialogIndex, setOpenReDialogIndex] = useState<number | null>(null);
+  const [isDispatchGroupsDialogOpen, setDispatchGroupsDialogOpen] = useState(false);
+
   const router = useRouter();
+
+  // Initialize Supabase client on mount (client-side only)
+  useEffect(() => {
+    const client = createClient();
+    setSupabase(client);
+    setIsLoading(false);
+  }, []);
+
   const { data: vehicleLocations } = useQuery({
     queryKey: ['vehicleLocations'],
-    queryFn: () => fetchAllVehicleLocations(supabase),
-    initialData: initialData
+    queryFn: () => supabase ? fetchAllVehicleLocations(supabase) : Promise.resolve(initialData),
+    initialData: initialData,
+    enabled: !!supabase, // Only run when supabase is ready
   });
 
-  const [vehicleNames, setVehicleNames] = React.useState<
-    { id: string; name: string }[]
-  >([]);
+  const [vehicleNames, setVehicleNames] = useState<{ id: string; name: string }[]>([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (!supabase || !vehicleLocations) return;
+
     const fetchVehicleNames = async () => {
       try {
         const setOfVehicleIds = new Set(
-          vehicleLocations?.map((location) => location.vehicle_id || '')
+          vehicleLocations.map((location) => location.vehicle_id || '')
         );
         const res = await fetchVehicleNamesFromIds(
           supabase,
           Array.from(setOfVehicleIds)
         );
-        const vehicleNames = res.map((vehicle) => ({
+        const names = res.map((vehicle) => ({
           id: vehicle.id,
           name: vehicle.name
         }));
-        setVehicleNames(vehicleNames);
+        setVehicleNames(names);
       } catch (err) {
         console.error('Error getting vehicle names:', err);
       }
     };
+
     fetchVehicleNames();
   }, [vehicleLocations, supabase]);
 
   const sst_locations = vehicleLocations?.filter(
     (location) => location.is_distress_signal === true
   );
+
   const today = new Date().toLocaleDateString();
   const today_data = sst_locations?.filter((location) => {
     const created_at = new Date(location.created_at).toLocaleDateString();
@@ -114,8 +123,7 @@ export default function VehicleLocationsDisplay({
     >
       <CardHeader>
         <CardTitle>
-          {vehicleNames.find((vehicle) => vehicle.id === location.vehicle_id)
-            ?.name || 'Loading...'}
+          {vehicleNames.find((vehicle) => vehicle.id === location.vehicle_id)?.name || 'Loading...'}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -128,9 +136,7 @@ export default function VehicleLocationsDisplay({
         </p>
         <p>
           <strong>Status:</strong>{' '}
-          {location.dispatch_status
-            ? location.dispatch_status
-            : 'Not Dispatched'}
+          {location.dispatch_status || 'Not Dispatched'}
         </p>
         <p>
           <strong>Ticket:</strong> {location.distress_ticket_number || 'N/A'}
@@ -202,6 +208,14 @@ export default function VehicleLocationsDisplay({
       </CardContent>
     </Card>
   );
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-6 px-4 text-center">
+        <p>Loading vehicle locations...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 px-4">

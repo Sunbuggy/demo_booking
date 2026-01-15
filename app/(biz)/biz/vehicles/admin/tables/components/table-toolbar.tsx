@@ -4,33 +4,26 @@ import { Button } from '@/components/ui/button';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { Input } from '@/components/ui/input';
 import { DataTableFacetedFilter } from './faceted-filter';
-import {
-  BusIcon,
-  CaravanIcon,
-  CarFrontIcon,
-  CarIcon,
-  CarTaxiFrontIcon,
-  ForkliftIcon,
-  TractorIcon,
-  TramFrontIcon,
-  TruckIcon
-} from 'lucide-react';
 import AddVehicle from './add-vehicle';
+
+// 1. REMOVED ALL LUCIDE ICON IMPORTS (CarFrontIcon, etc.) - We don't need them anymore!
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
 }
 
+// 2. CLEANED UP THE CONFIG OBJECT
+// We only need value and label. The 'icon' prop is handled dynamically by FleetIcon now.
 export const vehicleTypes = [
-  { value: 'buggy', label: 'Buggy', icon: CarFrontIcon },
-  { value: 'atv', label: 'ATV', icon: TractorIcon },
-  { value: 'utv', label: 'UTV', icon: CarTaxiFrontIcon },
-  { value: 'sedan', label: 'Sedan', icon: CarIcon },
-  { value: 'truck', label: 'Truck', icon: TruckIcon },
-  { value: 'trailer', label: 'Trailer', icon: CaravanIcon },
-  { value: 'tram', label: 'Tram', icon: TramFrontIcon },
-  { value: 'forktruck', label: 'Forktruck', icon: ForkliftIcon },
-  { value: 'shuttle', label: 'Shuttle', icon: BusIcon }
+  { value: 'buggy', label: 'Buggy' },
+  { value: 'atv', label: 'ATV' },
+  { value: 'utv', label: 'UTV' },
+  { value: 'sedan', label: 'Sedan' },
+  { value: 'truck', label: 'Truck' },
+  { value: 'trailer', label: 'Trailer' },
+  { value: 'tram', label: 'Tram' },
+  { value: 'forktruck', label: 'Forktruck' },
+  { value: 'shuttle', label: 'Shuttle' }
 ];
 
 export function DataTableToolbar<TData>({
@@ -38,16 +31,21 @@ export function DataTableToolbar<TData>({
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
 
+  const handleGlobalFilterChange = (value: string) => {
+    table.setGlobalFilter(value.toLowerCase());
+  };
+
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex flex-col items-center space-x-2">
-        <div className="flex space-x-2">
+    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex gap-2">
           <Input
             placeholder="Search vehicles..."
             value={(table.getState().globalFilter as string) ?? ''}
-            onChange={(event) => table.setGlobalFilter(event.target.value)}
-            className="h-8 w-[150px] lg:w-[250px]"
+            onChange={(event) => handleGlobalFilterChange(event.target.value)}
+            className="h-8 w-full sm:w-[150px] lg:w-[250px]"
           />
+          
           <DataTableFacetedFilter
             column={table.getColumn('type')}
             title="fleet type"

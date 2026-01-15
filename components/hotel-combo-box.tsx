@@ -17,27 +17,35 @@ import React, { Dispatch, SetStateAction } from 'react';
 import { HotelType } from '../app/(com)/book/serve-bookings/mbj';
 import { cn } from '@/utils/cn';
 
+interface ComboBoxProps {
+  hotelsMemo: HotelType[];
+  open: boolean;
+  setOpen?: Dispatch<SetStateAction<boolean>>; // Made optional
+  selectedHotel: string;
+  setSelectedHotel?: Dispatch<SetStateAction<string>>; // Made optional
+  disabled?: boolean; // Added disabled prop
+}
+
 const ComboBox = ({
   hotelsMemo,
   open,
   setOpen,
   selectedHotel,
-  setSelectedHotel
-}: {
-  hotelsMemo: HotelType[];
-  open: boolean;
-  setOpen: Dispatch<SetStateAction<boolean>>;
-  selectedHotel: string;
-  setSelectedHotel: Dispatch<SetStateAction<string>>;
-}) => {
+  setSelectedHotel,
+  disabled = false
+}: ComboBoxProps) => {
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover 
+      open={open} 
+      onOpenChange={setOpen ? (open) => setOpen(open) : undefined}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between"
+          disabled={disabled}
         >
           {selectedHotel
             ? hotelsMemo?.find(
@@ -58,10 +66,14 @@ const ComboBox = ({
                   key={hotel.Hotel_ID}
                   value={String(hotel.Hotel_Name)}
                   onSelect={(currentValue) => {
-                    setSelectedHotel(
-                      currentValue === selectedHotel ? '' : currentValue
-                    );
-                    setOpen(false);
+                    if (setSelectedHotel) {
+                      setSelectedHotel(
+                        currentValue === selectedHotel ? '' : currentValue
+                      );
+                    }
+                    if (setOpen) {
+                      setOpen(false);
+                    }
                   }}
                 >
                   <CheckCheckIcon

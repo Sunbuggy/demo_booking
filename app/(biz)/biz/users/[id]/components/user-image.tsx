@@ -3,7 +3,7 @@ import React from 'react';
 import ImageView from '../../../vehicles/[id]/components/image-view';
 import { Button } from '@/components/ui/button';
 import DialogFactory from '@/components/dialog-factory';
-import ResponsiveImageUpload from '../../../vehicles/[id]/components/responsive-image-upload-form';
+import ResponsiveFileUpload from '../../../vehicles/[id]/components/responsive-file-upload';
 
 const UserImage = ({
   profilePic,
@@ -32,9 +32,8 @@ const UserImage = ({
             description="Update the profile picture for the vehicle. Please just upload a single image."
             children={
               <div>
-                <ResponsiveImageUpload
+                <ResponsiveFileUpload
                   url_key={`profile_pic/${user_id}`}
-                  updatePic={true}
                   single={true}
                   bucket={'users'}
                 />

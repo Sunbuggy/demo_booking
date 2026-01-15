@@ -34,13 +34,33 @@ const TagManagement = ({
   const [openTagDialogs, setOpenTagDialogs] = React.useState<{
     [key: string]: boolean;
   }>({});
+
   const handleOpenTagDialog = (tagId: string) => {
     setOpenTagDialogs((prev) => ({ ...prev, [tagId]: true }));
   };
 
-  const handleCloseTagDialog = (tagId: string) => {
+  const handleCloseTagDialog = async (tagId: string) => {
     setOpenTagDialogs((prev) => ({ ...prev, [tagId]: false }));
+    
+    // Check if the tag was just closed
+    const tag = tags.find(t => t.id === tagId);
+    if (tag?.tag_status === 'closed') {
+      // Update vehicle status to 'fine'
+      try {
+        const { error } = await supabase
+          .from('vehicles')
+          .update({ vehicle_status: 'fine' })
+          .eq('id', id);
+        
+        if (error) {
+          console.error('Error updating vehicle status:', error);
+        }
+      } catch (err) {
+        console.error('Failed to update vehicle status:', err);
+      }
+    }
   };
+
   React.useEffect(() => {
     const fetchCreatedBy = async () => {
       const newCreatedByMap: { [key: string]: string | null } = {};
@@ -59,6 +79,7 @@ const TagManagement = ({
 
     fetchCreatedBy();
   }, [tags, supabase]);
+
   React.useEffect(() => {
     const channel = supabase
       .channel('realtime vehicle tags and vehicle')
@@ -78,7 +99,7 @@ const TagManagement = ({
         {
           event: '*',
           schema: 'public',
-          table: 'vehicle'
+          table: 'vehicles'
         },
         () => {
           router.refresh();

@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const veh = decodeURIComponent(searchParams.get('veh') || '');
   const lat = searchParams.get('lat');
   const lon = searchParams.get('lon');
-  const supabase = createClient();
+  const supabase = await await createClient();
 
   //   const list_of_sms_recipients = ['+17028072598', '+17024263318'];
 

@@ -10,7 +10,7 @@ export interface Reservation {
   ppl_count: number;
   fname?: string;
   lname?: string;
-  total_cost?: string;
+  total_cost?: number;
   phone?: string;
   email?: string;
   hotel?: string;
@@ -53,6 +53,7 @@ export interface OldDbVehicle {
   GoKart?: number;
 }
 export interface GroupsType {
+  launch_time: string | undefined;
   id: string;
   group_name: string;
   created_at: string;
@@ -60,7 +61,7 @@ export interface GroupsType {
   group_date: string;
   lead?: string;
   sweep?: string;
-  launched?: boolean;
+  launched: string | null;
 }
 interface GroupType {
   group_name: string;

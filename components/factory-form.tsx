@@ -28,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 export type FieldConfig = {
-  type: 'input' | 'select' | 'checkbox' | 'textarea' | 'radio';
+  type: 'input' | 'select' | 'checkbox' | 'textarea' | 'radio' | 'date';
   name: string;
   label: string;
   placeholder?: string;
@@ -56,25 +56,35 @@ const FieldComponent = ({
           disabled={allDisabled}
         />
       );
-    case 'select':
-      return (
-        <Select
-          onValueChange={field.onChange}
-          value={field.value}
-          disabled={allDisabled}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={field.value} />
-          </SelectTrigger>
-          <SelectContent>
-            {fieldConfig.options?.map((option, idx) => (
-              <SelectItem key={idx} value={String(option.value)}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
+      case 'date':
+        return (
+          <Input
+            {...field}
+            type="date"
+            placeholder={fieldConfig.placeholder}
+            value={field.value || ''}
+            disabled={allDisabled}
+          />
+        );
+case 'select':
+  return (
+    <Select
+      onValueChange={field.onChange}
+      value={String(field.value)}
+      disabled={allDisabled}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Select..." />
+      </SelectTrigger>
+      <SelectContent>
+        {fieldConfig.options?.map((option, idx) => (
+          <SelectItem key={idx} value={String(option.value)}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
     case 'checkbox':
       return (
         <>
@@ -162,28 +172,21 @@ export function FactoryForm({
   hideFilterBoxField,
   allDisabled
 }: FactoryFormProps) {
-  const [showAllFields, setShowAllFields] = useState(false);
+  const [showAllFields, setShowAllFields] = useState(true);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || data || {}
+    defaultValues: {
+      vehicle_status: undefined,
+      ...(initialData || data || {})
+    }
   });
 
   useEffect(() => {
     if (initialData) {
-      Object.keys(initialData[0]).forEach((key) => {
-        form.setValue(key, initialData[0][key]);
-      });
+      form.reset(initialData);
     }
   }, [initialData, form]);
-
-  useEffect(() => {
-    if (data) {
-      Object.keys(data).forEach((key) => {
-        form.setValue(key, data[key]);
-      });
-    }
-  }, [data, form]);
 
   const visibleFields = fields.filter(
     (field) => !field.hidden || showAllFields

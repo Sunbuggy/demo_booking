@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
 import { VehicleGifs } from '../../admin/tables/components/row-actions-gif';
-import { VehicleReg } from '../../admin/tables/components/row-action-reg';
+import { VehiclePdf } from '../../admin/tables/components/row-action-pdf';
 import ImageView from './image-view';
 import { Trash2Icon } from 'lucide-react';
 import {
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 
-type Media = VehiclePics | VehicleGifs | VehicleReg;
+type Media = VehiclePics | VehicleGifs | VehiclePdf;
 
 const ImageGrid = ({
   images = [],

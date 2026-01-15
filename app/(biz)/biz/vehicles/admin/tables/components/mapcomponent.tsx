@@ -1,60 +1,43 @@
+/**
+ * @file mapcomponent.tsx
+ * @description Wrapper for the Leaflet Map.
+ * Uses next/dynamic to prevent Server-Side Rendering (SSR) crashes.
+ */
 'use client';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import { VehicleType } from '../../page';
-import Link from 'next/link';
 
-const icon = new L.Icon({
-  iconUrl:
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowUrl:
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  shadowSize: [41, 41]
+import dynamic from 'next/dynamic';
+import React, { useState, useEffect } from 'react';
+
+// Dynamic Import is CRITICAL.
+// It stops the "window is not defined" error and ensures CSS loads only in the browser.
+const MapInner = dynamic(() => import('./MapInner'), {
+  ssr: false, // Disables server-side rendering for the map
+  loading: () => (
+    <div className="h-[400px] w-full bg-slate-100 dark:bg-zinc-900 flex items-center justify-center text-slate-400">
+      Loading Map...
+    </div>
+  ),
 });
 
-type ExtendedVehicleType = VehicleType & {
-  latitude: number | null;
-  longitude: number | null;
-  city: string;
-};
-
 interface MapComponentProps {
-  vehicles: ExtendedVehicleType[];
+  vehicles: any[];
 }
 
-const MapComponent: React.FC<MapComponentProps> = ({ vehicles }) => {
+const MapComponent = ({ vehicles }: MapComponentProps) => {
+  // We use a unique key to force React to completely destroy/recreate 
+  // the component when the tab changes or data updates significantly.
+  const [mapKey, setMapKey] = useState<string>('');
+
+  useEffect(() => {
+    setMapKey(`map-${Math.random()}`);
+  }, []);
+
+  if (!mapKey) return <div className="h-[400px] bg-slate-50" />;
+
   return (
-    <MapContainer
-      center={[36.278439, -115.020068]}
-      zoom={5}
-      style={{ height: '400px', width: '100%' }}
-    >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
-      {vehicles.map(
-        (vehicle) =>
-          vehicle.latitude &&
-          vehicle.longitude && (
-            <Marker
-              key={vehicle.id}
-              position={[vehicle.latitude, vehicle.longitude]}
-              icon={icon}
-            >
-              <Popup>
-                <Link href={`/biz/vehicles/${vehicle.id}`} target="_blank">
-                  {vehicle.type} - {vehicle.name}
-                </Link>
-              </Popup>
-            </Marker>
-          )
-      )}
-    </MapContainer>
+    <div className="h-[400px] w-full relative z-0 border rounded-md overflow-hidden">
+      <MapInner key={mapKey} vehicles={vehicles} />
+    </div>
   );
 };
 

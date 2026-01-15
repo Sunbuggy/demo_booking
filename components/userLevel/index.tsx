@@ -8,7 +8,7 @@ interface CheckUserLevelProps {
 }
 
 export default async function CheckUserLevel({ children, setLevel = 1 }: CheckUserLevelProps) {
-  const supabase = createClient();
+  const supabase =  await createClient();
   const [userLevel, setUserLevel] = useState<number | null>(null);
 
   // Fetch the user and user details

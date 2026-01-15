@@ -1,45 +1,24 @@
-import { useState, useMemo } from 'react';
+'use client';
+
+import { useState, useMemo, useEffect } from 'react';
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableFooter
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   DownloadIcon,
-  FilterIcon,
-  PlusCircle,
-  X,
   Settings,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DatePicker } from '@/components/ui/date-picker';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '@/components/ui/popover';
-import TableDescription from './TableDescription';
-import Pagination from './Pagination';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger
-} from '@/components/ui/accordion';
 import {
   Sheet,
   SheetContent,
@@ -48,144 +27,137 @@ import {
   SheetTitle,
   SheetTrigger
 } from '@/components/ui/sheet';
+import Pagination from './Pagination';
+
+// --- CONFIGURATION ---
+const STORAGE_KEY = 'sunbuggy-nmi-table-columns';
+
+const COLUMN_LABELS: Record<string, string> = {
+  // Financial
+  amount: 'Amount ($)',
+  response_text: 'Status',
+  customer_name: 'Customer',
+  date_local: 'Date',
+  transaction_id: 'Trans ID',
+  auth_code: 'Auth Code',
+  location: 'Location',
+  email: 'Email',
+  zip: 'Zip Code',
+  phone: 'Phone',
+  order_id: 'Order ID',
+  condition: 'Condition',
+  action_type: 'Type',
+  
+  // Generic Database Fields
+  created_at: 'Timestamp',
+  vehicle_id: 'Vehicle ID',
+  created_by: 'Created By',
+  updated_by: 'Updated By',
+  closed_by: 'Closed By',
+  scanned_at: 'Scanned At',
+  notes: 'Notes',
+  tag_id: 'Tag ID'
+};
+
+const HIDDEN_FIELDS = ['id', 'date_obj', 'first_name', 'last_name'];
 
 interface DataVisualizationProps {
   data: any[];
   dateRange: { from: Date; to: Date };
   tableName: string;
-}
-
-type ColumnType = 'string' | 'number' | 'boolean' | 'date';
-
-interface ColumnFilter {
-  id: string;
-  column: string;
-  type: ColumnType;
-  value: string | number | boolean | Date | null;
+  isFinancial?: boolean;
 }
 
 const DataVisualization: React.FC<DataVisualizationProps> = ({
   data,
-  dateRange,
-  tableName
+  tableName,
+  isFinancial = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // --- HELPERS ---
+  const parseAmount = (value: any): number => {
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+    const str = value.toString().replace(/[^0-9.-]+/g, '');
+    return parseFloat(str) || 0;
+  };
+
+  const isSuccessStatus = (status: string) => {
+    if (!status) return false;
+    const s = status.toUpperCase();
+    return s === 'APPROVED' || s === 'ACCEPTED' || s === 'COMPLETED';
+  };
+
+  // --- LOGIC: Column Extraction ---
   const columns = useMemo(() => {
     if (data.length === 0) return [];
-    return Object.keys(data[0]).filter((col) => col !== 'id');
+    return Object.keys(data[0]).filter((col) => !HIDDEN_FIELDS.includes(col));
   }, [data]);
 
-  // Set default visible columns to the first 4
-  useMemo(() => {
-    setVisibleColumns(columns.slice(0, 4));
+  // --- LOGIC: Load / Default Visibility ---
+  useEffect(() => {
+    if (columns.length === 0) return;
+
+    // 1. Try Loading User Preferences
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Ensure saved columns actually exist in current data
+        const valid = parsed.filter((c: string) => columns.includes(c));
+        if (valid.length > 0) {
+          setVisibleColumns(valid);
+          return;
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    // 2. Default: Show ALL columns if no preference saved
+    if (visibleColumns.length === 0) {
+      setVisibleColumns(columns);
+    }
   }, [columns]);
 
-  const columnTypes: Record<string, ColumnType> = useMemo(() => {
-    if (data.length === 0) return {};
-    const types: Record<string, ColumnType> = {};
-    columns.forEach((col) => {
-      const value = data[0][col];
-      if (typeof value === 'string') {
-        types[col] = 'string';
-      } else if (typeof value === 'number') {
-        types[col] = 'number';
-      } else if (typeof value === 'boolean') {
-        types[col] = 'boolean';
-      } else if (value instanceof Date) {
-        types[col] = 'date';
-      } else {
-        types[col] = 'string'; // Default to string for unknown types
-      }
-    });
-    return types;
-  }, [data, columns]);
-
-  const uniqueValues = useMemo(() => {
-    const values: Record<string, Set<any>> = {};
-    columns.forEach((col) => {
-      values[col] = new Set(data.map((item) => item[col]));
-    });
-    return values;
-  }, [data, columns]);
-
+  // --- LOGIC: Filtering & Sorting ---
   const filteredData = useMemo(() => {
     let filtered = data.filter((item) => {
-      // Parse the date from the 'created_at' field and ensure it's within the date range
-      const createdAtDate = new Date(item.created_at);
-
-      const isInDateRange =
-        createdAtDate >= new Date(dateRange.from) &&
-        createdAtDate <= new Date(dateRange.to);
-
-      // Optionally check the 'date' field if it's relevant to the filter
-      const entryDate = new Date(item.date);
-      const isEntryDateInRange =
-        entryDate >= new Date(dateRange.from) &&
-        entryDate <= new Date(dateRange.to);
-
-      // Combine both checks, as needed
-      if (!isInDateRange && !isEntryDateInRange) {
-        return false;
-      }
-
-      // Apply search term filtering
-      const matchesSearch = Object.values(item).some((value) =>
-        value
-          ?.toString()
-          ?.toLowerCase()
-          .includes(searchTerm?.toLowerCase() ?? '')
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      return Object.values(item).some((value) =>
+        value?.toString()?.toLowerCase().includes(term)
       );
-
-      // Apply column filter logic
-      const matchesColumnFilters = columnFilters.every((filter) => {
-        const itemValue = item[filter.column];
-        switch (filter.type) {
-          case 'string':
-            return itemValue
-              ?.toLowerCase()
-              .includes(filter.value?.toString()?.toLowerCase() ?? '');
-          case 'number':
-            return itemValue === Number(filter.value);
-          case 'boolean':
-            return itemValue === filter.value;
-          case 'date':
-            const filterDate = new Date(filter.value as string | number | Date);
-            const itemDate = new Date(itemValue);
-            return itemDate.toDateString() === filterDate.toDateString();
-          default:
-            return true;
-        }
-      });
-
-      return matchesSearch && matchesColumnFilters;
     });
 
-    // Sort filtered data based on the selected column and order
     if (sortColumn) {
       filtered = filtered.sort((a, b) => {
         const aValue = a[sortColumn];
         const bValue = b[sortColumn];
 
-        if (aValue < bValue) {
-          return sortOrder === 'asc' ? -1 : 1;
+        if (sortColumn.includes('date') || sortColumn === 'created_at' || sortColumn.includes('timestamp')) {
+           const dateA = new Date(a['date_obj'] || aValue).getTime();
+           const dateB = new Date(b['date_obj'] || bValue).getTime();
+           return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
         }
-        if (aValue > bValue) {
-          return sortOrder === 'asc' ? 1 : -1;
+        if (sortColumn === 'amount' && isFinancial) {
+           const numA = parseAmount(aValue);
+           const numB = parseAmount(bValue);
+           return sortOrder === 'asc' ? numA - numB : numB - numA;
         }
+        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
         return 0;
       });
     }
-
     return filtered;
-  }, [data, dateRange, searchTerm, columnFilters, sortColumn, sortOrder]);
+  }, [data, searchTerm, sortColumn, sortOrder, isFinancial]);
 
+  // --- LOGIC: Pagination ---
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
     return filteredData.slice(startIndex, startIndex + pageSize);
@@ -193,384 +165,199 @@ const DataVisualization: React.FC<DataVisualizationProps> = ({
 
   const totalPages = Math.ceil(filteredData.length / pageSize);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return (
-      date.toLocaleDateString() +
-      ' ' +
-      date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      })
-    );
+  // --- LOGIC: Totals (Financial Only) ---
+  const netTotal = useMemo(() => {
+    if (!isFinancial) return 0;
+    return filteredData.reduce((sum, row) => {
+      const amount = parseAmount(row.amount);
+      const status = row.response_text;
+      if (status && !isSuccessStatus(status)) return sum; 
+      if (row.action_type === 'refund') return sum - amount;
+      return sum + amount;
+    }, 0);
+  }, [filteredData, isFinancial]);
+
+  // --- VIEW HANDLERS ---
+  const toggleColumnVisibility = (col: string) => {
+    setVisibleColumns(prev => {
+      const next = prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col];
+      // Save preference to LocalStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
   };
 
-  const downloadData = (format: 'csv' | 'json' | 'xlsx') => {
-    let content: string;
-    let mimeType: string;
-    let fileExtension: string;
-
-    switch (format) {
-      case 'csv':
-        content = convertToCSV(filteredData);
-        mimeType = 'text/csv';
-        fileExtension = 'csv';
-        break;
-      case 'json':
-        content = JSON.stringify(filteredData, null, 2);
-        mimeType = 'application/json';
-        fileExtension = 'json';
-        break;
-      case 'xlsx':
-        alert(
-          'XLSX download is not implemented in this example. You would need to use a library like xlsx.js to generate the file.'
-        );
-        return;
-    }
-
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${tableName}_${format}.${fileExtension}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const convertToCSV = (data: any[]) => {
-    const header = visibleColumns.join(',');
-    const rows = data.map((row) =>
-      visibleColumns.map((col) => JSON.stringify(row[col] ?? '')).join(',')
-    );
-    return [header, ...rows].join('\n');
-  };
-
-  const renderFilterInput = (filter: ColumnFilter) => {
-    const uniqueColumnValues = Array.from(uniqueValues[filter.column]);
-
-    if (uniqueColumnValues.length < 20) {
-      return (
-        <Select
-          value={filter.value?.toString() ?? ''}
-          onValueChange={(value) => updateFilter(filter.id, value)}
-        >
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder={`Filter ${filter.column}...`} />
-          </SelectTrigger>
-          <SelectContent>
-            {uniqueColumnValues.map((value) => (
-              <SelectItem key={value} value={value?.toString()}>
-                {value?.toString()}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
-    }
-
-    switch (filter.type) {
-      case 'string':
-        return (
-          <Input
-            type="text"
-            value={(filter.value as string) || ''}
-            onChange={(e) => updateFilter(filter.id, e.target.value)}
-            placeholder={`Filter ${filter.column}...`}
-          />
-        );
-      case 'number':
-        return (
-          <Input
-            type="number"
-            value={(filter.value as number) || ''}
-            onChange={(e) => updateFilter(filter.id, Number(e.target.value))}
-            placeholder={`Filter ${filter.column}...`}
-          />
-        );
-      case 'boolean':
-        return (
-          <Checkbox
-            checked={(filter.value as boolean) || false}
-            onCheckedChange={(checked) => updateFilter(filter.id, checked)}
-          />
-        );
-      case 'date':
-        return (
-          <DatePicker
-            date={(filter.value as Date) || null}
-            setDate={(date) => updateFilter(filter.id, date)}
-          />
-        );
-      default:
-        return null;
-    }
-  };
-
-  const addFilter = () => {
-    const newFilter: ColumnFilter = {
-      id: Date.now()?.toString(),
-      column: columns[0],
-      type: columnTypes[columns[0]],
-      value: null
-    };
-    setColumnFilters([...columnFilters, newFilter]);
-  };
-
-  const removeFilter = (id: string) => {
-    setColumnFilters(columnFilters.filter((filter) => filter.id !== id));
-  };
-
-  const updateFilter = (id: string, value: any) => {
-    setColumnFilters(
-      columnFilters.map((filter) =>
-        filter.id === id ? { ...filter, value } : filter
-      )
-    );
-  };
-
-  const toggleColumnVisibility = (column: string) => {
-    setVisibleColumns((prev) =>
-      prev.includes(column)
-        ? prev.filter((col) => col !== column)
-        : [...prev, column]
-    );
-  };
-
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
+  const handleSort = (col: string) => {
+    if (sortColumn === col) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
-      setSortColumn(column);
+      setSortColumn(col);
       setSortOrder('desc');
     }
   };
 
-  return (
-    <div className="space-y-8 md:w-full max-w-[375px] mx-auto">
-      <Accordion type="single" collapsible>
-        <AccordionItem value="item-1">
-          <AccordionTrigger>View Table Description</AccordionTrigger>
-          <AccordionContent>
-            <TableDescription data={data} columns={columns} />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-      <Accordion type="single" collapsible>
-        <AccordionItem value="item-2">
-          <AccordionTrigger>View Generated Report Description</AccordionTrigger>
-          <AccordionContent>
-            <TableDescription data={filteredData} columns={columns} />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+  const downloadData = () => {
+    const headers = visibleColumns.map(col => `"${COLUMN_LABELS[col] || col}"`).join(',');
+    const rows = filteredData.map(row => {
+      return visibleColumns.map(col => {
+        let val = row[col];
+        if (isFinancial && col === 'amount') val = parseAmount(val).toFixed(2);
+        if (val === null || val === undefined) val = '';
+        return `"${String(val).replace(/"/g, '""')}"`;
+      }).join(',');
+    });
+    const blob = new Blob([[headers, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${tableName.replace(/\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-      <div className="flex flex-col space-y-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <Input
+  return (
+    <div className="space-y-6 w-full mt-6 animate-in fade-in duration-500">
+      
+      {/* HEADER CONTROLS */}
+      <div className="flex flex-col md:flex-row justify-between gap-4 bg-card p-4 rounded-lg border border-border shadow-sm">
+        <div className="flex items-center gap-2 w-full md:w-auto">
+           <Input
             type="text"
-            placeholder="Search..."
+            placeholder="Search visible data..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-64"
+            className="w-full md:w-80 bg-background border-input text-foreground focus:border-primary"
           />
+        </div>
+        <div className="flex gap-2 w-full md:w-auto">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline">
-                <Settings className="mr-2 h-4 w-4" />
-                Column Settings
+              <Button variant="outline" className="flex-1 border-input bg-background hover:bg-accent">
+                <Settings className="mr-2 h-4 w-4" /> Columns
               </Button>
             </SheetTrigger>
             <SheetContent>
               <SheetHeader>
-                <SheetTitle>Column Settings</SheetTitle>
-                <SheetDescription>
-                  Select which columns to display in the table.
-                </SheetDescription>
+                <SheetTitle>Column Visibility</SheetTitle>
+                <SheetDescription>Select columns to display.</SheetDescription>
               </SheetHeader>
-              <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
-                {columns.map((column) => (
-                  <div key={column} className="flex items-center space-x-2">
+              <div className="mt-6 grid grid-cols-1 gap-3 max-h-[80vh] overflow-y-auto">
+                {columns.map((col) => (
+                  <div key={col} className="flex items-center space-x-3 p-2 hover:bg-muted rounded border border-transparent hover:border-border">
                     <Checkbox
-                      id={`column-${column}`}
-                      checked={visibleColumns.includes(column)}
-                      onCheckedChange={() => toggleColumnVisibility(column)}
+                      checked={visibleColumns.includes(col)}
+                      onCheckedChange={() => toggleColumnVisibility(col)}
+                      id={`col-${col}`}
                     />
-                    <label htmlFor={`column-${column}`}>{column}</label>
+                    <label htmlFor={`col-${col}`} className="text-sm cursor-pointer w-full font-medium text-foreground">
+                      {COLUMN_LABELS[col] || col.replace(/_/g, ' ')}
+                    </label>
                   </div>
                 ))}
               </div>
             </SheetContent>
           </Sheet>
-        </div>
-        <div className="flex flex-wrap gap-4">
-          {columnFilters.map((filter) => (
-            <div
-              key={filter.id}
-              className="flex flex-col space-y-2 w-full sm:w-auto"
-            >
-              <Select
-                value={filter.column}
-                onValueChange={(value) =>
-                  setColumnFilters(
-                    columnFilters.map((f) =>
-                      f.id === filter.id
-                        ? {
-                            ...f,
-                            column: value,
-                            type: columnTypes[value],
-                            value: null
-                          }
-                        : f
-                    )
-                  )
-                }
-              >
-                <SelectTrigger className="w-full sm:w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {columns.map((column) => (
-                    <SelectItem key={column} value={column}>
-                      {column.replace(/_/g, ' ')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex items-center space-x-2">
-                {renderFilterInput(filter)}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeFilter(filter.id)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-4">
-          <Button onClick={addFilter} variant="outline">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Filter
-          </Button>
-          <Button onClick={() => downloadData('csv')} variant="outline">
-            <DownloadIcon className="mr-2 h-4 w-4" />
-            CSV
-          </Button>
-          <Button onClick={() => downloadData('json')} variant="outline">
-            <DownloadIcon className="mr-2 h-4 w-4" />
-            JSON
-          </Button>
-          <Button onClick={() => downloadData('xlsx')} variant="outline">
-            <DownloadIcon className="mr-2 h-4 w-4" />
-            XLSX
+          <Button onClick={downloadData} variant="outline" className="flex-1 border-input bg-background hover:bg-accent">
+            <DownloadIcon className="mr-2 h-4 w-4" /> Export CSV
           </Button>
         </div>
       </div>
-      <div className="border rounded-md overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {visibleColumns.map((column) => (
-                <TableHead key={column}>
-                  <div className="flex items-center space-x-2">
-                    <span>{column.replace(/_/g, ' ')}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSort(column)}
-                    >
-                      {sortColumn === column ? (
-                        sortOrder === 'asc' ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )
-                      ) : (
-                        <ArrowDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                    {uniqueValues[column].size < 20 && (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <FilterIcon className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-48">
-                          <div className="space-y-2">
-                            {Array.from(uniqueValues[column]).map((value) => (
-                              <div
-                                key={value}
-                                className="flex items-center space-x-2"
-                              >
-                                <Checkbox
-                                  id={`${column}-${value}`}
-                                  checked={columnFilters.some(
-                                    (filter) =>
-                                      filter.column === column &&
-                                      filter.value === value
-                                  )}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      const newFilter: ColumnFilter = {
-                                        id: Date.now()?.toString(),
-                                        column,
-                                        type: columnTypes[column],
-                                        value
-                                      };
-                                      setColumnFilters([
-                                        ...columnFilters,
-                                        newFilter
-                                      ]);
-                                    } else {
-                                      setColumnFilters(
-                                        columnFilters.filter(
-                                          (filter) =>
-                                            !(
-                                              filter.column === column &&
-                                              filter.value === value
-                                            )
-                                        )
-                                      );
-                                    }
-                                  }}
-                                />
-                                <label htmlFor={`${column}-${value}`}>
-                                  {value}
-                                </label>
-                              </div>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                  </div>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedData.map((row, index) => (
-              <TableRow key={index}>
-                {visibleColumns.map((column) => (
-                  <TableCell key={column}>
-                    {column === 'created_at' || column === 'updated_at'
-                      ? formatDate(row[column])
-                      : row[column] === null || row[column] === ''
-                        ? '-'
-                        : String(row[column])}
-                  </TableCell>
+
+      {/* TABLE */}
+      <div className="border border-border rounded-md bg-card shadow-sm overflow-hidden">
+        <div className="overflow-x-auto w-full">
+          <Table className="min-w-full">
+            <TableHeader className="bg-muted/50">
+              <TableRow className="border-border hover:bg-transparent">
+                {visibleColumns.map((col) => (
+                  <TableHead key={col} className="text-muted-foreground font-semibold whitespace-nowrap px-4 h-12">
+                    <button onClick={() => handleSort(col)} className="flex items-center gap-2 hover:text-foreground transition-colors">
+                      {COLUMN_LABELS[col] || col.replace(/_/g, ' ')}
+                      {sortColumn === col ? (
+                        sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />
+                      ) : <ArrowDown className="h-3 w-3 opacity-0 group-hover:opacity-30" />}
+                    </button>
+                  </TableHead>
                 ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {paginatedData.length === 0 ? (
+                <TableRow><TableCell colSpan={visibleColumns.length} className="text-center py-24 text-muted-foreground">No records found.</TableCell></TableRow>
+              ) : (
+                paginatedData.map((row, i) => {
+                  
+                  // --- FINANCIAL FORMATTING LOGIC ---
+                  let isDeclined = false;
+                  if (isFinancial) {
+                    const status = row.response_text || '';
+                    isDeclined = !isSuccessStatus(status);
+                  }
+
+                  return (
+                    <TableRow 
+                      key={i} 
+                      className={`border-border transition-colors ${
+                        isDeclined ? 'bg-destructive/5 hover:bg-destructive/10' : 'hover:bg-muted/50'
+                      }`}
+                    >
+                      {visibleColumns.map((col) => (
+                        <TableCell key={`${i}-${col}`} className="py-3 px-4 text-foreground whitespace-nowrap text-sm">
+                          {isFinancial && col === 'amount' ? (
+                            <span className={`font-mono font-medium ${isDeclined ? 'text-muted-foreground line-through' : 'text-green-600 dark:text-green-400'}`}>
+                              ${parseAmount(row[col]).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                          ) : isFinancial && col === 'response_text' ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border ${
+                              !isDeclined 
+                                ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' 
+                                : 'bg-destructive/10 text-destructive border-destructive/20'
+                            }`}>
+                              {row[col] || 'Unknown'}
+                            </span>
+                          ) : col === 'location' ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${
+                                row[col]?.toLowerCase() === 'vegas' 
+                                ? 'bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' 
+                                : 'bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
+                            }`}>
+                                {row[col]}
+                            </span>
+                          ) : (
+                            <span className="block truncate max-w-[240px]" title={String(row[col])}>
+                               {row[col] ?? '—'}
+                            </span>
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+
+            {/* FOOTER - ONLY SHOW FOR FINANCIAL REPORTS */}
+            {filteredData.length > 0 && isFinancial && (
+              <TableFooter className="bg-muted/50 border-t border-border">
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={Math.max(1, visibleColumns.length - 1)} className="text-right pr-4 py-4">
+                    <div className="flex flex-col items-end">
+                      <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Total (Approved)</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-left pl-4 py-4 whitespace-nowrap">
+                     <span className="text-xl font-bold text-green-600 dark:text-green-400 font-mono block">
+                        ${netTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                     </span>
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
+            )}
+          </Table>
+        </div>
       </div>
+
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}

@@ -57,8 +57,41 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
+
+  /* * HIGH CONTRAST / OUTDOOR THEME 
+   * Optimized for Direct Sunlight Operation
+   * Uses Pure Black/White and Deep Blue for glare reduction
+   */
+  [data-theme='high-contrast'] {
+    --background: 0 0% 100%;       /* Pure White */
+    --foreground: 0 0% 0%;         /* Pure Black */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 220 100% 35%;       /* High Vis Blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 90%;         /* Light Grey separation */
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 20%;  /* Dark Grey (not faint) */
+    --accent: 0 0% 85%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 100% 50%;     /* Pure Red */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 0%;             /* Solid Black Borders */
+    --input: 0 0% 0%;
+    --ring: 220 100% 35%;
+    --radius: 0.25rem;             /* Sharper edges */
+    --chart-1: 220 100% 35%;
+    --chart-2: 0 0% 0%;
+    --chart-3: 0 0% 40%;
+    --chart-4: 0 0% 60%;
+    --chart-5: 0 0% 80%;
+  }
 }
 
+/* === BUTTON UTILITIES === */
 .normal_button {
   @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-4 py-2;
 }
@@ -66,12 +99,15 @@
 .normal_button_small {
   @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-6 px-2 py-1;
 }
+
 .normal_button_circular_small {
   @apply inline-flex items-center justify-center whitespace-nowrap rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-6 w-6;
 }
+
 .normal_button_large {
   @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-12 px-6 py-3;
 }
+
 .normal_button_circular {
   @apply inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 w-10;
 }
@@ -79,10 +115,12 @@
 .large_button_circular {
   @apply inline-flex items-center justify-center whitespace-nowrap rounded-full text-xs text-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-16 w-16 p-4;
 }
+
 .normal_button_xlarge {
   @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-xl font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-16 px-8 py-4;
 }
 
+/* === COLOR BUTTONS === */
 .red_button {
   @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-red-500  text-zinc-50 hover:bg-red-500/90 dark:bg-red-900 dark:text-zinc-50 dark:hover:bg-red-900/90 h-10 px-4 py-2;
 }
@@ -102,6 +140,8 @@
 .white_button {
   @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 h-10 px-4 py-2;
 }
+
+/* === ANT DESIGN OVERRIDES === */
 .ant-picker-content > thead > tr > th,
 .ant-picker-calendar-date-value {
   text-align: left;
@@ -110,6 +150,7 @@
   font-weight: bold;
 }
 
+/* === FONTS === */
 @font-face {
   font-family: 'banco';
   src:
@@ -118,6 +159,8 @@
     url('/fonts/Banco_Regular.ttf') format('opentype'),
     url('/fonts/Banco_Regular.ttf') format('ttf');
 }
+
+/* === COMPONENT STYLES === */
 .nav_head {
   font-family: 'banco', Fallback, sans-serif;
   padding-bottom: 0.5rem;
@@ -134,27 +177,37 @@
     /* padding-left: 4rem; */
   }
 }
+
 .maincard {
   @apply w-full rounded-lg border border-zinc-200  text-zinc-950 shadow-sm dark:border-zinc-800  dark:text-zinc-50;
 }
+
 .LocationCardStyle {
   @apply flex flex-col rounded-md p-1 shadow-none gap-1 dark:border-yellow-100;
 }
+
+/* Legacy box style - preserved */
 .itembox {
-  border: 1px solid rgba(255, 255, 0, 0.101);
+  border: 1px solid yellow;
   border-radius: 5px;
   padding: 3px;
+  padding-right: 2px;
+  padding-left: 2px;
   flex-wrap: nowrap;
 }
+
 .HourCardStyle {
   @apply rounded-md p-3 shadow-none flex-auto gap-3 dark:border-yellow-500;
 }
+
 .bookingcard {
   @apply rounded-md p-3 shadow-none flex-auto gap-3;
 }
+
 .bookingcardtitle {
   @apply p-2 gap-3 flex-auto space-x-2 space-y-2;
 }
+
 .daytotal {
   @apply text-start;
 }
@@ -164,15 +217,11 @@
 .menulinks {
   @apply text-center text-lg dark:text-yellow-500 text-black;
 }
-.itembox {
-  border: 1px solid yellow;
-  border-radius: 5px;
-  padding-right: 2px;
-  padding-left: 2px;
-}
+
 ::file-selector-button {
   display: none;
 }
+
 @keyframes rotate-180 {
   from {
     transform: rotate(0deg);
@@ -194,11 +243,57 @@
   background-color: #5e2a00ad !important;
 }
 
+/* === GLASS EFFECT UTILITIES (New Addition) === */
+/* === GLASS EFFECT UTILITIES === */
+.glass {
+  /* BASE SHARED STYLES */
+  @apply backdrop-blur-xl shadow-lg transition-all duration-300;
+  
+  /* LIGHT THEME GLASS 
+     - High opacity white (75%) for readability
+     - distinct white border to mimic glass edge
+  */
+  @apply bg-white/75 border border-white/60;
+
+  /* DARK THEME GLASS 
+     - Lower opacity black (60%) 
+     - Very subtle white border (10%) for that "premium" edge
+  */
+  @apply dark:bg-zinc-950/60 dark:border-white/10 dark:text-zinc-100;
+}
+
+/* HIGH CONTRAST OVERRIDE (Safety First)
+   - Disables glass in outdoor mode for maximum legibility
+*/
+[data-theme='high-contrast'] .glass {
+  @apply bg-white border-2 border-black backdrop-blur-none opacity-100 shadow-none;
+}
+
+/* ... keep the rest ... */
+
+/* === CRITICAL GLOBAL FIXES === */
 @layer base {
   * {
     @apply border-border;
   }
+
+  /* * FIX 1: FORCE TRANSPARENCY 
+   * This is the "Magic Fix". We must explicitly tell the browser that the 
+   * root HTML and Body elements are transparent. If we don't, the browser 
+   * defaults to white/black and hides your background image at z-index: -2.
+   */
+  html, body {
+    background-color: transparent !important;
+    background: transparent !important;
+  }
+
+  /* * FIX 2: PREVENT SIDE SCROLLING (Layout Shift)
+   * This prevents the page from wiggling left/right when the content 
+   * (like the account page buttons) is slightly too wide.
+   */
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    overflow-x: hidden; 
+    width: 100vw;
   }
 }

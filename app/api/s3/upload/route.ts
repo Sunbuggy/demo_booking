@@ -19,6 +19,42 @@ const s3Client = new S3Client({
   }
 });
 
+// Use the new Route Segment Config instead of export const config
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30; // 30 seconds max for uploads
+
+// Helper function to generate date-based filename with numbering for duplicates
+const generateDateBasedFileName = (originalFileName: string, existingKeys: string[] = []): string => {
+  const today = new Date().toISOString().split('T')[0];
+  const fileExtension = originalFileName.split('.').pop() || 
+                       originalFileName.includes('.') ? originalFileName.split('.').pop() : 'file';
+  
+  // Extract base name without extension for comparison
+  const baseName = today;
+  
+  // Find all existing keys that start with today's date
+  const existingFilesForDate = existingKeys.filter(key => {
+    const fileName = key.split('/').pop() || '';
+    return fileName.startsWith(today);
+  });
+  
+  // If no files exist for today, use just the date
+  if (existingFilesForDate.length === 0) {
+    return `${baseName}.${fileExtension}`;
+  }
+  
+  // Extract numbers from existing files (e.g., "2024-01-15(1).pdf" -> 1)
+  const numbers = existingFilesForDate.map(key => {
+    const fileName = key.split('/').pop() || '';
+    const match = fileName.match(/\((\d+)\)\./);
+    return match ? parseInt(match[1]) : 0;
+  });
+  
+  // Find the next available number
+  const nextNumber = Math.max(0, ...numbers) + 1;
+  return `${baseName}(${nextNumber}).${fileExtension}`;
+};
+
 export async function POST(req: NextRequest) {
   if (
     !process.env.STORAGE_ACCESSKEY ||
@@ -48,12 +84,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Add file size validation (50MB limit)
+    const maxFileSize = 50 * 1024 * 1024;
+    const oversizedFiles = files.filter(file => file.size > maxFileSize);
+    
+    if (oversizedFiles.length > 0) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: `The following files exceed the 50MB size limit: ${oversizedFiles.map(f => f.name).join(', ')}` 
+        },
+        { status: 413 }
+      );
+    }
+
     if (mode === 'single') {
       const file = files[0];
       const buffer = await file.arrayBuffer();
+      
+      // For single mode, use the original filename or generate date-based name
+      const fileKey = `${key}/${file.name}`;
+      
       const command = new PutObjectCommand({
         Bucket: bucket,
-        Key: key,
+        Key: fileKey,
         Body: Buffer.from(buffer),
         ContentType: contentType,
         ACL: 'public-read'
@@ -63,15 +117,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'File uploaded successfully',
-        key,
+        key: fileKey,
         endpoint,
-        url: `${endpoint}/${bucket}/${key}`
+        url: `${endpoint}/${bucket}/${fileKey}`
       });
     } else if (mode === 'multiple') {
+      // First, get existing files to check for naming conflicts
+      let existingKeys: string[] = [];
+      try {
+        const listObjects = await s3Client.send(
+          new ListObjectsV2Command({ Bucket: bucket, Prefix: key })
+        );
+        if (listObjects.Contents) {
+          existingKeys = listObjects.Contents.map(obj => obj.Key!).filter(Boolean);
+        }
+      } catch (error) {
+        console.log('Could not list existing objects, proceeding with upload...');
+      }
+
       const uploadResults = [];
       for (const file of files) {
         const buffer = await file.arrayBuffer();
-        const fileKey = `${key}/${file.name}`;
+        
+        // Generate date-based filename
+        const dateBasedFileName = generateDateBasedFileName(file.name, existingKeys);
+        const fileKey = `${key}/${dateBasedFileName}`;
+        
+        // Add this new file to existing keys for the next iteration
+        existingKeys.push(fileKey);
+        
         const command = new PutObjectCommand({
           Bucket: bucket,
           Key: fileKey,
@@ -83,7 +157,9 @@ export async function POST(req: NextRequest) {
         const endpoint = process.env.STORAGE_ENDPOINT!;
         uploadResults.push({
           key: fileKey,
-          url: `${endpoint}/${bucket}/${fileKey}`
+          url: `${endpoint}/${bucket}/${fileKey}`,
+          originalName: file.name,
+          dateBasedName: dateBasedFileName
         });
       }
       return NextResponse.json({
@@ -101,12 +177,13 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// ... rest of your existing GET, DELETE, and PUT methods remain the same ...
 export async function GET(req: Request) {
-  // if no s3 client throw an error
   const url = new URL(req.url);
   const bucket = url.searchParams.get('bucket') as string;
   const fetchOne = url.searchParams.get('fetchOne') as Boolean | null;
   const key = url.searchParams.get('key') as string;
+  
   if (fetchOne) {
     if (!bucket || !key) {
       return NextResponse.json(
@@ -115,10 +192,7 @@ export async function GET(req: Request) {
       );
     }
     try {
-      // Check if the object exists
       await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
-
-      // If the object exists, generate a signed URL
       const signedUrl = await getSignedUrl(
         s3Client,
         new GetObjectCommand({ Bucket: bucket, Key: key }),
@@ -131,7 +205,6 @@ export async function GET(req: Request) {
     } catch (error) {
       console.error('Error fetching object:', error);
       if (error instanceof Error && error.name === 'NotFound') {
-        // If the object does not exist, return null
         return NextResponse.json({
           key,
           url: null
@@ -160,7 +233,7 @@ export async function GET(req: Request) {
             Key: object.Key
           }),
           { expiresIn: 3600 }
-        ); // URL expires in 1 hour
+        );
         return {
           key: object.Key,
           url: signedUrl
@@ -168,7 +241,6 @@ export async function GET(req: Request) {
       })
     );
 
-    // Return the list of pictures with their URLs
     return NextResponse.json({
       objects
     });
@@ -180,6 +252,7 @@ export async function GET(req: Request) {
     );
   }
 }
+
 export async function DELETE(req: NextRequest) {
   if (
     !process.env.STORAGE_ACCESSKEY ||
@@ -206,7 +279,6 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Check if the file exists
     try {
       await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
     } catch (error) {
@@ -219,7 +291,6 @@ export async function DELETE(req: NextRequest) {
       throw error;
     }
 
-    // Delete the file
     const deleteCommand = new DeleteObjectCommand({
       Bucket: bucket,
       Key: key
@@ -239,6 +310,7 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
+
 export async function PUT(req: NextRequest) {
   if (
     !process.env.STORAGE_ACCESSKEY ||
@@ -258,13 +330,28 @@ export async function PUT(req: NextRequest) {
     const contentType = formData.get('contentType') as string;
     const key = formData.get('key') as string;
     const bucket = formData.get('bucket') as string;
+    
     if (files.length === 0 || !contentType || !key) {
       return NextResponse.json(
         { success: false, message: 'Missing required fields' },
         { status: 400 }
       );
     }
+
+    // Add size validation for PUT as well
+    const maxFileSize = 50 * 1024 * 1024;
     const file = files[0];
+    
+    if (file.size > maxFileSize) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: `File "${file.name}" exceeds the 50MB size limit` 
+        },
+        { status: 413 }
+      );
+    }
+
     const buffer = await file.arrayBuffer();
     const command = new PutObjectCommand({
       Bucket: bucket,

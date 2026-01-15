@@ -8,12 +8,10 @@ import {
   CardContent,
   CardFooter
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import TimePicker from '@/components/time-picker';
 import { vof_open_times } from '@/utils/helpers';
 import { type VehicleCounts } from '../serve-bookings/vof';
 import { PriceBreakdownDropdown } from '../breakdown-drop-down/vof';
-import AcceptHostedPage from '../../payment/acceptHosted';
 
 interface TabData {
   value: string;

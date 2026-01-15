@@ -118,16 +118,14 @@ export const getErrorRedirect = (
   );
 
 export const mb30_open_times = ['9 am (20% discount)', '11 am', '1 pm'];
-export const mb60_open_times = [
-  '8 am (20% discount)',
-  '10 am',
-  '12 pm',
-  '2 pm'
-];
+export const mb60_open_times = [ '8 am (20% discount)','10 am', '12 pm', '2 pm'];
 export const ffr_open_times = ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
 export const mb120_open_times = ['8 am ', '10 am'];
 export const vof_open_times = ['8 am'];
-export const atv_open_times = ['8 am'];
+export const atv30_open_times = ['8 am', '10 am', '12 pm'];
+export const atv60_open_times = ['8 am', '10 am', '12 pm'];
+export const ama_open_times = ['8 am'];
+
 export type MbjVehicle = {
   id: number;
   name: string;
@@ -281,7 +279,7 @@ export const vof_vehicles_list = [
   {
     id: 6,
     vehicle_id: 4,
-    name: '2 seat UTV $WD',
+    name: '2 seat UTV',
     seats: 2,
     pricing: {
       price: 799,
@@ -291,43 +289,102 @@ export const vof_vehicles_list = [
 ];
 
 export const atv_vehicles_list = [
+  // Full ATV vehicles
   {
     id: 1,
-    name: 'Valley of fire 180 mins',
+    name: 'Full size ATV',
     vehicle_id: 1,
     seats: 1,
     pricing: {
-      full_atv: 399
+      full_atv_30: 133,
+      full_atv_60: 209
     }
   },
+
+  // Medium ATV vehicles
   {
     id: 2,
-    name: 'Amargosa 240 mins',
+    name: 'Medium size ATV',
     vehicle_id: 2,
     seats: 1,
     pricing: {
-      full_atv: 499
+      medium_atv_30: 107,
+      medium_atv_60: 159
+    }
+  },
+
+];
+
+export const ama_vehicles_list = [
+  {
+    id: 1,
+    name: 'Full size ATV',
+    vehicle_id: 2,
+    seats: 1,
+    pricing: {
+      full_atv: 499,
+    }
+  },
+    {
+    id: 2,
+    name: '1 seat desert racer',
+    vehicle_id: 1,
+    seats: 1,
+    pricing: {
+      price: 699,
     }
   },
   {
     id: 3,
-    name: 'Vegas dunes 60 mins',
-    vehicle_id: 2,
-    seats: 1,
+    name: '2 seat desert racer',
+    vehicle_id: 1,
+    seats: 2,
     pricing: {
-      full_atv: 159
+      price: 999,
     }
   },
   {
     id: 4,
-    name: 'Vegas dunes 30 mins',
-    vehicle_id: 2,
-    seats: 1,
+    name: '4 seat desert racer',
+    vehicle_id: 1,
+    seats: 4,
     pricing: {
-      full_atv: 99
+      price: 1199,
+    }
+  },
+  {
+    id: 5,
+    name: '6 seat desert racer',
+    vehicle_id: 1,
+    seats: 6,
+    pricing: {
+      price: 1399,
+    }
+  },
+  {
+    id: 6,
+    vehicle_id: 7,
+    name: '2 seat UTV',
+    seats: 2,
+    pricing: {
+      price: 999,
+      name: '2 seat UTV'
+    }
+  },
+    {
+    id: 7,
+    vehicle_id: 8,
+    name: '4 seat UTV',
+    seats: 4,
+    pricing: {
+      price: 1199,
+      name: '4 seat UTV'
     }
   }
-];
+
+]
+
+
 
 const vehicles = [
   {
@@ -380,3 +437,11 @@ export const lasvegas_atv_tours = {
   title: 'Las Vegas Premium ATV Tours',
   src: '/atv-image.jpg'
 };
+
+export const amargosa = {
+  description: `You'll have 4 hours to EXPLORE the BIG SAND DUNES with SunBuggy Support staff on hand to show you around this sandy playground, ensuring that you have a great time and know where environmentally sensitive no-go areas are `,
+  title: 'Amargosa',
+  videoId: 'nwzufdhTZWw',
+  playlistId: 'PLrCmFi7dP5HwAWXYtkEUD09d6744ugRh0'
+};
+

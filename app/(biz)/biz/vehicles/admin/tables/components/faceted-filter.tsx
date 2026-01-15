@@ -18,13 +18,17 @@ import {
   CommandList,
   CommandSeparator
 } from '@/components/ui/command';
+// 1. ADD THIS IMPORT
+import { FleetIcon } from '@/components/fleet/FleetIconProvider';
+
 interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;
   title?: string;
   options: {
     label: string;
     value: string;
-    icon?: React.ComponentType<{ className?: string }>;
+    // Icon prop is now optional/legacy since we use FleetIcon
+    icon?: React.ComponentType<{ className?: string }>; 
   }[];
 }
 
@@ -110,9 +114,13 @@ export function DataTableFacetedFilter<TData, TValue>({
                     >
                       <CheckIcon className={cn('h-4 w-4')} />
                     </div>
-                    {option.icon && (
-                      <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                    )}
+                    
+                    {/* 2. REPLACED LEGACY ICON LOGIC WITH DYNAMIC FLEET ICON */}
+                    <FleetIcon 
+                      type={option.value} 
+                      className="mr-2 h-4 w-4 text-muted-foreground" 
+                    />
+
                     <span>{option.label}</span>
                     {facets?.get(option.value) && (
                       <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">

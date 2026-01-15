@@ -23,7 +23,7 @@ import ImageGrid from './image-grid';
 import { VehiclePics } from '../../admin/tables/components/row-actions';
 import { Button } from '@/components/ui/button';
 import DialogFactory from '@/components/dialog-factory';
-import ResponsiveImageUpload from './responsive-image-upload-form';
+import ResponsiveFileUpload from './responsive-file-upload';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { sendEmail } from '../actions/sendEmail';
@@ -62,7 +62,8 @@ const ExistingTagForm = ({
     created_at: tag?.created_at || null,
     created_by: tag?.created_by || null,
     id: tag?.id || '',
-    tag_type: tag?.tag_type || null
+    tag_type: tag?.tag_type || null,
+    closed_by: tag?.closed_by || null,
   });
 
   const handleSwitchChange = (checked: boolean) => {
@@ -74,24 +75,43 @@ const ExistingTagForm = ({
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
+  
     if (formValues.tag_status === 'closed') {
       const updatedFormValues: VehicleTagType = {
         ...formValues,
         updated_by: user.id,
         updated_at: new Date().toISOString(),
         close_tag_comment: `(${user.user_metadata.full_name}) ${formValues.close_tag_comment}`,
-        tag_status: 'closed'
+        tag_status: 'closed',
+        closed_by: user.id,
       };
-      // close the tag
+  
       await updateVehicleTag(supabase, updatedFormValues, tag?.id || '')
-        .then((res) => {
+        .then(async (res) => {
           toast({
             title: 'Success',
             description: 'Tag closed successfully',
             variant: 'success',
-            duration: 5000
+            duration: 5000,
           });
+  
+          // Update vehicle status to 'fine'
+          if (tag?.vehicle_id) {
+            const { error: vehicleError } = await supabase
+              .from('vehicles')
+              .update({ vehicle_status: 'fine' })
+              .eq('id', tag.vehicle_id);
+  
+            if (vehicleError) {
+              console.error('Error updating vehicle status:', vehicleError);
+              toast({
+                title: 'Error',
+                description: 'Failed to update vehicle status',
+                variant: 'destructive',
+                duration: 5000,
+              });
+            }
+          }
         })
         .catch((err) => {
           console.error(err);
@@ -99,7 +119,7 @@ const ExistingTagForm = ({
             title: 'Error',
             description: 'Error closing tag',
             variant: 'destructive',
-            duration: 5000
+            duration: 5000,
           });
         });
     } else {
@@ -107,7 +127,7 @@ const ExistingTagForm = ({
         ...formValues,
         updated_by: user.id,
         updated_at: new Date().toISOString(),
-        notes: tag?.notes + ' ' + formValues.notes
+        notes: tag?.notes + ' ' + formValues.notes,
       };
       await updateVehicleTag(supabase, updatedFormValues, tag?.id || '')
         .then((res) => {
@@ -115,7 +135,7 @@ const ExistingTagForm = ({
             title: 'Success',
             description: 'Tag updated successfully',
             variant: 'success',
-            duration: 5000
+            duration: 5000,
           });
         })
         .catch((err) => {
@@ -124,59 +144,10 @@ const ExistingTagForm = ({
             title: 'Error',
             description: 'Error updating tag',
             variant: 'destructive',
-            duration: 5000
+            duration: 5000,
           });
         });
     }
-    const { data: vehicleDetails } = await supabase
-      .from('vehicles')
-      .select('*')
-      .eq('id', id || '')
-      .single();
-
-    if (needsParts) {
-      try {
-        const emailContent = `
-          Vehicle Details: ${vehicleDetails?.type} ${vehicleDetails?.name} (${vehicleDetails?.pet_name ? vehicleDetails?.pet_name : vehicleDetails?.make})
-          
-          Tag Notes: ${formValues.notes}
-          
-          Parts Request: ${partsRequest}
-
-          <a href="https://book.sunbuggy.com/biz/vehicles/${id}">Link to vehicle</a>
-
-        `;
-
-        await sendEmail(
-          `Parts Request for a ${vehicleDetails?.type} Vehicle ${vehicleDetails?.name} (${vehicleDetails?.pet_name ? vehicleDetails?.pet_name : vehicleDetails?.make})`,
-          emailContent,
-          `${user.email}` || 'cyberteam@sunbuggy.com',
-          `${user.user_metadata.full_name}`
-        );
-        toast({
-          title: 'Success',
-          description: 'Parts request email sent successfully',
-          variant: 'success',
-          duration: 3000
-        });
-      } catch (error) {
-        console.error('Failed to send parts request email:', error);
-        toast({
-          title: 'Warning',
-          description: 'Tag updated but failed to send parts request email',
-          variant: 'destructive',
-          duration: 3000
-        });
-      }
-    }
-
-    checkAndChangeVehicleStatus(supabase, tag?.vehicle_id || '')
-      .then((res) => {
-        window.location.reload();
-      })
-      .catch((err) => {
-        console.error(err);
-      });
   };
 
   const new_created_by_id = tag?.created_by as string;
@@ -408,7 +379,7 @@ const ExistingTagForm = ({
                   isDialogOpen={isNewUploadDialogOpen}
                   description="Upload a profile picture for the vehicle."
                   children={
-                    <ResponsiveImageUpload
+                    <ResponsiveFileUpload
                       url_key={`vehicle_damage/${tag?.vehicle_id}/${tag?.id}`}
                     />
                   }

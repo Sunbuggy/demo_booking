@@ -1,46 +1,31 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+// utils/supabase/server.ts
+"use server";
+
 import { cookies } from 'next/headers';
-import { Database } from '@/types_db';
+import { createServerClient } from '@supabase/ssr';
 
-// Define a function to create a Supabase client for server-side operations
-// The function takes a cookie store created with next/headers cookies as an argument
-export const createClient = () => {
-  const cookieStore = cookies();
+export async function createClient() {
+  const cookieStore = await cookies();  // ← Must await in Next.js 16
 
-  return createServerClient<Database>(
-    // Pass Supabase URL and anonymous key from the environment to the client
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-
-    // Define a cookies object with methods for interacting with the cookie store and pass it to the client
     {
       cookies: {
-        // The get method is used to retrieve a cookie by its name
         getAll() {
           return cookieStore.getAll();
         },
-        // The set method is used to set a cookie with a given name, value, and options
-        setAll(cookiesToSet) {
+        // FIX: Explicitly type the parameter as an array
+setAll(cookiesToSet: any[]) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
           } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            // Ignore if called from Server Component (safe during render)
           }
-        }
-        // The remove method is used to delete a cookie by its name
-        // remove(name: string, options: CookieOptions) {
-        //   try {
-        //     cookieStore.set({ name, value: '', ...options });
-        //   } catch (error) {
-        //     // If the remove method is called from a Server Component, an error may occur
-        //     // This can be ignored if there is middleware refreshing user sessions
-        //   }
-        // }
-      }
+        },
+      },
     }
   );
-};
+}

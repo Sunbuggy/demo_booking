@@ -2,17 +2,20 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
+
 const formatPhone = (phone: string) => {
   const formatted = phone.replace(/\D/g, '');
   return formatted.length === 10 ? `+1${formatted}` : formatted;
 };
+
 export async function updateSSTClaimed(
   sstId: string,
   userId: string,
   userPhone: string
 ) {
-  const supabase = createClient();
+  const supabase = await await createClient();
 
+  // First update the claim status
   const { error } = await supabase
     .from('vehicle_locations')
     .update({
@@ -26,6 +29,47 @@ export async function updateSSTClaimed(
     throw new Error('Failed to update SST');
   }
 
+  // Fetch all necessary data for the SMS
+  const { data: vehicleLocation, error: fetchError } = await supabase
+    .from('vehicle_locations')
+    .select(`
+      latitude, 
+      longitude,
+      city,
+      dispatch_notes,
+      vehicle_id
+    `)
+    .eq('id', sstId)
+    .single();
+
+  if (fetchError) {
+    throw new Error('Failed to fetch vehicle location');
+  }
+
+  let vehicleName = 'Unknown Vehicle';
+  if (vehicleLocation.vehicle_id) {
+    const { data: vehicle, error: vehicleError } = await supabase
+      .from('vehicles')
+      .select('name')
+      .eq('id', vehicleLocation.vehicle_id)
+      .single();
+
+    if (!vehicleError && vehicle) {
+      vehicleName = vehicle.name;
+    }
+  }
+
+  const googleMapsLink = `https://www.google.com/maps?q=${vehicleLocation.latitude},${vehicleLocation.longitude}`;
+  
+  // Construct the SMS message with all the details
+  const smsMessage = `
+    Congrats! You have successfully claimed this SST:
+    Vehicle: ${vehicleName}
+    Location: ${vehicleLocation.city || 'N/A'}
+    Dispatch Notes: ${vehicleLocation.dispatch_notes || 'N/A'}
+    Map: ${googleMapsLink}
+  `.replace(/^\s+/gm, ''); // Remove leading whitespace from each line
+
   const options = {
     method: 'POST',
     headers: {
@@ -35,7 +79,7 @@ export async function updateSSTClaimed(
     body: JSON.stringify({
       infer_country_code: false,
       user_id: userId,
-      text: `Congrats!, You have successfully claimed this SST, You can close the  SST here: ${process.env.NEXT_PUBLIC_SITE_URL}/biz/sst/cases/claimed/${sstId}`,
+      text: smsMessage,
       to_numbers: formatPhone(userPhone)
     })
   };
@@ -54,7 +98,7 @@ export async function updateSSTClaimed(
 }
 
 export async function fetchCasesData() {
-  const supabase = createClient();
+  const supabase = await await createClient();
 
   const {
     data: { user }

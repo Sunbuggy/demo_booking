@@ -143,3 +143,23 @@ create policy "Can only view own subs data." on subscriptions for select using (
  */
 drop publication if exists supabase_realtime;
 create publication supabase_realtime for table products, prices;
+-- 1. Future-proof the users table for OCTO/Viator integrations
+ALTER TABLE public.users 
+ADD COLUMN IF NOT EXISTS external_metadata JSONB DEFAULT '{}'::jsonb;
+
+-- 2. Add User Types (Partner/Customer/Employee)
+-- We use a DO block to safely create the ENUM only if it doesn't exist
+DO $$ BEGIN
+    CREATE TYPE user_type AS ENUM ('employee', 'customer', 'partner');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+ALTER TABLE public.users 
+ADD COLUMN IF NOT EXISTS user_type user_type DEFAULT 'customer';
+
+-- 3. Track correction requests (Counter)
+-- Note: This assumes you have already created the 'employee_details' table. 
+-- If you haven't, you need to create that table first.
+ALTER TABLE public.employee_details 
+ADD COLUMN IF NOT EXISTS time_correction_count INT DEFAULT 0;

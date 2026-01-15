@@ -1,161 +1,103 @@
 'use client';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Database } from '@/types_db';
-import { ColumnDef } from '@tanstack/react-table';
-import { DataTableColumnHeader } from '../components/column-header';
-import { DataTableRowActions } from '../components/row-actions';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { UserType } from '../../../types';
 
-export const columns: ColumnDef<UserType, any>[] = [
-  // {
-  //   id: 'select',
-  //   header: ({ table }) => (
-  //     <Checkbox
-  //       checked={
-  //         table.getIsAllPageRowsSelected() ||
-  //         (table.getIsSomePageRowsSelected() && 'indeterminate')
-  //       }
-  //       onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-  //       aria-label="Select all"
-  //       className="translate-y-[2px]"
-  //     />
-  //   ),
-  //   cell: ({ row }) => (
-  //     <Checkbox
-  //       checked={row.getIsSelected()}
-  //       onCheckedChange={(value) => row.toggleSelected(!!value)}
-  //       aria-label="Select row"
-  //       className="translate-y-[2px]"
-  //     />
-  //   ),
-  //   enableSorting: false,
-  //   enableHiding: false
-  // },
-  {
-    accessorKey: 'avatar_url',
-    header: ({ column }) => <DataTableColumnHeader column={column} title="" />,
-    cell: ({ row }) => {
-      const name = row.getValue('full_name') as string;
-      const initials = name
-        .split(' ')
-        .map((n) => n[0])
-        .join('');
-      return (
-        <div className="w-[50px]">
-          <Avatar className="h-9 w-9">
-            <AvatarImage
-              src={row.getValue('avatar_url')}
-              alt={name || 'no name'}
-            />
-            <AvatarFallback>{initials}</AvatarFallback>
-          </Avatar>
-        </div>
-      );
-    },
-    enableSorting: false
-  },
+import React from 'react';
+import { ColumnDef } from '@tanstack/react-table';
+
+// UI Components
+import { Badge } from '@/components/ui/badge';
+
+// Custom Components
+import { DataTableColumnHeader } from '../components/column-header';
+import UserStatusAvatar from '@/components/UserStatusAvatar'; 
+import { USER_LEVELS } from '@/lib/constants/user-levels';
+
+// ---------------------------------------------------------
+// Column Definitions
+// ---------------------------------------------------------
+
+export const columns: ColumnDef<any, any>[] = [
+  // 1. CONSOLIDATED USER COLUMN (Avatar + Name)
   {
     accessorKey: 'full_name',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Name" />
+      <DataTableColumnHeader column={column} title="Customer" />
     ),
-    cell: ({ row }) => (
-      <div className="w-[180px]">{row.getValue('full_name')}</div>
-    ),
+    cell: ({ row }) => {
+      const user = row.original;
+      
+      return (
+        <div className="flex items-center gap-3 py-1">
+          {/* Avatar Component */}
+          <UserStatusAvatar 
+            user={user} 
+            currentUserLevel={USER_LEVELS.ADMIN} 
+            size="sm" 
+          />
+          
+          <div className="flex flex-col min-w-0">
+            {/* FIX: Replaced 'text-white' with 'text-foreground'.
+               This ensures the name is Black in Light Mode and White in Dark Mode.
+            */}
+            <span className="font-bold text-foreground truncate">
+              {user.full_name}
+            </span>
+            {/* Semantic: Primary color for the verification tag */}
+            <span className="text-[10px] text-primary uppercase font-black tracking-widest">
+              Verified Customer
+            </span>
+          </div>
+        </div>
+      );
+    },
+    enableSorting: true,
     enableHiding: false
   },
+
+  // 2. ROLE COLUMN
+  {
+    accessorKey: 'user_level',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Level" />
+    ),
+    cell: ({ row }) => {
+      const userLevel = Number(row.getValue('user_level'));
+      return (
+        <div className="w-[40px]">
+          {/* FIX: Removed hardcoded 'bg-zinc-900' which looked like a black hole in Light Mode.
+             Used variant='secondary' for a soft gray/muted look that works in both themes.
+          */}
+          <Badge variant="secondary" className="font-mono font-bold justify-center w-full">
+            {userLevel}
+          </Badge>
+        </div>
+      );
+    }
+  },
+
+  // 3. EMAIL COLUMN
   {
     accessorKey: 'email',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Email" />
     ),
-    cell: ({ row }) => <div className="w-[180px]">{row.getValue('email')}</div>
+    cell: ({ row }) => (
+      // Semantic: muted-foreground for secondary text
+      <div className="w-[200px] truncate font-mono text-xs text-muted-foreground" title={row.getValue('email')}>
+        {row.getValue('email')}
+      </div>
+    )
   },
-  // {
-  //   accessorKey: 'user_level',
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title="Role" />
-  //   ),
-  //   cell: ({ row }) => (
-  //     <div className="w-[80px]">{row.getValue('user_level')}</div>
-  //   )
-  // },
-  // {
-  //   accessorKey: 'title',
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title="Title" />
-  //   ),
-  //   cell: ({ row }) => {
-  //     const label = labels.find((label) => label.value === row.original.label);
 
-  //     return (
-  //       <div className="flex space-x-2">
-  //         {label && <Badge variant="outline">{label.label}</Badge>}
-  //         <span className="max-w-[500px] truncate font-medium">
-  //           {row.getValue('title')}
-  //         </span>
-  //       </div>
-  //     );
-  //   }
-  // },
-  // {
-  //   accessorKey: 'status',
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title="Status" />
-  //   ),
-  //   cell: ({ row }) => {
-  //     const status = statuses.find(
-  //       (status) => status.value === row.getValue('status')
-  //     );
-
-  //     if (!status) {
-  //       return null;
-  //     }
-
-  //     return (
-  //       <div className="flex w-[100px] items-center">
-  //         {status.icon && (
-  //           <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-  //         )}
-  //         <span>{status.label}</span>
-  //       </div>
-  //     );
-  //   },
-  //   filterFn: (row, id, value) => {
-  //     return value.includes(row.getValue(id));
-  //   }
-  // },
-  // {
-  //   accessorKey: 'priority',
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title="Priority" />
-  //   ),
-  //   cell: ({ row }) => {
-  //     const priority = priorities.find(
-  //       (priority) => priority.value === row.getValue('priority')
-  //     );
-
-  //     if (!priority) {
-  //       return null;
-  //     }
-
-  //     return (
-  //       <div className="flex items-center">
-  //         {priority.icon && (
-  //           <priority.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-  //         )}
-  //         <span>{priority.label}</span>
-  //       </div>
-  //     );
-  //   },
-  //   filterFn: (row, id, value) => {
-  //     return value.includes(row.getValue(id));
-  //   }
-  // },
+  // 4. PHONE COLUMN
   {
-    id: 'actions',
-    cell: ({ row }) => <DataTableRowActions row={row} />
+    accessorKey: 'phone',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Phone" />
+    ),
+    cell: ({ row }) => (
+      <div className="w-[120px] font-mono text-xs text-muted-foreground">
+        {row.getValue('phone') || 'NO_PHONE'}
+      </div>
+    )
   }
 ];

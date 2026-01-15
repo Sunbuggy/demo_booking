@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { MixerHorizontalIcon } from '@radix-ui/react-icons';
+
 interface DataTableViewOptionsProps<TData> {
   table: Table<TData>;
 }
@@ -23,7 +24,7 @@ export function DataTableViewOptions<TData>({
         <Button
           variant="outline"
           size="sm"
-          className="ml-auto hidden h-8 lg:flex"
+          className="h-8"
         >
           <MixerHorizontalIcon className="mr-2 h-4 w-4" />
           View
