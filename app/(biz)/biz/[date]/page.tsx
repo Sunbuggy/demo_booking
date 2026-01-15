@@ -62,15 +62,7 @@ function BizContent({
 }: any) {
   const hasReservations = reservations.length > 0;
   let sortedData = hasReservations ? getTimeSortedData(reservations) : null;
-// --- 🔴 ADD THIS DEBUG BLOCK 🔴 ---
-  if (sortedData) {
-    console.log("---------------- DIAGNOSTIC START ----------------");
-    console.log("Type of sortedData:", typeof sortedData);
-    console.log("Is Array?", Array.isArray(sortedData));
-    console.log("Raw Keys:", Object.keys(sortedData));
-    console.log("Sample Value (first key):", sortedData[Object.keys(sortedData)[0]]?.[0]); // Peek at one reservation
-    console.log("---------------- DIAGNOSTIC END ------------------");
-  }
+
   // ------------------------------------
   // [FIX] Updated sorting logic to handle 12-hour format (AM/PM) correctly.
   // Previous parseInt() logic caused 2PM (int 2) to sort before 8AM (int 8).
