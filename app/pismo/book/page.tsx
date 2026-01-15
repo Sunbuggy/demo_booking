@@ -151,6 +151,8 @@ export default function PismoBookingPage() {
         paymentType={paymentType} setPaymentType={setPaymentType}
         customAmount={customAmount} setCustomAmount={setCustomAmount}
         useCustomAmount={useCustomAmount} setUseCustomAmount={setUseCustomAmount}
+        duration={durationHours || 0}
+        startTime={startTime}
       />
     </div>
   );
