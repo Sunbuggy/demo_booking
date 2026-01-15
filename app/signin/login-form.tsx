@@ -4,38 +4,37 @@ import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FaGoogle, FaEnvelope, FaLock, FaMagic } from 'react-icons/fa';
+import { FaGoogle, FaEnvelope, FaLock, FaArrowLeft, FaMagic } from 'react-icons/fa';
 import { toast } from 'sonner';
+
+type ViewState = 'password' | 'magic_link' | 'forgot_password';
 
 export default function SmartLoginForm({ initialMessage }: { initialMessage?: string }) {
   const supabase = createClient();
   const [isLoading, setIsLoading] = useState(false);
-  const [view, setView] = useState<'password' | 'magic_link'>('password'); // Default view
+  const [view, setView] = useState<ViewState>('password');
 
-  // Handle Google Login (The "Easy Button")
+  // 1. Google Login
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
+          // Dynamic Redirect: Sends them back to wherever they currently are
           redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            // Forces the account chooser so they don't get stuck in a loop
-            // if they have multiple Google accounts (Personal vs Work).
-            prompt: 'select_account', 
-          },
+          queryParams: { prompt: 'select_account' },
         },
       });
       if (error) throw error;
     } catch (error: any) {
-      toast.error('Google Sign-In Failed: ' + error.message);
+      toast.error(error.message);
       setIsLoading(false);
     }
   };
 
-  // Handle Email Login
-  const handleEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+  // 2. Email Logic
+  const handleEmailSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     const formData = new FormData(e.currentTarget);
@@ -43,117 +42,179 @@ export default function SmartLoginForm({ initialMessage }: { initialMessage?: st
     const password = formData.get('password') as string;
 
     try {
+      // SCENARIO A: Password Login
       if (view === 'password') {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // Success handled by middleware redirect
-        window.location.href = '/biz'; 
-      } else {
-        // Magic Link
+        window.location.href = '/biz'; // Hard redirect to Dashboard
+      } 
+      
+      // SCENARIO B: "Email me a link" (Magic Link)
+      else if (view === 'magic_link') {
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
+            // FIX: Uses window.location.origin to support Localhost AND Production
             emailRedirectTo: `${window.location.origin}/auth/callback`,
+            shouldCreateUser: false, // Don't create new accounts via this form if you want to restrict it
           },
         });
         if (error) throw error;
-        toast.success('Check your email for the magic link!');
+        toast.success(`Login link sent to ${email}! Check your inbox.`);
       }
+
+      // SCENARIO C: Forgot Password
+      else if (view === 'forgot_password') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+           // Redirects them to callback, which logs them in so they can change password
+           redirectTo: `${window.location.origin}/auth/callback?next=/account`,
+        });
+        if (error) throw error;
+        toast.success(`Password reset link sent to ${email}`);
+      }
+      
     } catch (error: any) {
-      toast.error(error.message);
+      console.error(error);
+      toast.error(error.message || 'Authentication failed');
+      setIsLoading(false);
+    } finally {
+      // Keep loading true for redirects to prevent UI flicker
+      if (view === 'password') return;
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="bg-slate-900 py-8 px-4 shadow rounded-lg sm:px-10 border border-slate-800">
+    // SEMANTIC: Card Container (bg-card, border-border)
+    // Removed hardcoded bg-slate-900
+    <div className="bg-card text-card-foreground py-8 px-4 shadow-xl rounded-lg sm:px-10 border border-border animate-in fade-in zoom-in-95 duration-300">
       
-      {/* 1. GOOGLE BUTTON (Primary Action) */}
-      <div className="mb-6">
-        <Button
-          onClick={handleGoogleLogin}
-          disabled={isLoading}
-          variant="outline"
-          className="w-full flex justify-center items-center gap-3 py-6 text-base font-medium bg-white text-slate-900 hover:bg-slate-100 border-0"
-        >
-          <FaGoogle className="text-red-500" />
-          Sign in with Google
-        </Button>
+      {/* HEADER */}
+      <div className="mb-6 text-center">
+        {view === 'password' && <h3 className="text-lg font-medium text-foreground">Sign in with Email</h3>}
+        {view === 'magic_link' && <h3 className="text-lg font-medium text-foreground">Sign in without Password</h3>}
+        {view === 'forgot_password' && <h3 className="text-lg font-medium text-foreground">Reset Password</h3>}
       </div>
 
-      <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-700" />
-        </div>
-        <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-slate-900 text-slate-500 uppercase">Or continue with</span>
-        </div>
-      </div>
+      {/* GOOGLE BUTTON (Only in Password View) */}
+      {view === 'password' && (
+        <>
+          <div className="mb-6">
+            <Button
+              onClick={handleGoogleLogin}
+              disabled={isLoading}
+              variant="outline"
+              // SEMANTIC: Button (bg-background, text-foreground, border-input)
+              className="w-full flex justify-center items-center gap-3 py-6 text-base font-medium bg-background text-foreground hover:bg-muted border border-input shadow-sm transition-colors"
+            >
+              <FaGoogle className="text-red-500" />
+              Sign in with Google
+            </Button>
+          </div>
 
-      {/* 2. EMAIL FORM */}
-      <form className="space-y-4" onSubmit={handleEmailLogin}>
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-card text-muted-foreground uppercase">Or use email</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* FORM */}
+      <form className="space-y-4" onSubmit={handleEmailSubmit}>
+        
+        {/* Email Input */}
         <div>
-          <label className="block text-sm font-medium text-slate-300">Email address</label>
+          <label className="block text-sm font-medium text-muted-foreground">Email address</label>
           <div className="mt-1 relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaEnvelope className="text-slate-500" />
+              <FaEnvelope className="text-muted-foreground" />
             </div>
+            {/* SEMANTIC: Input (bg-background, border-input, text-foreground) */}
             <Input 
               name="email" 
               type="email" 
               required 
               placeholder="you@sunbuggy.com"
-              className="pl-10 bg-slate-950 border-slate-700"
+              className="pl-10 bg-background border-input text-foreground focus:ring-2 focus:ring-ring focus:border-input"
             />
           </div>
         </div>
 
+        {/* Password Input (Conditional) */}
         {view === 'password' && (
           <div>
-            <label className="block text-sm font-medium text-slate-300">Password</label>
+            <div className="flex justify-between items-center">
+                <label className="block text-sm font-medium text-muted-foreground">Password</label>
+                <button 
+                  type="button"
+                  onClick={() => setView('forgot_password')}
+                  // SEMANTIC: Link (text-primary)
+                  className="text-xs text-primary hover:text-primary/80 hover:underline"
+                >
+                  Forgot password?
+                </button>
+            </div>
             <div className="mt-1 relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FaLock className="text-slate-500" />
+                <FaLock className="text-muted-foreground" />
               </div>
               <Input 
                 name="password" 
                 type="password" 
                 required 
                 placeholder="••••••••"
-                className="pl-10 bg-slate-950 border-slate-700"
+                className="pl-10 bg-background border-input text-foreground focus:ring-2 focus:ring-ring focus:border-input"
               />
             </div>
           </div>
         )}
 
+        {/* Submit Button */}
+        {/* SEMANTIC: Primary Button (bg-primary, text-primary-foreground) */}
         <Button 
           type="submit" 
           disabled={isLoading}
-          className="w-full bg-slate-800 hover:bg-slate-700 text-white"
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-5 border border-primary shadow-md transition-all"
         >
-          {isLoading ? 'Signing in...' : view === 'password' ? 'Sign In' : 'Send Magic Link'}
+          {isLoading ? 'Processing...' : (
+             view === 'password' ? 'Sign In' : 
+             view === 'forgot_password' ? 'Send Reset Link' : 
+             'Email me a Login Link'
+          )}
         </Button>
       </form>
 
-      {/* 3. TOGGLE VIEW (Preference Switcher) */}
-      <div className="mt-6 flex justify-center">
-        <button
-          onClick={() => setView(view === 'password' ? 'magic_link' : 'password')}
-          className="text-sm text-yellow-500 hover:text-yellow-400 font-medium flex items-center gap-2"
-        >
-          {view === 'password' ? (
-            <>Use Magic Link instead <FaMagic /></>
-          ) : (
-             <>Use Password instead <FaLock /></>
-          )}
-        </button>
+      {/* FOOTER SWITCHERS */}
+      <div className="mt-6 flex flex-col gap-3 justify-center items-center">
+        
+        {view === 'password' && (
+           <button
+             type="button"
+             onClick={() => setView('magic_link')}
+             className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 group transition-colors"
+           >
+             No password? <span className="text-primary underline group-hover:text-primary/80">Email me a login link</span> <FaMagic className="text-xs text-primary" />
+           </button>
+        )}
+
+        {(view === 'magic_link' || view === 'forgot_password') && (
+           <button
+             type="button"
+             onClick={() => setView('password')}
+             className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
+           >
+             <FaArrowLeft className="text-xs" /> Back to Password Login
+           </button>
+        )}
       </div>
 
       {initialMessage && (
-        <div className="mt-4 p-3 bg-red-900/20 border border-red-900/50 rounded text-red-200 text-sm text-center">
+        // SEMANTIC: Error/Destructive Message
+        <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded text-destructive text-sm text-center font-medium">
           {initialMessage}
         </div>
       )}

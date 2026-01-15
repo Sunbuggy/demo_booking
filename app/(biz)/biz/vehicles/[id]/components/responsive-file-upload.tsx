@@ -1,6 +1,7 @@
 'use client'; 
 import { Label } from '@/components/ui/label';
-import { CameraIcon, UploadIcon, Trash2Icon, FileTextIcon } from 'lucide-react';
+// FIX: Added Loader2 to the imports below
+import { CameraIcon, UploadIcon, Trash2Icon, FileTextIcon, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import React, { useState, FormEvent, useRef, useEffect } from 'react';
 import { DialogClose } from '@/components/ui/dialog';
@@ -219,8 +220,8 @@ export default function ResponsiveFileUpload({
         description: (
           <div className="space-y-2">
             {errors.slice(0, 3).map((error, i) => (
-              <div key={i} className="border-l-2 border-red-500 pl-3">
-                <p className="font-medium">{error.title}</p>
+              <div key={i} className="border-l-2 border-destructive pl-3">
+                <p className="font-medium text-destructive">{error.title}</p>
                 <p className="text-sm text-muted-foreground">{error.details}</p>
               </div>
             ))}
@@ -263,28 +264,29 @@ export default function ResponsiveFileUpload({
           alt={`Preview ${file.name}`}
           width={200}
           height={200}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover rounded-md"
           unoptimized
         />
       );
     } else if (file.type === 'application/pdf') {
       return (
-        <div className="flex flex-col items-center justify-center h-full bg-gray-100 p-4">
-          <FileTextIcon className="h-12 w-12 text-red-500" />
-          <span className="text-xs mt-2 text-center font-medium">PDF Document</span>
-          <span className="text-xs text-gray-500 text-center mt-1">
+        // SEMANTIC: Card Background for file preview
+        <div className="flex flex-col items-center justify-center h-full bg-muted p-4 rounded-md">
+          <FileTextIcon className="h-12 w-12 text-destructive" />
+          <span className="text-xs mt-2 text-center font-medium text-foreground">PDF Document</span>
+          <span className="text-xs text-muted-foreground text-center mt-1">
             {file.name}
           </span>
         </div>
       );
     } else {
       return (
-        <div className="flex flex-col items-center justify-center h-full bg-gray-100 p-4">
-          <FileTextIcon className="h-12 w-12 text-blue-500" />
-          <span className="text-xs mt-2 text-center font-medium">
+        <div className="flex flex-col items-center justify-center h-full bg-muted p-4 rounded-md">
+          <FileTextIcon className="h-12 w-12 text-primary" />
+          <span className="text-xs mt-2 text-center font-medium text-foreground">
             {file.type.split('/')[1]?.toUpperCase() || 'File'}
           </span>
-          <span className="text-xs text-gray-500 text-center mt-1">
+          <span className="text-xs text-muted-foreground text-center mt-1">
             {file.name}
           </span>
         </div>
@@ -308,7 +310,6 @@ export default function ResponsiveFileUpload({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Check if we're still capturing an image
     if (isCapturing) {
       toast({
         title: 'Please wait',
@@ -349,7 +350,6 @@ export default function ResponsiveFileUpload({
     formData.append('mode', single ? 'single' : 'multiple');
     formData.append('key', url_key);
     
-    // Set appropriate content type
     if (isGIFOnly) {
       formData.append('contentType', 'image/gif');
     } else if (isPDFOnly) {
@@ -363,24 +363,21 @@ export default function ResponsiveFileUpload({
     });
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload`,
-        {
+      // FIX: Use relative path to avoid CORS issues on localhost
+      // This will correctly route to your Next.js API handler
+      const response = await fetch('/api/s3/upload', {
           method: updateFile ? 'PUT' : 'POST',
           body: formData
-        }
-      );
+      });
 
       if (!response.ok) {
         let errorDetails = 'Unknown error occurred';
-        
         try {
           const errorData = await response.json();
           errorDetails = errorData.message || errorData.error || JSON.stringify(errorData);
         } catch (e) {
           errorDetails = `Server responded with status ${response.status}`;
         }
-
         throw new Error(errorDetails);
       }
 
@@ -400,7 +397,8 @@ export default function ResponsiveFileUpload({
             )}
           </div>
         ),
-        variant: 'success',
+        // Note: 'success' variant might need to be 'default' or a custom variant depending on your UI lib configuration
+        variant: 'default', 
         duration: 5000
       });
 
@@ -442,25 +440,31 @@ export default function ResponsiveFileUpload({
 
   return (
     <form onSubmit={handleSubmit} ref={formRef} className="space-y-4">
+      {/* CAMERA MODAL */}
       {cameraActive ? (
-        <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center h-full p-8">
-          <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-            className="w-full h-full max-w-3xl"
-          />
-          <div className="flex gap-4 mt-4">
+        <div className="fixed inset-0 bg-background/95 z-50 flex flex-col items-center justify-center h-full p-8 backdrop-blur-sm animate-in fade-in">
+          <div className="relative w-full max-w-3xl aspect-video bg-black rounded-lg overflow-hidden shadow-2xl border border-border">
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                className="w-full h-full object-cover"
+              />
+          </div>
+          <div className="flex gap-4 mt-6">
             <Button 
               variant="destructive" 
               onClick={() => setCameraActive(false)}
               disabled={isCapturing}
+              size="lg"
             >
               Cancel
             </Button>
             <Button 
               onClick={captureImage}
               disabled={isCapturing}
+              size="lg"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {isCapturing ? 'Capturing...' : 'Capture Photo'}
             </Button>
@@ -469,17 +473,19 @@ export default function ResponsiveFileUpload({
         </div>
       ) : null}
 
+      {/* EMPTY STATE / DROPZONE */}
       {selectedFiles.length === 0 ? (
         <div className="space-y-2">
           <Label
             htmlFor="file-upload"
-            className="flex flex-col items-center justify-center gap-2 text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-6 text-center cursor-pointer hover:border-primary transition-colors min-h-[180px]"
+            // SEMANTIC: Dropzone Styling (bg-card, border-border, hover:border-primary)
+            className="flex flex-col items-center justify-center gap-2 text-sm font-medium border-2 border-dashed border-border bg-card/50 rounded-lg p-6 text-center cursor-pointer hover:border-primary hover:bg-card transition-all min-h-[180px] group"
           >
-            <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <span className="mt-2 block text-sm font-semibold">
+            <UploadIcon className="mx-auto h-12 w-12 text-muted-foreground group-hover:text-primary transition-colors" />
+            <span className="mt-2 block text-sm font-semibold text-foreground">
               Click to upload {getTitleText()}
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               {maxFiles > 1 ? `Maximum ${maxFiles} ${getTitleText()} allowed` : 'Single file upload'}
               {acceptedFormats && ` • Accepted formats: ${acceptedFormats}`}
               {renamePDFsToDate && ` • Files will be renamed to date format`}
@@ -495,24 +501,28 @@ export default function ResponsiveFileUpload({
               ref={fileInputRef}
             />
           </Label>
+          
           {acceptsImages && !isGIFOnly && (
             <Button
               type="button"
-              className="flex items-center justify-center gap-2 text-sm font-medium border-2 border-dashed dark:border-gray-300 rounded-md p-4 w-full hover:border-primary transition-colors"
+              variant="outline"
+              // SEMANTIC: Camera Button
+              className="flex items-center justify-center gap-2 text-sm font-medium border-2 border-dashed border-border bg-card/50 rounded-lg p-4 w-full hover:border-primary hover:bg-card transition-all h-auto py-4"
               onClick={() => setCameraActive(true)}
               disabled={isCapturing}
             >
-              <CameraIcon className="h-6 w-6 text-gray-400" />
-              <span className="font-semibold">
+              <CameraIcon className="h-6 w-6 text-muted-foreground" />
+              <span className="font-semibold text-foreground">
                 {isCapturing ? 'Processing...' : 'Take a picture'}
               </span>
             </Button>
           )}
         </div>
       ) : (
+        // SELECTED FILES VIEW
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-sm font-medium">
+            <h3 className="text-sm font-medium text-foreground">
               Selected {selectedFiles.length} {getTitleText().slice(0, -1)}{selectedFiles.length !== 1 ? 's' : ''}
             </h3>
             <Button
@@ -520,7 +530,7 @@ export default function ResponsiveFileUpload({
               variant="ghost"
               size="sm"
               onClick={clearAllFiles}
-              className="text-red-500 hover:text-red-600"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
               disabled={isCapturing}
             >
               <Trash2Icon className="h-4 w-4 mr-2" />
@@ -528,25 +538,29 @@ export default function ResponsiveFileUpload({
             </Button>
           </div>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto p-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto p-1 custom-scrollbar">
             {selectedFiles.map((file, index) => (
               <div key={`${file.name}-${index}`} className="relative group">
-                <div className="aspect-square overflow-hidden rounded-md border bg-gray-50">
+                {/* SEMANTIC: File Preview Container */}
+                <div className="aspect-square overflow-hidden rounded-lg border border-border bg-card relative">
                   {getFilePreview(file)}
                 </div>
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
+                
+                {/* Overlay for Deletion */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center backdrop-blur-[1px]">
                   <button
                     type="button"
                     onClick={() => removeFile(index)}
-                    className="bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="bg-destructive text-destructive-foreground rounded-full p-2 hover:bg-red-600 transition-colors shadow-lg transform scale-90 group-hover:scale-100 duration-200"
                     aria-label={`Remove file ${index + 1}`}
                     disabled={isCapturing}
                   >
-                    <Trash2Icon className="h-4 w-4" />
+                    <Trash2Icon className="h-5 w-5" />
                   </button>
                 </div>
-                <p className="text-xs mt-1 truncate">{file.name}</p>
-                <span className="text-xs text-gray-500 capitalize">
+                
+                <p className="text-xs mt-1 truncate text-foreground font-medium">{file.name}</p>
+                <span className="text-xs text-muted-foreground capitalize">
                   {file.type.split('/')[1] || file.type}
                 </span>
               </div>
@@ -557,27 +571,27 @@ export default function ResponsiveFileUpload({
             <Button
               type="button"
               variant="outline"
-              className="flex-1"
+              className="flex-1 border-input hover:bg-accent hover:text-accent-foreground"
               onClick={() => {
-                clearAllFiles();
+                // We don't clear, we append. If you want to replace, use clearAllFiles first.
+                // The prompt logic implies "Add More" means append.
                 fileInputRef.current?.click();
               }}
               disabled={isCapturing}
             >
               Add More
             </Button>
+            
             <DialogClose asChild>
               <Button
                 type="submit"
-                className="flex-1"
+                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={isUploading || isCapturing}
               >
                 {isUploading ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                    {/* Fixed Loader2 Usage */}
+                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
                     Uploading...
                   </>
                 ) : (

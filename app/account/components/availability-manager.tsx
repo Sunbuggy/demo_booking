@@ -25,20 +25,23 @@ export type AvailabilityRule = {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} size="sm" className="w-full md:w-auto">
+    <Button 
+      type="submit" 
+      disabled={pending} 
+      className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-2"
+    >
       {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4 mr-2" />}
       Add Exception
     </Button>
   );
 }
 
-// UPDATED: Accept userId prop
 export default function AvailabilityManager({ 
   existingRules, 
   userId 
 }: { 
   existingRules: AvailabilityRule[], 
-  userId?: string // Optional: If missing, assumes current user
+  userId?: string 
 }) {
   const [state, formAction] = useActionState(addAvailabilityRule, { message: '', success: false });
   const { toast } = useToast();
@@ -48,99 +51,91 @@ export default function AvailabilityManager({
       toast({
         title: state.success ? "Success" : "Error",
         description: state.message,
-        variant: state.success ? "success" : "destructive"
+        variant: state.success ? "default" : "destructive"
       });
     }
   }, [state, toast]);
 
   const handleDelete = async (id: string) => {
     if(!confirm("Remove this rule?")) return;
-    // We pass userId here too so the server knows an Admin is performing the action
     await deleteAvailabilityRule(id, userId); 
     toast({ title: "Rule removed" });
   };
 
   return (
-    <Card className="w-full shadow-md border-t-4 border-t-amber-500">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5" /> Availability Exceptions
+    <Card className="w-full shadow-sm border-t-4 border-t-primary bg-card text-card-foreground">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+            <Clock className="w-4 h-4 text-primary" /> Availability Exceptions
         </CardTitle>
-        <p className="text-sm text-muted-foreground">
-           {userId ? "Define days this employee cannot work." : "Add days you cannot work or prefer off."}
-        </p>
       </CardHeader>
       <CardContent className="space-y-6">
         
-        {/* --- ADD RULE FORM --- */}
-        <form action={formAction} className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-900/40">
-          {/* VITAL: Pass the userId to the server action */}
+        {/* --- ADD RULE FORM (Vertical Stack for Sidebar Compatibility) --- */}
+        <form action={formAction} className="p-3 border border-border rounded-lg bg-muted/30 space-y-3">
           {userId && <input type="hidden" name="targetUserId" value={userId} />}
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            
-            <div className="space-y-2">
-              <Label>Day of Week</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground uppercase font-bold">Day</Label>
               <Select name="dayOfWeek" defaultValue="1">
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 bg-background border-input text-foreground text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {DAYS.map((day, i) => <SelectItem key={i} value={i.toString()}>{day}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             
-            <div className="space-y-2">
-              <Label>Type</Label>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground uppercase font-bold">Type</Label>
               <Select name="preferenceLevel" defaultValue="preferred_off">
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 bg-background border-input text-foreground text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="preferred_off">Preferred OFF</SelectItem>
-                  <SelectItem value="unavailable">Absolutely Unavailable</SelectItem>
+                  <SelectItem value="unavailable">Unavailable</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-               <Label>Time Range</Label>
-               <div className="flex items-center gap-2">
-                 <Input type="time" name="startTime" defaultValue="00:00" className="flex-1 min-w-[5rem]" />
-                 <span className="text-muted-foreground">-</span>
-                 <Input type="time" name="endTime" defaultValue="23:59" className="flex-1 min-w-[5rem]" />
-               </div>
-            </div>
-
-            <SubmitButton />
           </div>
+
+          <div className="space-y-1">
+             <Label className="text-xs text-muted-foreground uppercase font-bold">Time Range</Label>
+             <div className="flex items-center gap-2">
+               <Input type="time" name="startTime" defaultValue="00:00" className="flex-1 h-9 bg-background border-input text-foreground text-sm" />
+               <span className="text-muted-foreground">-</span>
+               <Input type="time" name="endTime" defaultValue="23:59" className="flex-1 h-9 bg-background border-input text-foreground text-sm" />
+             </div>
+          </div>
+
+          <SubmitButton />
         </form>
 
-        {/* --- RULES LIST --- */}
-        <div className="space-y-3">
-          <h3 className="font-semibold text-sm">Current Exceptions</h3>
+        {/* --- RULES LIST (Stacked Single Column) --- */}
+        <div className="space-y-2">
           {existingRules.length === 0 && (
-            <div className="text-center p-6 border border-dashed rounded-lg text-muted-foreground bg-green-50/50 dark:bg-green-900/10">
-                <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-500 opacity-50" />
-                <p>No exceptions set.</p>
-                <p className="text-xs">Considered <strong>Available 7 Days a Week</strong>.</p>
+            <div className="text-center p-4 border border-dashed border-green-500/30 rounded-lg bg-green-500/5">
+                <CheckCircle2 className="w-6 h-6 mx-auto mb-1 text-green-500/60" />
+                <p className="text-xs text-muted-foreground">Available 7 Days/Week</p>
             </div>
           )}
           
-          <div className="grid gap-2 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
             {existingRules.sort((a,b) => a.day_of_week - b.day_of_week).map((rule) => (
-              <div key={rule.id} className={`flex items-center justify-between p-3 border-l-4 rounded-r-md shadow-sm bg-white dark:bg-slate-950 ${
-                rule.preference_level === 'unavailable' ? 'border-l-red-500' : 'border-l-amber-500'
+              <div key={rule.id} className={`flex items-center justify-between p-2 pl-3 border-l-4 rounded-r-md shadow-sm bg-card border border-border ${
+                rule.preference_level === 'unavailable' ? 'border-l-destructive' : 'border-l-primary'
               }`}>
-                <div className="flex items-center gap-3">
-                  <Badge variant="outline" className="w-24 justify-center bg-slate-100 dark:bg-slate-800">
-                    {DAYS[rule.day_of_week]}
-                  </Badge>
-                  <div className="flex flex-col">
-                    <span className={`text-sm font-bold uppercase tracking-wider flex items-center gap-1 ${
-                      rule.preference_level === 'unavailable' ? 'text-red-600' : 'text-amber-600'
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="flex flex-col min-w-[3rem] text-center">
+                     <span className="text-xs font-bold uppercase text-foreground">{DAYS[rule.day_of_week].substring(0,3)}</span>
+                  </div>
+                  <div className="flex flex-col truncate">
+                    <span className={`text-xs font-bold uppercase flex items-center gap-1 ${
+                      rule.preference_level === 'unavailable' ? 'text-destructive' : 'text-primary'
                     }`}>
                       {rule.preference_level === 'unavailable' ? <Ban className="w-3 h-3"/> : <ThumbsDown className="w-3 h-3"/>}
-                      {rule.preference_level === 'unavailable' ? 'Unavailable' : 'Preferred Off'}
+                      {rule.preference_level === 'unavailable' ? 'Unavailable' : 'Pref Off'}
                     </span>
-                    <span className="text-xs text-muted-foreground font-mono">
+                    <span className="text-[10px] text-muted-foreground font-mono">
                       {rule.start_time.slice(0,5)} - {rule.end_time.slice(0,5)}
                     </span>
                   </div>
@@ -149,9 +144,9 @@ export default function AvailabilityManager({
                     variant="ghost" 
                     size="icon" 
                     onClick={() => handleDelete(rule.id)} 
-                    className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             ))}

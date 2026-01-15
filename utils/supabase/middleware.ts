@@ -87,14 +87,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // RULE 2: PREVENT "DOUBLE LOGIN"
-  // Scenario: A staff member is already logged in but clicks "Sign In" or "Log In" again.
-  // Action: Don't show the form. Bounce them straight to the Dashboard.
-  if (user && path.startsWith('/signin')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/biz' // The Staff Dashboard
-    return NextResponse.redirect(url)
-  }
+ 
 
   // --------------------------------------------------------------------------
   // FINAL RETURN

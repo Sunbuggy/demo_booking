@@ -29,10 +29,9 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger,
-  DialogClose 
+  DialogTrigger 
 } from '@/components/ui/dialog';
-import { Palette, Upload, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Palette, Upload, ArrowLeft, Image as ImageIcon, Trash2, Loader2 } from 'lucide-react';
 import UploadBgPics from './upload-bg-pics';
 
 // --- Types ---
@@ -57,18 +56,32 @@ const DEFAULT_BG_PROPERTIES: BackgroundProperties = {
 const getFullImageUrl = (imageKeyOrPath: string) => {
   if (!imageKeyOrPath) return '';
   
+  // If it's already a full URL (signed or public), use it
   if (imageKeyOrPath.startsWith('http')) return imageKeyOrPath;
 
   const prefix = process.env.NEXT_PUBLIC_STORAGE_PUBLIC_PREFIX;
   
   if (!prefix) {
-    console.error('CRITICAL: NEXT_PUBLIC_STORAGE_PUBLIC_PREFIX is missing in .env.local');
+    // Only log this warning once per session to avoid console spam
+    if (!window.hasLoggedBgWarning) {
+      console.warn('⚠️ NEXT_PUBLIC_STORAGE_PUBLIC_PREFIX is missing in .env.local. Backgrounds may not load on refresh.');
+      window.hasLoggedBgWarning = true;
+    }
     return ''; 
   }
 
   const cleanKey = imageKeyOrPath.startsWith('/') ? imageKeyOrPath.substring(1) : imageKeyOrPath;
-  return `${prefix}/${cleanKey}`;
+  // Ensure we don't double slash if prefix ends with slash
+  const separator = prefix.endsWith('/') ? '' : '/';
+  return `${prefix}${separator}${cleanKey}`;
 };
+
+// Add type for global window check
+declare global {
+  interface Window {
+    hasLoggedBgWarning?: boolean;
+  }
+}
 
 const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
   const { toast } = useToast();
@@ -78,6 +91,7 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false); 
   const [showUploadView, setShowUploadView] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   
   const [selectedBackground, setSelectedBackground] = useState('');
   const [tempSelectedBackground, setTempSelectedBackground] = useState('');
@@ -88,19 +102,22 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
 
   // --- Logic: Apply CSS to Body ---
   const applyBackgroundToBody = (
-    imageUrl: string,
+    imageKey: string,
     properties: BackgroundProperties
   ) => {
-    if (!imageUrl) {
+    if (!imageKey) {
         document.body.style.backgroundImage = '';
         return;
     }
 
-    const fullImageUrl = getFullImageUrl(imageUrl);
+    // FIX: Try to find the pre-signed/valid URL from our loaded list first.
+    // This solves the localhost issue where the constructed URL fails but the API URL works.
+    const foundImage = backgroundImages.find(img => img.key === imageKey);
+    const urlToUse = foundImage ? foundImage.url : getFullImageUrl(imageKey);
     
-    if (fullImageUrl) {
+    if (urlToUse) {
         Object.assign(document.body.style, {
-          backgroundImage: `url('${fullImageUrl}')`,
+          backgroundImage: `url('${urlToUse}')`,
           backgroundRepeat: properties.repeat,
           backgroundSize: properties.size,
           backgroundPosition: properties.position,
@@ -111,10 +128,11 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
 
   // --- Effect: Sync Body Style on Load & Change ---
   useEffect(() => {
+    // Trigger whenever selection or properties change, OR when backgroundImages loads (to fix the URL lookup)
     if (selectedBackground) {
         applyBackgroundToBody(selectedBackground, backgroundProperties);
     }
-  }, [selectedBackground, backgroundProperties]);
+  }, [selectedBackground, backgroundProperties, backgroundImages]);
 
   // --- Handlers ---
   const handleBackgroundChange = (value: string) =>
@@ -125,6 +143,51 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
     value: string
   ) => {
     setBackgroundProperties((prev) => ({ ...prev, [property]: value }));
+  };
+
+  /**
+   * DELETION HANDLER
+   */
+  const handleDeleteImage = async (imageKey: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!confirm("Are you sure you want to delete this background image? This cannot be undone.")) return;
+
+    setIsDeleting(imageKey);
+
+    try {
+        const encodedKey = encodeURIComponent(imageKey);
+        const response = await fetch(`/api/s3/upload?bucket=users&key=${encodedKey}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || 'Failed to delete image from S3');
+        }
+
+        // Remove from local state
+        setBackgroundImages((prev) => prev.filter((img) => img.key !== imageKey));
+        
+        // If the deleted image was currently selected, reset to none
+        if (tempSelectedBackground === imageKey) {
+            setTempSelectedBackground('');
+        }
+        if (selectedBackground === imageKey) {
+            setSelectedBackground('');
+            document.body.style.backgroundImage = '';
+            await setUserBgImage(supabase, user.id, '');
+        }
+
+        toast({ title: "Image deleted successfully" });
+
+    } catch (err: any) {
+        console.error("Delete error:", err);
+        toast({ title: "Failed to delete image", description: err.message, variant: "destructive" });
+    } finally {
+        setIsDeleting(null);
+    }
   };
 
   const handleSaveBackground = async () => {
@@ -141,10 +204,8 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
         )
       ]);
 
-      // Update the local state
       setSelectedBackground(tempSelectedBackground);
       
-      // NEW: Dispatch event to tell GlobalBackgroundManager to update immediately
       const event = new CustomEvent('theme-changed', {
         detail: { 
             image: tempSelectedBackground, 
@@ -153,8 +214,7 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
       });
       window.dispatchEvent(event);
 
-      setIsOpen(false); // Close modal on save
-      
+      setIsOpen(false);
       toast({ title: 'Theme updated successfully' });
     } catch (error) {
       console.error('Error saving background:', error);
@@ -171,7 +231,7 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
     const fetchBackgroundData = async () => {
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_SITE_URL}/api/s3/upload?bucket=users&key=background-images/${user.id}`
+          `/api/s3/upload?bucket=users&key=background-images/${user.id}`
         );
         
         const [bgImageData, bgPropertiesData] = await Promise.all([
@@ -209,7 +269,8 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
     if (isOpen) {
         fetchBackgroundData();
     } else {
-         fetchBackgroundData();
+        // Initial fetch on mount to apply background if user already has one
+        fetchBackgroundData();
     }
 
     return () => { isMounted = false; };
@@ -221,18 +282,18 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
       <DialogTrigger asChild>
         <Button 
             variant="outline" 
-            className="border-stone-700 text-stone-200 hover:bg-stone-800 hover:text-orange-500 gap-2"
+            className="border-input text-foreground hover:bg-accent hover:text-accent-foreground gap-2"
         >
             <Palette className="h-4 w-4" />
             Theme
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-2xl bg-stone-900 border-stone-800 text-stone-200">
+      <DialogContent className="max-w-2xl bg-card border-border text-card-foreground">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-foreground">
              {showUploadView ? (
-                 <Button variant="ghost" size="sm" onClick={() => setShowUploadView(false)} className="p-0 h-auto hover:bg-transparent">
+                 <Button variant="ghost" size="sm" onClick={() => setShowUploadView(false)} className="p-0 h-auto hover:bg-transparent text-foreground hover:text-primary">
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back to Gallery
                  </Button>
              ) : (
@@ -249,11 +310,11 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
             ) : (
                 <>
                    {isLoading ? (
-                       <div className="flex justify-center p-8 text-stone-500">Loading your gallery...</div>
+                       <div className="flex justify-center p-8 text-muted-foreground">Loading your gallery...</div>
                    ) : (
                        <CardContent className="p-0">
                            <div className="flex justify-between items-center mb-4">
-                               <p className="text-sm text-stone-400">Select an image from your personal gallery.</p>
+                               <p className="text-sm text-muted-foreground">Select an image from your personal gallery.</p>
                                <Button 
                                    variant="secondary" 
                                    size="sm" 
@@ -274,45 +335,63 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
                                      <RadioGroupItem value="" id="none" className="peer sr-only" />
                                      <Label 
                                         htmlFor="none" 
-                                        className="flex flex-col items-center justify-center h-24 border-2 border-stone-700 rounded-md cursor-pointer hover:border-stone-500 peer-data-[state=checked]:border-orange-500 peer-data-[state=checked]:bg-orange-500/10 transition-all"
+                                        className="flex flex-col items-center justify-center h-24 border-2 border-input rounded-md cursor-pointer hover:border-primary/50 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 transition-all"
                                      >
-                                         <ImageIcon className="h-6 w-6 text-stone-500 mb-1" />
-                                         <span className="text-xs">None</span>
+                                         <ImageIcon className="h-6 w-6 text-muted-foreground mb-1" />
+                                         <span className="text-xs text-foreground">None</span>
                                      </Label>
                                 </div>
 
                                 {backgroundImages.map((image) => (
-                                <div key={image.key} className="relative">
+                                <div key={image.key} className="relative group">
                                     <RadioGroupItem value={image.key} id={image.key} className="peer sr-only" />
                                     <Label
                                         htmlFor={image.key}
-                                        className="block relative h-24 w-full cursor-pointer rounded-md overflow-hidden border-2 border-transparent peer-data-[state=checked]:border-orange-500 peer-data-[state=checked]:shadow-[0_0_10px_rgba(249,115,22,0.3)] transition-all"
+                                        className="block relative h-24 w-full cursor-pointer rounded-md overflow-hidden border-2 border-transparent peer-data-[state=checked]:border-primary peer-data-[state=checked]:shadow-md transition-all"
                                     >
                                         <img
                                             src={image.url}
                                             alt="Background"
-                                            className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         />
                                     </Label>
+                                    
+                                    {/* FIX: Improved Trash Icon Visibility */}
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        disabled={isDeleting === image.key}
+                                        // Change: opacity-70 default, opacity-100 on hover. Added z-20.
+                                        className="absolute top-1 right-1 h-7 w-7 rounded-full shadow-md z-20 border border-white/20 bg-black/50 hover:bg-red-600 transition-all opacity-70 group-hover:opacity-100"
+                                        onClick={(e) => handleDeleteImage(image.key, e)}
+                                        title="Delete Image"
+                                    >
+                                        {isDeleting === image.key ? (
+                                            <Loader2 className="h-3 w-3 animate-spin text-white" />
+                                        ) : (
+                                            <Trash2 className="h-3 w-3 text-white" />
+                                        )}
+                                    </Button>
                                 </div>
                                 ))}
                             </RadioGroup>
                            ) : (
-                               <div className="text-center py-8 border-2 border-dashed border-stone-800 rounded-lg">
-                                   <p className="text-stone-500 mb-2">No images found.</p>
+                               <div className="text-center py-8 border-2 border-dashed border-border rounded-lg bg-muted/10">
+                                   <p className="text-muted-foreground mb-2">No images found.</p>
                                    <Button variant="outline" onClick={() => setShowUploadView(true)}>Upload Your First Image</Button>
                                </div>
                            )}
 
-                           <div className="grid grid-cols-3 gap-4 border-t border-stone-800 pt-4 mt-4">
+                           <div className="grid grid-cols-3 gap-4 border-t border-border pt-4 mt-4">
                                 {Object.entries(backgroundProperties).map(([key, value]) => (
                                     <div key={key}>
-                                        <Label className="text-xs uppercase text-stone-500 mb-1 block">{key}</Label>
+                                        <Label className="text-xs uppercase text-muted-foreground mb-1 block">{key}</Label>
                                         <Select
                                             value={value}
                                             onValueChange={(val) => handlePropertyChange(key as keyof BackgroundProperties, val)}
                                         >
-                                            <SelectTrigger className="h-8 text-xs bg-stone-950 border-stone-800">
+                                            <SelectTrigger className="h-8 text-xs bg-background border-input text-foreground">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -335,7 +414,7 @@ const BackgroundPicker: React.FC<{ user: UserDetails }> = ({ user }) => {
                 <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
                 <Button 
                     onClick={handleSaveBackground} 
-                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
                     disabled={isLoading}
                 >
                     {isLoading ? 'Saving...' : 'Save Changes'}
