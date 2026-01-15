@@ -15,7 +15,7 @@ import {
   Phone, Mail, MessageSquare, Pencil, 
   Clock, Coffee, Timer, AlertCircle, 
   LogOut, Sun, Moon, User, Play, Square, Calendar,
-  Shield, AlertTriangle, Briefcase, ChevronRight // Standardized Icons
+  Shield, AlertTriangle, ChevronRight, Briefcase
 } from 'lucide-react';
 import moment from 'moment';
 import Link from 'next/link';
@@ -24,9 +24,8 @@ import { useToast } from '@/components/ui/use-toast';
 
 import SmartTimeClock from '@/app/(biz)/biz/users/admin/tables/employee/time-clock/clock-in';
 
-// Define the License Status Types
+// Types
 export type FunLicenseStatus = 'active' | 'pending' | 'missing'; 
-
 type TimeStatus = 'online' | 'break' | 'offline' | 'late';
 
 export default function UserStatusAvatar({ 
@@ -46,16 +45,19 @@ export default function UserStatusAvatar({
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   
+  // State
   const [status, setStatus] = useState<TimeStatus>('offline');
   const [activeEntry, setActiveEntry] = useState<any>(null);
   const [todayShift, setTodayShift] = useState<any>(null);
   const [now, setNow] = useState(moment());
   
+  // UI State
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
   const [clockKey, setClockKey] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Permissions
   const isEmployee = (user?.user_level || 0) >= 300;
   const canEdit = currentUserLevel >= 650; 
 
@@ -99,15 +101,13 @@ export default function UserStatusAvatar({
     }
   }, [user?.id, supabase, isEmployee]);
 
-  // --- 2. SUBSCRIPTIONS (CRITICAL FIX) ---
+  // --- 2. SUBSCRIPTIONS ---
   useEffect(() => {
     if (!isEmployee) return;
-    
-    // Initial Fetch for everyone (one-time)
     fetchData();
 
-    // PERFORMANCE GUARD: Only subscribe to Realtime if it's ME.
-    // Prevents crashing the Roster page with 50+ websocket connections.
+    // CRITICAL PERFORMANCE GUARD: Only subscribe if it's ME.
+    // This prevents 50 open websockets on the roster page.
     if (!isCurrentUser) return;
 
     const channel = supabase
@@ -125,10 +125,8 @@ export default function UserStatusAvatar({
 
   // --- 3. TIMERS ---
   useEffect(() => {
-    if (!isEmployee || !isCurrentUser) return; // Only tick timer for self
-    const timer = setInterval(() => {
-        setNow(moment());
-    }, 60000); 
+    if (!isEmployee || !isCurrentUser) return;
+    const timer = setInterval(() => setNow(moment()), 60000); 
     return () => clearInterval(timer);
   }, [isEmployee, isCurrentUser]);
 
@@ -138,7 +136,7 @@ export default function UserStatusAvatar({
   const handleSignOut = async () => {
       closePopover();
       await supabase.auth.signOut();
-      window.location.href = '/signin';
+      window.location.href = '/signin'; // Hard redirect to clear cache
   };
 
   const openTimeClockModal = () => {
@@ -156,12 +154,9 @@ export default function UserStatusAvatar({
             ? { is_on_break: true, break_start: timestamp }
             : { is_on_break: false, break_start: null };
 
-        const { error } = await supabase
-            .from('time_entries')
-            .update(updateData)
-            .eq('id', activeEntry.id);
-
+        const { error } = await supabase.from('time_entries').update(updateData).eq('id', activeEntry.id);
         if (error) throw error;
+        
         setActiveEntry({ ...activeEntry, ...updateData });
         setStatus(action === 'start' ? 'break' : 'online');
         toast({ title: action === 'start' ? "Break Started" : "Welcome Back" });
@@ -173,7 +168,7 @@ export default function UserStatusAvatar({
     }
   };
 
-  // --- 5. VISUAL HELPERS ---
+  // --- 5. HELPERS ---
   const durationStr = useMemo(() => {
     let startTime = null;
     if (status === 'break' && activeEntry?.break_start) startTime = moment(activeEntry.break_start);
@@ -199,6 +194,16 @@ export default function UserStatusAvatar({
       break: 'bg-orange-500',
       late: 'bg-red-600',
       offline: 'bg-slate-300' 
+  };
+
+  // Status background for the box header
+  const getStatusHeaderClass = () => {
+    switch(status) {
+        case 'online': return "bg-green-50 border-green-100 dark:bg-green-900/20 dark:border-green-900";
+        case 'break': return "bg-orange-50 border-orange-100 dark:bg-orange-900/20 dark:border-orange-900";
+        case 'late': return "bg-red-50 border-red-100 dark:bg-red-900/20 dark:border-red-900";
+        default: return "bg-slate-50 border-slate-100 dark:bg-slate-900 border-slate-800";
+    }
   };
 
   if (!user) return null;
@@ -261,7 +266,7 @@ export default function UserStatusAvatar({
           )}
         </div>
 
-        {/* === SECTION A: FUN LICENSE (The "Wallet Card") === */}
+        {/* === SECTION A: FUN LICENSE (Wallet Card) === */}
         {isCurrentUser && (
             <div className="p-3 bg-white dark:bg-black">
                 <Button 
@@ -288,87 +293,85 @@ export default function UserStatusAvatar({
             </div>
         )}
 
+        {/* Separator */}
         <div className="h-px bg-slate-100 dark:bg-slate-800" />
 
         <div className="p-4 space-y-4">
           
-          {/* === SECTION B: SHIFT STATUS (For Employees) === */}
+          {/* === SECTION B: UNIFIED WORK MODULE === */}
           {isEmployee && (
-            <>
-                <div className={cn("flex items-center justify-between p-3 rounded-lg border shadow-sm select-none", 
-                    status === 'late' ? "bg-red-50 border-red-200 dark:bg-red-900/20" : 
-                    status === 'break' ? "bg-orange-50 border-orange-200 dark:bg-orange-900/20" :
-                    status === 'online' ? "bg-green-50 border-green-200 dark:bg-green-900/20" :
-                    "bg-slate-50 border-slate-200 dark:bg-slate-900/50"
-                )}>
-                <div className="flex items-center gap-2">
-                    {status === 'online' && <Clock className="w-4 h-4 text-green-600" />}
-                    {status === 'break' && <Coffee className="w-4 h-4 text-orange-600 animate-pulse" />}
-                    {status === 'late' && <AlertCircle className="w-4 h-4 text-red-600" />}
-                    {status === 'offline' && <Moon className="w-4 h-4 text-slate-400" />}
-                    <div className="flex flex-col">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 leading-none mb-0.5">Status</span>
-                        <span className="text-sm font-bold capitalize leading-none text-slate-900 dark:text-slate-100">
-                            {status === 'late' ? 'Absent / Late' : status === 'online' ? 'Clocked In' : status}
-                        </span>
+            <div className="rounded-xl border-2 border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                
+                {/* 1. STATUS HEADER (Inside the box) */}
+                <div className={cn("p-3 flex justify-between items-center transition-colors", getStatusHeaderClass())}>
+                    <div className="flex items-center gap-2">
+                        {status === 'online' && <Clock className="w-4 h-4 text-green-600" />}
+                        {status === 'break' && <Coffee className="w-4 h-4 text-orange-600 animate-pulse" />}
+                        {status === 'late' && <AlertCircle className="w-4 h-4 text-red-600" />}
+                        {status === 'offline' && <Moon className="w-4 h-4 text-slate-400" />}
+                        
+                        <div className="flex flex-col">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 leading-none mb-0.5">Current Status</span>
+                            <span className="text-sm font-bold capitalize leading-none text-slate-900 dark:text-slate-100">
+                                {status === 'late' ? 'Absent / Late' : status === 'online' ? 'Clocked In' : status}
+                            </span>
+                        </div>
                     </div>
-                </div>
-                {durationStr && status !== 'offline' && (
-                    <div className="flex items-center gap-1 text-[11px] font-mono font-bold bg-white/50 px-2 py-0.5 rounded border border-black/5">
-                    <Timer className="w-3 h-3" /> {durationStr}
-                    </div>
-                )}
-                </div>
 
-                {/* === SECTION C: CONTROLS (Only for ME) === */}
-                {isCurrentUser && (
-                    <>
-                    {(status === 'offline' || status === 'late') ? (
-                        <Button className="w-full h-12 gap-2 bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-sm" onClick={openTimeClockModal}>
-                            <Play className="w-5 h-5 fill-current" /> CLOCK IN
-                        </Button>
-                    ) : (
-                        <div className="rounded-xl border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-3 shadow-inner">
-                            <div className="flex items-center justify-center gap-2 mb-3 opacity-60">
-                                <Briefcase size={12} className="text-slate-500" />
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Shift Controls</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                {status === 'online' ? (
-                                    <Button variant="outline" className="h-14 flex-col gap-1 border-orange-200 bg-white text-orange-700" onClick={() => handleBreakToggle('start')} disabled={isProcessing}>
-                                        <Coffee className="w-5 h-5 mb-0.5" /> <span className="text-xs font-bold">START BREAK</span>
-                                    </Button>
-                                ) : (
-                                    <Button className="h-14 flex-col gap-1 bg-orange-500 text-white" onClick={() => handleBreakToggle('end')} disabled={isProcessing}>
-                                        <Play className="w-5 h-5 fill-current" /> <span className="text-xs font-bold">RESUME</span>
-                                    </Button>
-                                )}
-                                <Button variant="destructive" className="h-14 flex-col gap-1 bg-red-600 border-b-4 border-red-800 active:border-b-0 active:translate-y-1" onClick={openTimeClockModal}>
-                                    <Square className="w-5 h-5 fill-current" /> <span className="text-xs font-black">CLOCK OUT</span>
-                                </Button>
-                            </div>
+                    {/* Timer Widget */}
+                    {durationStr && status !== 'offline' && (
+                        <div className="flex items-center gap-1 text-[11px] font-mono font-bold bg-white/60 dark:bg-black/20 px-2 py-1 rounded border border-black/5 dark:border-white/10">
+                            <Timer className="w-3 h-3" /> {durationStr}
                         </div>
                     )}
-                    </>
+                </div>
+
+                {/* 2. CONTROLS (Only for ME, below Status) */}
+                {isCurrentUser && (
+                    <div className="p-2 bg-white dark:bg-black border-t border-slate-100 dark:border-slate-800">
+                        {(status === 'offline' || status === 'late') ? (
+                            <Button className="w-full h-12 gap-2 bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-sm" onClick={openTimeClockModal}>
+                                <Play className="w-5 h-5 fill-current" /> CLOCK IN
+                            </Button>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                                {/* Break Button */}
+                                {status === 'online' ? (
+                                    <Button variant="outline" className="h-12 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-900/10 dark:border-orange-800 dark:text-orange-400" onClick={() => handleBreakToggle('start')} disabled={isProcessing}>
+                                        <Coffee className="w-4 h-4 mr-2" /> Break
+                                    </Button>
+                                ) : (
+                                    <Button className="h-12 bg-orange-600 hover:bg-orange-700 text-white" onClick={() => handleBreakToggle('end')} disabled={isProcessing}>
+                                        <Play className="w-4 h-4 fill-current mr-2" /> Resume
+                                    </Button>
+                                )}
+                                
+                                {/* Clock Out Button */}
+                                <Button variant="destructive" className="h-12 bg-red-600 hover:bg-red-700 border-b-4 border-red-800 active:border-b-0 active:translate-y-1" onClick={openTimeClockModal}>
+                                    <Square className="w-4 h-4 fill-current mr-2" /> Clock Out
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 )}
-            </>
+            </div>
           )}
 
-          {/* === FOOTER: TOOLS (User vs Other) === */}
+          {/* === FOOTER: APP TOOLS === */}
           {isCurrentUser ? (
             <div className="grid grid-cols-2 gap-2 pt-2 border-t dark:border-slate-800 mt-2">
                 {isEmployee && (
-                  <Button variant="ghost" className="w-full justify-start px-2 gap-2 text-xs h-9 text-blue-600" asChild onClick={closePopover}>
+                  <Button variant="ghost" className="w-full justify-start px-2 gap-2 text-xs h-9 text-blue-600 hover:bg-blue-50" asChild onClick={closePopover}>
                       <Link href="/biz/my-schedule"><Calendar className="w-4 h-4" /> My Schedule</Link>
                   </Button>
                 )}
-                <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9" asChild onClick={closePopover}>
-                    <Link href={`/account?userId=${user.id}`}><User className="w-4 h-4 text-slate-500" /> Account</Link>
+                <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9 text-slate-600" asChild onClick={closePopover}>
+                    <Link href={`/account?userId=${user.id}`}><User className="w-4 h-4" /> Account</Link>
                 </Button>
-                <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); closePopover(); }}>
-                    {theme === 'dark' ? <Sun className="w-4 h-4 text-slate-500" /> : <Moon className="w-4 h-4 text-slate-500" />} Theme
+                <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9 text-slate-600" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); closePopover(); }}>
+                    {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />} Theme
                 </Button>
-                <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9 text-slate-400 hover:text-red-600" onClick={handleSignOut}>
+                <Button variant="ghost" className="justify-start px-2 gap-2 text-xs h-9 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={handleSignOut}>
                     <LogOut className="w-4 h-4" /> Sign Out
                 </Button>
             </div>
