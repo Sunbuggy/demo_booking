@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import PaymentFields from './paymentFields';
-import { ChevronLeft, ShieldCheck, AlertCircle, CheckCircle2, Lock, DollarSign } from 'lucide-react';
+import { ChevronLeft, ShieldCheck, AlertCircle, CheckCircle2, Lock, DollarSign, Clock, Info } from 'lucide-react';
 
 export default function CheckoutForm({ 
   total, 
@@ -16,7 +16,11 @@ export default function CheckoutForm({
   selectedItems = [],
   goggles = 0,
   bandannas = 0,
-  holderInfo, 
+  holderInfo,
+  // --- NEW PROPS FOR SUMMARY ---
+  duration = 0, 
+  startTime = '',
+  // -----------------------------
   // --- Staff Props ---
   userLevel = 0, 
   paymentType,
@@ -58,15 +62,12 @@ export default function CheckoutForm({
     setCardError(null);
 
     if (captureDeposit) {
-        // Validation: Cannot capture more than authorized
         if (captureAmount > finalDisplayPrice) {
             setCardError(`Cannot capture more than the authorized $${finalDisplayPrice.toFixed(2)}`);
             return;
         }
-        // Option A: Capture Existing (Pass custom capture amount)
         onPayment(null, true, captureAmount); 
     } else if (payNow) {
-        // Option B: New Card (Get Token)
         const hiddenBtn = document.getElementById('nmi-hidden-btn');
         if (hiddenBtn && window.CollectJS) {
             console.log("Triggering NMI...");
@@ -75,13 +76,16 @@ export default function CheckoutForm({
             setCardError("Payment system is still loading. Please refresh.");
         }
     } else {
-        // Option C: Just Update (No Money)
         onPayment(null, false); 
     }
   };
 
   const handleTokenGenerated = (token: string) => {
       onPayment(token, false); 
+  };
+
+  const handleCardError = (err: string) => {
+      setCardError(err);
   };
 
   return (
@@ -118,11 +122,23 @@ export default function CheckoutForm({
                   </div>
                </div>
 
+               {/* --- CHECK-IN REMINDER NOTE --- */}
+               <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-6 flex gap-3 items-start">
+                  <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <span className="block font-bold text-amber-700 dark:text-amber-400 mb-1">
+                        Early Check-In Required
+                    </span>
+                    <span className="text-muted-foreground leading-relaxed">
+                        Please arrive at least <strong>1 hour before</strong> your start time ({startTime || 'your booking'}) for the mandatory safety briefing and gear fitting.
+                    </span>
+                  </div>
+               </div>
+
                {isStaff && (
                  <div className="bg-muted/50 p-4 rounded-lg mb-6 border border-border">
                     <h4 className="text-xs font-bold text-muted-foreground uppercase mb-2">Staff Controls</h4>
 
-                    {/* --- CAPTURE OPTION (If Transaction Exists) --- */}
                     {showCaptureOption && (
                         <div className={`mb-4 border p-3 rounded-lg transition-colors ${captureDeposit ? 'bg-red-500/10 border-red-500/50' : 'bg-background border-border'}`}>
                              <label className="flex items-center gap-3 cursor-pointer">
@@ -146,7 +162,6 @@ export default function CheckoutForm({
                                 </div>
                              </label>
 
-                             {/* --- PARTIAL CAPTURE INPUT --- */}
                              {captureDeposit && (
                                 <div className="mt-3 pl-8 animate-in fade-in slide-in-from-top-2">
                                     <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Amount to Capture</label>
@@ -169,7 +184,6 @@ export default function CheckoutForm({
                         </div>
                     )}
                     
-                    {/* Standard Controls (Only show if NOT capturing) */}
                     {!captureDeposit && (
                         <>
                             {showDepositOption && (
@@ -199,17 +213,28 @@ export default function CheckoutForm({
                  </div>
                )}
 
-               {/* Summary ... */}
+               {/* === ORDER SUMMARY === */}
                <div className="space-y-3 text-sm">
                   <h3 className="font-bold text-muted-foreground uppercase text-xs mb-3">Order Summary</h3>
-                  <div className="flex justify-between text-muted-foreground border-b border-border pb-2 mb-2"><span>Guests</span><span className="font-medium text-foreground">{holderInfo?.adults || 1} Adult(s), {holderInfo?.minors || 0} Minor(s)</span></div>
+                  
+                  {/* Guest Count */}
+                  <div className="flex justify-between text-muted-foreground border-b border-border pb-2 mb-2">
+                    <span>Guests</span>
+                    <span className="font-medium text-foreground">{holderInfo?.adults || 1} Adult(s), {holderInfo?.minors || 0} Minor(s)</span>
+                  </div>
+
+                  {/* --- NEW: Duration --- */}
+                  <div className="flex justify-between text-muted-foreground border-b border-border pb-2 mb-2">
+                    <span>Duration</span>
+                    <span className="font-medium text-foreground">{duration > 0 ? `${duration} Hour${duration > 1 ? 's' : ''}` : '---'}</span>
+                  </div>
+
                   {selectedItems.map((item: any, idx: number) => (<div key={idx} className="flex justify-between text-foreground font-medium"><span>{item.qty}x {item.name} {item.waiver ? '(+Waiver)' : ''}</span><span>${item.price.toFixed(2)}</span></div>))}
                   {goggles > 0 && <div className="flex justify-between text-muted-foreground"><span>{goggles}x Goggles</span><span>${(goggles * 4).toFixed(2)}</span></div>}
                   {bandannas > 0 && <div className="flex justify-between text-muted-foreground"><span>{bandannas}x Bandannas</span><span>${(bandannas * 5).toFixed(2)}</span></div>}
                </div>
             </div>
 
-            {/* Payment Toggle (Hidden if Capturing) */}
             {!captureDeposit && (
                 <div className="mb-8">
                     <label className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors shadow-sm ${payNow ? 'bg-primary/5 border-primary ring-1 ring-primary/20' : 'bg-card border-border hover:bg-muted/50'}`}>
