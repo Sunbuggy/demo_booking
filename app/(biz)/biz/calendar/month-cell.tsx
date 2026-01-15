@@ -4,6 +4,12 @@ import React from 'react';
 import { Reservation } from '../types';
 import { ImFilesEmpty } from 'react-icons/im';
 
+/**
+ * @file /app/(biz)/biz/schedule/components/month-cell.tsx
+ * @description Renders the content of a single month cell in the year view.
+ * Updated: Semantic Theming Applied (v1.0)
+ */
+
 const MonthCell = ({
   month_data,
   role,
@@ -57,39 +63,46 @@ const MonthCell = ({
   );
 
   return (
-    <div>
+    <div className="h-full w-full">
       {!total_vehicle_count ? (
-        <div>
-          <span className="text-red-600">{<ImFilesEmpty />}</span>
+        // SEMANTIC: Empty state uses muted foreground instead of "Error Red"
+        <div className="flex justify-center items-center h-full opacity-50">
+          <ImFilesEmpty className="text-muted-foreground w-4 h-4" />
         </div>
       ) : (
-        <>
-          {role > 899 && showRevenue ? (
-            <span className="text-green-600">
-              $:{' '}
-              {monthly_revenue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+        <div className="flex flex-col gap-1">
+          {role > 899 && showRevenue && (
+            // RESPONSIVE: Emerald Green for Revenue (Dark/Light safe)
+            <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+              ${monthly_revenue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
             </span>
-          ) : (
-            ''
           )}
-          <div className="flex gap-2">
-            <div className="flex flex-col">
-              <span className="text-orange-400">
+          
+          <div className="flex gap-2 text-xs">
+            <div className="flex flex-col font-bold">
+              {/* RESPONSIVE: Orange for Vehicles */}
+              <span className="text-orange-600 dark:text-orange-400">
                 F: {total_vehicle_count as number}
               </span>
-              <span className="text-lime-600">P: {ppl_count as number}</span>
+              {/* RESPONSIVE: Lime for People */}
+              <span className="text-lime-600 dark:text-lime-400">
+                P: {ppl_count as number}
+              </span>
             </div>
-            <div className="text-xs flex flex-col justify-end">
+
+            <div className="flex flex-col justify-end text-[10px] leading-tight">
               {Object.entries(vehicle_count).map(([key, value], idx) => {
                 return (
-                  <div className="flex gap-2 dark:text-white" key={idx}>
-                    {key.toLowerCase()}- {String(value)}
+                  // SEMANTIC: Use text-foreground for standard text visibility in all modes
+                  <div className="flex gap-1 text-foreground/90" key={idx}>
+                    <span className="lowercase opacity-80">{key}</span>
+                    <span className="font-medium">- {String(value)}</span>
                   </div>
                 );
               })}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

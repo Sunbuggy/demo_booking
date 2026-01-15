@@ -1,4 +1,5 @@
 'use client';
+
 import React from 'react';
 import type { CalendarProps } from 'antd';
 import { Calendar, ConfigProvider } from 'antd';
@@ -11,7 +12,7 @@ import DateCell from './date-cell';
 import { useTheme } from 'next-themes';
 import { SelectInfo } from 'antd/es/calendar/generateCalendar';
 import { useRouter } from 'next/navigation';
-import { Card, CardTitle } from '@/components/ui/card';
+import { Card, CardTitle, CardContent, CardHeader } from '@/components/ui/card';
 import { vehiclesList } from '@/utils/old_db/helpers';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -59,6 +60,7 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
   const router = useRouter();
   const month_query = `SELECT * FROM reservations_modified WHERE SUBSTRING(sch_date, 1, 7) = '${year}-${month}' AND sch_date != '1980-01-01' AND sch_date != '1970-01-01'`;
   const year_query = `SELECT * FROM reservations_modified WHERE SUBSTRING(sch_date, 1, 4) = '${year}' AND sch_date != '1980-01-01' AND sch_date != '1970-01-01'`;
+  
   React.useEffect(() => {
     async function fetch_old_db(query: string) {
       setLoading(true);
@@ -81,6 +83,7 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
       fetch_old_db(month_query);
     }
   }, [year, month, switch_to_year]);
+
   React.useEffect(() => {
     // Collect daily revenue adding up the total_cost of each reservation in monthData
     const month_revenue = monthData.reduce((acc, reservation) => {
@@ -101,7 +104,7 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
     setMonthlyPplTotal(monthly_ppl_total);
     setYearPplTotal(yearly_ppl_total);
 
-    // vehicleslist is the properties of the monthData. First identify which vehicle has a value greater than zero then extract them in an object with the name as their key and their quantity as their value.
+    // vehicleslist logic
     const vehicle_init_month = monthData.map((reservation) => {
       return vehiclesList.reduce((acc, key) => {
         const count = Number(reservation[key as keyof typeof reservation]);
@@ -126,7 +129,7 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
         return acc;
       }, {});
     });
-    // Flatten the array of objects and sum up the values of the same key to get the total count of each vehicle.
+    
     const vehicle_count_month = vehicle_init_month.reduce(
       (acc: { [key: string]: number }, obj) => {
         return Object.entries(obj).reduce((acc, [key, value]) => {
@@ -149,7 +152,7 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
       },
       {}
     );
-    // Get the total count of all vehicles by summing up the values of the total_vehicle_count object.
+    
     const total_vehicle_count_month = Object.values(vehicle_count_month).reduce(
       (acc, value) => Number(acc) + Number(value),
       0
@@ -164,7 +167,7 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
     setYearlyVehicles(vehicle_count_year);
     setTotalYearlyVehicleCount(Number(total_vehicle_count_year));
 
-    // from the monthData collect location and sum them up to get the total count of each location.
+    // Location Logic
     const total_locations_month = monthData.reduce(
       (acc: { [key: string]: number }, reservation) => {
         const location = reservation.location;
@@ -185,7 +188,7 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
       },
       {}
     );
-    // For every location calculate the total cost of all reservations in that location
+    
     const total_cost_per_location_month = monthData.reduce(
       (acc: { [key: string]: number }, reservation) => {
         const location = reservation.location;
@@ -217,8 +220,6 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
   React.useEffect(() => {
     setSwitchToYear(currentMode === 'year');
   }, [currentMode]);
-  // React.useEffect(() => {
-  // }, [month_total_location_cost]);
 
   const monthCellRender = (value: Dayjs) => {
     const month_data = yearData.filter(
@@ -275,9 +276,26 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
 
   const currentTheme = theme === 'system' ? systemTheme : theme;
 
+  // SEMANTIC COLOR MAPS for Ant Design ConfigProvider
+  // Matches globals.css variables: Dark = #09090b (approx), Light = #ffffff
+  const antThemeColors = {
+    dark: {
+      bg: '#09090b', // Matches --background in dark mode
+      text: '#fafafa', // Matches --foreground in dark mode
+      itemActiveBg: '#ea580c', // Orange-600 approx for selection
+    },
+    light: {
+      bg: '#ffffff',
+      text: '#09090b',
+      itemActiveBg: '#FFC47E',
+    }
+  };
+
+  const activeColors = currentTheme === 'dark' ? antThemeColors.dark : antThemeColors.light;
+
   if (monthData.length || yearData.length) {
     return (
-      <div className="overflow-auto min-h-screen">
+      <div className="overflow-auto min-h-screen bg-background text-foreground animate-in fade-in duration-300">
         {loading ? (
           <LoadingModal />
         ) : (
@@ -286,10 +304,10 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
               theme={{
                 components: {
                   Calendar: {
-                    fullPanelBg: `${currentTheme === 'dark' ? '#2b2a2a' :  '#ffffff' }`,
-                    fullBg: `${currentTheme === 'dark' ? '#2b2a2a' :  '#ffffff'}`,
-                    itemActiveBg: '#FFC47E',
-                    colorText: `${currentTheme === 'dark' ? '#ffffff' : '#000000' }`
+                    fullPanelBg: activeColors.bg,
+                    fullBg: activeColors.bg,
+                    itemActiveBg: activeColors.itemActiveBg,
+                    colorText: activeColors.text
                   }
                 }
               }}
@@ -304,167 +322,171 @@ const ClientCalendar: React.FC<ClientCalendarProps> = ({ role }) => {
                 }}
               />
             </ConfigProvider>
+            
             {role > 899 && (
-              <div className="flex items-center space-x-2 m-5">
+              <div className="flex items-center space-x-2 m-5 p-2 bg-card rounded-md border border-border shadow-sm w-fit">
                 <Switch
                   onCheckedChange={(checked) => setShowRevenue(checked)}
                   id="show-revenue"
                 />
-                <Label htmlFor="show-revenue">Show Revenue</Label>
+                <Label htmlFor="show-revenue" className="cursor-pointer text-foreground font-medium">Show Revenue</Label>
               </div>
             )}
+            
             {!switch_to_year ? (
-              <>
+              // MONTH VIEW STATS
+              <div className="p-5 space-y-4">
                 {monthTotal > 0 && role && role > 899 && (
-                  <div className="m-5">
-                    <Card className="p-2">
-                      <CardTitle className="flex justify-between">
-                        <span className="text-lime-600">
-                          Customers Total :{' '}
-                          {monthly_ppl_total
-                            .toFixed(0)
-                            .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                        </span>
-                        {showRevenue ? (
-                          <span className="text-green-600 ">
-                            Total : $
-                            {monthTotal
-                              .toFixed(2)
-                              .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          </span>
-                        ) : (
-                          ''
-                        )}
-                      </CardTitle>
+                  <>
+                    <Card className="bg-card text-card-foreground border-border shadow-md">
+                      <CardHeader className="p-4">
+                         <CardTitle className="flex justify-between items-center text-lg">
+                           <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                             Customers Total: {' '}
+                             {monthly_ppl_total
+                               .toFixed(0)
+                               .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                           </span>
+                           {showRevenue && (
+                             <span className="text-green-600 dark:text-green-400 font-bold">
+                               Total: ${monthTotal
+                                 .toFixed(2)
+                                 .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                             </span>
+                           )}
+                         </CardTitle>
+                      </CardHeader>
                     </Card>
-                    <Card>
-                      <div>
-                        <CardTitle className="text-orange-600 text-center">
-                          Vehicles
-                        </CardTitle>
-                        <div className="flex  gap-5 dark:text-white justify-center">
-                          {Object.entries(monthly_vehicles).map(
-                            ([key, value], idx) => {
-                              return (
-                                <div key={idx}>
-                                  {key}: {Number(value)}
-                                </div>
-                              );
-                            }
-                          )}
-                        </div>
-                        <div className="text-center text-orange-500">
-                          Total Vehicles: {total_monthly_vehicle_count}
-                        </div>
-                      </div>
-                    </Card>
-                    <Card>
-                      <div>
-                        <CardTitle className="text-lime-600 text-center">
-                          Locations
-                        </CardTitle>
-                        <div className="grid gap-5 md:grid-cols-3 grid-cols-1  dark:text-white justify-center items-center align-middle">
-                          {Object.entries(month_locations).map(
-                            ([key, value], idx) => {
-                              return (
-                                <div key={idx} className="ml-5 p-3">
-                                  {key}: {Number(value)}
-                                  {/* For each key as the location get the month_total_location_cost as the value */}
-                                  {showRevenue && (
-                                    <span className="ml-3 text-green-600">
-                                      ($
-                                      {month_total_location_cost[key]
-                                        .toFixed(2)
-                                        .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                                      )
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            }
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <Card className="bg-card text-card-foreground border-border shadow-md">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-orange-600 dark:text-orange-400 text-center uppercase tracking-wide">
+                              Vehicles
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex flex-wrap gap-4 text-foreground justify-center text-sm font-medium">
+                              {Object.entries(monthly_vehicles).map(
+                                ([key, value], idx) => (
+                                  <div key={idx} className="bg-muted px-2 py-1 rounded-md">
+                                    {key}: {Number(value)}
+                                  </div>
+                                )
+                              )}
+                            </div>
+                            <div className="text-center text-orange-500 dark:text-orange-400 mt-4 font-bold border-t border-border pt-2">
+                              Total Vehicles: {total_monthly_vehicle_count}
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="bg-card text-card-foreground border-border shadow-md">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-lime-600 dark:text-lime-400 text-center uppercase tracking-wide">
+                              Locations
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid gap-2 md:grid-cols-2 text-foreground text-sm">
+                              {Object.entries(month_locations).map(
+                                ([key, value], idx) => (
+                                  <div key={idx} className="flex justify-between items-center p-2 bg-muted/50 rounded-md">
+                                    <span className="font-semibold">{key}: {Number(value)}</span>
+                                    {showRevenue && (
+                                      <span className="text-green-600 dark:text-green-400 font-mono">
+                                        ${month_total_location_cost[key]
+                                          .toFixed(2)
+                                          .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                    </div>
+                  </>
                 )}
-              </>
+              </div>
             ) : (
-              <>
+              // YEAR VIEW STATS
+              <div className="p-5 space-y-4">
                 {yearTotal > 0 && role && role > 899 && (
-                  <div className="m-5">
-                    <Card className="p-2">
-                      <CardTitle className="flex justify-between">
-                        <span className="text-lime-600">
-                          Customers Total :{' '}
-                          {year_ppl_total
-                            .toFixed(0)
-                            .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                        </span>
-                        {showRevenue ? (
-                          <span className="text-green-600 ">
-                            Total : $
-                            {yearTotal
-                              .toFixed(2)
-                              .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          </span>
-                        ) : (
-                          ''
-                        )}
-                      </CardTitle>
+                  <>
+                    <Card className="bg-card text-card-foreground border-border shadow-md">
+                      <CardHeader className="p-4">
+                         <CardTitle className="flex justify-between items-center text-lg">
+                           <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                             Customers Total: {' '}
+                             {year_ppl_total
+                               .toFixed(0)
+                               .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                           </span>
+                           {showRevenue && (
+                             <span className="text-green-600 dark:text-green-400 font-bold">
+                               Total: ${yearTotal
+                                 .toFixed(2)
+                                 .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                             </span>
+                           )}
+                         </CardTitle>
+                      </CardHeader>
                     </Card>
-                    <Card>
-                      <div>
-                        <CardTitle className="text-orange-600 text-center">
-                          Vehicles
-                        </CardTitle>
-                        <div className="flex  gap-5 dark:text-white justify-center">
-                          {Object.entries(yearly_vehicles).map(
-                            ([key, value], idx) => {
-                              return (
-                                <div key={idx}>
-                                  {key}: {Number(value)}
-                                </div>
-                              );
-                            }
-                          )}
-                        </div>
-                        <div className="text-center text-orange-500">
-                          Total Vehicles: {total_yearly_vehicle_count}
-                        </div>
-                      </div>
-                    </Card>
-                    <Card>
-                      <div>
-                        <CardTitle className="text-lime-600 text-center">
-                          Locations
-                        </CardTitle>
-                        <div className="grid gap-5 md:grid-cols-3 grid-cols-1  dark:text-white justify-center">
-                          {Object.entries(year_locations).map(
-                            ([key, value], idx) => {
-                              return (
-                                <div key={idx} className="ml-5">
-                                  {key}: {Number(value)}
-                                  {/* For each key which is the location get the value from month_total_location_cost and display the cost  */}
-                                  {showRevenue && (
-                                    <span className="ml-3 text-green-600">
-                                      ($
-                                      {year_total_location_cost[key]
-                                        .toFixed(2)
-                                        .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                                      )
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            }
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <Card className="bg-card text-card-foreground border-border shadow-md">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-orange-600 dark:text-orange-400 text-center uppercase tracking-wide">
+                              Vehicles
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex flex-wrap gap-4 text-foreground justify-center text-sm font-medium">
+                              {Object.entries(yearly_vehicles).map(
+                                ([key, value], idx) => (
+                                  <div key={idx} className="bg-muted px-2 py-1 rounded-md">
+                                    {key}: {Number(value)}
+                                  </div>
+                                )
+                              )}
+                            </div>
+                            <div className="text-center text-orange-500 dark:text-orange-400 mt-4 font-bold border-t border-border pt-2">
+                              Total Vehicles: {total_yearly_vehicle_count}
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="bg-card text-card-foreground border-border shadow-md">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-lime-600 dark:text-lime-400 text-center uppercase tracking-wide">
+                              Locations
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid gap-2 md:grid-cols-2 text-foreground text-sm">
+                              {Object.entries(year_locations).map(
+                                ([key, value], idx) => (
+                                  <div key={idx} className="flex justify-between items-center p-2 bg-muted/50 rounded-md">
+                                    <span className="font-semibold">{key}: {Number(value)}</span>
+                                    {showRevenue && (
+                                      <span className="text-green-600 dark:text-green-400 font-mono">
+                                        ${year_total_location_cost[key]
+                                          .toFixed(2)
+                                          .replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                      </span>
+                                    )}
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                    </div>
+                  </>
                 )}
-              </>
+              </div>
             )}
           </>
         )}

@@ -66,7 +66,7 @@ export async function getDailyOperations(date: string, legacyReservations: Reser
     return { activeFleet: [], reservationStatusMap: {}, hourlyUtilization: {} };
   }
 
-  // B. Manual Join for Driver Names (FIXED)
+  // B. Manual Join for Driver Names
   const driverIds = manifest.map(m => m.driver_id).filter(Boolean);
   
   let drivers: any[] = [];
@@ -182,18 +182,43 @@ export async function createFleetPairing(date: string, driverId: string, vehicle
   revalidatePath(`/biz/${date}`);
 }
 
+/**
+ * Removes a driver/vehicle pairing from the schedule.
+ * UPDATED: Handles "Cascade Delete" manually.
+ * 1. Unassigns any passengers currently on this shuttle.
+ * 2. Deletes the shuttle manifest record.
+ */
 export async function removeFleetPairing(manifestId: string, dateContext: string) {
   await requireStaff(); // Security Check
   const supabase = await createClient();
   
+  // 1. CLEAR PASSENGERS
+  // We delete the assignments linked to this manifest. 
+  // This effectively puts the passengers back into the "Unassigned" pool.
+  const { error: unassignError } = await supabase
+    .from('reservation_assignments')
+    .delete()
+    .eq('manifest_id', manifestId);
+
+  if (unassignError) {
+    console.error("Failed to unassign passengers:", unassignError);
+    throw new Error(`Could not clear passengers: ${unassignError.message}`);
+  }
+
+  // 2. DELETE MANIFEST
+  // Now safe to delete since there are no foreign key dependencies.
   const { error } = await supabase
     .from('daily_shuttle_manifest')
     .delete()
     .eq('id', manifestId);
 
-  if (error) throw new Error("Failed to remove fleet pairing");
+  if (error) {
+    console.error("Delete Manifest Error:", error);
+    throw new Error("Failed to remove fleet pairing");
+  }
     
   revalidatePath(`/biz/${dateContext}`);
+  return { success: true };
 }
 
 export async function assignShuttleSegment(reservationId: string, manifestId: string, paxCount: number, dateContext: string) {

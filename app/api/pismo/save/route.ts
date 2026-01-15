@@ -1,69 +1,103 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server'; 
 import { createClient as createAdminClient } from '@supabase/supabase-js'; 
+import { Resend } from 'resend'; 
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const NMI_SECURITY_KEY = process.env.NMI_SECURITY_KEY!;
+const RESEND_API_KEY = process.env.RESEND_API_KEY!; 
+
+const resend = new Resend(RESEND_API_KEY);
+
+// Helper: Calculate End Time from Start + Duration
+const calculateEndTime = (start: string, duration: number) => {
+    if (!start || !duration) return '';
+    const match = start.match(/(\d+):(\d+) (\w+)/);
+    if (!match) return '';
+
+    let hours = parseInt(match[1]);
+    const period = match[3].toUpperCase();
+    
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+
+    let endHour = (hours + duration);
+    const displayPeriod = endHour >= 12 && endHour < 24 ? 'PM' : 'AM';
+    if (endHour >= 24) endHour -= 24; 
+
+    let displayHour = endHour % 12 || 12;
+    return `${displayHour.toString().padStart(2, '0')}:00 ${displayPeriod}`;
+};
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { total_amount, holder, booking, payment_token, payment_amount } = body;
 
-    // --- 1. USER RESOLUTION LOGIC ---
+    // --- 1. USER RESOLUTION ---
     let userId = null;
     let creatorName = 'Online';
 
     const cookieClient = await createClient();
     const { data: { user: loggedInUser } } = await cookieClient.auth.getUser();
-    
-    // Initialize Admin Client (Needed to create/search users)
     const adminSupabase = createAdminClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     if (loggedInUser) {
-        // A. User is logged in -> Use their ID
         userId = loggedInUser.id;
-        
-        // Fetch profile name for logs
-        const { data: profile } = await cookieClient
-            .from('users').select('full_name').eq('id', userId).single();
+        const { data: profile } = await cookieClient.from('users').select('full_name').eq('id', userId).single();
         creatorName = profile?.full_name || 'Staff/User';
-
     } else {
-        // B. Guest User -> Check if account exists or create one
         creatorName = 'Guest (Auto-Account)';
         const email = holder.email.toLowerCase().trim();
-
-        // 1. Search for existing user by email
         const { data: { users } } = await adminSupabase.auth.admin.listUsers();
         const existingUser = users.find(u => u.email?.toLowerCase() === email);
 
         if (existingUser) {
-            console.log(`[Booking] Linking to existing user: ${existingUser.id}`);
             userId = existingUser.id;
         } else {
-            console.log(`[Booking] Creating new account for: ${email}`);
-            
-            // 2. Create new user & Send Invite
-            const { data: newUser, error: createError } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
-                data: {
-                    first_name: holder.firstName,
-                    last_name: holder.lastName,
-                    user_level: 100 // Default level
+            const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+                type: 'invite',
+                email: email,
+                options: {
+                    data: {
+                        first_name: holder.firstName,
+                        last_name: holder.lastName,
+                        full_name: `${holder.firstName} ${holder.lastName}`,
+                        user_level: 100
+                    },
+                    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/set-password`
                 }
             });
 
-            if (createError) {
-                console.error("Auto-Account Error:", createError);
-                userId = null; 
-            } else {
-                userId = newUser.user?.id;
+            if (!linkError) {
+                userId = linkData.user?.id;
+                if (linkData.properties?.action_link) {
+                    await resend.emails.send({
+                        from: 'SunBuggy <reservations@sunbuggy.com>',
+                        to: email,
+                        subject: 'Your SunBuggy Reservation & Account',
+                        html: `
+                          <div style="font-family: sans-serif; color: #333;">
+                            <h1>Welcome to SunBuggy!</h1>
+                            <p>We have confirmed your reservation for <strong>${booking.date}</strong>.</p>
+                            <p>To view your booking details and sign waivers easily, please claim your account below:</p>
+                            <a href="${linkData.properties.action_link}" style="background-color: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                              Set Password & View Booking
+                            </a>
+                          </div>
+                        `
+                    });
+                }
             }
         }
     }
 
-    // --- 2. INSERT BOOKING (With user_id) ---
+    // --- 2. CALCULATE END TIME ---
+    // Even if frontend sends it, we recalculate to be safe based on duration
+    const calculatedEndTime = calculateEndTime(booking.startTime, Number(booking.duration));
+
+    // --- 3. INSERT BOOKING ---
     const { data: bookingRec, error: bookingErr } = await adminSupabase
       .from('pismo_bookings')
       .insert({
@@ -71,17 +105,17 @@ export async function POST(request: Request) {
         last_name: holder.lastName,
         email: holder.email,
         phone: holder.phone,
-        
-        // LINK THE USER HERE
         user_id: userId, 
         
         adults: holder.adults || 1,
         minors: holder.minors || 0,
         booked_by: creatorName,
+        
         booking_date: booking.date,
         start_time: booking.startTime,
-        end_time: booking.endTime,
-        duration_hours: booking.duration,
+        duration_hours: Number(booking.duration), // Save Duration
+        end_time: calculatedEndTime, // Save Calculated End Time
+        
         goggles_qty: booking.goggles || 0,
         bandannas_qty: booking.bandannas || 0,
         total_amount: Math.round(total_amount * 100), 
@@ -92,7 +126,7 @@ export async function POST(request: Request) {
 
     if (bookingErr) throw bookingErr;
 
-    // --- 3. PROCESS PAYMENT ---
+    // --- 4. PROCESS PAYMENT ---
     let transactionId = null;
     let paymentSuccess = false;
 
@@ -106,12 +140,9 @@ export async function POST(request: Request) {
             first_name: holder.firstName,
             last_name: holder.lastName,
             email: holder.email,
-            phone: holder.phone,
         };
 
         const nmiBody = new URLSearchParams(nmiParams);
-        console.log(`[Payment] Charging Reservation #${bookingRec.reservation_id}...`);
-
         const nmiRes = await fetch('https://secure.nmi.com/api/transact.php', { method: 'POST', body: nmiBody });
         const nmiText = await nmiRes.text();
         const params = new URLSearchParams(nmiText);
@@ -120,7 +151,6 @@ export async function POST(request: Request) {
             paymentSuccess = true;
             transactionId = params.get('transactionid');
         } else {
-            // Payment Failed: Clean up
             await adminSupabase.from('pismo_bookings').delete().eq('id', bookingRec.id);
             return NextResponse.json({ success: false, error: `Payment Declined: ${params.get('responsetext')}` }, { status: 400 });
         }
@@ -128,7 +158,7 @@ export async function POST(request: Request) {
         paymentSuccess = true; 
     }
 
-    // --- 4. FINALIZE ---
+    // --- 5. FINALIZE ---
     if (paymentSuccess) {
         await adminSupabase
             .from('pismo_bookings')

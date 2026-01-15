@@ -19,7 +19,6 @@ export default function PismoReservationEditForm({
   pricingRules: any[] 
 }) {
   
-  // --- Core State ---
   const [selectedDate, setSelectedDate] = useState<Date | null>(
     initialData.booking_date ? new Date(initialData.booking_date + 'T00:00:00') : null
   );
@@ -43,7 +42,6 @@ export default function PismoReservationEditForm({
   const [goggles, setGoggles] = useState<number>(initialData.goggles_qty || 0);
   const [bandannas, setBandannas] = useState<number>(initialData.bandannas_qty || 0);
   
-  // --- Initialize Holder Info ---
   const [holderInfo, setHolderInfo] = useState({ 
     firstName: initialData.first_name, 
     lastName: initialData.last_name, 
@@ -69,25 +67,20 @@ export default function PismoReservationEditForm({
   const [message, setMessage] = useState('');
   const [isCheckoutExpanded, setIsCheckoutExpanded] = useState(false);
 
-  // --- STAFF STATE ---
   const [userLevel, setUserLevel] = useState(0); 
   const [paymentType, setPaymentType] = useState<'deposit' | 'payment'>('deposit');
   const [useCustomAmount, setUseCustomAmount] = useState(false);
   const [customAmount, setCustomAmount] = useState(0);
 
-  // --- FETCH USER LEVEL ---
   useEffect(() => {
     const fetchUser = async () => {
         const supabase = createClient();
         const details = await getUserDetails(supabase);
-        if (details && details.length > 0) {
-            setUserLevel(details[0].user_level || 0);
-        }
+        if (details && details.length > 0) setUserLevel(details[0].user_level || 0);
     };
     fetchUser();
   }, []);
 
-  // --- Calculations (TOTAL & DEPOSIT) ---
   useEffect(() => {
     if (!pricingCategories.length) return;
     
@@ -101,7 +94,6 @@ export default function PismoReservationEditForm({
       
       rentalCalc += sel.qty * price;
       if (sel.waiver) rentalCalc += sel.qty * (cat.damage_waiver || 0);
-
       depositCalc += sel.qty * (cat.deposit || 0);
     });
 
@@ -113,8 +105,6 @@ export default function PismoReservationEditForm({
     }
   }, [selections, goggles, bandannas, pricingCategories, durationHours, useCustomAmount, paymentType]);
 
-  // --- HANDLE UPDATE / PAYMENT / CAPTURE ---
-  // Added optional captureAmountOverride argument
   const handleUpdate = async (paymentToken: string | null, captureDeposit: boolean = false, captureAmountOverride?: number) => {
     setLoading(true);
     
@@ -128,18 +118,12 @@ export default function PismoReservationEditForm({
         if (sel && sel.qty > 0) {
             const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
             vehiclesPayload[cat.id] = {
-                qty: sel.qty, waiver: sel.waiver,
-                name: cat.vehicle_name, price: cat[priceKey] || 0 
+                qty: sel.qty, waiver: sel.waiver, name: cat.vehicle_name, price: cat[priceKey] || 0 
             };
         }
     });
 
-    // Determine the Amount
-    // 1. If Capturing, use the specific Override Amount from the input
-    // 2. Else if Custom Amount Toggle is ON, use that
-    // 3. Else default to either Deposit Total or Rental Total
     let transactionAmount = 0;
-    
     if (captureDeposit && captureAmountOverride !== undefined) {
         transactionAmount = captureAmountOverride;
     } else {
@@ -170,7 +154,9 @@ export default function PismoReservationEditForm({
                 note: newNote, 
                 booking: { 
                     date: selectedDate?.toISOString().split('T')[0],
-                    startTime, endTime, duration: durationHours,
+                    startTime, 
+                    endTime, 
+                    duration: durationHours, // Passing Duration explicitly
                     vehicles: vehiclesPayload, goggles, bandannas 
                 }
             }),
@@ -193,143 +179,68 @@ export default function PismoReservationEditForm({
 
   const selectedItemsList = pricingCategories
     .filter(cat => (selections[cat.id]?.qty || 0) > 0)
-    .map(cat => ({
-        id: cat.id, name: cat.vehicle_name, qty: selections[cat.id].qty,
-        waiver: selections[cat.id].waiver,
-        price: ((cat[durationHours ? `price_${durationHours}hr` : 'price_1hr'] || 0) + (selections[cat.id].waiver ? (cat.damage_waiver || 0) : 0)) * selections[cat.id].qty
-    }));
+    .map(cat => {
+        const priceKey = durationHours ? `price_${durationHours}hr` : 'price_1hr';
+        const basePrice = cat[priceKey] !== undefined ? cat[priceKey] : (cat.price_1hr || 0);
+        const waiverPrice = selections[cat.id].waiver ? (cat.damage_waiver || 0) : 0;
+        return { id: cat.id, name: cat.vehicle_name, qty: selections[cat.id].qty, waiver: selections[cat.id].waiver, price: (basePrice + waiverPrice) * selections[cat.id].qty };
+    });
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8 flex flex-col lg:flex-row gap-8">
-      
-      {/* LEFT COLUMN */}
       <div className="flex-1 min-w-0 max-w-5xl mx-auto">
-          
           <div className="flex items-center justify-between mb-8 pb-6 border-b border-border">
             <div>
-              <Link href={`/biz/pismo/${initialData.booking_date}`} className="text-primary hover:text-primary/80 mb-2 block flex items-center gap-1 transition-colors">
-                <ChevronLeft className="w-4 h-4" /> Back to Dashboard
-              </Link>
+              <Link href={`/biz/pismo/${initialData.booking_date}`} className="text-primary hover:text-primary/80 mb-2 block flex items-center gap-1 transition-colors"><ChevronLeft className="w-4 h-4" /> Back to Dashboard</Link>
               <h1 className="text-3xl font-bold text-foreground">Res #{initialData.reservation_id}</h1>
               <span className="text-muted-foreground text-sm">Created {new Date(initialData.created_at).toLocaleDateString()}</span>
             </div>
             <div className="text-right">
-              <span className={`block font-bold uppercase text-lg px-3 py-1 rounded border ${
-                initialData.status === 'confirmed' 
-                  ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' 
-                  : 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20'
-              }`}>
-                {initialData.status}
-              </span>
+              <span className={`block font-bold uppercase text-lg px-3 py-1 rounded border ${initialData.status === 'confirmed' ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20'}`}>{initialData.status}</span>
             </div>
           </div>
-
           <ReservationHolderForm initialData={holderInfo} onUpdate={(info: any) => setHolderInfo({...holderInfo, ...info})} />
           
           <DateTimeSelector 
               selectedDate={selectedDate} setSelectedDate={setSelectedDate}
               startTime={startTime} setStartTime={setStartTime}
               endTime={endTime} setEndTime={setEndTime}
-              setDurationHours={setDurationHours} setPricingCategories={setPricingCategories}
+              durationHours={durationHours} setDurationHours={setDurationHours} // Pass Duration Props
+              setPricingCategories={setPricingCategories}
               setLoading={setLoading} setMessage={setMessage} initialData={initialData}
           />
 
           <section className="mb-12 mt-8">
-            <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
-                <Pencil className="w-5 h-5" /> Vehicles & Extras
-            </h2>
-            
-            {pricingCategories.length > 0 ? (
-              <VehicleGrid categories={pricingCategories} selections={selections} setSelections={setSelections} durationHours={durationHours} />
-            ) : <div className="p-8 text-center bg-card rounded-xl text-muted-foreground border border-border">Loading...</div>}
-            
+            <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2"><Pencil className="w-5 h-5" /> Vehicles & Extras</h2>
+            {pricingCategories.length > 0 ? <VehicleGrid categories={pricingCategories} selections={selections} setSelections={setSelections} durationHours={durationHours} /> : <div className="p-8 text-center bg-card rounded-xl text-muted-foreground border border-border">Loading...</div>}
             <div className="mt-8 flex gap-8 justify-center bg-card p-6 rounded-xl border border-border shadow-sm text-card-foreground">
-              <div className="text-center">
-                  <label className="block mb-2 font-bold text-foreground">Goggles</label>
-                  <input 
-                    type="number" 
-                    min="0" 
-                    value={goggles} 
-                    onChange={e => setGoggles(Number(e.target.value))} 
-                    className="w-24 bg-background border border-input p-3 rounded text-center text-xl outline-none focus:ring-2 focus:ring-ring text-foreground" 
-                  />
-              </div>
-              <div className="text-center">
-                  <label className="block mb-2 font-bold text-foreground">Bandannas</label>
-                  <input 
-                    type="number" 
-                    min="0" 
-                    value={bandannas} 
-                    onChange={e => setBandannas(Number(e.target.value))} 
-                    className="w-24 bg-background border border-input p-3 rounded text-center text-xl outline-none focus:ring-2 focus:ring-ring text-foreground" 
-                  />
-              </div>
+              <div className="text-center"><label className="block mb-2 font-bold text-foreground">Goggles</label><input type="number" min="0" value={goggles} onChange={e => setGoggles(Number(e.target.value))} className="w-24 bg-background border border-input p-3 rounded text-center text-xl outline-none focus:ring-2 focus:ring-ring text-foreground" /></div>
+              <div className="text-center"><label className="block mb-2 font-bold text-foreground">Bandannas</label><input type="number" min="0" value={bandannas} onChange={e => setBandannas(Number(e.target.value))} className="w-24 bg-background border border-input p-3 rounded text-center text-xl outline-none focus:ring-2 focus:ring-ring text-foreground" /></div>
             </div>
           </section>
 
           <CheckoutForm 
-            total={total} 
-            depositTotal={depositTotal} 
-            holderInfo={holderInfo} 
-            isExpanded={isCheckoutExpanded} 
-            setIsExpanded={setIsCheckoutExpanded}
-            onPayment={handleUpdate} 
-            message={message} 
-            loading={loading} 
-            selectedItems={selectedItemsList} 
-            goggles={goggles} 
-            bandannas={bandannas}
-            userLevel={userLevel} 
-            isEditing={true} 
-            paymentType={paymentType}
-            setPaymentType={setPaymentType}
-            customAmount={customAmount}
-            setCustomAmount={setCustomAmount}
-            useCustomAmount={useCustomAmount}
-            setUseCustomAmount={setUseCustomAmount}
+            total={total} depositTotal={depositTotal} holderInfo={holderInfo} 
+            isExpanded={isCheckoutExpanded} setIsExpanded={setIsCheckoutExpanded} onPayment={handleUpdate} 
+            message={message} loading={loading} selectedItems={selectedItemsList} goggles={goggles} bandannas={bandannas}
+            userLevel={userLevel} isEditing={true} paymentType={paymentType} setPaymentType={setPaymentType}
+            customAmount={customAmount} setCustomAmount={setCustomAmount} useCustomAmount={useCustomAmount} setUseCustomAmount={setUseCustomAmount}
             existingTransactionId={initialData.transaction_id}
           />
       </div>
 
-      {/* RIGHT COLUMN */}
       <div className="w-full lg:w-96 space-y-8 flex-shrink-0">
           <div className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-md">
-              <h3 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
-                <ClipboardList className="w-5 h-5" /> Notes
-              </h3>
-              <textarea 
-                value={newNote} 
-                onChange={e => setNewNote(e.target.value)} 
-                placeholder="Type note here..." 
-                className="w-full bg-background border border-input rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px] text-foreground placeholder:text-muted-foreground" 
-              />
+              <h3 className="text-xl font-bold text-primary mb-4 flex items-center gap-2"><ClipboardList className="w-5 h-5" /> Notes</h3>
+              <textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Type note here..." className="w-full bg-background border border-input rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px] text-foreground placeholder:text-muted-foreground" />
               <div className="max-h-64 overflow-y-auto space-y-3 pr-2 mt-4 custom-scrollbar">
-                  {existingNotes.map((note: any) => (
-                      <div key={note.id} className="bg-muted/50 p-3 rounded border border-border text-sm">
-                          <p className="text-foreground">{note.note_text}</p>
-                          <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-                              <span>{note.author_name}</span>
-                              <span suppressHydrationWarning>{new Date(note.created_at).toLocaleDateString()}</span>
-                          </div>
-                      </div>
-                  ))}
+                  {existingNotes.map((note: any) => (<div key={note.id} className="bg-muted/50 p-3 rounded border border-border text-sm"><p className="text-foreground">{note.note_text}</p><div className="flex justify-between mt-2 text-xs text-muted-foreground"><span>{note.author_name}</span><span suppressHydrationWarning>{new Date(note.created_at).toLocaleDateString()}</span></div></div>))}
               </div>
           </div>
-
           <div className="bg-card text-card-foreground p-6 rounded-xl border border-border shadow-md">
-              <h3 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
-                <History className="w-5 h-5" /> Edit History
-              </h3>
+              <h3 className="text-xl font-bold text-primary mb-4 flex items-center gap-2"><History className="w-5 h-5" /> Edit History</h3>
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-                  {logs.map((log: any) => (
-                      <div key={log.id} className="relative pl-4 border-l-2 border-primary/30">
-                          <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-primary"></div>
-                          <p className="text-sm text-foreground">{log.action_description}</p>
-                          <div className="text-xs text-muted-foreground mt-1">
-                              <span className="text-primary font-medium">{log.editor_name}</span> • <span suppressHydrationWarning>{new Date(log.created_at).toLocaleString()}</span>
-                          </div>
-                      </div>
-                  ))}
+                  {logs.map((log: any) => (<div key={log.id} className="relative pl-4 border-l-2 border-primary/30"><div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-primary"></div><p className="text-sm text-foreground">{log.action_description}</p><div className="text-xs text-muted-foreground mt-1"><span className="text-primary font-medium">{log.editor_name}</span> • <span suppressHydrationWarning>{new Date(log.created_at).toLocaleString()}</span></div></div>))}
               </div>
           </div>
       </div>
