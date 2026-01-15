@@ -8,7 +8,7 @@ import { ImFilesEmpty } from 'react-icons/im';
 /**
  * @file /app/(biz)/biz/schedule/components/date-cell.tsx
  * @description Renders the content of a single day cell in the calendar.
- * Updated: Semantic Theming Applied (v1.0)
+ * Updated: v1.2 - Mobile Optimized Revenue (Rounded + Compact)
  */
 
 const DateCell = ({
@@ -30,9 +30,7 @@ const DateCell = ({
     return acc + Number(reservation.ppl_count);
   }, 0);
 
-  // vehicleslist is the properties of the date_data.
-  // First identify which vehicle has a value greater than zero,
-  // then extract them in an object with the name as their key and their quantity as their value.
+  // vehicleslist logic...
   const vehicle_init = date_data.map((reservation) => {
     return vehiclesList.reduce((acc, key) => {
       const count = Number(reservation[key as keyof typeof reservation]);
@@ -46,8 +44,7 @@ const DateCell = ({
     }, {});
   });
 
-  // Flatten the array of objects and sum up the values of the same key
-  // to get the total count of each vehicle.
+  // Flatten the array of objects...
   const vehicle_count = vehicle_init.reduce(
     (acc: { [key: string]: number }, obj) => {
       return Object.entries(obj).reduce((acc, [key, value]) => {
@@ -69,35 +66,48 @@ const DateCell = ({
   return (
     <div className="h-full w-full">
       {!total_vehicle_count ? (
-        // SEMANTIC: Empty State (Muted Icon instead of Red)
+        // SEMANTIC: Empty State
         <div className="flex justify-center items-center h-full opacity-50">
           <ImFilesEmpty className="text-muted-foreground w-4 h-4" />
         </div>
       ) : (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-0.5 md:gap-1">
           {role > 899 && showRevenue && (
-            // RESPONSIVE: Emerald Green for Revenue (Dark/Light safe)
-            <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
-              ${daily_revenue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+            // RESPONSIVE REVENUE: 
+            // - Mobile: text-[10px], Rounded (No decimals)
+            // - Desktop: text-xs, Full Precision
+            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[10px] md:text-xs tracking-tight">
+               {/* Mobile View: Rounded */}
+               <span className="md:hidden">
+                 ${Math.round(daily_revenue).toLocaleString()}
+               </span>
+               {/* Desktop View: Full Decimals */}
+               <span className="hidden md:inline">
+                 ${daily_revenue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+               </span>
             </span>
           )}
           
           <div className="flex gap-2 text-xs">
-            <div className="flex flex-col font-bold">
-              {/* RESPONSIVE: Orange for Vehicles */}
+            {/* SUMMARY SECTION: Always Visible */}
+            <div className="flex flex-col font-bold leading-tight">
+              {/* Fleet Total */}
               <span className="text-orange-600 dark:text-orange-400">
                 F: {total_vehicle_count as number}
               </span>
-              {/* RESPONSIVE: Lime for People */}
+              {/* People Total */}
               <span className="text-lime-600 dark:text-lime-400">
                 P: {ppl_count as number}
               </span>
             </div>
             
-            <div className="flex flex-col justify-end text-[10px] leading-tight">
+            {/* DETAILS SECTION: 
+                hidden on mobile (<768px), 
+                visible (flex) on tablet/desktop (md:flex) 
+            */}
+            <div className="hidden md:flex flex-col justify-end text-[10px] leading-tight">
               {Object.entries(vehicle_count).map(([key, value], idx) => {
                 return (
-                  // SEMANTIC: Standard text color for list items
                   <div className="flex gap-1 text-foreground/80" key={idx}>
                     <span className="lowercase opacity-80">{key}</span>
                     <span className="font-medium">- {String(value)}</span>
