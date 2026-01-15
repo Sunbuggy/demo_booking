@@ -9,14 +9,14 @@ export default function DateTimeSelector({
   selectedDate, setSelectedDate, 
   startTime, setStartTime, 
   endTime, setEndTime, 
-  setDurationHours, setPricingCategories, 
+  durationHours, setDurationHours, // Added durationHours to props
+  setPricingCategories, 
   setLoading, setMessage,
   initialData 
 }: any) {
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
-  const [possibleEndTimes, setPossibleEndTimes] = useState<string[]>([]);
   
-  // Track if we have already initialized the edit mode data to prevent infinite loops
+  // Track initialization to prevent loops
   const hasInitialized = useRef(false);
 
   // 1. Fetch available start times when date changes
@@ -28,7 +28,6 @@ export default function DateTimeSelector({
 
     const fetchTimes = async () => {
       setLoading(true);
-      // Use local date string to avoid timezone shifts
       const offset = selectedDate.getTimezoneOffset() * 60000;
       const localDate = new Date(selectedDate.getTime() - offset);
       const dateStr = localDate.toISOString().split('T')[0];
@@ -55,73 +54,71 @@ export default function DateTimeSelector({
     fetchTimes();
   }, [selectedDate, setLoading, initialData]);
 
-  // 2. Initialize Data on Load (Only for Edit Mode)
+  // 2. Initialize Data (Edit Mode)
   useEffect(() => {
     if (initialData && !hasInitialized.current) {
         setStartTime(initialData.start_time);
         setEndTime(initialData.end_time);
+        setDurationHours(Number(initialData.duration_hours)); // Set initial duration
         hasInitialized.current = true;
     }
-  }, [initialData, setStartTime, setEndTime]);
+  }, [initialData, setStartTime, setEndTime, setDurationHours]);
 
-  // 3. Calculate possible end times (1-4 hours ahead)
-  useEffect(() => {
-    if (!startTime) {
-      setPossibleEndTimes([]);
-      return;
-    }
-    const ends: string[] = [];
-    const match = startTime.match(/(\d+):(\d+) (\w+)/);
-    if (!match) return;
+  // Helper: Add hours to a time string (e.g., "10:00 AM" + 2 -> "12:00 PM")
+  const calculateEndTime = (start: string, hoursToAdd: number) => {
+    const match = start.match(/(\d+):(\d+) (\w+)/);
+    if (!match) return '';
 
     let hours = parseInt(match[1]);
     const period = match[3].toUpperCase();
+    
+    // Convert to 24h for math
     if (period === 'PM' && hours !== 12) hours += 12;
     if (period === 'AM' && hours === 12) hours = 0;
 
-    for (let i = 1; i <= 4; i++) {
-      let endHour = (hours + i) % 24;
-      let displayHour = endHour % 12 || 12;
-      let displayPeriod = endHour >= 12 ? 'PM' : 'AM';
-      ends.push(`${displayHour.toString().padStart(2, '0')}:00 ${displayPeriod}`);
-    }
-    setPossibleEndTimes(ends);
-  }, [startTime]);
+    let endHour = (hours + hoursToAdd);
+    
+    // Convert back to 12h display
+    const displayPeriod = endHour >= 12 && endHour < 24 ? 'PM' : 'AM'; // Simple check, assumes <24h operation
+    // Handle crossing midnight slightly gracefully if needed, though mostly daytime
+    if (endHour >= 24) endHour -= 24; 
 
-  // 4. Calculate Duration & Fetch Pricing
+    let displayHour = endHour % 12 || 12;
+    
+    return `${displayHour.toString().padStart(2, '0')}:00 ${displayPeriod}`;
+  };
+
+  // 3. Handle Duration Change -> Update End Time
+  const handleDurationChange = (hours: number) => {
+    setDurationHours(hours);
+    if (startTime) {
+        const newEndTime = calculateEndTime(startTime, hours);
+        setEndTime(newEndTime);
+    }
+  };
+
+  // 4. If Start Time changes, re-calculate End Time based on current Duration
   useEffect(() => {
-    if (!endTime || !selectedDate || !startTime) {
+    if (startTime && durationHours) {
+        const newEndTime = calculateEndTime(startTime, durationHours);
+        // Only update if it's different to avoid loops
+        if (newEndTime !== endTime) {
+            setEndTime(newEndTime);
+        }
+    }
+  }, [startTime, durationHours]); // Removed endTime from dependency to avoid loop
+
+  // 5. Fetch Pricing when everything is ready
+  useEffect(() => {
+    if (!endTime || !selectedDate || !startTime || !durationHours) {
       if (!initialData) {
           setPricingCategories([]);
-          setDurationHours(null);
       }
       return;
     }
 
-    const calculateDuration = () => {
-      const startMatch = startTime.match(/(\d+):(\d+) (\w+)/);
-      const endMatch = endTime.match(/(\d+):(\d+) (\w+)/);
-      if (!startMatch || !endMatch) return null;
-
-      let startH = parseInt(startMatch[1]);
-      if (startMatch[3] === 'PM' && startH !== 12) startH += 12;
-      if (startMatch[3] === 'AM' && startH === 12) startH = 0;
-
-      let endH = parseInt(endMatch[1]);
-      if (endMatch[3] === 'PM' && endH !== 12) endH += 12;
-      if (endMatch[3] === 'AM' && endH === 12) endH = 0;
-
-      let hours = endH - startH;
-      if (hours <= 0) hours += 24;
-      return hours;
-    };
-
-    const hours = calculateDuration();
-    setDurationHours(hours);
-
     const fetchPricing = async () => {
       setLoading(true);
-      // Use local date string
       const offset = selectedDate.getTimezoneOffset() * 60000;
       const localDate = new Date(selectedDate.getTime() - offset);
       const dateStr = localDate.toISOString().split('T')[0];
@@ -141,13 +138,16 @@ export default function DateTimeSelector({
       setLoading(false);
     };
 
+    // Debounce slightly
     const timer = setTimeout(() => {
         fetchPricing();
     }, 100);
 
     return () => clearTimeout(timer);
 
-  }, [endTime, selectedDate, startTime, setDurationHours, setPricingCategories, setLoading, setMessage]);
+  }, [endTime, selectedDate, startTime, durationHours, setPricingCategories, setLoading, setMessage]);
+
+  const durationOptions = [1, 2, 3, 4];
 
   return (
     <section className="text-center space-y-12 mb-12">
@@ -159,20 +159,17 @@ export default function DateTimeSelector({
           1. Choose Reservation Date
         </label>
         <div className="flex justify-center relative z-10">
-            {/* SEMANTIC: DatePicker Styling
-               - Text Color: text-foreground
-               - Background: bg-background
-               - Border: border-primary (to highlight active step)
-            */}
             <DatePicker
                 selected={selectedDate}
                 onChange={(date: Date | null) => {
                     if (date) {
-                    setSelectedDate(date);
-                    if (!initialData || date.toISOString().split('T')[0] !== initialData.booking_date) {
-                        setStartTime('');
-                        setEndTime('');
-                    }
+                        setSelectedDate(date);
+                        // Reset times on date change unless it matches initial
+                        if (!initialData || date.toISOString().split('T')[0] !== initialData.booking_date) {
+                            setStartTime('');
+                            setEndTime('');
+                            setDurationHours(null);
+                        }
                     }
                 }}
                 minDate={new Date()} 
@@ -189,14 +186,10 @@ export default function DateTimeSelector({
           <Clock className="w-6 h-6" />
           2. Choose Start Time
         </label>
-        {/* SEMANTIC: Select Styling (bg-background, text-foreground, border-input) */}
         <div className="relative max-w-md mx-auto">
             <select
             value={startTime}
-            onChange={e => {
-                setStartTime(e.target.value);
-                setEndTime('');
-            }}
+            onChange={e => setStartTime(e.target.value)}
             className="w-full p-4 bg-background rounded-lg text-xl border border-input focus:border-primary focus:ring-4 focus:ring-primary/20 outline-none text-foreground appearance-none text-center font-bold cursor-pointer hover:bg-muted/30 transition-colors shadow-sm"
             >
             <option value="">-- Select Start Time --</option>
@@ -204,25 +197,26 @@ export default function DateTimeSelector({
                 <option key={time} value={time} className="bg-background text-foreground">{time}</option>
             ))}
             </select>
-            {/* Custom Arrow Indicator if needed, or rely on browser default/appearance-none + CSS */}
         </div>
       </div>
 
-      {/* 3. End Time Selection */}
-      <div className={`transition-all duration-500 ease-in-out ${startTime && possibleEndTimes.length > 0 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 h-0 overflow-hidden'}`}>
+      {/* 3. Duration Selection (Replaces End Time) */}
+      <div className={`transition-all duration-500 ease-in-out ${startTime ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 h-0 overflow-hidden'}`}>
         <label className="text-2xl flex items-center justify-center gap-2 mb-4 font-bold text-primary">
           <Hourglass className="w-6 h-6" />
-          3. Choose End Time
+          3. Choose Duration
         </label>
         <div className="relative max-w-md mx-auto">
             <select
-            value={endTime}
-            onChange={e => setEndTime(e.target.value)}
+            value={durationHours || ''}
+            onChange={e => handleDurationChange(Number(e.target.value))}
             className="w-full p-4 bg-background rounded-lg text-xl border border-input focus:border-primary focus:ring-4 focus:ring-primary/20 outline-none text-foreground appearance-none text-center font-bold cursor-pointer hover:bg-muted/30 transition-colors shadow-sm"
             >
-            <option value="">-- Select End Time --</option>
-            {possibleEndTimes.map(time => (
-                <option key={time} value={time} className="bg-background text-foreground">{time}</option>
+            <option value="">-- Select Duration --</option>
+            {durationOptions.map(hours => (
+                <option key={hours} value={hours} className="bg-background text-foreground">
+                    {hours} Hour{hours > 1 ? 's' : ''} {endTime && durationHours === hours ? `(Ends ${endTime})` : ''}
+                </option>
             ))}
             </select>
         </div>

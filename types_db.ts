@@ -3149,6 +3149,7 @@ export type Database = {
           shared_email: string
         }[]
       }
+      get_my_level: { Args: never; Returns: number }
       get_null_email_profiles: {
         Args: never
         Returns: {
