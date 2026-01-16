@@ -11,6 +11,7 @@ import DatePicker from '@/app/(com)/book/date-picker';
 import { Form } from '@/components/ui/form';
 import { FleetCarousel } from './booking-selection';
 import { BookingTabs, TabValue, VehicleCategory } from './booking-tabs';
+import { CalendarDays, Car, Contact, Users, MapPin } from 'lucide-react';
 
 // Define the form schema for the date field
 const DateFormSchema = z.object({
@@ -88,6 +89,13 @@ const findMatchingDisplayTime = (time24: string, timeArray: string[]): string =>
   // If no exact match, return the display time without discount info
   return displayTime;
 };
+
+// --- THEME CONSTANTS (SEMANTIC UPDATE) ---
+// Updated to use semantic classes as per guidelines
+const SECTION_CARD_CLASS = "p-5 bg-card text-card-foreground border border-border rounded-xl shadow-sm";
+const INPUT_CLASS = "w-full h-10 px-3 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all";
+const LABEL_CLASS = "block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5";
+const HEADER_CLASS = "text-lg font-bold text-foreground mb-4 flex items-center gap-2";
 
 export function CalendarFormEdit({
   isCalendarOpen,
@@ -243,8 +251,6 @@ export function CalendarFormEdit({
     }
 
     if (watchedDate && watchedDate.getTime() !== bookInfo.bookingDate.getTime()) {
-      console.log('CalendarFormEdit: Date changed from react-hook-form:', watchedDate);
-      console.log('CalendarFormEdit: Formatted date:', watchedDate.toISOString().split('T')[0]);
       setBookInfo(prev => ({ 
         ...prev, 
         bookingDate: watchedDate 
@@ -300,45 +306,6 @@ export function CalendarFormEdit({
     return ['Mini Baja', 'ATV', 'Valley of Fire', 'Family Fun', 'Amargosa'].includes(category);
   };
 
-  const incrementCount = (
-    vehicleId: number,
-    isChecked: boolean,
-    name: string,
-    seats: number,
-    pricing: FlexiblePricingType
-  ) => {
-    setVehicleCounts((prevCounts) => ({
-      ...prevCounts,
-      [vehicleId]: {
-        ...prevCounts[vehicleId],
-        count: (prevCounts[vehicleId]?.count ?? 0) + 1,
-        isChecked,
-        name,
-        seats,
-        pricing
-      }
-    }));
-  };
-
-  const decrementCount = (
-    vehicleId: number,
-    name: string,
-    seats: number,
-    pricing: FlexiblePricingType
-  ) => {
-    setVehicleCounts((prevCounts) => ({
-      ...prevCounts,
-      [vehicleId]: {
-        ...prevCounts[vehicleId],
-        count: Math.max(0, (prevCounts[vehicleId]?.count ?? 0) - 1),
-        isChecked: (prevCounts[vehicleId]?.count ?? 0) > 1 ? true : false,
-        name,
-        seats,
-        pricing
-      }
-    }));
-  };
-
   // Handle input changes directly
   const handleBookingChange = (field: keyof BookInfoType, value: any) => {
     setBookInfo(prev => ({ ...prev, [field]: value }));
@@ -365,7 +332,8 @@ export function CalendarFormEdit({
   };
 
   return (
-    <div className="w-screen md:w-[350px] space-y-4">
+    // Updated root class to use semantic text color
+    <div className="w-full space-y-6 text-foreground">
 
       {/* Hidden inputs for form submission */}
       <input
@@ -395,12 +363,16 @@ export function CalendarFormEdit({
       />
 
       {/* Booking Section */}
-      <div className="p-4 border rounded-lg shadow-sm">
-        <h2 className="text-lg font-bold mb-3">Booking Details</h2>
+      <div className={SECTION_CARD_CLASS}>
+        <h2 className={HEADER_CLASS}>
+          {/* Use primary color for icons */}
+          <CalendarDays className="w-5 h-5 text-primary" />
+          Booking Details
+        </h2>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
-            <label className="block mb-1">Booking Date</label>
+            <label className={LABEL_CLASS}>Booking Date</label>
             <Form {...dateForm}>
               <DatePicker
                 form={dateForm}
@@ -414,35 +386,43 @@ export function CalendarFormEdit({
           </div>
 
           <div>
-            <label className="block mb-1">Number of People</label>
-            <input
-              type="number"
-              name="ppl_count"
-              value={bookInfo.howManyPeople}
-              onChange={(e) => handleBookingChange('howManyPeople', parseInt(e.target.value) || 1)}
-              min="1"
-              className="w-full p-2 border rounded"
-              disabled={viewMode}
-            />
+            <label className={LABEL_CLASS}>Number of People</label>
+            <div className="relative">
+              {/* Use muted-foreground for inactive icons */}
+              <Users className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <input
+                type="number"
+                name="ppl_count"
+                value={bookInfo.howManyPeople}
+                onChange={(e) => handleBookingChange('howManyPeople', parseInt(e.target.value) || 1)}
+                min="1"
+                className={`${INPUT_CLASS} pl-10`}
+                disabled={viewMode}
+              />
+            </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 pt-2">
             <Checkbox
               id="free-shuttle"
               checked={freeShuttle}
               onCheckedChange={viewMode ? undefined : (checked) => handleShuttleChange(checked === true)}
               disabled={viewMode}
+              // Updated to use semantic border and primary background when checked
+              className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
             />
             <label
               htmlFor="free-shuttle"
-              className="text-sm font-medium leading-none"
+              // Updated to use semantic text color
+              className="text-sm font-medium leading-none text-foreground cursor-pointer select-none"
             >
               Get Free Shuttle Pickup to Your Hotel
             </label>
           </div>
 
           {hotelsMemo && freeShuttle && (
-            <div>
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+              <label className={LABEL_CLASS}>Select Hotel</label>
               <ComboBox
                 hotelsMemo={hotelsMemo}
                 open={open}
@@ -460,31 +440,32 @@ export function CalendarFormEdit({
             name="hotel"
             value={freeShuttle ? selectedHotel : ''}
           />
+          {/* Hidden Vehicle Counts */}
           <input type="hidden" name="QA" value={getVehicleCountByName('Medium size ATV')} />
           <input type="hidden" name="QB" value={getVehicleCountByName('Full size ATV')} />
-          <input type="hidden" name="QU" value={0} /> {/* Not currently used */}
-          <input type="hidden" name="QL" value={0} /> {/* Not currently used */}
+          <input type="hidden" name="QU" value={0} />
+          <input type="hidden" name="QL" value={0} />
           <input type="hidden" name="SB1" value={getVehicleCountByName('1 seat desert racer')} />
           <input type="hidden" name="SB2" value={getVehicleCountByName('2 seat desert racer')} />
           <input type="hidden" name="SB4" value={getVehicleCountByName('4 seat desert racer')} />
-          <input type="hidden" name="SB5" value={0} /> {/* Not currently used */}
+          <input type="hidden" name="SB5" value={0} />
           <input type="hidden" name="SB6" value={getVehicleCountByName('6 seat desert racer')} />
           <input type="hidden" name="twoSeat4wd" value={getVehicleCountByName('2 seat UTV')} />
-          <input type="hidden" name="UZ2" value={0} /> {/* Not currently used */}
-          <input type="hidden" name="UZ4" value={0} /> {/* Not currently used */}
+          <input type="hidden" name="UZ2" value={0} />
+          <input type="hidden" name="UZ4" value={0} />
           <input type="hidden" name="RWG" value={getVehicleCountByName('Ride with Guide')} />
-          <input type="hidden" name="GoKartplus" value={0} /> {/* Not currently used */}
-          <input type="hidden" name="GoKart" value={0} /> {/* Not currently used */}
-
-          {/* Total cost hidden input */}
+          <input type="hidden" name="GoKartplus" value={0} />
+          <input type="hidden" name="GoKart" value={0} />
           <input type="hidden" name="total_cost" value={total_cost} />
-
         </div>
       </div>
 
       {/* Fleet Selection */}
-      <div className="p-4 border rounded-lg shadow-sm w-auto">
-        <h2 className="text-lg font-bold mb-3">Choose Your Adventure</h2>
+      <div className={SECTION_CARD_CLASS}>
+        <h2 className={HEADER_CLASS}>
+          <Car className="w-5 h-5 text-primary" />
+          Choose Your Adventure
+        </h2>
         <FleetCarousel
           vehicleCounts={vehicleCounts}
           setVehicleCounts={setVehicleCounts}
@@ -497,62 +478,72 @@ export function CalendarFormEdit({
       </div>
 
       {/* Contact Information */}
-      <div className="p-4 border rounded-lg shadow-sm">
-        <h2 className="text-lg font-bold mb-3">Contact Information</h2>
+      <div className={SECTION_CARD_CLASS}>
+        <h2 className={HEADER_CLASS}>
+          <Contact className="w-5 h-5 text-primary" />
+          Contact Information
+        </h2>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
-            <label className="block mb-1">Full Name</label>
+            <label className={LABEL_CLASS}>Full Name</label>
             <input
               type="text"
               name="full_name"
               value={contactForm.name}
               onChange={(e) => handleContactChange('name', e.target.value)}
-              className="w-full p-2 border rounded"
+              className={INPUT_CLASS}
+              placeholder="Driver / Primary Contact"
               disabled={viewMode}
             />
           </div>
 
           <div>
-            <label className="block mb-1">Email</label>
+            <label className={LABEL_CLASS}>Email</label>
             <input
               type="email"
               name="email"
               value={contactForm.email}
               onChange={(e) => handleContactChange('email', e.target.value)}
-              className="w-full p-2 border rounded"
+              className={INPUT_CLASS}
+              placeholder="receipts@example.com"
               disabled={viewMode}
             />
           </div>
 
           <div>
-            <label className="block mb-1">Phone</label>
+            <label className={LABEL_CLASS}>Phone</label>
             <input
               type="tel"
               name="phone"
               value={contactForm.phone}
               onChange={(e) => handleContactChange('phone', e.target.value)}
-              className="w-full p-2 border rounded"
+              className={INPUT_CLASS}
+              placeholder="(555) 123-4567"
               disabled={viewMode}
             />
           </div>
 
           <div>
-            <label className="block mb-1">Group Name (Optional)</label>
-            <input
-              type="text"
-              name="occasion"
-              value={contactForm.groupName || ''}
-              onChange={(e) => handleContactChange('groupName', e.target.value)}
-              className="w-full p-2 border rounded"
-              disabled={viewMode}
-            />
+            <label className={LABEL_CLASS}>Group Name (Optional)</label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                name="occasion"
+                value={contactForm.groupName || ''}
+                onChange={(e) => handleContactChange('groupName', e.target.value)}
+                className={`${INPUT_CLASS} pl-10`}
+                placeholder="e.g. Smith Bachelor Party"
+                disabled={viewMode}
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Pricing Section */}
-      <div className="flex flex-col items-center gap-5">
+      <div className="flex flex-col items-center gap-5 pt-2">
         <BookingTabs
           activeVehicleCategory={activeVehicleCategory}
           selectedTimeValue={selectedTimeValue}

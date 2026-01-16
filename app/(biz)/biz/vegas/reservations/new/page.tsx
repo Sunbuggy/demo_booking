@@ -4,6 +4,7 @@ import { createReservation } from '@/utils/old_db/actions';
 import { redirect } from 'next/navigation';
 import { Reservation } from '../../../types';
 import { fetchHotels, getUserDetails } from '@/utils/supabase/queries';
+import { PlusCircle } from 'lucide-react'; // Added icon for visual context
 
 export default async function NewReservationPage() {
   const supabase = await await createClient();
@@ -42,16 +43,9 @@ export default async function NewReservationPage() {
     const schDateValue = formData.get('sch_date') as string;
     let bookingDate: Date;
     
-    console.log('Raw sch_date from form:', schDateValue);
-    
     try {
-      // Parse the date string (should already be in YYYY-MM-DD format from the form)
       bookingDate = new Date(schDateValue + 'T00:00:00'); // Add time to avoid timezone issues
-      
-      // Validate the date
-      if (isNaN(bookingDate.getTime())) {
-        throw new Error('Invalid date format');
-      }
+      if (isNaN(bookingDate.getTime())) throw new Error('Invalid date format');
     } catch (error) {
       console.error('Date parsing error:', error);
       throw new Error('Invalid booking date format');
@@ -60,7 +54,7 @@ export default async function NewReservationPage() {
     // Extract all fields from form data
     const newReservation: Partial<Reservation> = {
       full_name: formData.get('full_name') as string,
-      sch_date: bookingDate, // This is the user-selected date from calendar
+      sch_date: bookingDate,
       sch_time: formData.get('sch_time') as string || '',
       agent: userFullName,
       location: formData.get('location') as string || 'Nellis60',
@@ -89,26 +83,13 @@ export default async function NewReservationPage() {
       total_cost: safeParseFloat(formData.get('total_cost')),
     };
 
-    // console.log('Reservation data being sent to createReservation:');
-    // console.log('User selected booking date (sch_date):', newReservation.sch_date);
-    // console.log('Date type:', typeof newReservation.sch_date);
-    // console.log('Date toISOString:', newReservation.sch_date?.toISOString());
-    // console.log('Agent:', userFullName);
-    // console.log('=== END FORM DEBUG ===');
-
     // Validate required fields
     if (!newReservation.full_name || !newReservation.sch_date) {
       throw new Error('Full name and booking date are required');
     }
 
-    // Ensure the booking date is not one of the filtered dates
-    const filteredDates = [
-      '1999-12-31',
-      '1970-01-01', 
-      '1969-12-31',
-      '1980-01-01'
-    ];
-    
+    // Filter invalid dates
+    const filteredDates = ['1999-12-31', '1970-01-01', '1969-12-31', '1980-01-01'];
     const bookingDateStr = bookingDate.toISOString().split('T')[0];
     if (filteredDates.includes(bookingDateStr)) {
       throw new Error('Invalid booking date');
@@ -126,24 +107,29 @@ export default async function NewReservationPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Create New Reservation</h1>
+    // SEMANTIC CONTAINER: Inherits text-foreground for correct text color in both modes
+    <div className="w-full max-w-7xl mx-auto p-6 text-foreground">
+      {/* HEADER: Uses border-border for semantic separation */}
+      <div className="flex items-center gap-3 mb-8 pb-4 border-b border-border">
+        <PlusCircle className="w-8 h-8 text-primary" />
+        <h1 className="text-3xl font-extrabold tracking-tight">Create New Reservation</h1>
       </div>
       
-      <form action={createReservationHandler} className="space-y-6">
+      <form action={createReservationHandler} className="space-y-8">
         <BookingEditPage 
           hotels={hotels}
           initialData={undefined}
           viewMode={false} 
         />
         
-        <div className="mt-6 flex justify-center space-x-4">
+        {/* FOOTER ACTION BAR */}
+        <div className="flex justify-end pt-6 border-t border-border">
+          {/* SEMANTIC BUTTON: Uses primary brand color */}
           <button
             type="submit"
-            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+            className="px-8 py-3 bg-primary text-primary-foreground font-bold text-lg rounded-lg hover:bg-primary/90 transition-all shadow-md hover:shadow-lg active:scale-95"
           >
-            Book Now
+            Confirm & Create Booking
           </button>
         </div>
       </form>

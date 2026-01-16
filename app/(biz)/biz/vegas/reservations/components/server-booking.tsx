@@ -6,6 +6,7 @@ import { Reservation } from '@/app/(biz)/biz/types';
 import { TabValue, VehicleCategory } from './booking-tabs';
 import { createReservation, updateFullReservation } from '@/utils/old_db/actions';
 import BookingPay from './booking-payment';
+import { Loader2, ShieldCheck, CreditCard, X } from 'lucide-react'; // Added icons
 
 export interface HotelType {
   Hotel_ID: number;
@@ -87,12 +88,6 @@ export function BookingEditPage({
   const [bookInfo, setBookInfo] = useState<BookInfoType>(() => {
     const bookingDate = initialData?.sch_date ? new Date(initialData.sch_date) : new Date();
     const howManyPeople = initialData?.ppl_count || 1;
-    
-    console.log('Initializing bookInfo with:', {
-      bookingDate,
-      howManyPeople,
-      initialDataSchDate: initialData?.sch_date
-    });
     
     return {
       bookingDate,
@@ -235,22 +230,19 @@ export function BookingEditPage({
     setIsProcessing(true);
     
     try {
-      // Split name into first and last name
       const nameParts = contactForm.name.trim().split(' ');
       const firstName = nameParts[0] || 'Customer';
       const lastName = nameParts.slice(1).join(' ') || 'Guest';
 
-      let finalReservationId: number;
       let invoiceNumber: string;
 
-      // Prepare reservation data
       const reservationData = {
         full_name: contactForm.name,
         email: contactForm.email,
         phone: contactForm.phone,
         occasion: contactForm.groupName || '',
         sch_date: bookInfo.bookingDate,
-        sch_time: selectedTimeValue.split(' (')[0], // Remove discount info
+        sch_time: selectedTimeValue.split(' (')[0], 
         location: selectedTabValue === 'mb30' ? 'Nellis30' :
                  selectedTabValue === 'mb60' ? 'Nellis60' :
                  selectedTabValue === 'mb120' ? 'NellisDX' :
@@ -262,7 +254,6 @@ export function BookingEditPage({
         ppl_count: bookInfo.howManyPeople,
         hotel: freeShuttle ? selectedHotel : '',
         total_cost: totalPrice,
-        // Add vehicle counts
         QA: getVehicleCountByName('Medium size ATV'),
         QB: getVehicleCountByName('Full size ATV'),
         SB1: getVehicleCountByName('1 seat desert racer'),
@@ -274,22 +265,16 @@ export function BookingEditPage({
       };
 
       if (initialData?.res_id) {
-        // Update existing reservation
         const updateResult = await updateFullReservation(initialData.res_id, reservationData);
-        
         if (updateResult.success) {
-          finalReservationId = initialData.res_id;
           invoiceNumber = `${initialData.res_id}`;
           setReservationId(initialData.res_id);
         } else {
           throw new Error('Failed to update reservation: ' + updateResult.error);
         }
       } else {
-        // Create new reservation
         const createResult = await createReservation(reservationData);
-        
         if (createResult.success && createResult.reservationId) {
-          finalReservationId = createResult.reservationId;
           invoiceNumber = `${createResult.reservationId}`;
           setReservationId(createResult.reservationId);
         } else {
@@ -297,13 +282,8 @@ export function BookingEditPage({
         }
       }
 
-      // Generate timestamp for cache busting
       const timestamp = Date.now();
-      
-      // Build the payment iframe URL - same as ChargesPismo
       const paymentUrl = `https://oceanoatvrentals.com/lib/oauthorizetestPP.php?invoiceNumber=${invoiceNumber}&cacke=${timestamp}&qost=${totalPrice}&fname=${encodeURIComponent(firstName)}&lname=${encodeURIComponent(lastName)}`;
-      
-      console.log('Payment URL generated:', paymentUrl);
       
       setPaymentIframeSrc(paymentUrl);
       setShowPayment(true);
@@ -318,13 +298,7 @@ export function BookingEditPage({
 
   useEffect(() => {
     if (initialData) {
-      console.log('Initial data loaded:', initialData);
-
       const bookingDate = initialData.sch_date ? new Date(initialData.sch_date) : new Date();
-      
-      console.log('Setting booking date to:', bookingDate);
-      console.log('Original sch_date from reservation:', initialData.sch_date);
-
       setTotalPrice(initialData.total_cost ? Number(initialData.total_cost) : 0);
 
       if (initialData.hotel) {
@@ -355,13 +329,9 @@ export function BookingEditPage({
       const counts: VehicleCounts = {};
       const allVehicles = getAllVehicles();
       const fieldMapping = getVehicleFieldMapping();
-      const reverseMapping = getReverseFieldMapping();
-
-      console.log('Mapping vehicle counts from reservation...');
 
       Object.entries(fieldMapping).forEach(([field, vehicleName]) => {
         const count = initialData[field as keyof Reservation];
-
         if (count !== undefined && count !== null && Number(count) > 0) {
           let vehicle;
           if (field === 'QB') {
@@ -378,12 +348,10 @@ export function BookingEditPage({
               seats: vehicle.seats,
               pricing: vehicle.pricing as VehiclePricingType
             };
-            console.log(`Mapped ${field}: ${count} -> ${vehicle.name}`);
           }
         }
       });
 
-      console.log('Final vehicle counts:', counts);
       setVehicleCounts(counts);
 
       const locationTabMap: Record<string, TabValue> = {
@@ -411,24 +379,21 @@ export function BookingEditPage({
       if (initialData.location) {
         const tabValue = locationTabMap[initialData.location] || 'mb60';
         const category = locationCategoryMap[initialData.location] || 'Mini Baja';
-        console.log(`Setting tab to ${tabValue} and category to ${category} based on location ${initialData.location}`);
 
         setSelectedTabValue(tabValue);
         setActiveVehicleCategory(category);
 
         if (initialData.sch_time) {
           const matchingTime = findMatchingTimeString(initialData.sch_time, tabValue);
-          console.log(`Setting time: ${initialData.sch_time} -> ${matchingTime}`);
           setSelectedTimeValue(matchingTime);
-        } else {
-          console.log('No time found in reservation');
         }
       }
     }
   }, [initialData]);
 
   return (
-    <div className="font-extrabold dark:text-white sm:text-center flex flex-col justify-center items-center w-full">
+    // SEMANTIC CONTAINER: Use text-foreground for adaptive text color
+    <div className="font-extrabold text-foreground sm:text-center flex flex-col justify-center items-center w-full">
       <div className="w-full max-w-4xl">
         <CalendarFormEdit
           bookInfo={bookInfo}
@@ -463,64 +428,83 @@ export function BookingEditPage({
         />
 
         {/* Payment Section */}
-        <div id="payment-section" className="w-full mt-6">
-          {/* Payment Button (shown when ready for payment) */}
+        <div id="payment-section" className="w-full mt-6 space-y-6">
+          
+          {/* READY TO PAY CARD */}
           {!showPayment && !viewMode && totalPrice > 0 && selectedTimeValue && (
-            <div className="mt-6 p-6 border rounded-lg shadow-lg bg-white">
-              <div className="text-center">
-                <h3 className="text-xl font-bold mb-4 text-gray-800">Ready to Complete Your Booking</h3>
-                <p className="text-gray-600 mb-2">
-                  Total Amount: <span className="font-bold text-green-600">${totalPrice.toFixed(2)}</span>
-                </p>
-                <p className="text-gray-500 text-sm mb-6">
-                  Reservation will be created before payment
-                </p>
+            // Semantic: bg-card, border-border, text-card-foreground
+            <div className="p-6 border border-border rounded-xl shadow-lg bg-card text-card-foreground">
+              <div className="text-center space-y-4">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-bold">Ready to Complete Your Booking</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Reservation will be created securely before payment
+                  </p>
+                </div>
+                
+                <div className="py-4 border-y border-border/50">
+                  <p className="text-muted-foreground mb-1">Total Amount</p>
+                  {/* Semantic: text-green-600 dark:text-green-400 for money */}
+                  <span className="text-3xl font-black text-green-600 dark:text-green-400">
+                    ${totalPrice.toFixed(2)}
+                  </span>
+                </div>
+
                 <button
                   type="button"
                   onClick={generatePaymentIframe}
                   disabled={isProcessing}
-                  className="w-full max-w-md mx-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed text-lg shadow-md hover:shadow-lg"
+                  // Semantic: bg-primary text-primary-foreground (Brand Action)
+                  className="w-full max-w-md mx-auto bg-primary text-primary-foreground font-bold py-3 px-6 rounded-lg transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                 >
                   {isProcessing ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Creating Reservation...
-                    </span>
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Creating Reservation...</span>
+                    </>
                   ) : (
-                    'Proceed to Secure Payment'
+                    <>
+                      <CreditCard className="w-5 h-5" />
+                      <span>Proceed to Secure Payment</span>
+                    </>
                   )}
                 </button>
-                <p className="mt-4 text-sm text-gray-500">
-                  Secure payment processed by Authorize.net
-                </p>
+                
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-2">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>Secure payment processed by Authorize.net</span>
+                </div>
               </div>
             </div>
           )}
 
-{showPayment && paymentIframeSrc && reservationId && (
-  <div className="mt-6 p-4 border rounded-lg shadow-lg bg-white">
-    <div className="flex justify-between items-center mb-4">
-      <h2 className="text-xl font-bold text-gray-800">Complete Your Payment</h2>
-      <button
-        onClick={() => setShowPayment(false)}
-        className="text-gray-500 hover:text-gray-700 text-2xl"
-        title="Close payment"
-      >
-        ×
-      </button>
-    </div>
-    
-    <BookingPay 
-      reservationId={reservationId}
-      totalPrice={totalPrice}
-      firstName={contactForm.name.split(' ')[0]}
-      lastName={contactForm.name.split(' ').slice(1).join(' ') || 'Guest'}
-    />
-  </div>
-)}
+          {/* PAYMENT IFRAME CARD */}
+          {showPayment && paymentIframeSrc && reservationId && (
+            // Semantic: bg-card, border-border
+            <div className="p-4 border border-border rounded-xl shadow-lg bg-card text-card-foreground animate-in slide-in-from-bottom-4 fade-in duration-500">
+              <div className="flex justify-between items-center mb-4 pb-4 border-b border-border">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-primary" />
+                  Complete Your Payment
+                </h2>
+                <button
+                  onClick={() => setShowPayment(false)}
+                  // Semantic: text-muted-foreground hover:text-foreground
+                  className="p-2 hover:bg-accent rounded-full text-muted-foreground hover:text-foreground transition-colors"
+                  title="Close payment"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <BookingPay 
+                reservationId={reservationId}
+                totalPrice={totalPrice}
+                firstName={contactForm.name.split(' ')[0]}
+                lastName={contactForm.name.split(' ').slice(1).join(' ') || 'Guest'}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

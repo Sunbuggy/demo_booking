@@ -25,7 +25,7 @@ import { Reservation } from '@/app/(biz)/biz/types';
 // Define all possible tab values
 export type TabValue = 'mb30' | 'mb60' | 'mb120' | 'atv30' | 'atv60' | 'Valley of Fire' | 'Family Fun Romp' | 'Amargosa';
 
-// Mini Baja specific tab values (for PriceBreakdownDropdown)
+// Mini Baja specific tab values
 export type MiniBajaTabValue = 'mb30' | 'mb60' | 'mb120';
 
 // ATV specific tab values
@@ -133,7 +133,6 @@ const tabConfigs: Record<VehicleCategory, TabConfig[]> = {
       showDiscount: false
     }
   ]
-
 };
 
 // Default tab values for each category
@@ -145,18 +144,16 @@ const defaultTabValues: Record<VehicleCategory, TabValue> = {
   'Amargosa': 'Amargosa',
 };
 
-// Type guard to check if a tab value is a Mini Baja tab value
+// Type guards
 const isMiniBajaTabValue = (value: TabValue): value is MiniBajaTabValue => {
   return value === 'mb30' || value === 'mb60' || value === 'mb120';
 };
 
-// Type guard to check if a tab value is an ATV tab value
 const isATVTabValue = (value: TabValue): value is ATVTabValue => {
   return value === 'atv30' || value === 'atv60';
 };
 
 // Calculate total price based on vehicle counts and selected tab
-// In BookingTabs.tsx, update the calculateTotalPrice function:
 const calculateTotalPrice = (vehicleCounts: any, selectedTabValue: TabValue, selectedTimeValue: string): number => {
   let total = 0;
 
@@ -164,7 +161,7 @@ const calculateTotalPrice = (vehicleCounts: any, selectedTabValue: TabValue, sel
   const shouldApplyDiscount = (tabValue: TabValue, timeValue: string): boolean => {
     if (!timeValue) return false;
     
-    const timePart = timeValue.split(' (')[0]; // Remove discount info
+    const timePart = timeValue.split(' (')[0];
     const timeNumber = Number(timePart.split(' ')[0]);
     const period = timePart.split(' ')[1];
     
@@ -175,17 +172,14 @@ const calculateTotalPrice = (vehicleCounts: any, selectedTabValue: TabValue, sel
 
   const discountMultiplier = shouldApplyDiscount(selectedTabValue, selectedTimeValue) ? 0.8 : 1;
 
-  // Calculate total based on vehicle counts and pricing
   Object.values(vehicleCounts).forEach((vehicle: any) => {
     if (vehicle.count > 0) {
       let price = 0;
 
-      // Mini Baja pricing
       if (isMiniBajaTabValue(selectedTabValue)) {
         const duration = selectedTabValue.replace('mb', '');
         price = vehicle.pricing[`mb${duration}`] || 0;
       }
-      // ATV pricing
       else if (isATVTabValue(selectedTabValue)) {
         const duration = selectedTabValue.replace('atv', '');
         if (vehicle.pricing[`full_atv_${duration}`]) {
@@ -196,15 +190,12 @@ const calculateTotalPrice = (vehicleCounts: any, selectedTabValue: TabValue, sel
           price = vehicle.pricing.full_atv || vehicle.pricing.medium_atv || 0;
         }
       }
-      // Valley of Fire pricing
       else if (selectedTabValue === 'Valley of Fire') {
         price = vehicle.pricing.price || 0;
       }
-      // Family Fun pricing
       else if (selectedTabValue === 'Family Fun Romp') {
         price = vehicle.pricing.desert_racer || 0;
       }
-      // Amargosa pricing
       else if (selectedTabValue === 'Amargosa') {
         price = vehicle.pricing.price || 0;
       }
@@ -213,7 +204,6 @@ const calculateTotalPrice = (vehicleCounts: any, selectedTabValue: TabValue, sel
     }
   });
 
-  // Round to 2 decimal places to avoid floating point issues
   const discountedTotal = total * discountMultiplier;
   return Math.round(discountedTotal * 100) / 100;
 };
@@ -233,7 +223,6 @@ export function BookingTabs({
   const currentTabs = tabConfigs[activeVehicleCategory] || tabConfigs['Mini Baja'];
   const displayPrice = typeof totalPrice === 'string' ? parseFloat(totalPrice) : totalPrice;
 
-  // Calculate total price whenever vehicle counts, tab, or time changes
   useEffect(() => {
     if (selectedTimeValue) {
       const calculatedTotal = calculateTotalPrice(vehicleCounts, selectedTabValue, selectedTimeValue);
@@ -243,7 +232,6 @@ export function BookingTabs({
     }
   }, [vehicleCounts, selectedTabValue, selectedTimeValue, setTotalPrice]);
 
-  // Ensure selectedTabValue is valid for current category
   useEffect(() => {
     const validTabValues = currentTabs.map(tab => tab.value);
     if (!validTabValues.includes(selectedTabValue)) {
@@ -258,7 +246,6 @@ export function BookingTabs({
     }
   };
 
-  // Discount logic for MiniBaja tabs
   const shouldShowDiscount = (tabValue: TabValue, timeValue: string): boolean => {
     if (!timeValue) return false;
     
@@ -274,7 +261,7 @@ export function BookingTabs({
     <div>
       <Tabs
         defaultValue={defaultTabValues[activeVehicleCategory]}
-        className="w-screen md:w-[350px]"
+        className="w-full" // Use w-full for semantic fluid width
         onValueChange={viewMode ? undefined : handleTabChange}
         value={selectedTabValue}
       >
@@ -287,6 +274,7 @@ export function BookingTabs({
               key={tab.value} 
               value={tab.value}
               disabled={viewMode}
+              // TabsTrigger already uses semantic colors internally (primary/foreground)
             >
               {tab.title}
             </TabsTrigger>
@@ -297,12 +285,13 @@ export function BookingTabs({
           <TabsContent key={tab.value} value={tab.value}>
             <Card>
               <CardHeader>
+                {/* CardTitle/Desc use semantic colors automatically */}
                 <CardTitle>{tab.name}</CardTitle>
                 <CardDescription>{tab.description}</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2 flex flex-col items-center">
+              <CardContent className="space-y-2 flex flex-col items-center text-foreground">
                 {viewMode ? (
-                  <div className="text-lg font-semibold">
+                  <div className="text-lg font-semibold text-foreground">
                     Selected Time: {selectedTimeValue || 'Not specified'}
                   </div>
                 ) : (
@@ -313,13 +302,15 @@ export function BookingTabs({
                   />
                 )}
 
-                {!selectedTimeValue && !viewMode && <p>Pick a time to calculate price</p>}
-                
-                {selectedTimeValue && tab.showDiscount && shouldShowDiscount(tab.value, selectedTimeValue) && (
-                  <p className="text-green-500">20% discount applied</p>
+                {!selectedTimeValue && !viewMode && (
+                  <p className="text-muted-foreground">Pick a time to calculate price</p>
                 )}
                 
-                {/* Only show PriceBreakdownDropdown for Mini Baja tabs */}
+                {selectedTimeValue && tab.showDiscount && shouldShowDiscount(tab.value, selectedTimeValue) && (
+                  // Semantic utility for success color
+                  <p className="text-green-600 dark:text-green-400 font-medium">20% discount applied</p>
+                )}
+                
                 {selectedTimeValue && isMiniBajaTabValue(selectedTabValue) && (
                   <PriceBreakdownDropdown
                     selectedTabValue={selectedTabValue as MiniBajaTabValue}
@@ -327,16 +318,14 @@ export function BookingTabs({
                   />
                 )}
                 
-                {/* For ATV tabs, show ATV pricing info */}
                 {selectedTimeValue && isATVTabValue(selectedTabValue) && (
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-muted-foreground text-center">
                     ATV pricing varies by vehicle type (Full ATV / Medium ATV) and duration
                   </div>
                 )}
                 
-                {/* For other vehicle categories */}
                 {selectedTimeValue && !isMiniBajaTabValue(selectedTabValue) && !isATVTabValue(selectedTabValue) && (
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-muted-foreground text-center">
                     Pricing calculated based on selected vehicles and time
                   </div>
                 )}
@@ -344,7 +333,8 @@ export function BookingTabs({
               
               {(selectedTimeValue || viewMode) && (
                 <CardFooter className="w-full flex justify-between">
-                  <p className="text-green-500 font-bold text-lg">
+                  {/* Semantic utility for money display */}
+                  <p className="text-green-600 dark:text-green-400 font-bold text-lg">
                     Final Price: ${displayPrice.toFixed(2)}
                   </p>
                 </CardFooter>

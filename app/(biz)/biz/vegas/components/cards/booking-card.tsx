@@ -95,7 +95,7 @@ const BookingCard: React.FC<BookingCardProps> = ({
       {/* --- ROW 1: CUSTOMER INFO --- */}
       <div className="flex flex-wrap items-baseline gap-2 w-full leading-none min-w-0">
         <Link
-          href={`/biz/reservations/${reservation.res_id}`}
+          href={`/biz/vegas/reservations/${reservation.res_id}`}
           className="text-xs font-mono text-pink-600 dark:text-pink-500 hover:underline font-bold shrink-0"
         >
           {reservation.res_id}

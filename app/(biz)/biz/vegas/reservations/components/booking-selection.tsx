@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_list, ama_vehicles_list } from '@/utils/helpers';
+import { ChevronLeft, ChevronRight, Users } from "lucide-react"; // Added Icons for polish
 
 // Update the interface to be more flexible
 interface VehiclePricing {
@@ -36,50 +37,26 @@ interface FleetCarouselProps {
 }
 
 const vehicleCategories = [
-  {
-    name: "Mini Baja",
-    list: mbj_vehicles_list,
-  },
-  {
-    name: "ATV",
-    list: atv_vehicles_list,
-  },
-  {
-    name: "Valley of Fire",
-    list: vof_vehicles_list,
-  },
-  {
-    name: "Family Fun",
-    list: ffr_vehicles_list,
-  },
-  {
-    name: "Amargosa",
-    list: ama_vehicles_list,
-  }
+  { name: "Mini Baja", list: mbj_vehicles_list },
+  { name: "ATV", list: atv_vehicles_list },
+  { name: "Valley of Fire", list: vof_vehicles_list },
+  { name: "Family Fun", list: ffr_vehicles_list },
+  { name: "Amargosa", list: ama_vehicles_list }
 ];
 
 // Map vehicle names to database field names
 const getVehicleFieldMapping = (): Record<string, string> => {
   return {
-    // Mini Baja vehicles
     '1 seat desert racer': 'SB1',
     '2 seat desert racer': 'SB2',
     '4 seat desert racer': 'SB4',
     '6 seat desert racer': 'SB6',
     'Ride with Guide': 'RWG',
-    
-    // ATV vehicles  
     'Valley of fire 180 mins': 'QB',
     'Vegas dunes 60 mins': 'QA',
     'Vegas dunes 30 mins': 'QB',
     '1 Seat full ATV': 'QB',
-    
-    // Valley of Fire vehicles
-     '2 seat UTV': 'twoSeat4wd', 
-    // '4 seat desert racer': 'UZ2',
-    // '6 seat desert racer': 'UZ4',
-    
-
+    '2 seat UTV': 'twoSeat4wd', 
   };
 };
 
@@ -167,33 +144,41 @@ export function FleetCarousel({
   };
 
   return (
-    <div className="relative">
-      <div className="mb-3">
-        <p>
-          Assigned Seats:{' '}
-          <span className={totalSeats >= howManyPeople ? 'text-green-500' : 'text-red-500'}>
+    <div className="relative space-y-4">
+      {/* SEAT TRACKER */}
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Users className="w-4 h-4" />
+          <span>Assigned Seats:</span>
+        </div>
+        <div className="font-mono font-bold text-sm">
+           {/* Semantic Colors for Status */}
+           <span className={totalSeats >= howManyPeople ? 'text-green-600 dark:text-green-400' : 'text-destructive'}>
             {totalSeats}
-          </span> / 
-          <span className="text-green-500">{howManyPeople}</span>
-        </p>
+          </span>
+          <span className="text-muted-foreground mx-1">/</span>
+          <span className="text-foreground">{howManyPeople}</span>
+        </div>
       </div>
       
-      <div className="border rounded-lg p-4">
+      {/* CARD CONTAINER */}
+      {/* Semantic: bg-card, border-border */}
+      <div className="border border-border rounded-xl p-4 bg-card shadow-sm">
+        
         {/* Category Header with Navigation Arrows */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6">
           <button
             type="button"
             onClick={prevCategory}
             disabled={viewMode}
-            className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            // Semantic: hover:bg-accent hover:text-accent-foreground
+            className="p-2 rounded-full hover:bg-accent hover:text-accent-foreground text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Previous category"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <ChevronLeft className="w-5 h-5" />
           </button>
           
-          <h3 className="text-lg font-semibold text-center flex-1 mx-4">
+          <h3 className="text-lg font-bold text-center flex-1 mx-4 text-foreground">
             {vehicleCategories[activeIndex].name}
           </h3>
           
@@ -201,27 +186,26 @@ export function FleetCarousel({
             type="button"
             onClick={nextCategory}
             disabled={viewMode}
-            className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 rounded-full hover:bg-accent hover:text-accent-foreground text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Next category"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
 
         {/* Category Indicator Dots */}
-        <div className="flex justify-center space-x-2 mb-4">
+        <div className="flex justify-center space-x-2 mb-6">
           {vehicleCategories.map((category, index) => (
             <button
               key={index}
               type="button"
               onClick={() => handleCategoryChange(index)}
               disabled={viewMode}
+              // Semantic: bg-primary (Active), bg-muted (Inactive)
               className={`w-2 h-2 rounded-full transition-all ${
                 index === activeIndex 
-                  ? 'bg-blue-500 scale-125' 
-                  : 'bg-gray-300 hover:bg-gray-400'
+                  ? 'bg-primary scale-125' 
+                  : 'bg-muted hover:bg-muted-foreground/50'
               } ${viewMode ? 'cursor-not-allowed' : 'cursor-pointer'}`}
               aria-label={`Go to ${category.name}`}
             />
@@ -229,13 +213,16 @@ export function FleetCarousel({
         </div>
 
         {/* Vehicle List for Current Category */}
-        <div className="space-y-3">
+        <div className="space-y-1">
           {vehicleCategories[activeIndex].list.map((vehicle) => {
             const fieldName = getFieldNameForVehicle(vehicle.name);
+            const isSelected = vehicleCounts[vehicle.id]?.count > 0;
+
             return (
-              <div key={vehicle.id} className="flex justify-between items-center py-2 border-b">
+              <div key={vehicle.id} className="flex justify-between items-center py-3 border-b border-border last:border-0">
                 <div className="flex items-center">
-                  <span className={vehicleCounts[vehicle.id]?.isChecked ? 'text-green-500 font-medium' : ''}>
+                  {/* Semantic: text-primary for active items */}
+                  <span className={`text-sm font-medium transition-colors ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
                     {vehicle.name}
                   </span>
                 </div>
@@ -244,11 +231,13 @@ export function FleetCarousel({
                   <button
                     type="button" 
                     onClick={viewMode ? undefined : () => decrementCount(vehicle.id, vehicle.name, vehicle.seats, vehicle.pricing)}
-                    className="px-3 py-1 rounded-l border border-r-0 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    // Semantic: border-input, hover:bg-accent
+                    className="w-8 h-8 flex items-center justify-center rounded-l-md border border-input bg-background hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     disabled={viewMode || !vehicleCounts[vehicle.id]?.count}
                   >
                     -
                   </button>
+                  
                   <input
                     type="number"
                     name={fieldName}
@@ -265,9 +254,11 @@ export function FleetCarousel({
                       }));
                     }}
                     min="0"
-                    className="w-12 text-center border-y px-0 disabled:opacity-50"
+                    // Semantic: border-input, bg-background, text-foreground
+                    className="w-12 h-8 text-center border-y border-input bg-background text-foreground text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary z-10 disabled:opacity-50"
                     disabled={viewMode}
                   />
+                  
                   <button
                     type="button"
                     onClick={viewMode ? undefined : () => incrementCount(
@@ -277,7 +268,8 @@ export function FleetCarousel({
                       vehicle.seats,
                       vehicle.pricing
                     )}
-                    className="px-3 py-1 rounded-r border border-l-0 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    // Semantic: border-input, hover:bg-accent
+                    className="w-8 h-8 flex items-center justify-center rounded-r-md border border-input bg-background hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     disabled={viewMode}
                   >
                     +

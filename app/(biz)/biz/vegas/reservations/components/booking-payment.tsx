@@ -1,73 +1,6 @@
-// 'use client';
-// import React, { useState } from 'react';
-// import { AcceptHosted } from 'react-acceptjs';
-
-// const BookingPay = ({
-//   formToken,
-//   setResponse
-// }: {
-//   formToken: string;
-//   setResponse: (response: string) => void;
-// }) => {
-//   const [isProcessing, setIsProcessing] = useState(false);
-
-//   const handleTransactionResponse = (response: any) => {
-//     setIsProcessing(false);
-//     const responseString = JSON.stringify(response, null, 2) + '\n';
-//     setResponse(responseString);
-    
-//     if (response.messages?.resultCode === 'Ok') {
-//       console.log('Payment successful:', response);
-//       // You can add more logic here, like redirecting to success page
-//     } else {
-//       console.log('Payment failed:', response);
-//     }
-//   };
-
-//   return (
-//     <div className="w-full">
-//       <AcceptHosted
-//         formToken={formToken}
-//         integration="iframe"
-//         onTransactionResponse={handleTransactionResponse}
-//         onCancel={() => {
-//           setIsProcessing(false);
-//           setResponse('Payment cancelled by user.\n');
-//         }}
-//         onSuccessfulSave={() => {
-//           setIsProcessing(false);
-//           setResponse('Payment method saved successfully!\n');
-//         }}
-//         onResize={(w, h) =>
-//           setResponse(`Payment form resized to ${w} x ${h}.\n`)
-//         }
-//       >
-//         <div className="text-center mb-4">
-//           <p className="text-sm text-gray-600 mb-2">
-//             Secure payment processed by Authorize.net
-//           </p>
-//           {isProcessing && (
-//             <div className="text-blue-600 mb-2">
-//               Processing payment...
-//             </div>
-//           )}
-//         </div>
-//         <div onClick={() => setIsProcessing(true)}>
-//           <AcceptHosted.Button 
-//             className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300 bg-blue-600 text-white hover:bg-blue-700 h-12 px-6 py-3 mb-4 w-full text-lg"
-//           >
-//             🔒 Complete Payment (${formToken ? 'Ready' : 'Loading...'})
-//           </AcceptHosted.Button>
-//         </div>
-//         <AcceptHosted.IFrame className="w-full h-[500px] border rounded-lg overflow-auto" />
-//       </AcceptHosted>
-//     </div>
-//   );
-// };
-
-// export default BookingPay;
 'use client';
 import React from 'react';
+import { ShieldCheck, RefreshCw, AlertTriangle } from 'lucide-react'; 
 
 interface BookingPayProps {
   reservationId: number;
@@ -91,37 +24,68 @@ const BookingPay: React.FC<BookingPayProps> = ({
   const paymentUrl = generatePaymentUrl();
 
   return (
-    <div className="w-full">
-      <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-        <p className="text-sm text-yellow-800">
-          <span className="font-bold">Important:</span> Please wait for the <span className="font-bold">"Thank you for your payment"</span> message 
-          after pressing Pay to make sure it went through.
-        </p>
-        <p className="text-sm text-gray-700 mt-2">
-          Reservation ID: <span className="font-bold">#{reservationId}</span> | 
-          Amount: <span className="font-bold">${totalPrice.toFixed(2)}</span>
-        </p>
+    <div className="w-full space-y-4">
+      {/* 1. SEMANTIC ALERT BOX */}
+      {/* Old: bg-yellow-500/10 border-yellow-500/30 */}
+      {/* New: bg-primary/10 border-primary/20 (Uses Brand Color semantically) */}
+      <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg flex gap-3 items-start">
+        {/* Old: text-yellow-500 */}
+        {/* New: text-primary */}
+        <AlertTriangle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+        
+        <div className="space-y-1">
+          {/* Old: text-yellow-200/90 */}
+          {/* New: text-foreground/80 (Readable in both Light/Dark) */}
+          <p className="text-sm text-foreground/80 leading-relaxed">
+            <span className="font-bold text-primary">Important:</span> Please wait for the <span className="font-bold text-foreground">"Thank you for your payment"</span> message 
+            after pressing Pay to ensure your transaction is complete.
+          </p>
+          
+          {/* Old: text-slate-400 border-yellow-500/20 */}
+          {/* New: text-muted-foreground border-primary/20 */}
+          <div className="text-xs text-muted-foreground font-mono pt-2 border-t border-primary/20 mt-2 flex gap-4">
+            {/* Old: text-slate-200 */}
+            {/* New: text-foreground */}
+            <span>Res ID: <strong className="text-foreground">#{reservationId}</strong></span>
+            
+            {/* Money: We use a utility class that works in both modes because 'success' isn't in the base variables */}
+            <span>Total: <strong className="text-green-600 dark:text-green-400">${totalPrice.toFixed(2)}</strong></span>
+          </div>
+        </div>
       </div>
       
-      <iframe 
-        name="ccwin"
-        id="ccwin"
-        src={paymentUrl}
-        title="Payment Gateway"
-        className="w-full border rounded"
-        style={{ height: '500px' }}
-      />
+      {/* 2. PAYMENT IFRAME CONTAINER */}
+      {/* Old: bg-white border-slate-700 */}
+      {/* New: bg-card border-border (Adapts to Light/Dark mode backgrounds) */}
+      <div className="w-full border border-border rounded-lg overflow-hidden bg-card shadow-sm">
+        <iframe 
+          name="ccwin"
+          id="ccwin"
+          src={paymentUrl}
+          title="Payment Gateway"
+          className="w-full h-[500px]"
+          style={{ border: 'none' }}
+        />
+      </div>
       
-      <div className="mt-4 text-center text-sm text-gray-600">
-        <p>Secure payment processed by Authorize.net</p>
-        <p className="mt-2">
-          <button 
-            onClick={() => window.location.reload()}
-            className="text-blue-600 hover:text-blue-800 underline"
-          >
-            Refresh after payment
-          </button>
-        </p>
+      {/* 3. FOOTER / ACTIONS */}
+      <div className="flex flex-col items-center justify-center gap-3 pt-2">
+        {/* Old: text-slate-500 */}
+        {/* New: text-muted-foreground */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <ShieldCheck className="w-3 h-3" />
+          <span>Secure payment processed by Authorize.net</span>
+        </div>
+        
+        <button 
+          onClick={() => window.location.reload()}
+          // Old: text-blue-400 hover:bg-blue-950/30
+          // New: text-primary hover:bg-primary/10
+          className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors py-2 px-4 rounded-md hover:bg-primary/10 font-medium"
+        >
+          <RefreshCw className="w-3 h-3" />
+          Refresh Page Status
+        </button>
       </div>
     </div>
   );

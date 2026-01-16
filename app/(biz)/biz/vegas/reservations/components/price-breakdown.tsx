@@ -126,26 +126,32 @@ export const PriceBreakdownDropdown: React.FC<PriceBreakdownDropdownProps> = ({
       <DropdownMenuTrigger asChild>
         <Button variant="outline">Show Breakdown</Button>
       </DropdownMenuTrigger>
+      {/* DropdownMenuContent handles the generic background (popover/card).
+        We just need to ensure internal text contrasts correctly.
+      */}
       <DropdownMenuContent className="w-[348px] max-h-96 overflow-y-auto">
         <DropdownMenuLabel>Price Breakdown</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
         {checkedVehicles.length === 0 ? (
-          <p className="p-4 text-center text-gray-500">No vehicles selected</p>
+          // Replaced text-gray-500 with text-muted-foreground
+          <p className="p-4 text-center text-muted-foreground">No vehicles selected</p>
         ) : (
           <>
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b">
-                  <th className="pr-2 text-left py-2">Vehicle</th>
-                  <th className="pr-2 text-left py-2">Qty</th>
-                  <th className="pr-2 text-left py-2">Base</th>
-                  <th className="pr-2 text-left py-2">Service</th>
-                  <th className="pr-2 text-left py-2">Fuel</th>
+                {/* Replaced generic border-b with border-b border-border for semantic coloring */}
+                <tr className="border-b border-border">
+                  {/* Added text-muted-foreground for headers */}
+                  <th className="pr-2 text-left py-2 text-muted-foreground font-medium">Vehicle</th>
+                  <th className="pr-2 text-left py-2 text-muted-foreground font-medium">Qty</th>
+                  <th className="pr-2 text-left py-2 text-muted-foreground font-medium">Base</th>
+                  <th className="pr-2 text-left py-2 text-muted-foreground font-medium">Service</th>
+                  <th className="pr-2 text-left py-2 text-muted-foreground font-medium">Fuel</th>
                   {additionalFees.length > 0 && (
-                    <th className="pr-2 text-left py-2">Other</th>
+                    <th className="pr-2 text-left py-2 text-muted-foreground font-medium">Other</th>
                   )}
-                  <th className="pr-2 text-left py-2">Total</th>
+                  <th className="pr-2 text-left py-2 text-muted-foreground font-medium">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -154,7 +160,8 @@ export const PriceBreakdownDropdown: React.FC<PriceBreakdownDropdownProps> = ({
                   total += priceDetails.total;
 
                   return (
-                    <tr key={index} className="border-b">
+                    // Explicit semantic border
+                    <tr key={index} className="border-b border-border text-foreground">
                       <td className="pr-2 py-2">
                         {vehicle.name.split(' ').slice(0, 2).join(' ')}
                       </td>
@@ -167,15 +174,15 @@ export const PriceBreakdownDropdown: React.FC<PriceBreakdownDropdownProps> = ({
                           ${priceDetails.additionalFees.reduce((sum, fee) => sum + fee.amount, 0).toFixed(2)}
                         </td>
                       )}
-                      <td className="pr-2 py-2">${priceDetails.total.toFixed(2)}</td>
+                      <td className="pr-2 py-2 font-medium">${priceDetails.total.toFixed(2)}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
             
-            <div className="mt-4 pt-2 border-t">
-              <div className="flex justify-between font-bold">
+            <div className="mt-4 pt-2 border-t border-border">
+              <div className="flex justify-between font-bold text-foreground">
                 <span>Total Price</span>
                 <span>${total.toFixed(2)}</span>
               </div>
