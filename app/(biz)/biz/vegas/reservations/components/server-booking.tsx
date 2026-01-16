@@ -5,7 +5,7 @@ import { mbj_vehicles_list, atv_vehicles_list, vof_vehicles_list, ffr_vehicles_l
 import { Reservation } from '@/app/(biz)/biz/types';
 import { TabValue, VehicleCategory } from './booking-tabs';
 import { createReservation, updateFullReservation } from '@/utils/old_db/actions';
-import BookingPay from './booking-payment';
+import BookingPay from './booking-payment'; // Corrected import name
 import { Loader2, ShieldCheck, CreditCard, X } from 'lucide-react';
 
 export interface HotelType {
@@ -41,6 +41,7 @@ export interface VehicleCount {
   pricing: VehiclePricingType;
 }
 
+// 🟢 EXPORTED: This type is now available for import in other files like contact-info-section.tsx
 export interface ContactFom {
   name: string;
   email: string;

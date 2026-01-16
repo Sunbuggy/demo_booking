@@ -11,7 +11,8 @@ import DatePicker from '@/app/(com)/book/date-picker';
 import { Form } from '@/components/ui/form';
 import { FleetCarousel } from './booking-selection';
 import { BookingTabs, TabValue, VehicleCategory } from './booking-tabs';
-import { CalendarDays, Car, Contact, Users, MapPin } from 'lucide-react';
+import { CalendarDays, Car, Users, MapPin, PartyPopper, Minus, Plus } from 'lucide-react';
+import { ContactInfoSection } from './contact-info-section';
 
 // Define the form schema for the date field
 const DateFormSchema = z.object({
@@ -66,31 +67,22 @@ const getVehicleListByLocation = (location: string) => {
 // Function to convert 24-hour format to display format
 const convertToDisplayFormat = (time24: string): string => {
   if (!time24) return '';
-
-  // Handle time strings like "08:00" or "8:00"
   const [hours, minutes] = time24.split(':');
   let hour = parseInt(hours, 10);
-  const minute = parseInt(minutes, 10);
-
   const period = hour >= 12 ? 'pm' : 'am';
   const displayHour = hour % 12 || 12;
-
   return `${displayHour} ${period}`;
 };
 
 // Function to find matching display time with discount consideration
 const findMatchingDisplayTime = (time24: string, timeArray: string[]): string => {
   const displayTime = convertToDisplayFormat(time24);
-
-  // First try exact match
   const exactMatch = timeArray.find(time => time.startsWith(displayTime));
   if (exactMatch) return exactMatch;
-
-  // If no exact match, return the display time without discount info
   return displayTime;
 };
 
-// --- THEME CONSTANTS (SEMANTIC UPDATE) ---
+// --- THEME CONSTANTS (SEMANTIC) ---
 const SECTION_CARD_CLASS = "p-5 bg-card text-card-foreground border border-border rounded-xl shadow-sm";
 const INPUT_CLASS = "w-full h-10 px-3 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all";
 const LABEL_CLASS = "block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5";
@@ -157,10 +149,8 @@ export function CalendarFormEdit({
   onGeneratePayment?: () => void;
   showPayment?: boolean;
 }) {
-  // Use a ref to track the initial render and prevent infinite loops
   const isInitialRender = useRef(true);
   
-  // Initialize react-hook-form for the date field
   const dateForm = useForm<z.infer<typeof DateFormSchema>>({
     resolver: zodResolver(DateFormSchema),
     defaultValues: {
@@ -168,92 +158,50 @@ export function CalendarFormEdit({
     }
   });
 
-  // Get the location from initialData or default to Nellis60
   const location = initialData?.location || 'Nellis60';
-
-  // Get the appropriate vehicle list based on location
   const currentVehicleList = useMemo(() => getVehicleListByLocation(location), [location]);
 
-  // Initialize selectedTabValue based on location
+  // --- Logic Hooks ---
   useEffect(() => {
     if (initialData?.location) {
       let tab: TabValue = 'mb60';
       switch (initialData.location) {
-        case 'Nellis30':
-          tab = 'mb30';
-          break;
-        case 'Nellis60':
-          tab = 'mb60';
-          break;
-        case 'NellisDX':
-          tab = 'mb120';
-          break;
-        case 'DunesATV30':
-          tab = 'atv30';
-          break;
-        case 'DunesATV60':
-          tab = 'atv60';
-          break;
-        case 'ValleyOfFire':
-          tab = 'Valley of Fire';
-          break;
-        case 'FamilyFun':
-          tab = 'Family Fun Romp';
-          break;
-        case 'Amargosa':
-          tab = 'Amargosa';
-          break;
+        case 'Nellis30': tab = 'mb30'; break;
+        case 'Nellis60': tab = 'mb60'; break;
+        case 'NellisDX': tab = 'mb120'; break;
+        case 'DunesATV30': tab = 'atv30'; break;
+        case 'DunesATV60': tab = 'atv60'; break;
+        case 'ValleyOfFire': tab = 'Valley of Fire'; break;
+        case 'FamilyFun': tab = 'Family Fun Romp'; break;
+        case 'Amargosa': tab = 'Amargosa'; break;
       }
       setSelectedTabValue(tab);
     }
   }, [initialData?.location, setSelectedTabValue]);
 
-  // Initialize selectedTimeValue based on initial data
   useEffect(() => {
     if (initialData?.sch_time) {
-      // Get the appropriate time array based on current tab
       const getTimeArrayForTab = (tab: TabValue): string[] => {
-        switch (tab) {
-          case 'mb30':
-            return ['9 am (20% discount)', '11 am', '1 pm'];
-          case 'mb60':
-            return ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
-          case 'mb120':
-            return ['8 am', '10 am'];
-          case 'atv30':
-            return ['8 am', '10 am', '12 pm'];
-          case 'atv60':
-            return ['8 am', '10 am', '12 pm'];
-          case 'Valley of Fire':
-            return ['8 am'];
-          case 'Family Fun Romp':
-            return ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
-          case 'Amargosa':
-             return ['8 am'];
-            default:
-            return ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
-        }
+        if (tab === 'mb30') return ['9 am (20% discount)', '11 am', '1 pm'];
+        if (tab === 'mb60' || tab === 'Family Fun Romp') return ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
+        if (tab === 'mb120' || tab === 'atv30' || tab === 'atv60') return ['8 am', '10 am', '12 pm'];
+        if (tab === 'Valley of Fire' || tab === 'Amargosa') return ['8 am'];
+        return ['8 am (20% discount)', '10 am', '12 pm', '2 pm'];
       };
-
       const timeArray = getTimeArrayForTab(selectedTabValue);
       const displayTime = findMatchingDisplayTime(initialData.sch_time, timeArray);
       setSelectedTimeValue(displayTime);
     }
   }, [initialData?.sch_time, selectedTabValue, setSelectedTimeValue]);
 
-  // Watch for date changes in react-hook-form and update bookInfo
   const watchedDate = dateForm.watch('bookingDate');
   useEffect(() => {
     if (isInitialRender.current) {
       isInitialRender.current = false;
       return;
     }
-
     if (watchedDate && watchedDate.getTime() !== bookInfo.bookingDate.getTime()) {
-      setBookInfo(prev => ({ 
-        ...prev, 
-        bookingDate: watchedDate 
-      }));
+      setBookInfo(prev => ({ ...prev, bookingDate: watchedDate }));
     }
   }, [watchedDate]); 
 
@@ -263,49 +211,28 @@ export function CalendarFormEdit({
     }
   }, []);
 
-  // Update the total_cost hidden input whenever total_cost changes
   useEffect(() => {
     const totalCostInput = document.getElementById('total_cost') as HTMLInputElement;
-    if (totalCostInput) {
-      totalCostInput.value = total_cost.toString();
-    }
+    if (totalCostInput) totalCostInput.value = total_cost.toString();
   }, [total_cost]);
 
-  // Function to convert display time back to 24-hour format for form submission
+  // --- Handlers ---
   const convertTo12HourFormat = (displayTime: string): string => {
     if (!displayTime) return '';
-
-    // Extract the time part (remove discount info)
     const timePart = displayTime.split(' (')[0];
     const [time, period] = timePart.split(' ');
     let hour = parseInt(time, 10);
-
-    // If it's PM and not 12, add 12 to convert to 24-hour temporarily
-    // But we'll format it back to 12-hour in the server action
-    if (period === 'pm' && hour !== 12) {
-      hour += 12;
-    } else if (period === 'am' && hour === 12) {
-      hour = 0;
-    }
-
-    // Return in 24-hour format for consistent processing, server will convert to 12-hour
+    if (period === 'pm' && hour !== 12) hour += 12;
+    else if (period === 'am' && hour === 12) hour = 0;
     return `${hour.toString().padStart(2, '0')}:00`;
   };
 
-  // Create a wrapper function that accepts string and validates it's a VehicleCategory
   const handleCategoryChange = (category: string) => {
-    // Validate that the category is a valid VehicleCategory
-    if (isVehicleCategory(category)) {
-      setActiveVehicleCategory(category);
+    if (['Mini Baja', 'ATV', 'Valley of Fire', 'Family Fun', 'Amargosa'].includes(category)) {
+      setActiveVehicleCategory(category as VehicleCategory);
     }
   };
 
-  // Type guard to check if a string is a valid VehicleCategory
-  const isVehicleCategory = (category: string): category is VehicleCategory => {
-    return ['Mini Baja', 'ATV', 'Valley of Fire', 'Family Fun', 'Amargosa'].includes(category);
-  };
-
-  // Handle input changes directly
   const handleBookingChange = (field: keyof BookInfoType, value: any) => {
     setBookInfo(prev => ({ ...prev, [field]: value }));
   };
@@ -314,119 +241,41 @@ export function CalendarFormEdit({
     setContactForm(prev => ({ ...prev, [field]: value }));
   };
 
-  // Handle hotel checkbox change
   const handleShuttleChange = (checked: boolean) => {
     setFreeShuttle(checked);
-    if (!checked) {
-      setSelectedHotel('');
-    }
+    if (!checked) setSelectedHotel('');
   };
 
-  // Helper function to get vehicle count by vehicle name
   const getVehicleCountByName = (vehicleName: string): number => {
-    const vehicle = Object.values(vehicleCounts).find(
-      v => v.name === vehicleName
-    );
+    const vehicle = Object.values(vehicleCounts).find(v => v.name === vehicleName);
     return vehicle ? vehicle.count : 0;
   };
 
   return (
-    // Updated root class to use semantic text color
     <div className="w-full space-y-6 text-foreground">
 
       {/* Hidden inputs for form submission */}
-      <input
-        type="hidden"
-        name="sch_date"
-        value={bookInfo.bookingDate.toISOString().split('T')[0]} //YYYY-MM-DD
-      />
-
-      <input
-        type="hidden"
-        name="sch_time"
-        value={convertTo12HourFormat(selectedTimeValue)}
-      />
-      <input
-        type="hidden"
-        name="location"
-        value={
+      <input type="hidden" name="sch_date" value={bookInfo.bookingDate.toISOString().split('T')[0]} />
+      <input type="hidden" name="sch_time" value={convertTo12HourFormat(selectedTimeValue)} />
+      <input type="hidden" name="location" value={
           selectedTabValue === 'mb30' ? 'Nellis30' :
-            selectedTabValue === 'mb60' ? 'Nellis60' :
-              selectedTabValue === 'mb120' ? 'NellisDX' :
-                selectedTabValue === 'atv30' ? 'DunesATV30' :
-                  selectedTabValue === 'atv60' ? 'DunesATV60' :
-                    selectedTabValue === 'Valley of Fire' ? 'ValleyOfFire' :
-                      selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' :
-                        selectedTabValue === 'Amargosa' ? 'Amargosa' : ''
-        }
+          selectedTabValue === 'mb60' ? 'Nellis60' :
+          selectedTabValue === 'mb120' ? 'NellisDX' :
+          selectedTabValue === 'atv30' ? 'DunesATV30' :
+          selectedTabValue === 'atv60' ? 'DunesATV60' :
+          selectedTabValue === 'Valley of Fire' ? 'ValleyOfFire' :
+          selectedTabValue === 'Family Fun Romp' ? 'FamilyFun' :
+          selectedTabValue === 'Amargosa' ? 'Amargosa' : ''
+      } />
+
+      {/* 1. CONTACT INFORMATION (User Check) */}
+      <ContactInfoSection 
+        contactForm={contactForm} 
+        setContactForm={setContactForm} 
+        viewMode={viewMode} 
       />
 
-      {/* 1. Contact Information - MOVED TO TOP */}
-      <div className={SECTION_CARD_CLASS}>
-        <h2 className={HEADER_CLASS}>
-          <Contact className="w-5 h-5 text-primary" />
-          Contact Information
-        </h2>
-
-        <div className="space-y-4">
-          <div>
-            <label className={LABEL_CLASS}>Full Name</label>
-            <input
-              type="text"
-              name="full_name"
-              value={contactForm.name}
-              onChange={(e) => handleContactChange('name', e.target.value)}
-              className={INPUT_CLASS}
-              placeholder="Driver / Primary Contact"
-              disabled={viewMode}
-            />
-          </div>
-
-          <div>
-            <label className={LABEL_CLASS}>Email</label>
-            <input
-              type="email"
-              name="email"
-              value={contactForm.email}
-              onChange={(e) => handleContactChange('email', e.target.value)}
-              className={INPUT_CLASS}
-              placeholder="receipts@example.com"
-              disabled={viewMode}
-            />
-          </div>
-
-          <div>
-            <label className={LABEL_CLASS}>Phone</label>
-            <input
-              type="tel"
-              name="phone"
-              value={contactForm.phone}
-              onChange={(e) => handleContactChange('phone', e.target.value)}
-              className={INPUT_CLASS}
-              placeholder="(555) 123-4567"
-              disabled={viewMode}
-            />
-          </div>
-
-          <div>
-            <label className={LABEL_CLASS}>Group Name (Optional)</label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                name="occasion"
-                value={contactForm.groupName || ''}
-                onChange={(e) => handleContactChange('groupName', e.target.value)}
-                className={`${INPUT_CLASS} pl-10`}
-                placeholder="e.g. Smith Bachelor Party"
-                disabled={viewMode}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Booking Section */}
+      {/* 2. BOOKING DETAILS */}
       <div className={SECTION_CARD_CLASS}>
         <h2 className={HEADER_CLASS}>
           <CalendarDays className="w-5 h-5 text-primary" />
@@ -434,6 +283,24 @@ export function CalendarFormEdit({
         </h2>
 
         <div className="space-y-4">
+          
+          {/* GROUP NAME (Event Title) */}
+          <div>
+            <label className={LABEL_CLASS}>Group Name (Optional)</label>
+            <div className="relative">
+              <PartyPopper className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                name="occasion"
+                value={contactForm.groupName || ''}
+                onChange={(e) => handleContactChange('groupName', e.target.value)}
+                className={`${INPUT_CLASS} pl-10`}
+                placeholder="e.g. Jerry's Birthday Bash"
+                disabled={viewMode}
+              />
+            </div>
+          </div>
+
           <div>
             <label className={LABEL_CLASS}>Booking Date</label>
             <Form {...dateForm}>
@@ -448,19 +315,53 @@ export function CalendarFormEdit({
             </Form>
           </div>
 
+          {/* NUMBER OF PEOPLE - STEPPER UI */}
           <div>
             <label className={LABEL_CLASS}>Number of People</label>
-            <div className="relative">
-              <Users className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
-                type="number"
-                name="ppl_count"
-                value={bookInfo.howManyPeople}
-                onChange={(e) => handleBookingChange('howManyPeople', parseInt(e.target.value) || 1)}
-                min="1"
-                className={`${INPUT_CLASS} pl-10`}
+            <div className="flex items-center gap-0 w-full h-12 rounded-md border border-input bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary/50 transition-all">
+              {/* Decrement Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const newVal = Math.max(1, bookInfo.howManyPeople - 1);
+                  handleBookingChange('howManyPeople', newVal);
+                }}
+                disabled={viewMode || bookInfo.howManyPeople <= 1}
+                className="h-full w-14 flex items-center justify-center bg-accent/30 hover:bg-accent text-foreground disabled:opacity-30 disabled:hover:bg-transparent border-r border-input transition-colors"
+                aria-label="Decrease number of people"
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+
+              {/* Icon & Input */}
+              <div className="flex-1 flex items-center justify-center relative h-full">
+                <Users className="w-4 h-4 text-muted-foreground absolute left-3 md:left-6" />
+                <input
+                  type="number"
+                  name="ppl_count"
+                  value={bookInfo.howManyPeople}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    handleBookingChange('howManyPeople', Math.max(1, val));
+                  }}
+                  min="1"
+                  disabled={viewMode}
+                  className="w-full h-full text-center bg-transparent border-none focus:ring-0 text-foreground font-semibold text-lg"
+                />
+              </div>
+
+              {/* Increment Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  handleBookingChange('howManyPeople', bookInfo.howManyPeople + 1);
+                }}
                 disabled={viewMode}
-              />
+                className="h-full w-14 flex items-center justify-center bg-accent/30 hover:bg-accent text-foreground disabled:opacity-30 disabled:hover:bg-transparent border-l border-input transition-colors"
+                aria-label="Increase number of people"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
@@ -494,12 +395,7 @@ export function CalendarFormEdit({
             </div>
           )}
 
-          {/* Hidden input for hotel value */}
-          <input
-            type="hidden"
-            name="hotel"
-            value={freeShuttle ? selectedHotel : ''}
-          />
+          <input type="hidden" name="hotel" value={freeShuttle ? selectedHotel : ''} />
           {/* Hidden Vehicle Counts */}
           <input type="hidden" name="QA" value={getVehicleCountByName('Medium size ATV')} />
           <input type="hidden" name="QB" value={getVehicleCountByName('Full size ATV')} />
@@ -520,7 +416,7 @@ export function CalendarFormEdit({
         </div>
       </div>
 
-      {/* 3. Fleet Selection */}
+      {/* 3. FLEET SELECTION */}
       <div className={SECTION_CARD_CLASS}>
         <h2 className={HEADER_CLASS}>
           <Car className="w-5 h-5 text-primary" />
@@ -537,7 +433,7 @@ export function CalendarFormEdit({
         />
       </div>
 
-      {/* 4. Pricing Section */}
+      {/* 4. PRICING */}
       <div className="flex flex-col items-center gap-5 pt-2">
         <BookingTabs
           activeVehicleCategory={activeVehicleCategory}
