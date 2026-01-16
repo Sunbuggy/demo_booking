@@ -17,6 +17,9 @@ import { getDailyOperations } from '@/app/actions/shuttle-operations';
 import { getVegasShuttleDrivers } from '@/app/actions/user-actions'; 
 import RealtimeGroupsListener from '../vegas/components/realtime-groups-listener';
 
+// --- NEW UNIFIED FETCHER (Hybrid) ---
+import { getUnifiedDashboardData } from '../vegas/lib/fetch-unified-dashboard';
+
 // --- GROUPS DATA FETCHER ---
 import { fetchDailyGroupsData } from '../vegas/lib/fetch-groups-data';
 
@@ -26,6 +29,9 @@ import DashboardWeatherPill from '../vegas/components/dashboard-weather-pill';
 
 export const dynamic = 'force-dynamic';
 
+// [CONFIG] The UUID for Las Vegas in Supabase
+const VEGAS_LOCATION_ID = 'a1b2c3d4-e5f6-47a8-b9c0-d1e2f3a4b5c6';
+
 /**
  * Helper: Deep Sanitize
  * Removes database prototypes (like RowDataPacket) so data can be passed
@@ -33,22 +39,6 @@ export const dynamic = 'force-dynamic';
  */
 function deepSanitize<T>(data: T): T {
   return JSON.parse(JSON.stringify(data));
-}
-
-/**
- * Server Action: Fetch legacy reservations from MySQL.
- */
-async function fetchReservationsForDate(date: string): Promise<Reservation[]> {
-  'use server';
-  try {
-    const { fetch_from_old_db } = await import('@/utils/old_db/actions');
-    const query = `SELECT * FROM reservations_modified WHERE sch_date = '${date}'`;
-    const data = (await fetch_from_old_db(query)) as Reservation[];
-    return data || [];
-  } catch (error) {
-    console.error('CRITICAL: Error fetching legacy reservations:', error);
-    return []; 
-  }
 }
 
 /**
@@ -61,11 +51,12 @@ function BizContent({
   todaysShifts, realFleet, weatherData, groupsData 
 }: any) {
   const hasReservations = reservations.length > 0;
+  
+  // Use the existing helper to group the Unified Data by Hour
   let sortedData = hasReservations ? getTimeSortedData(reservations) : null;
 
   // ------------------------------------
   // [FIX] Updated sorting logic to handle 12-hour format (AM/PM) correctly.
-  // Previous parseInt() logic caused 2PM (int 2) to sort before 8AM (int 8).
   if (Array.isArray(sortedData)) {
     sortedData = sortedData.sort((a: any, b: any) => {
       // 1. Extract the time string (e.g., "08:00 AM" or "2:00 PM")
@@ -73,7 +64,6 @@ function BizContent({
       const timeStrB = b.time || b.key || b;
 
       // 2. Parse using DayJS with the context of the current date.
-      //    This handles the 12h -> 24h conversion automatically.
       const dateA = dayjs(`${date} ${timeStrA}`);
       const dateB = dayjs(`${date} ${timeStrB}`);
 
@@ -83,7 +73,6 @@ function BizContent({
   } 
 
   return (
-    // SEMANTIC: Updated background to use theme variable
     <div className="min-h-screen w-full flex flex-col gap-5 relative bg-background">
       
       {/* --- GLOBAL REALTIME LISTENER --- */}
@@ -92,11 +81,6 @@ function BizContent({
       {/* --- FLOATING DATE NAVIGATION & WEATHER --- */}
       {role >= 300 && (
         <div className="sticky top-16 z-50 mx-auto w-full max-w-[98vw] flex justify-center pointer-events-none">
-          {/* THEME FIX APPLIED HERE:
-             - bg-slate-950/90 -> bg-popover/95 (Adapts to light/dark)
-             - border-slate-700/50 -> border-border
-             - text colors updated to semantic variables
-          */}
           <div className="pointer-events-auto flex flex-row items-center justify-center gap-1 sm:gap-4 bg-popover/95 backdrop-blur-md border border-border rounded-xl px-2 py-1.5 shadow-xl mt-2 text-popover-foreground">
             
             {/* 1. Date Navigation Group */}
@@ -116,7 +100,6 @@ function BizContent({
                     size="sm" 
                     className="font-mono font-bold h-7 px-2 bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground text-xs sm:text-sm"
                   >
-                    {/* Mobile: "Jan 10" | Desktop: "Sat, Jan 10, 2026" */}
                     <span className="sm:hidden">{dayjs(date).format('MMM D')}</span>
                     <span className="hidden sm:inline">{dayjs(date).format('ddd, MMM D, YYYY')}</span>
                   </Button>
@@ -134,10 +117,7 @@ function BizContent({
             {/* 2. Weather Pill (Inline) */}
             {weatherData && (
               <>
-                {/* Vertical Divider */}
                 <div className="h-5 w-px bg-border mx-0.5" />
-                
-                {/* Weather Pill */}
                 <div className="flex-shrink-0 scale-90 sm:scale-100 origin-left">
                     <DashboardWeatherPill data={weatherData} location="Las Vegas" />
                 </div>
@@ -151,13 +131,11 @@ function BizContent({
       {/* --- MAIN CONTENT AREA --- */}
       <div className="w-full">
         {hasReservations && sortedData ? (
-          // [CRITICAL FIX] Sanitize data before passing to Client Component
           <Landing
             data={deepSanitize(sortedData)}
             display_cost={display_cost}
             role={role}
             date={date}
-            // HERE IS WHERE THE NAME IS PASSED
             full_name={full_name} 
             activeFleet={deepSanitize(activeFleet)}
             reservationStatusMap={deepSanitize(reservationStatusMap)}
@@ -165,7 +143,6 @@ function BizContent({
             drivers={deepSanitize(drivers)}
             todaysShifts={deepSanitize(todaysShifts)} 
             realFleet={deepSanitize(realFleet)}
-            // NEW: Pass sanitized groups data
             groupsData={deepSanitize(groupsData)}
           />
         ) : (
@@ -215,25 +192,19 @@ export default async function BizPage({ params, searchParams }: any) {
   }
 
   // --- PREFERENCE & PROFILE FETCHING ---
-  // We check the DB for 'preferences' AND 'stage_name' in one query.
   let showFinancials = role >= 500; 
-  let displayName = user[0].full_name; // Default fallback
+  let displayName = user[0].full_name; 
   
   try {
     const { data: userExtraData } = await supabase
       .from('users')
-      // UPDATED: Added 'stage_name' to the select list
       .select('preferences, stage_name') 
       .eq('id', user[0].id)
       .single();
       
-    // Handle Preferences
     if (userExtraData?.preferences && typeof userExtraData.preferences.show_financials !== 'undefined') {
       showFinancials = userExtraData.preferences.show_financials;
     }
-
-    // Handle Stage Name Logic
-    // If they have a Stage Name, use it. Otherwise keep the Full Name.
     if (userExtraData?.stage_name) {
       displayName = userExtraData.stage_name;
     }
@@ -242,7 +213,6 @@ export default async function BizPage({ params, searchParams }: any) {
     console.warn('Could not fetch user extra data, using defaults.');
   }
 
-  // Allow URL override (?dcos=true)
   if (search.dcos === 'true') showFinancials = true;
   if (role < 500) showFinancials = false; 
 
@@ -250,25 +220,32 @@ export default async function BizPage({ params, searchParams }: any) {
   const tomorrow = dayjs(date).add(1, 'day').format('YYYY-MM-DD');
 
   try {
-    const reservationsPromise = fetchReservationsForDate(date);
-    
-    const shiftsQuery = supabase
-      .from('employee_schedules')
-      .select('user_id, role, location, task')
-      .gte('start_time', `${date}T00:00:00`)
-      .lte('start_time', `${date}T23:59:59`);
-
-    const reservations = await reservationsPromise;
-
     // --- PARALLEL DATA FETCHING ---
-    const [operationsData, drivers, shiftsResult, shuttles, weatherResult, groupsData] = await Promise.all([
-      getDailyOperations(date, reservations),
+    // 1. Kick off all requests
+    const [
+      unifiedReservations, // <--- REPLACES old 'reservationsPromise'
+      drivers,
+      shiftsResult,
+      shuttles,
+      weatherResult,
+      groupsData
+    ] = await Promise.all([
+      // Fetch Hybrid Data (MySQL + Supabase)
+      getUnifiedDashboardData(date, VEGAS_LOCATION_ID),
       getVegasShuttleDrivers(),
-      shiftsQuery,
+      supabase
+        .from('employee_schedules')
+        .select('user_id, role, location, task')
+        .gte('start_time', `${date}T00:00:00`)
+        .lte('start_time', `${date}T23:59:59`),
       fetchShuttlesOnly(supabase),
       getLocationWeather('Las Vegas', date, 1),
       fetchDailyGroupsData(date) 
     ]);
+
+    // 2. Calculate Operations (Fleet Usage) based on the UNIFIED list
+    // This works because we mapped the Supabase data to match the Legacy shape
+    const operationsData = await getDailyOperations(date, unifiedReservations as any[]);
 
     const todaysShifts = shiftsResult.data || [];
     const dailyWeather = weatherResult && weatherResult.length > 0 ? weatherResult[0] : null;
@@ -279,9 +256,8 @@ export default async function BizPage({ params, searchParams }: any) {
           date={date}
           display_cost={showFinancials} 
           role={role}
-          // UPDATED: Now passing the resolved 'displayName' (Stage Name)
           full_name={displayName} 
-          reservations={reservations}
+          reservations={unifiedReservations} // <--- Pass the hybrid list
           yesterday={yesterday}
           tomorrow={tomorrow}
           activeFleet={operationsData.activeFleet}

@@ -1,13 +1,14 @@
 import { Card } from '@/components/ui/card';
 import React from 'react';
 import Link from 'next/link'; 
-import { Plus, Users } from 'lucide-react'; 
+import { Plus, Users, User, AlertCircle } from 'lucide-react'; 
 import { Button } from '@/components/ui/button'; 
 
 // Sub-components
 import LocationCard from './location-card';
 import LaunchGroup from '../groups/launch-group';
 import DeleteGroupButton from '../groups/delete-group-button'; 
+import UserStatusAvatar from '@/components/UserStatusAvatar'; // [NEW] For Participant Viz
 
 // Types
 import { Reservation, GroupsType, GroupVehiclesType } from '../../../types';
@@ -18,6 +19,21 @@ interface GroupsData {
   groupVehicles: GroupVehiclesType[];
   guides: { id: string; full_name: string }[];
   timings: any[];
+}
+
+interface HourCardProps {
+  hr: string; 
+  data: Record<string, Record<string, Reservation[]>>; 
+  display_cost: boolean;
+  date: string; 
+  full_name: string; 
+  activeFleet: any[]; 
+  reservationStatusMap: any; 
+  hourlyUtilization: any;    
+  drivers: any[]; 
+  groupsData: GroupsData; 
+  todaysShifts?: any[]; 
+  role?: number; // [CRITICAL FIX] Role is now typed
 }
 
 const HourCard = ({
@@ -32,28 +48,15 @@ const HourCard = ({
   drivers,
   groupsData,
   todaysShifts,
-  role // [NEW] Accept role prop
-}: {
-  hr: string; 
-  data: Record<string, Record<string, Reservation[]>>; 
-  display_cost: boolean;
-  date: string; 
-  full_name: string; 
-  activeFleet: any[]; 
-  reservationStatusMap: any; 
-  hourlyUtilization: any;    
-  drivers: any[]; 
-  groupsData: GroupsData; 
-  todaysShifts?: any[]; 
-  role?: number; // [NEW] Define type
-}) => {
+  role
+}: HourCardProps) => {
   
   // --- 1. DATA PREPARATION ---
   const reservationsInThisHour = Object.values(data[hr]).flat();
   const groupHr = hr.split(':')[0]; 
   const displayTime = `${groupHr}:00`; 
 
-  // --- 2. CALCULATE TOTALS ---
+  // --- 2. CALCULATE LEGACY TOTALS ---
   const totalPeople = reservationsInThisHour.reduce((acc, r) => acc + (r.ppl_count || 0), 0);
   
   const vehicleCounts: Record<string, number> = {};
@@ -101,7 +104,7 @@ const HourCard = ({
     return `${d.name}-${d.vehicle}-${d.stops}s-${d.pax}p`;
   });
 
-  // --- 4. GROUP SUMMARY LOGIC ---
+  // --- 4. GROUP SUMMARY LOGIC (THE NEW 3-LAYER DATA) ---
   const currentGroups = groupsData?.groups?.filter(g => {
     const nameStart = g.group_name?.replace(/\D/g, ''); 
     const hourNum = parseInt(groupHr, 10);
@@ -112,12 +115,11 @@ const HourCard = ({
 
   // Helper to count vehicles per group
   const getGroupStats = (group: any) => {
-    // 1. Get Vehicles: Prefer nested array from new fetcher, fallback to filtering global list
+    // 1. Get Vehicles: Prefer nested array from new fetcher
     let vehicles = group.group_vehicles;
 
     if (!vehicles || !Array.isArray(vehicles)) {
        vehicles = groupsData.groupVehicles.filter((gv) => {
-        // Fallback filter logic
         if (!gv.groups) return false;
         if (Array.isArray(gv.groups)) {
           return gv.groups.some((g) => g.id === group.id);
@@ -139,18 +141,17 @@ const HourCard = ({
       .map(([k, v]) => `${v}-${k}`)
       .join(', ');
 
-    // 3. Resolve Names (Fetcher now returns simple strings like "Maverick")
+    // 3. Resolve Names 
     const lead = group.lead || '?';
     const sweep = group.sweep || '?';
-
     const timing = groupsData.timings.find(t => t.group_id === group.id);
 
-    return { vehSummary, lead, sweep, timing };
+    return { vehSummary, lead, sweep, timing, participants: group.booking_participants };
   };
 
   // --- 5. RENDER ---
   return (
-    <Card key={hr} className="border border-border border-l-4 border-l-yellow-500 bg-card overflow-hidden shadow-sm mb-6 rounded-lg w-full max-w-full">
+    <Card key={hr} className="border border-border border-l-4 border-l-yellow-500 bg-card overflow-hidden shadow-sm mb-6 rounded-lg w-full max-w-full transition-all hover:shadow-md">
       
       {/* HEADER SECTION */}
       <div className="flex flex-col border-b border-border bg-muted/30">
@@ -158,14 +159,16 @@ const HourCard = ({
          {/* TOP ROW: Time & Main Stats */}
          <div className="flex items-center justify-between px-4 py-3 w-full">
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 max-w-full">
-                <span className="text-2xl font-black text-foreground tracking-tight shrink-0">
+                <span className="text-2xl font-black text-foreground tracking-tight shrink-0 font-mono">
                   {displayTime}
                 </span>
 
                 <div className="flex flex-wrap items-baseline gap-2 text-sm max-w-full">
-                   <span className="font-bold text-orange-700 dark:text-orange-500 whitespace-nowrap">
-                     {totalPeople} Ppl
-                   </span>
+                   <div className="flex items-center gap-1 font-bold text-orange-700 dark:text-orange-500 whitespace-nowrap bg-orange-100 dark:bg-orange-900/20 px-2 py-0.5 rounded-full border border-orange-200 dark:border-orange-800">
+                     <Users className="w-3 h-3" />
+                     {totalPeople}
+                   </div>
+                   
                    <span className="font-bold text-orange-700 dark:text-orange-600 whitespace-nowrap">
                      {totalVehicles} Veh
                    </span>
@@ -191,42 +194,71 @@ const HourCard = ({
          
          {/* MIDDLE ROW: Groups Summary & Launch Timers */}
          {currentGroups.length > 0 && (
-           <div className="px-4 pb-2 flex flex-wrap gap-2 w-full">
+           <div className="px-4 pb-2 flex flex-col gap-2 w-full">
              {currentGroups.map((group) => {
-               const { vehSummary, lead, sweep, timing } = getGroupStats(group);
+               const { vehSummary, lead, sweep, timing, participants } = getGroupStats(group);
+               
                return (
-                 <div 
-                   key={group.id} 
-                   className="flex items-center gap-2 text-xs bg-background dark:bg-slate-900/50 px-2 py-1 rounded border border-border shadow-sm group"
-                 >
-                   <span className="font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                     GR:{group.group_name}
-                   </span>
+                 <div key={group.id} className="flex flex-col gap-1 w-full bg-background dark:bg-slate-900/50 rounded border border-border shadow-sm p-2">
                    
-                   {/* UPDATED: Vehicle Summary Display */}
-                   {vehSummary && (
-                     <span className="font-mono font-semibold text-blue-700 dark:text-blue-300 hidden sm:inline border-r border-border pr-2 mr-0.5">
-                       {vehSummary}
-                     </span>
+                   {/* Group Header Line */}
+                   <div className="flex items-center gap-2 text-xs flex-wrap">
+                      <span className="font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                        GR:{group.group_name}
+                      </span>
+                      
+                      {vehSummary && (
+                        <span className="font-mono font-semibold text-blue-700 dark:text-blue-300 hidden sm:inline border-r border-border pr-2 mr-0.5">
+                          {vehSummary}
+                        </span>
+                      )}
+                      
+                      <div className="flex items-center gap-1 font-bold text-orange-700 dark:text-orange-400 uppercase mr-1">
+                          <Users className="w-3 h-3" />
+                          <span>{lead}/{sweep}</span>
+                      </div>
+
+                      {/* [CRITICAL FIX] Pass role to LaunchGroup */}
+                      <LaunchGroup 
+                        groupId={group.id} 
+                        launchedAt={timing?.launched_at} 
+                        landedAt={timing?.landed_at} 
+                        groupName={group.group_name}
+                        role={role}
+                      />
+
+                      <div className="pl-1 border-l border-gray-200 dark:border-gray-700 ml-1">
+                          <DeleteGroupButton groupId={group.id} />
+                      </div>
+                   </div>
+
+                   {/* [NEW] The Participant Manifest Visualization */}
+                   {participants && participants.length > 0 ? (
+                      <div className="flex items-center gap-1 mt-1 pl-2 border-l-2 border-blue-500/30 overflow-x-auto pb-1">
+                        {participants.map((p: any) => (
+                          <div key={p.id} className="relative group/avatar">
+                             <UserStatusAvatar 
+                                user={p.user || { full_name: p.temp_name || 'Guest' }} 
+                                size="sm" 
+                                className="w-6 h-6 border border-background"
+                             />
+                             {/* Waiver Status Dot */}
+                             <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-background ${
+                                p.waiver_status === 'SIGNED' ? 'bg-green-500' : 'bg-red-500'
+                             }`} />
+                          </div>
+                        ))}
+                        <span className="text-[10px] text-muted-foreground ml-1">
+                          {participants.length} Pax
+                        </span>
+                      </div>
+                   ) : (
+                      // If no 3-layer data yet (Legacy mode), show generic placeholder
+                      <div className="flex items-center gap-1 mt-1 pl-2 text-[10px] text-muted-foreground italic">
+                         <AlertCircle className="w-3 h-3" />
+                         <span>Legacy Group (No manifest)</span>
+                      </div>
                    )}
-                   
-                   <div className="flex items-center gap-1 font-bold text-orange-700 dark:text-orange-400 uppercase mr-1">
-                      <Users className="w-3 h-3" />
-                      <span>{lead}/{sweep}</span>
-                   </div>
-
-                   {/* [CRITICAL UPDATE] Pass role to LaunchGroup */}
-                   <LaunchGroup 
-                     groupId={group.id} 
-                     launchedAt={timing?.launched_at} 
-                     landedAt={timing?.landed_at} 
-                     groupName={group.group_name}
-                     role={role}
-                   />
-
-                   <div className="pl-1 border-l border-gray-200 dark:border-gray-700 ml-1">
-                      <DeleteGroupButton groupId={group.id} />
-                   </div>
 
                  </div>
                );
@@ -238,7 +270,7 @@ const HourCard = ({
          {driverSummaryStrings.length > 0 && (
            <div className="px-4 pb-3 flex flex-wrap gap-2 w-full">
              {driverSummaryStrings.map((str, idx) => (
-               <span key={idx} className="font-mono text-[10px] font-bold text-yellow-700 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded whitespace-nowrap border border-yellow-200 dark:border-yellow-800">
+               <span key={idx} className="font-mono text-[10px] font-bold text-yellow-700 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded whitespace-nowrap border border-yellow-200 dark:border-yellow-800 shadow-sm">
                  {str}
                </span>
              ))}
