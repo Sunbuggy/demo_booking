@@ -15,15 +15,18 @@ import {
   Phone, Mail, MessageSquare, Pencil, 
   Clock, Coffee, Timer, AlertCircle, 
   LogOut, Sun, Moon, User, Play, Square, Calendar,
-  Shield, AlertTriangle, ChevronRight, Briefcase
+  Shield, AlertTriangle, ChevronRight,
+  Check, X, ShieldAlert, Laptop
 } from 'lucide-react';
 import moment from 'moment';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useToast } from '@/components/ui/use-toast';
-import { signOutAction } from '@/app/actions/auth-actions'; // <--- NEW SERVER ACTION
+import { signOutAction } from '@/app/actions/auth-actions'; 
 
 import SmartTimeClock from '@/app/(biz)/biz/users/admin/tables/employee/time-clock/clock-in';
+import DeviceHealthCheck from '@/components/system/DeviceHealthCheck';
+import { useDevicePermissions } from '@/lib/hooks/useDevicePermissions';
 
 // Types
 export type FunLicenseStatus = 'active' | 'pending' | 'missing'; 
@@ -46,6 +49,9 @@ export default function UserStatusAvatar({
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   
+  // --- DEVICE PERMISSIONS HOOK ---
+  const { combinedStatus } = useDevicePermissions();
+  
   // State
   const [status, setStatus] = useState<TimeStatus>('offline');
   const [activeEntry, setActiveEntry] = useState<any>(null);
@@ -55,6 +61,7 @@ export default function UserStatusAvatar({
   // UI State
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
+  const [isDeviceCheckOpen, setIsDeviceCheckOpen] = useState(false);
   const [clockKey, setClockKey] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -107,8 +114,6 @@ export default function UserStatusAvatar({
     if (!isEmployee) return;
     fetchData();
 
-    // CRITICAL PERFORMANCE GUARD: Only subscribe if it's ME.
-    // This prevents 50 open websockets on the roster page.
     if (!isCurrentUser) return;
 
     const channel = supabase
@@ -133,8 +138,6 @@ export default function UserStatusAvatar({
 
   // --- 4. ACTIONS ---
   const closePopover = () => setIsPopoverOpen(false);
-
-  // NOTE: handleSignOut removed. Replaced by signOutAction in the JSX below.
 
   const openTimeClockModal = () => {
       closePopover();
@@ -193,7 +196,6 @@ export default function UserStatusAvatar({
       offline: 'bg-slate-300' 
   };
 
-  // Status background for the box header
   const getStatusHeaderClass = () => {
     switch(status) {
         case 'online': return "bg-green-50 border-green-100 dark:bg-green-900/20 dark:border-green-900";
@@ -207,6 +209,17 @@ export default function UserStatusAvatar({
 
   return (
     <>
+    {/* --- MODAL: Device Health Check (Hidden unless triggered) --- */}
+    {isCurrentUser && (
+        <Dialog open={isDeviceCheckOpen} onOpenChange={setIsDeviceCheckOpen}>
+            <DialogContent className="sm:max-w-md p-0 border-none bg-transparent shadow-none">
+                <DialogTitle className="sr-only">Device Check</DialogTitle>
+                <DialogDescription className="sr-only">Troubleshoot camera and location.</DialogDescription>
+                <DeviceHealthCheck />
+            </DialogContent>
+        </Dialog>
+    )}
+
     {isCurrentUser && isEmployee && (
         <Dialog open={isTimeClockOpen} onOpenChange={setIsTimeClockOpen}>
             <DialogContent className="max-w-md p-0 border-none bg-transparent shadow-none">
@@ -238,7 +251,7 @@ export default function UserStatusAvatar({
       <PopoverContent className="w-80 p-0 shadow-xl border-slate-200 dark:border-slate-800" align="end" sideOffset={5}>
         
         {/* === HEADER: IDENTITY === */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800 flex justify-between items-start">
+        <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800 flex justify-between items-start relative">
           <div className="flex gap-3 items-center">
              <div className={cn("w-12 h-12 rounded-full overflow-hidden border relative bg-slate-200", getLicenseColorClass(funLicenseStatus))}>
                 {user.avatar_url ? (
@@ -256,11 +269,38 @@ export default function UserStatusAvatar({
                 </p>
              </div>
           </div>
-          {(canEdit && !isCurrentUser) && (
-            <Link href={`/account?userId=${user.id}`} onClick={closePopover}>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Pencil className="w-4 h-4" /></Button>
-            </Link>
-          )}
+
+          {/* --- TOP RIGHT ACTIONS --- */}
+          <div className="flex flex-col items-end gap-1">
+             
+             {/* 1. ADMIN EDIT (Only if NOT me) */}
+             {(canEdit && !isCurrentUser) && (
+                <Link href={`/account?userId=${user.id}`} onClick={closePopover}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-100"><Pencil className="w-4 h-4" /></Button>
+                </Link>
+             )}
+
+             {/* 2. DEVICE CHECK STATUS (Only if IS me) */}
+             {isCurrentUser && (
+                 <div 
+                   onClick={() => { closePopover(); setIsDeviceCheckOpen(true); }}
+                   className={cn(
+                     "flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold cursor-pointer transition-colors border",
+                     // Green State
+                     combinedStatus === 'granted' && "bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800",
+                     // Red State
+                     combinedStatus === 'denied' && "bg-red-50 text-red-700 border-red-200 animate-pulse hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800",
+                     // Warning State
+                     (combinedStatus === 'prompt' || combinedStatus === 'unknown') && "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
+                   )}
+                 >
+                    {combinedStatus === 'granted' ? <Check className="w-3 h-3" /> : 
+                     combinedStatus === 'denied' ? <X className="w-3 h-3" /> : 
+                     <Laptop className="w-3 h-3" />}
+                    <span>DEVICE CHECK</span>
+                 </div>
+             )}
+          </div>
         </div>
 
         {/* === SECTION A: FUN LICENSE (Wallet Card) === */}
