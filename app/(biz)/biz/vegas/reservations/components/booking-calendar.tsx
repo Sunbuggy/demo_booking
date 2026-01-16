@@ -91,7 +91,6 @@ const findMatchingDisplayTime = (time24: string, timeArray: string[]): string =>
 };
 
 // --- THEME CONSTANTS (SEMANTIC UPDATE) ---
-// Updated to use semantic classes as per guidelines
 const SECTION_CARD_CLASS = "p-5 bg-card text-card-foreground border border-border rounded-xl shadow-sm";
 const INPUT_CLASS = "w-full h-10 px-3 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all";
 const LABEL_CLASS = "block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5";
@@ -362,122 +361,7 @@ export function CalendarFormEdit({
         }
       />
 
-      {/* Booking Section */}
-      <div className={SECTION_CARD_CLASS}>
-        <h2 className={HEADER_CLASS}>
-          {/* Use primary color for icons */}
-          <CalendarDays className="w-5 h-5 text-primary" />
-          Booking Details
-        </h2>
-
-        <div className="space-y-4">
-          <div>
-            <label className={LABEL_CLASS}>Booking Date</label>
-            <Form {...dateForm}>
-              <DatePicker
-                form={dateForm}
-                title="Pick a booking date"
-                buttonTitle="Pick a date"
-                isCalendarOpen={isCalendarOpen}
-                setIsCalendarOpen={setIsCalendarOpen}
-                disabled={viewMode}
-              />
-            </Form>
-          </div>
-
-          <div>
-            <label className={LABEL_CLASS}>Number of People</label>
-            <div className="relative">
-              {/* Use muted-foreground for inactive icons */}
-              <Users className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
-                type="number"
-                name="ppl_count"
-                value={bookInfo.howManyPeople}
-                onChange={(e) => handleBookingChange('howManyPeople', parseInt(e.target.value) || 1)}
-                min="1"
-                className={`${INPUT_CLASS} pl-10`}
-                disabled={viewMode}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2 pt-2">
-            <Checkbox
-              id="free-shuttle"
-              checked={freeShuttle}
-              onCheckedChange={viewMode ? undefined : (checked) => handleShuttleChange(checked === true)}
-              disabled={viewMode}
-              // Updated to use semantic border and primary background when checked
-              className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-            />
-            <label
-              htmlFor="free-shuttle"
-              // Updated to use semantic text color
-              className="text-sm font-medium leading-none text-foreground cursor-pointer select-none"
-            >
-              Get Free Shuttle Pickup to Your Hotel
-            </label>
-          </div>
-
-          {hotelsMemo && freeShuttle && (
-            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-              <label className={LABEL_CLASS}>Select Hotel</label>
-              <ComboBox
-                hotelsMemo={hotelsMemo}
-                open={open}
-                setOpen={viewMode ? undefined : setOpen}
-                selectedHotel={selectedHotel}
-                setSelectedHotel={viewMode ? undefined : setSelectedHotel}
-                disabled={viewMode}
-              />
-            </div>
-          )}
-
-          {/* Hidden input for hotel value */}
-          <input
-            type="hidden"
-            name="hotel"
-            value={freeShuttle ? selectedHotel : ''}
-          />
-          {/* Hidden Vehicle Counts */}
-          <input type="hidden" name="QA" value={getVehicleCountByName('Medium size ATV')} />
-          <input type="hidden" name="QB" value={getVehicleCountByName('Full size ATV')} />
-          <input type="hidden" name="QU" value={0} />
-          <input type="hidden" name="QL" value={0} />
-          <input type="hidden" name="SB1" value={getVehicleCountByName('1 seat desert racer')} />
-          <input type="hidden" name="SB2" value={getVehicleCountByName('2 seat desert racer')} />
-          <input type="hidden" name="SB4" value={getVehicleCountByName('4 seat desert racer')} />
-          <input type="hidden" name="SB5" value={0} />
-          <input type="hidden" name="SB6" value={getVehicleCountByName('6 seat desert racer')} />
-          <input type="hidden" name="twoSeat4wd" value={getVehicleCountByName('2 seat UTV')} />
-          <input type="hidden" name="UZ2" value={0} />
-          <input type="hidden" name="UZ4" value={0} />
-          <input type="hidden" name="RWG" value={getVehicleCountByName('Ride with Guide')} />
-          <input type="hidden" name="GoKartplus" value={0} />
-          <input type="hidden" name="GoKart" value={0} />
-          <input type="hidden" name="total_cost" value={total_cost} />
-        </div>
-      </div>
-
-      {/* Fleet Selection */}
-      <div className={SECTION_CARD_CLASS}>
-        <h2 className={HEADER_CLASS}>
-          <Car className="w-5 h-5 text-primary" />
-          Choose Your Adventure
-        </h2>
-        <FleetCarousel
-          vehicleCounts={vehicleCounts}
-          setVehicleCounts={setVehicleCounts}
-          totalSeats={totalSeats}
-          howManyPeople={bookInfo.howManyPeople}
-          viewMode={viewMode}
-          activeCategory={activeVehicleCategory}
-          setActiveCategory={handleCategoryChange}
-        />
-      </div>
-
-      {/* Contact Information */}
+      {/* 1. Contact Information - MOVED TO TOP */}
       <div className={SECTION_CARD_CLASS}>
         <h2 className={HEADER_CLASS}>
           <Contact className="w-5 h-5 text-primary" />
@@ -542,7 +426,118 @@ export function CalendarFormEdit({
         </div>
       </div>
 
-      {/* Pricing Section */}
+      {/* 2. Booking Section */}
+      <div className={SECTION_CARD_CLASS}>
+        <h2 className={HEADER_CLASS}>
+          <CalendarDays className="w-5 h-5 text-primary" />
+          Booking Details
+        </h2>
+
+        <div className="space-y-4">
+          <div>
+            <label className={LABEL_CLASS}>Booking Date</label>
+            <Form {...dateForm}>
+              <DatePicker
+                form={dateForm}
+                title="Pick a booking date"
+                buttonTitle="Pick a date"
+                isCalendarOpen={isCalendarOpen}
+                setIsCalendarOpen={setIsCalendarOpen}
+                disabled={viewMode}
+              />
+            </Form>
+          </div>
+
+          <div>
+            <label className={LABEL_CLASS}>Number of People</label>
+            <div className="relative">
+              <Users className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <input
+                type="number"
+                name="ppl_count"
+                value={bookInfo.howManyPeople}
+                onChange={(e) => handleBookingChange('howManyPeople', parseInt(e.target.value) || 1)}
+                min="1"
+                className={`${INPUT_CLASS} pl-10`}
+                disabled={viewMode}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox
+              id="free-shuttle"
+              checked={freeShuttle}
+              onCheckedChange={viewMode ? undefined : (checked) => handleShuttleChange(checked === true)}
+              disabled={viewMode}
+              className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+            />
+            <label
+              htmlFor="free-shuttle"
+              className="text-sm font-medium leading-none text-foreground cursor-pointer select-none"
+            >
+              Get Free Shuttle Pickup to Your Hotel
+            </label>
+          </div>
+
+          {hotelsMemo && freeShuttle && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+              <label className={LABEL_CLASS}>Select Hotel</label>
+              <ComboBox
+                hotelsMemo={hotelsMemo}
+                open={open}
+                setOpen={viewMode ? undefined : setOpen}
+                selectedHotel={selectedHotel}
+                setSelectedHotel={viewMode ? undefined : setSelectedHotel}
+                disabled={viewMode}
+              />
+            </div>
+          )}
+
+          {/* Hidden input for hotel value */}
+          <input
+            type="hidden"
+            name="hotel"
+            value={freeShuttle ? selectedHotel : ''}
+          />
+          {/* Hidden Vehicle Counts */}
+          <input type="hidden" name="QA" value={getVehicleCountByName('Medium size ATV')} />
+          <input type="hidden" name="QB" value={getVehicleCountByName('Full size ATV')} />
+          <input type="hidden" name="QU" value={0} />
+          <input type="hidden" name="QL" value={0} />
+          <input type="hidden" name="SB1" value={getVehicleCountByName('1 seat desert racer')} />
+          <input type="hidden" name="SB2" value={getVehicleCountByName('2 seat desert racer')} />
+          <input type="hidden" name="SB4" value={getVehicleCountByName('4 seat desert racer')} />
+          <input type="hidden" name="SB5" value={0} />
+          <input type="hidden" name="SB6" value={getVehicleCountByName('6 seat desert racer')} />
+          <input type="hidden" name="twoSeat4wd" value={getVehicleCountByName('2 seat UTV')} />
+          <input type="hidden" name="UZ2" value={0} />
+          <input type="hidden" name="UZ4" value={0} />
+          <input type="hidden" name="RWG" value={getVehicleCountByName('Ride with Guide')} />
+          <input type="hidden" name="GoKartplus" value={0} />
+          <input type="hidden" name="GoKart" value={0} />
+          <input type="hidden" name="total_cost" value={total_cost} />
+        </div>
+      </div>
+
+      {/* 3. Fleet Selection */}
+      <div className={SECTION_CARD_CLASS}>
+        <h2 className={HEADER_CLASS}>
+          <Car className="w-5 h-5 text-primary" />
+          Choose Your Adventure
+        </h2>
+        <FleetCarousel
+          vehicleCounts={vehicleCounts}
+          setVehicleCounts={setVehicleCounts}
+          totalSeats={totalSeats}
+          howManyPeople={bookInfo.howManyPeople}
+          viewMode={viewMode}
+          activeCategory={activeVehicleCategory}
+          setActiveCategory={handleCategoryChange}
+        />
+      </div>
+
+      {/* 4. Pricing Section */}
       <div className="flex flex-col items-center gap-5 pt-2">
         <BookingTabs
           activeVehicleCategory={activeVehicleCategory}

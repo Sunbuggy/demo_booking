@@ -6,7 +6,7 @@ import { Reservation } from '@/app/(biz)/biz/types';
 import { TabValue, VehicleCategory } from './booking-tabs';
 import { createReservation, updateFullReservation } from '@/utils/old_db/actions';
 import BookingPay from './booking-payment';
-import { Loader2, ShieldCheck, CreditCard, X } from 'lucide-react'; // Added icons
+import { Loader2, ShieldCheck, CreditCard, X } from 'lucide-react';
 
 export interface HotelType {
   Hotel_ID: number;
@@ -436,7 +436,7 @@ export function BookingEditPage({
             <div className="p-6 border border-border rounded-xl shadow-lg bg-card text-card-foreground">
               <div className="text-center space-y-4">
                 <div className="space-y-1">
-                  <h3 className="text-xl font-bold">Ready to Complete Your Booking</h3>
+                  <h3 className="text-xl font-bold text-foreground">Ready to Complete Your Booking</h3>
                   <p className="text-muted-foreground text-sm">
                     Reservation will be created securely before payment
                   </p>
@@ -483,7 +483,7 @@ export function BookingEditPage({
             // Semantic: bg-card, border-border
             <div className="p-4 border border-border rounded-xl shadow-lg bg-card text-card-foreground animate-in slide-in-from-bottom-4 fade-in duration-500">
               <div className="flex justify-between items-center mb-4 pb-4 border-b border-border">
-                <h2 className="text-xl font-bold flex items-center gap-2">
+                <h2 className="text-xl font-bold flex items-center gap-2 text-foreground">
                   <CreditCard className="w-5 h-5 text-primary" />
                   Complete Your Payment
                 </h2>
