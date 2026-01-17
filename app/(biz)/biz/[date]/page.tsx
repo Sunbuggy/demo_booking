@@ -33,7 +33,7 @@ export const dynamic = 'force-dynamic';
 const VEGAS_LOCATION_ID = 'c29cdc8e-8f16-4bc4-987c-e869dcebd6e3';
 
 /**
- * Helper: Deep Sanitize
+ * Helper: Deep Sanitize to keep it shiny clean
  * Removes database prototypes (like RowDataPacket) so data can be passed
  * to Client Components without the "Only plain objects" error.
  */
