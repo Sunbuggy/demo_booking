@@ -1,8 +1,8 @@
 'use client';
 
-import { Contact, Mail, Phone, User, CheckCircle2 } from 'lucide-react';
+import { Contact, Mail, Phone, User, CheckCircle2, Loader2 } from 'lucide-react';
 import { ContactFom } from './server-booking';
-import { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import { Dispatch, SetStateAction, useEffect, useState, useRef } from 'react';
 import { checkOrCreateUserSilent } from '@/app/actions/user-check';
 
 // Semantic Theme Classes
@@ -22,47 +22,63 @@ export function ContactInfoSection({
   setContactForm,
   viewMode
 }: ContactInfoSectionProps) {
+  // Status: idle -> checking -> verified
   const [userStatus, setUserStatus] = useState<'idle' | 'checking' | 'verified'>('idle');
+  
+  // 🛡️ LOCK: Track the last email we processed to prevents duplicate fires
+  const lastCheckedEmail = useRef<string>('');
 
   const handleChange = (field: keyof ContactFom, value: string) => {
     setContactForm(prev => ({ ...prev, [field]: value }));
-    // Reset verification status if they change email
-    if (field === 'email') setUserStatus('idle'); 
+    
+    // Only reset status if they change the email (the unique identifier)
+    if (field === 'email' && value !== lastCheckedEmail.current) {
+      setUserStatus('idle');
+    }
   };
 
-  // SILENT BACKGROUND CHECK
+  // SILENT BACKGROUND CHECK (Debounced & Locked)
   useEffect(() => {
-    const checkUser = async () => {
-      if (
-        !viewMode && 
-        contactForm.email.includes('@') && 
-        contactForm.email.includes('.') &&
-        contactForm.name.length > 2 &&
-        contactForm.phone.length > 6 &&
-        userStatus === 'idle'
-      ) {
-        setUserStatus('checking');
+    // 1. Validation Rules
+    const isValidEmail = contactForm.email.includes('@') && contactForm.email.includes('.');
+    const hasName = contactForm.name.length > 2;
+    const hasPhone = contactForm.phone.length > 6;
+    const isNewEmail = contactForm.email !== lastCheckedEmail.current;
+
+    if (!viewMode && isValidEmail && hasName && hasPhone && isNewEmail && userStatus === 'idle') {
+      
+      // 2. Debounce: Wait 1.5s after typing stops before firing
+      const timer = setTimeout(async () => {
+        // Double check lock before firing
+        if (contactForm.email === lastCheckedEmail.current) return;
         
-        const timer = setTimeout(async () => {
+        setUserStatus('checking');
+        const currentEmailToTest = contactForm.email; 
+
+        try {
+          // 3. Fire Server Action
           const result = await checkOrCreateUserSilent(
-            contactForm.email, 
+            currentEmailToTest, 
             contactForm.name, 
             contactForm.phone
           );
           
+          // 4. Handle Result
           if (result.userId) {
             setUserStatus('verified');
-            console.log('User verified/created silently:', result.userId);
+            lastCheckedEmail.current = currentEmailToTest; // ✅ LOCK IT
+            console.log('Prospect verified:', result.userId);
           } else {
-            setUserStatus('idle');
+            setUserStatus('idle'); // Retry allowed if failed
           }
-        }, 1500);
+        } catch (error) {
+          console.error("Silent Check Failed", error);
+          setUserStatus('idle');
+        }
+      }, 1500); 
 
-        return () => clearTimeout(timer);
-      }
-    };
-
-    checkUser();
+      return () => clearTimeout(timer);
+    }
   }, [contactForm.email, contactForm.name, contactForm.phone, userStatus, viewMode]);
 
   return (
@@ -72,6 +88,14 @@ export function ContactInfoSection({
           <Contact className="w-5 h-5 text-primary" />
           Contact Information
         </h2>
+        
+        {/* Status Indicators */}
+        {userStatus === 'checking' && (
+           <div className="flex items-center gap-1 text-xs text-muted-foreground animate-pulse">
+             <Loader2 className="w-3 h-3 animate-spin" />
+             <span>Verifying...</span>
+           </div>
+        )}
         {userStatus === 'verified' && (
           <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium animate-in fade-in">
             <CheckCircle2 className="w-3 h-3" />
@@ -113,9 +137,6 @@ export function ContactInfoSection({
               placeholder="receipts@example.com"
               disabled={viewMode}
               autoComplete="email"
-              onBlur={() => {
-                 if (contactForm.email && userStatus === 'idle') setUserStatus('idle');
-              }}
             />
           </div>
         </div>
