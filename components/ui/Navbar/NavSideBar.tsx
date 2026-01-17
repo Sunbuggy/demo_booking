@@ -1,7 +1,8 @@
 /**
  * @file /components/UI/Navbar/NavSideBar.tsx
  * @description Main Sidebar Navigation.
- * Updated: 'WELCOME' link now points to '/welcome' (internal route) 
+ * Updated: Added 'Legacy Migration' link for Moment.js refactoring workbench.
+ * Updated: 'WELCOME' link now points to '/welcome' (internal route)
  * to bypass middleware redirects for staff.
  */
 'use client';
@@ -21,7 +22,8 @@ import {
   Palette, 
   Settings, 
   Map, 
-  Image 
+  Image,
+  Hammer // Imported for Migration Workbench
 } from 'lucide-react';
 import { SheetClose } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -100,6 +102,8 @@ export default function NavSideBar({ user }: NavSideBarProps) {
     { href: '/biz/admin/developer/fleet-icons', label: 'Fleet Icons', minLevel: USER_LEVELS.DEV, icon: <Image size={16} className="text-pink-500 dark:text-pink-400" /> },
     { href: '/biz/admin/developer/docs', label: 'System Architecture', minLevel: USER_LEVELS.DEV, icon: <BookOpen size={16} className="text-blue-500 dark:text-blue-400" /> },
     { href: '/biz/admin/developer/look-and-feel', label: 'Look & Feel', minLevel: USER_LEVELS.DEV, icon: <Palette size={16} className="text-purple-500 dark:text-purple-400" /> },
+    // Added Migration Workbench for Legacy Code Refactoring (Moment.js -> date-fns)
+    { href: '/biz/admin/migration', label: 'Legacy Migration', minLevel: USER_LEVELS.DEV, icon: <Hammer size={16} className="text-yellow-500 dark:text-yellow-400" /> },
   ];
 
   /**

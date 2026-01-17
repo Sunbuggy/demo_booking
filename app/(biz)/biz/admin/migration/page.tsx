@@ -1,153 +1,180 @@
-'use client'
+/**
+ * @file app/(biz)/biz/admin/migration/page.tsx
+ * @description The "Workbench" for monitoring the Strangler Fig migration pattern.
+ */
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ArrowRight, Database, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
-import { testMigration } from './actions';
+import React from 'react';
+import { createClient } from '@/utils/supabase/server';
+import { redirect } from 'next/navigation';
+import { 
+  ArrowRightLeft, 
+  CheckCircle2, 
+  Clock, 
+  ServerCrash,
+  FileJson,
+  AlertTriangle 
+} from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
-export default function MigrationWorkbench() {
-  const [resId, setResId] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+// Components
+import ManualSyncButton from './components/ManualSyncButton';
+import SingleBookingMigrator from './components/SingleBookingMigrator'; // NEW COMPONENT
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { USER_LEVELS } from '@/lib/constants/user-levels';
 
-  const handleMigrate = async () => {
-    if (!resId) return;
-    setIsLoading(true);
-    setResult(null);
-    setError(null);
+export const dynamic = 'force-dynamic';
 
-    const response = await testMigration(Number(resId));
-    
-    if (response.success) {
-      setResult(response);
-    } else {
-      setError(response.error || 'Unknown error occurred');
-    }
-    setIsLoading(false);
-  };
+export default async function MigrationWorkbenchPage() {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return redirect('/signin');
+
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('user_level')
+    .eq('id', user.id)
+    .single();
+
+  if (!userProfile || userProfile.user_level < USER_LEVELS.DEV) {
+    return (
+      <div className="p-8 text-center text-red-500">
+        <ServerCrash className="mx-auto h-12 w-12 mb-4 opacity-50" />
+        <h1 className="text-xl font-bold">Restricted Area</h1>
+        <p>This workbench requires Level {USER_LEVELS.DEV} (Developer) access.</p>
+      </div>
+    );
+  }
+
+  // A. Count Legacy Records
+  const { count: legacyCount } = await supabase
+    .from('bookings')
+    .select('*', { count: 'exact', head: true })
+    .not('legacy_id', 'is', null);
+
+  // B. Count Native Records
+  const { count: nativeCount } = await supabase
+    .from('bookings')
+    .select('*', { count: 'exact', head: true })
+    .is('legacy_id', null);
+
+  // C. Recent Syncs
+  const { data: recentSyncs } = await supabase
+    .from('bookings')
+    .select('id, legacy_id, created_at, status, operational_metadata')
+    .not('legacy_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(25);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 pb-20">
+    <div className="flex flex-col h-full overflow-hidden bg-zinc-50 dark:bg-zinc-950">
       
       {/* HEADER */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-black uppercase tracking-tight text-zinc-900 dark:text-white flex items-center gap-3">
-          <Database className="text-purple-600" />
-          Legacy Migration <span className="text-zinc-400">Workbench</span>
-        </h1>
-        <p className="text-zinc-500 max-w-2xl">
-          Use this tool to manually test the "Strangler Fig" migration logic on a single reservation.
-          It reads from MySQL `reservations_modified` and writes to Supabase (3-Layer Schema).
-        </p>
-      </div>
-
-      {/* CONTROL PANEL */}
-      <Card className="bg-zinc-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800">
-        <CardContent className="pt-6 flex gap-4 items-end">
-          <div className="grid gap-2 w-full max-w-sm">
-            <label className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
-              Legacy Reservation ID
-            </label>
-            <Input 
-              placeholder="e.g. 54321" 
-              value={resId} 
-              onChange={(e) => setResId(e.target.value)}
-              className="font-mono"
-            />
+      <header className="flex-none p-6 border-b bg-white dark:bg-zinc-900/50">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
+              <ArrowRightLeft className="text-yellow-600" />
+              LEGACY MIGRATION WORKBENCH
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Monitoring the "Strangler Fig" migration from MySQL to Supabase.
+            </p>
           </div>
-          <Button 
-            onClick={handleMigrate} 
-            disabled={isLoading || !resId}
-            className="bg-purple-600 hover:bg-purple-700 text-white min-w-[140px]"
-          >
-            {isLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <ArrowRight className="mr-2 h-4 w-4" />}
-            Run Migration
-          </Button>
-        </CardContent>
-      </Card>
+          <div className="text-right hidden sm:block">
+            <Badge variant="outline" className="text-xs font-mono mb-1">v1.1 DUAL-WRITE</Badge>
+          </div>
+        </div>
+      </header>
 
-      {/* ERROR DISPLAY */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Migration Failed</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* RESULTS DISPLAY */}
-      {result && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* SCROLLABLE CONTENT */}
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
           
-          {/* LEFT: LEGACY SOURCE */}
-          <Card className="border-red-200 dark:border-red-900/50 shadow-sm">
-            <CardHeader className="bg-red-50 dark:bg-red-900/10 border-b border-red-100 dark:border-red-900/50 pb-3">
-              <CardTitle className="text-sm font-bold uppercase text-red-700 dark:text-red-400 flex items-center gap-2">
-                <Database className="w-4 h-4" /> Source (MySQL)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <pre className="text-xs font-mono p-4 overflow-auto max-h-[500px] text-zinc-600 dark:text-zinc-300 bg-transparent">
-                {JSON.stringify(result.legacyData, null, 2)}
-              </pre>
-            </CardContent>
-          </Card>
+          {/* COLUMN 1: CONTROLS & STATS */}
+          <div className="space-y-6">
+            
+            {/* TOOL 1: Bulk Sync */}
+            <ManualSyncButton />
 
-          {/* RIGHT: SUPABASE TARGET */}
-          <Card className="border-green-200 dark:border-green-900/50 shadow-md ring-2 ring-green-500/20">
-            <CardHeader className="bg-green-50 dark:bg-green-900/10 border-b border-green-100 dark:border-green-900/50 pb-3">
-              <CardTitle className="text-sm font-bold uppercase text-green-700 dark:text-green-400 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> Target (Supabase 3-Layer)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 divide-y divide-zinc-100 dark:divide-zinc-800">
+            {/* TOOL 2: Single Fix (NEW) */}
+            <SingleBookingMigrator />
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Synced (Legacy)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{legacyCount?.toLocaleString()}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Native (Supabase)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{nativeCount?.toLocaleString()}</div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* COLUMN 2: THE DIFF TABLE */}
+          <div className="lg:col-span-2">
+            <Card className="h-full flex flex-col">
+              <CardHeader className="pb-3 border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Recent Sync Activity</CardTitle>
+                  <Badge variant="secondary" className="font-mono text-xs">Live View</Badge>
+                </div>
+              </CardHeader>
               
-              {/* Layer 1: Header */}
-              <div className="p-4">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-2">Layer 1: Header</span>
-                <div className="bg-zinc-950 text-green-400 rounded p-3 font-mono text-xs overflow-x-auto">
-                  ID: {result.migratedData.id}<br/>
-                  Legacy ID: {result.migratedData.legacy_id}<br/>
-                  Status: {result.migratedData.status}
-                </div>
+              <div className="flex-1 overflow-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-muted-foreground uppercase bg-zinc-50 dark:bg-zinc-900 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Synced</th>
+                      <th className="px-4 py-3 font-medium">Legacy ID</th>
+                      <th className="px-4 py-3 font-medium">Supabase UUID</th>
+                      <th className="px-4 py-3 font-medium text-right">Raw Data</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {recentSyncs?.map((row) => (
+                      <tr key={row.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50">
+                        <td className="px-4 py-3 whitespace-nowrap text-zinc-500">
+                          <div className="flex items-center gap-2">
+                            <Clock size={12} />
+                            {formatDistanceToNow(new Date(row.created_at), { addSuffix: true })}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-orange-600 dark:text-orange-400 font-bold">
+                          #{row.legacy_id}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-[10px] text-zinc-400 truncate max-w-[120px]" title={row.id}>
+                          {row.id}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {row.operational_metadata ? (
+                            <CheckCircle2 size={16} className="text-green-600 dark:text-green-500 ml-auto" />
+                          ) : (
+                            <AlertTriangle size={16} className="text-red-400 ml-auto" />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-
-              {/* Layer 2: Participants */}
-              <div className="p-4">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-2">Layer 2: Manifest ({result.migratedData.booking_participants.length})</span>
-                <div className="space-y-1">
-                  {result.migratedData.booking_participants.map((p: any, i: number) => (
-                    <div key={i} className="flex items-center gap-2 text-xs border p-2 rounded bg-white dark:bg-zinc-900">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${p.role === 'PRIMARY_RENTER' ? 'bg-blue-100 text-blue-700' : 'bg-zinc-100 text-zinc-600'}`}>
-                        {p.role}
-                      </span>
-                      <span className="font-mono text-zinc-500">{p.temp_name || 'Linked User'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Layer 3: Resources */}
-              <div className="p-4">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-2">Layer 3: Fleet Assets ({result.migratedData.booking_resources.length})</span>
-                <div className="flex flex-wrap gap-2">
-                  {result.migratedData.booking_resources.map((r: any, i: number) => (
-                    <span key={i} className="text-xs font-mono bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 px-2 py-1 rounded border border-yellow-200 dark:border-yellow-800">
-                      {r.vehicle_type_id}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-            </CardContent>
-          </Card>
+            </Card>
+          </div>
 
         </div>
-      )}
+      </main>
     </div>
   );
 }

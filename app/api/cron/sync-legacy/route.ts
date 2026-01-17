@@ -1,11 +1,16 @@
+/**
+ * @file app/api/cron/sync-legacy/route.ts
+ * @description The API endpoint triggers the sync.
+ * FIX: Removed 'Status' column filter causing SQL crash.
+ */
 import { NextResponse } from 'next/server';
 import { fetch_from_old_db, migrateReservationToSupabase } from '@/utils/old_db/actions';
 
-// Security: Require a secret key so strangers can't trigger your sync
+// Security: Require a secret key
 const CRON_SECRET = process.env.CRON_SECRET || 'make_up_a_secure_password_here';
 
-export const dynamic = 'force-dynamic'; // Prevent caching
-export const maxDuration = 60; // Allow it to run for up to 60 seconds
+export const dynamic = 'force-dynamic'; 
+export const maxDuration = 60; 
 
 export async function GET(request: Request) {
   // 1. Security Check
@@ -14,10 +19,8 @@ export async function GET(request: Request) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  // 2. Feature Flag (The "Kill Switch")
-  // If this env var is missing or set to anything other than 'true', the sync stops here.
+  // 2. Feature Flag
   if (process.env.ENABLE_LEGACY_SYNC !== 'true') {
-    console.log("⏸️ [Cron] Legacy Sync is disabled via Feature Flag (ENABLE_LEGACY_SYNC).");
     return NextResponse.json({ 
       success: true, 
       message: 'Sync skipped: ENABLE_LEGACY_SYNC is not true.' 
@@ -27,28 +30,37 @@ export async function GET(request: Request) {
   try {
     console.log("⚡ [Cron] Starting Legacy Sync Pulse...");
 
-    // 3. Define the Window (Today + Next 2 Days to be safe)
-    // We want to ensure the "Active Board" is always 100% in sync
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0];
     
-    // MySQL Query: Get everything for Today onwards (limit to recent/upcoming)
-    // We sort by 'last_modified' if you have it, otherwise just sync the active window.
+    // 3. MySQL Query
+    // FIX: Removed "AND Status NOT LIKE '%Cancel%'" because the column 'Status' does not exist.
+    // If you need to filter cancelled bookings, check the legacy DB schema for the correct name 
+    // (likely 'Res_Status', 'status', 'Type', or similar) and add it back later.
     const query = `
       SELECT * FROM reservations_modified 
       WHERE sch_date >= '${dateStr}' 
       AND sch_date <= DATE_ADD('${dateStr}', INTERVAL 2 DAY)
-      AND Status NOT LIKE '%Cancel%' -- Optional: Skip cancelled if you want
     `;
 
     const legacyBookings = await fetch_from_old_db(query) as any[];
     console.log(`⚡ [Cron] Found ${legacyBookings.length} bookings to sync.`);
 
-    // 4. Process them in parallel (Batched)
-    // We don't want to crash the server, so we map them with a catch block
+// --- DEBUGGING PROBE START ---
+    if (legacyBookings.length > 0) {
+      console.log("🔍 INSPECTING LEGACY COLUMNS:", Object.keys(legacyBookings[0]));
+      // This will print an array like: ['Res_ID', 'First_Name', 'Res_Status', ...]
+      // Look for the one that sounds like "Status"!
+    }
+    // --- DEBUGGING PROBE END ---
+
+    // 4. Process them in parallel
     const results = await Promise.allSettled(
       legacyBookings.map(async (res) => {
         try {
+          // You can also filter in JS if the DB column is unknown:
+          // if (res.Res_Status?.includes('Cancel')) return { id: res.Res_ID, status: 'skipped' };
+          
           const id = await migrateReservationToSupabase(res);
           return { id, status: 'synced' };
         } catch (err: any) {
