@@ -14,10 +14,20 @@ export async function GET(request: Request) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
+  // 2. Feature Flag (The "Kill Switch")
+  // If this env var is missing or set to anything other than 'true', the sync stops here.
+  if (process.env.ENABLE_LEGACY_SYNC !== 'true') {
+    console.log("⏸️ [Cron] Legacy Sync is disabled via Feature Flag (ENABLE_LEGACY_SYNC).");
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Sync skipped: ENABLE_LEGACY_SYNC is not true.' 
+    });
+  }
+
   try {
     console.log("⚡ [Cron] Starting Legacy Sync Pulse...");
 
-    // 2. Define the Window (Today + Next 2 Days to be safe)
+    // 3. Define the Window (Today + Next 2 Days to be safe)
     // We want to ensure the "Active Board" is always 100% in sync
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0];
@@ -34,7 +44,7 @@ export async function GET(request: Request) {
     const legacyBookings = await fetch_from_old_db(query) as any[];
     console.log(`⚡ [Cron] Found ${legacyBookings.length} bookings to sync.`);
 
-    // 3. Process them in parallel (Batched)
+    // 4. Process them in parallel (Batched)
     // We don't want to crash the server, so we map them with a catch block
     const results = await Promise.allSettled(
       legacyBookings.map(async (res) => {
@@ -48,7 +58,7 @@ export async function GET(request: Request) {
       })
     );
 
-    // 4. Summarize
+    // 5. Summarize
     const successCount = results.filter(r => r.status === 'fulfilled').length;
     const failCount = results.filter(r => r.status === 'rejected').length;
 

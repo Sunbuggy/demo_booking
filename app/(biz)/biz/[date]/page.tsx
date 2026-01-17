@@ -30,7 +30,7 @@ import DashboardWeatherPill from '../vegas/components/dashboard-weather-pill';
 export const dynamic = 'force-dynamic';
 
 // [CONFIG] The UUID for Las Vegas in Supabase
-const VEGAS_LOCATION_ID = 'a1b2c3d4-e5f6-47a8-b9c0-d1e2f3a4b5c6';
+const VEGAS_LOCATION_ID = 'c29cdc8e-8f16-4bc4-987c-e869dcebd6e3';
 
 /**
  * Helper: Deep Sanitize
